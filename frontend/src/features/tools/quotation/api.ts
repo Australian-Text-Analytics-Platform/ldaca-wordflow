@@ -10,7 +10,7 @@ export type QuotationRequest = components['schemas']['QuotationRequest'];
 
 export type QuotationPreviewRequest = Required<components['schemas']['QuotationPreview']>;
 
-export type QuotationAnalysisResult = AnalysisResult<components['schemas']['QuotationResultV1']>;
+export type QuotationAnalysisResult = components['schemas']['QuotationOutput'];
 
 export type QuotationQuery = components['schemas']['QuotationQuery'];
 
@@ -22,19 +22,18 @@ export async function getQuotationResult(
   signal?: AbortSignal,
 ): Promise<QuotationAnalysisResult | null> {
   const result = await (
-    await request(base, '/api/project/analyses/{id}', 'get', { path: { id }, signal })
+    await request(base, '/api/project/analyses/{id}/quotation', 'get', { path: { id }, signal })
   ).json();
-  if (result.kind === 'quotation' && result.result === null) return null;
-  if (result.kind !== 'quotation' || ![1, 2].includes(result.result?.version ?? 0))
+  if (result && (result.analysis?.kind !== 'quotation' || ![1, 2].includes(result.version)))
     throw new Error('Unsupported Quotation result version');
-  return result as QuotationAnalysisResult;
+  return result;
 }
 
 export async function runQuotation(
   base: string,
   id: string,
   input: QuotationRequest,
-): Promise<QuotationAnalysisResult> {
+): Promise<AnalysisResult<components['schemas']['QuotationResultV1']>> {
   return completedAnalysis(
     await (
       await request(base, '/api/project/tabs/{id}/quotation', 'post', {
@@ -44,6 +43,15 @@ export async function runQuotation(
     ).json(),
     'quotation',
   );
+}
+
+export async function resumeQuotation(base: string, id: string, input: QuotationRequest) {
+  return (
+    await request(base, '/api/project/tabs/{id}/quotation/resume', 'post', {
+      path: { id },
+      body: input,
+    })
+  ).json();
 }
 
 export async function previewQuotation(

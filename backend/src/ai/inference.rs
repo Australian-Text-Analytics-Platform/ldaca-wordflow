@@ -20,38 +20,9 @@ pub enum Reasoning {
     Medium,
     High,
 }
-/// Controls implemented by this adapter, not an exhaustive provider capability catalogue.
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct InferenceCapabilities {
-    pub reasoning: Vec<Reasoning>,
-    pub temperature_with_reasoning: bool,
-}
-pub fn capabilities(provider: Provider, model: &str) -> InferenceCapabilities {
-    let model = model.trim();
-    let mut reasoning = vec![Reasoning::Default];
-    if provider != Provider::Apple {
-        reasoning.extend([Reasoning::Low, Reasoning::Medium, Reasoning::High]);
-        let off = match provider {
-            Provider::Openai => {
-                model.starts_with("gpt-5.1")
-                    || model.starts_with("gpt-5.2") && !model.contains("pro")
-            }
-            Provider::Google => model.starts_with("gemini-2.5-flash"),
-            Provider::Anthropic => ["claude-sonnet-4-5", "claude-haiku-4-5", "claude-opus-4-5"]
-                .iter()
-                .any(|prefix| model.starts_with(prefix)),
-            Provider::Openrouter | Provider::Custom => true,
-            Provider::Apple => false,
-        };
-        if off {
-            reasoning.push(Reasoning::Off);
-        }
-    }
-    InferenceCapabilities {
-        reasoning,
-        temperature_with_reasoning: !matches!(provider, Provider::Openai | Provider::Anthropic),
-    }
-}
+mod controls;
+pub use controls::{InferenceCapabilities, Thinking, ThinkingKind, capabilities};
+use controls::{apply_thinking, thinking_budget};
 #[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Inference {
@@ -61,6 +32,8 @@ pub struct Inference {
     pub temperature: Option<f64>,
     #[serde(default)]
     pub reasoning: Reasoning,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<Thinking>,
     pub batch_size: usize,
     pub retries: usize,
     pub concurrency: usize,
@@ -102,10 +75,10 @@ impl AiConfiguration {
         if config.model.trim().is_empty()
             || !(1..=100).contains(&config.batch_size)
             || config.retries > 10
-            || !(1..=10).contains(&config.concurrency)
+            || !(1..=32).contains(&config.concurrency)
         {
             return Err(Error::invalid(
-                "Choose a model, batch size 1–100, retries 0–10 and concurrency 1–10",
+                "Choose a model, batch size 1–100, retries 0–10 and concurrency 1–32",
             ));
         }
         if config
@@ -119,9 +92,13 @@ impl AiConfiguration {
         let (connection, key) = self.resolve(config.provider).await?;
         // Validate explicit controls before issuing any provider request.
         if connection.provider == Provider::Apple {
-            if config.model != "system" || config.reasoning != Reasoning::Default {
+            if config.model != "system"
+                || config.reasoning != Reasoning::Default
+                || config.thinking.is_some()
+                || config.concurrency != 1
+            {
                 return Err(Error::invalid(
-                    "Apple Foundation Models uses the system model and Provider default reasoning",
+                    "Apple Foundation Models uses the system model, Provider default thinking and concurrency 1",
                 ));
             }
         } else {
@@ -166,6 +143,21 @@ impl PreparedInference {
         examples: &[Example],
         cancellation: &CancellationToken,
     ) -> Result<Vec<Prediction>> {
+        let mut batches = self
+            .predict_batches(texts, codes, examples, cancellation)?
+            .try_collect::<Vec<_>>()
+            .await?;
+        batches.sort_by_key(|(offset, _)| *offset);
+        Ok(batches.into_iter().flat_map(|(_, rows)| rows).collect())
+    }
+    /// Completed request batches arrive independently; callers own their commit boundary.
+    pub fn predict_batches<'a>(
+        &'a self,
+        texts: &'a [String],
+        codes: &'a [Label],
+        examples: &[Example],
+        cancellation: &'a CancellationToken,
+    ) -> Result<impl futures_util::Stream<Item = Result<(usize, Vec<Prediction>)>> + 'a> {
         let mut names = std::collections::BTreeSet::new();
         for code in codes {
             if code.code.trim().is_empty()
@@ -193,21 +185,15 @@ impl PreparedInference {
         let jobs = texts
             .chunks(self.config.batch_size)
             .enumerate()
-            .map(|(index, chunk)| {
-                let system = &system;
+            .map(move |(index, chunk)| {
+                let system = system.clone();
                 async move {
-                    self.predict_batch(chunk, codes, system, cancellation)
+                    self.predict_batch(chunk, codes, &system, cancellation)
                         .await
-                        .map(|rows| (index, rows))
+                        .map(|rows| (index * self.config.batch_size, rows))
                 }
-            })
-            .collect::<Vec<_>>();
-        let mut batches = stream::iter(jobs)
-            .buffer_unordered(self.config.concurrency)
-            .try_collect::<Vec<_>>()
-            .await?;
-        batches.sort_by_key(|(index, _)| *index);
-        Ok(batches.into_iter().flat_map(|(_, rows)| rows).collect())
+            });
+        Ok(stream::iter(jobs).buffer_unordered(self.config.concurrency))
     }
     async fn predict_batch(
         &self,
@@ -351,11 +337,14 @@ fn transport_failure(error: reqwest::Error) -> Failure {
         },
         error: Error::new(
             "annotation_provider_unavailable",
-            if error.is_timeout() {
-                "The provider request timed out. It was not retried because inference may already have completed."
-            } else {
-                "The provider connection failed. Check the endpoint and network connection."
-            },
+            format!(
+                "{}\n{error}",
+                if error.is_timeout() {
+                    "The provider request timed out. It was not retried because inference may already have completed."
+                } else {
+                    "The provider connection failed. Check the endpoint and network connection."
+                }
+            ),
         ),
     }
 }
@@ -411,7 +400,7 @@ fn http_failure(status: u16, body: &str) -> Failure {
     };
     Failure {
         kind,
-        error: Error::new(code, format!("HTTP {status}: {detail}")),
+        error: Error::new(code, format!("HTTP {status}: {detail}\n{body}")),
     }
 }
 fn labels(
@@ -510,44 +499,14 @@ fn payload(
     system: &str,
     user: &str,
 ) -> Result<(String, Value)> {
-    let controls = capabilities(provider, &config.model);
-    if !controls.reasoning.contains(&config.reasoning) {
-        return Err(Error::invalid(
-            "This reasoning setting is not supported for this model; choose Provider default",
-        ));
-    }
-    let effort = match config.reasoning {
-        Reasoning::Low => Some("low"),
-        Reasoning::Medium => Some("medium"),
-        Reasoning::High => Some("high"),
-        _ => None,
-    };
-    let budget = match config.reasoning {
-        Reasoning::Low => 1024,
-        Reasoning::Medium => 4096,
-        Reasoning::High => 12000,
-        _ => 0,
-    };
+    let budget = thinking_budget(provider, config)?;
     let model = config.model.trim();
-    if config.temperature.is_some() && effort.is_some() && !controls.temperature_with_reasoning {
-        return Err(Error::invalid(
-            "Explicit temperature cannot be combined with reasoning for this provider. Choose Provider default for temperature.",
-        ));
-    }
     match provider {
         Provider::Google => {
             let mut generation =
                 json!({"responseMimeType":"application/json", "maxOutputTokens":4096 + budget});
             if let Some(value) = config.temperature {
                 generation["temperature"] = json!(value);
-            }
-            match config.reasoning {
-                Reasoning::Default => {}
-                Reasoning::Off => generation["thinkingConfig"] = json!({"thinkingBudget":0}),
-                _ if model.starts_with("gemini-2.5-") => {
-                    generation["thinkingConfig"] = json!({"thinkingBudget":budget})
-                }
-                _ => generation["thinkingConfig"] = json!({"thinkingLevel":effort}),
             }
             let mut url = reqwest::Url::parse("https://placeholder.invalid/")
                 .map_err(|_| Error::invalid("Invalid provider URL"))?;
@@ -558,30 +517,16 @@ fn payload(
                     "{}:generateContent",
                     model.strip_prefix("models/").unwrap_or(model)
                 ));
-            Ok((
-                url.path().into(),
-                json!({"systemInstruction":{"parts":[{"text":system}]}, "contents":[{"role":"user","parts":[{"text":user}]}],"generationConfig":generation}),
-            ))
+            let mut body = json!({"systemInstruction":{"parts":[{"text":system}]}, "contents":[{"role":"user","parts":[{"text":user}]}],"generationConfig":generation});
+            apply_thinking(&mut body, &config.thinking);
+            Ok((url.path().into(), body))
         }
         Provider::Anthropic => {
             let mut body = json!({"model":model,"max_tokens":4096 + budget,"system":system,"messages":[{"role":"user","content":user}]});
             if let Some(value) = config.temperature {
                 body["temperature"] = json!(value);
             }
-            match config.reasoning {
-                Reasoning::Default => {}
-                Reasoning::Off => body["thinking"] = json!({"type":"disabled"}),
-                _ if model.starts_with("claude-sonnet-4-5")
-                    || model.starts_with("claude-haiku-4-5")
-                    || model.starts_with("claude-opus-4-5") =>
-                {
-                    body["thinking"] = json!({"type":"enabled","budget_tokens":budget})
-                }
-                _ => {
-                    body["thinking"] = json!({"type":"adaptive"});
-                    body["output_config"] = json!({"effort":effort});
-                }
-            }
+            apply_thinking(&mut body, &config.thinking);
             Ok(("/messages".into(), body))
         }
         _ => {
@@ -592,17 +537,7 @@ fn payload(
             if let Some(value) = config.temperature {
                 body["temperature"] = json!(value);
             }
-            if provider == Provider::Openrouter {
-                if config.reasoning == Reasoning::Off {
-                    body["reasoning"] = json!({"enabled":false});
-                } else if let Some(effort) = effort {
-                    body["reasoning"] = json!({"effort":effort});
-                }
-            } else if config.reasoning == Reasoning::Off {
-                body["reasoning_effort"] = json!("none");
-            } else if let Some(effort) = effort {
-                body["reasoning_effort"] = json!(effort);
-            }
+            apply_thinking(&mut body, &config.thinking);
             Ok(("/chat/completions".into(), body))
         }
     }
@@ -623,6 +558,7 @@ mod tests {
             prompt: "Classify these research documents".into(),
             temperature: None,
             reasoning: Reasoning::Default,
+            thinking: None,
             batch_size: 20,
             retries: 0,
             concurrency: 2,
@@ -670,6 +606,7 @@ mod tests {
                 provider: Provider::Custom,
                 endpoint: Some(format!("http://{address}/v1")),
                 credential_mode: super::super::CredentialMode::None,
+                annotation_concurrency: None,
             },
             key: None,
             config: config(),
@@ -770,7 +707,7 @@ mod tests {
         ));
     }
     #[test]
-    fn explicit_controls_are_sent_or_rejected_never_silently_discarded() {
+    fn native_controls_are_sent_exactly_and_unknown_models_keep_defaults() {
         let mut request = config();
         for provider in [
             Provider::Openai,
@@ -779,66 +716,84 @@ mod tests {
             Provider::Google,
             Provider::Custom,
         ] {
+            assert!(capabilities(provider, "unknown-model").thinking.is_empty());
             let (_, body) = payload(provider, &request, "instruction", "[]").unwrap();
-            assert!(!body.to_string().contains("temperature"));
+            assert!(!body.to_string().contains("thinking"));
+            assert!(!body.to_string().contains("reasoning"));
         }
-        request.reasoning = Reasoning::High;
+        for (provider, model, thinking, pointer, expected) in [
+            (
+                Provider::Openai,
+                "gpt-5.2",
+                Thinking::ReasoningEffort("xhigh".into()),
+                "/reasoning_effort",
+                json!("xhigh"),
+            ),
+            (
+                Provider::Custom,
+                "gpt-5.2",
+                Thinking::ReasoningEffort("none".into()),
+                "/reasoning_effort",
+                json!("none"),
+            ),
+            (
+                Provider::Google,
+                "gemini-2.5-flash",
+                Thinking::ThinkingBudget(8192),
+                "/generationConfig/thinkingConfig/thinkingBudget",
+                json!(8192),
+            ),
+            (
+                Provider::Google,
+                "gemini-3-pro-preview",
+                Thinking::ThinkingLevel("high".into()),
+                "/generationConfig/thinkingConfig/thinkingLevel",
+                json!("high"),
+            ),
+            (
+                Provider::Anthropic,
+                "claude-sonnet-4-5",
+                Thinking::BudgetTokens(2048),
+                "/thinking/budget_tokens",
+                json!(2048),
+            ),
+            (
+                Provider::Anthropic,
+                "claude-sonnet-4-6",
+                Thinking::AdaptiveEffort("max".into()),
+                "/output_config/effort",
+                json!("max"),
+            ),
+            (
+                Provider::Openrouter,
+                "openai/gpt-5.2",
+                Thinking::OpenrouterEffort("xhigh".into()),
+                "/reasoning/effort",
+                json!("xhigh"),
+            ),
+        ] {
+            request.model = model.into();
+            request.thinking = Some(thinking);
+            let (_, body) = payload(provider, &request, "", "[]").unwrap();
+            assert_eq!(body.pointer(pointer), Some(&expected));
+            assert!(body.get("chat_template_kwargs").is_none());
+        }
+        request.model = "unknown-model".into();
+        assert!(payload(Provider::Custom, &request, "", "[]").is_err());
+        request.model = "gemini-2.5-pro".into();
+        request.thinking = Some(Thinking::ThinkingBudget(0));
+        assert!(payload(Provider::Google, &request, "", "[]").is_err());
+        request.model = "gemini-3-pro-preview".into();
+        request.thinking = Some(Thinking::ThinkingLevel("medium".into()));
+        assert!(payload(Provider::Google, &request, "", "[]").is_err());
+        request.model = "gpt-5.2".into();
+        request.thinking = Some(Thinking::ReasoningEffort("high".into()));
         request.temperature = Some(0.5);
         assert!(payload(Provider::Openai, &request, "", "[]").is_err());
-        request.temperature = None;
-        let (_, body) = payload(Provider::Openrouter, &request, "", "[]").unwrap();
-        assert_eq!(body["reasoning"]["effort"], "high");
-        request.reasoning = Reasoning::Off;
-        assert!(payload(Provider::Anthropic, &request, "", "[]").is_err());
-        request.model = "gemini-2.5-flash".into();
-        let (_, body) = payload(Provider::Google, &request, "", "[]").unwrap();
-        assert_eq!(
-            body["generationConfig"]["thinkingConfig"]["thinkingBudget"],
-            0
-        );
-    }
-    #[test]
-    fn advertised_reasoning_matches_payload_validation() {
-        for (provider, model) in [
-            (Provider::Openai, "gpt-5.1"),
-            (Provider::Openai, "gpt-5.2-pro"),
-            (Provider::Anthropic, "claude-sonnet-4-5"),
-            (Provider::Anthropic, "claude-sonnet-4-6"),
-            (Provider::Google, "gemini-2.5-flash"),
-            (Provider::Google, "gemini-2.5-pro"),
-            (Provider::Openrouter, "custom"),
-            (Provider::Custom, "custom"),
-        ] {
-            let controls = capabilities(provider, model);
-            for reasoning in [
-                Reasoning::Default,
-                Reasoning::Off,
-                Reasoning::Low,
-                Reasoning::Medium,
-                Reasoning::High,
-            ] {
-                let mut request = config();
-                request.model = model.into();
-                request.reasoning = reasoning;
-                assert_eq!(
-                    payload(provider, &request, "", "[]").is_ok(),
-                    controls.reasoning.contains(&reasoning)
-                );
-                if matches!(
-                    reasoning,
-                    Reasoning::Low | Reasoning::Medium | Reasoning::High
-                ) {
-                    request.temperature = Some(0.5);
-                    assert_eq!(
-                        payload(provider, &request, "", "[]").is_ok(),
-                        controls.temperature_with_reasoning
-                    );
-                }
-            }
-        }
-        assert_eq!(
-            capabilities(Provider::Apple, "system").reasoning,
-            vec![Reasoning::Default]
-        );
+        request.thinking = Some(Thinking::ReasoningEffort("none".into()));
+        assert!(payload(Provider::Openai, &request, "", "[]").is_ok());
+        request.thinking = None;
+        request.reasoning = Reasoning::High;
+        assert!(payload(Provider::Openai, &request, "", "[]").is_err());
     }
 }

@@ -13,6 +13,7 @@ pub(super) fn connection() -> Connection {
         provider: Provider::Apple,
         endpoint: None,
         credential_mode: CredentialMode::None,
+        annotation_concurrency: Some(1),
     }
 }
 #[cfg(target_os = "macos")]
@@ -157,7 +158,7 @@ mod tests {
         let start = std::time::Instant::now();
         availability().unwrap();
         let engine=AiConfiguration::session_only().prepare_inference(&reqwest::Client::new(),Inference {
-            provider: ID,model:"system".into(),prompt:"Assign TRANSPORT for travel infrastructure and HEALTH for medical care. Use no code for unrelated text.".into(),temperature:Some(0.0),reasoning:Reasoning::Default,batch_size:20,retries:0,concurrency:1,
+            provider: ID,model:"system".into(),prompt:"Assign TRANSPORT for travel infrastructure and HEALTH for medical care. Use no code for unrelated text.".into(),temperature:Some(0.0),reasoning:Reasoning::Default,thinking:None,batch_size:20,retries:0,concurrency:1,
         }).await.unwrap();
         let codes = vec![
             Label {

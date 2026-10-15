@@ -5,6 +5,7 @@ use super::*;
 pub(crate) struct ConcordanceFilter {
     #[schema(required = false)]
     pub document_id: Option<String>,
+    pub expected_text: Option<String>,
     pub excluded_terms: Vec<String>,
     pub uncased: bool,
     pub bins: Vec<u32>,
@@ -140,6 +141,13 @@ fn filtered(
         clauses.push("document_id=?".into());
         parameters.push(SqlValue::UBigInt(id));
     }
+    if let Some(text) = &filter.expected_text {
+        clauses.push(format!(
+            "encode(CAST(source.{} AS VARCHAR))=encode(?)",
+            query::quote(&source.input.column)
+        ));
+        parameters.push(SqlValue::Text(text.clone()));
+    }
     if filter.excluded_terms.len() > 100_000 {
         return Err(Error::invalid("Too many excluded terms"));
     }
@@ -247,6 +255,12 @@ impl Database {
             params_from_iter(parameters.iter()),
             |row| Ok((row.get(0)?, row.get(1)?)),
         )?;
+        if request.filter.expected_text.is_some() && documents == 0 {
+            return Err(Error::new(
+                "result_stale",
+                "This document moved or changed. Refresh results and open it again.",
+            ));
+        }
         let order = request
             .sort
             .as_ref()

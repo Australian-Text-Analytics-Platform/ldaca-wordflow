@@ -48,6 +48,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/ai/providers/{id}/annotation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['ai_http_annotation_concurrency'];
+    trace?: never;
+  };
   '/api/ai/providers/{id}/capabilities': {
     parameters: {
       query?: never;
@@ -282,6 +298,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations['analysis_api_query'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/project/analyses/{id}/quotation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['analysis_api_quotation_output'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1489,6 +1521,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/tabs/{id}/quotation/resume': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['analysis_api_resume_quotation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/project/tabs/{id}/result': {
     parameters: {
       query?: never;
@@ -2080,8 +2128,12 @@ export interface components {
       has_result: boolean;
       /** Format: uuid */
       id: string;
+      quotation_partial?: components['schemas']['QuotationPartial'] | null;
       request: unknown;
       request_status: components['schemas']['RequestRestoration'];
+    };
+    AnnotationConcurrency: {
+      concurrency: number;
     };
     AnnotationExamples: {
       label: string;
@@ -2362,6 +2414,8 @@ export interface components {
       document_id?: string | null;
       /** @default [] */
       excluded_terms?: string[];
+      /** @default null */
+      expected_text?: string | null;
       /** @default false */
       uncased?: boolean;
     };
@@ -2425,6 +2479,7 @@ export interface components {
       count: number;
     };
     Connection: {
+      annotation_concurrency?: number | null;
       credential_mode: components['schemas']['CredentialMode'];
       endpoint?: string | null;
       /** Format: uuid */
@@ -2435,6 +2490,7 @@ export interface components {
       revision: string;
     };
     ConnectionInfo: {
+      annotation_concurrency?: number | null;
       credential_mode: components['schemas']['CredentialMode'];
       endpoint?: string | null;
       /** Format: uuid */
@@ -2805,11 +2861,18 @@ export interface components {
       retries: number;
       /** Format: double */
       temperature?: number | null;
+      thinking?: components['schemas']['Thinking'] | null;
     };
-    /** @description Controls implemented by this adapter, not an exhaustive provider capability catalogue. */
     InferenceCapabilities: {
-      reasoning: components['schemas']['Reasoning'][];
-      temperature_with_reasoning: boolean;
+      /** Format: int32 */
+      budget_max: number;
+      /** Format: int32 */
+      budget_min: number;
+      default_concurrency: number;
+      efforts: string[];
+      max_concurrency: number;
+      temperature_with_thinking: boolean;
+      thinking: components['schemas']['ThinkingKind'][];
     };
     Interval:
       | {
@@ -3081,6 +3144,19 @@ export interface components {
       name: string;
       source_index: number;
     };
+    QuotationOutput: {
+      analysis: components['schemas']['Analysis'];
+      manifest: components['schemas']['QuotationResultV1'];
+      partial: components['schemas']['QuotationPartial'] | null;
+      /** Format: int32 */
+      version: number;
+    };
+    QuotationPartial: {
+      /** Format: int64 */
+      checked_texts: number;
+      /** Format: int64 */
+      total_texts: number;
+    };
     QuotationPreview: {
       input: components['schemas']['DocumentInput'];
       /** Format: int64 */
@@ -3097,6 +3173,7 @@ export interface components {
     };
     QuotationQuery: {
       document_id?: string | null;
+      expected_text?: string | null;
       /** Format: int64 */
       page: number;
       /** Format: int64 */
@@ -3501,6 +3578,52 @@ export interface components {
     };
     /** @enum {string} */
     Theme: 'light-2026' | 'dark-2026';
+    Thinking:
+      | {
+          /** @enum {string} */
+          control: 'reasoning_effort';
+          value: string;
+        }
+      | {
+          /** @enum {string} */
+          control: 'thinking_budget';
+          /** Format: int32 */
+          value: number;
+        }
+      | {
+          /** @enum {string} */
+          control: 'thinking_level';
+          value: string;
+        }
+      | {
+          /** @enum {string} */
+          control: 'budget_tokens';
+          /** Format: int32 */
+          value: number;
+        }
+      | {
+          /** @enum {string} */
+          control: 'adaptive_effort';
+          value: string;
+        }
+      | {
+          /** @enum {string} */
+          control: 'disabled';
+        }
+      | {
+          /** @enum {string} */
+          control: 'openrouter_effort';
+          value: string;
+        };
+    /** @enum {string} */
+    ThinkingKind:
+      | 'reasoning_effort'
+      | 'thinking_budget'
+      | 'thinking_level'
+      | 'budget_tokens'
+      | 'adaptive_effort'
+      | 'disabled'
+      | 'openrouter_effort';
     /** @enum {string} */
     TimeUnit: 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year';
     TokenizerInfo: {
@@ -4032,6 +4155,39 @@ export interface operations {
       };
       /** @description Backend stopping */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  ai_http_annotation_concurrency: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnnotationConcurrency'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ConnectionInfo'];
+        };
+      };
+      400: {
         headers: {
           [name: string]: unknown;
         };
@@ -5004,6 +5160,35 @@ export interface operations {
       };
       /** @description Backend stopping */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  analysis_api_quotation_output: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['QuotationOutput'] | null;
+        };
+      };
+      400: {
         headers: {
           [name: string]: unknown;
         };
@@ -11452,6 +11637,40 @@ export interface operations {
       };
       /** @description Backend stopping */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  analysis_api_resume_quotation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['QuotationRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          'x-wordflow-task-id'?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Analysis'];
+        };
+      };
+      400: {
         headers: {
           [name: string]: unknown;
         };

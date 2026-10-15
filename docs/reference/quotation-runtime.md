@@ -16,19 +16,21 @@ The backend downloads the model from the [LINDAT bitstream](https://lindat.mff.c
 The native backend verifies its checksum before loading or installing it. Downloads
 have a 32 MiB bound and 120-second timeout, support cancellation and install through
 a destination-adjacent synchronized temporary file. A failed download never
-replaces a valid cached model. Each execution owns its extractor, prepared before
-the database operation; source documents remain local.
+replaces a valid cached model. Preview owns one extractor. Run shares model bytes
+read-only and uses up to four workers, bounded by process-available processors;
+each worker constructs and owns its extractor. One writer atomically commits
+completed eight-text batches and checked-text records. Source documents remain local.
 
 Default cache roots are `~/Library/Caches` on macOS, `LOCALAPPDATA` on Windows,
 and `XDG_CACHE_HOME` (or `~/.cache`) on Linux, under
-`au.edu.ldaca.wordflow/udpipe/`. `WORDFLOW_QUOTATION_MODEL` selects an explicitly
-provisioned file with the same checksum. An invalid override fails explicitly.
-`WORDFLOW_QUOTATION_CACHE` selects a download directory when no explicit model
-file is supplied. Dev and Test hosts set it to their own system-cache `udpipe/`
-folder and ignore production file overrides. Saved results do not need the model.
-Ordinary tests do not download it; E2E launchers provision the Test directory,
-native/API acceptance may use a provisioned override, and library/adapter acceptance uses
-`WORDFLOW_TEST_UDPIPE_MODEL`.
+`au.edu.ldaca.wordflow/udpipe/`. The host's configured application directories own
+this path; native runtime preparation accepts no environment-selected production
+model override. Offline provisioning copies the checksum-matched file into this
+host cache. Dev and Test use their separate identities and storage. Saved results
+do not need the model. Ordinary tests do not download it; E2E launchers provision
+Test storage. `WORDFLOW_QUOTATION_MODEL` supplies only the explicit native HTTP
+fixture, which copies it into isolated host storage. Direct library/backend model
+fixtures use `WORDFLOW_TEST_UDPIPE_MODEL`.
 
 The model is attributed to Straka and Straková, *UDPipe 1 models for Universal
 Dependencies 2.5*, [LINDAT](https://hdl.handle.net/11234/1-3131), under

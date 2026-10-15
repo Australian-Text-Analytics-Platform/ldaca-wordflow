@@ -66,7 +66,8 @@ function QuotationTab({
   const cache = useQueryClient();
   const savePreference = useNodePreferences(base);
   const key = analysisDraftKey(base, tab.id);
-  const analysisId = tab.analysis?.has_result ? tab.analysis.id : null;
+  const analysisId =
+    tab.analysis?.has_result || tab.analysis?.quotation_partial ? tab.analysis.id : null;
   const result = useQuery({
     ...savedAnalysisQuery(cache, base, tab, (id, signal) =>
       quotationApi.getQuotationResult(base, id, signal),
@@ -137,6 +138,13 @@ function QuotationTab({
       quotationApi.runQuotation(base, tab.id, request),
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'quotation'] }),
   });
+  const resume = useMutation({
+    meta: { reportError: false },
+    mutationFn: (request: quotationApi.QuotationRequest) =>
+      quotationApi.resumeQuotation(base, tab.id, request),
+    onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'quotation'] }),
+  });
+  const busy = run.isPending || resume.isPending || Boolean(running);
   const executionTask =
     running ??
     (run.isPending
@@ -193,6 +201,13 @@ function QuotationTab({
               Built-in English extractor · The pinned language model is downloaded on first use and
               reused offline.
             </p>
+            {result.data?.partial && (
+              <p role="status" className="text-description">
+                {result.data.partial.checked_texts} of {result.data.partial.total_texts} distinct
+                texts checked. Completed batches are saved. Resume skips checked texts; Run starts
+                fresh.
+              </p>
+            )}
             <RequestCompatibilityWarning
               issues={restored.issues}
               onReset={() => restored.reset(update)}
@@ -204,17 +219,17 @@ function QuotationTab({
                 reason={
                   editing
                     ? 'Finish Table editing before running an analysis.'
-                    : run.isPending || running
+                    : busy
                       ? 'This analysis is already running.'
                       : !ready
                         ? 'Choose the required inputs and search settings first.'
-                        : !recovery.failed &&
+                        : tab.analysis?.has_result &&
+                            !recovery.failed &&
                             restored.issues.length === 0 &&
-                            analysisId &&
                             matchesAnalysisRequest(
                               'quotation',
                               captured,
-                              result.data?.request_status ?? tab.analysis?.request_status,
+                              result.data?.analysis.request_status ?? tab.analysis.request_status,
                             )
                           ? 'These settings already have saved results. Change the parameters or clear results to run again.'
                           : undefined
@@ -227,11 +242,34 @@ function QuotationTab({
               >
                 {recovery.failed || (analysisId && restored.issues.length > 0) ? 'Rerun' : 'Run'}
               </AnalysisAction>
+              {tab.analysis?.quotation_partial && (
+                <AnalysisAction
+                  reason={
+                    busy
+                      ? 'This analysis is already running.'
+                      : editing
+                        ? 'Finish Table editing first.'
+                        : !matchesAnalysisRequest(
+                              'quotation',
+                              captured,
+                              tab.analysis.request_status,
+                            )
+                          ? 'Settings changed. Start a fresh Run.'
+                          : undefined
+                  }
+                  onClick={() => {
+                    clearPreview();
+                    resume.mutate(captured);
+                  }}
+                >
+                  Resume
+                </AnalysisAction>
+              )}
               <Button
                 variant="ghost"
                 disabled={
                   editing ||
-                  run.isPending ||
+                  busy ||
                   Boolean(running) ||
                   clear.isPending ||
                   (!analysisId && !submitted)
@@ -249,11 +287,15 @@ function QuotationTab({
                 reason={
                   editing
                     ? 'Finish Table editing before previewing.'
-                    : run.isPending || running
+                    : busy
                       ? 'Wait for Run to finish, or cancel it first.'
                       : !ready
                         ? 'Choose the required inputs and search settings first.'
-                        : matchesAnalysisRequest('quotation', captured, result.data?.request_status)
+                        : matchesAnalysisRequest(
+                              'quotation',
+                              captured,
+                              result.data?.analysis.request_status,
+                            )
                           ? 'These settings already have saved results. Change the request or clear results to preview again.'
                           : undefined
                 }
@@ -271,11 +313,11 @@ function QuotationTab({
         tabId={tab.id}
         name="Quotation"
         tasks={tasks}
-        error={run.error}
+        error={run.error ?? resume.error}
         active={active}
-        busy={run.isPending || Boolean(running)}
+        busy={busy}
       />
-      {run.isPending || running ? (
+      {busy && (
         <AnalysisProgress
           name={tab.name}
           task={executionTask}
@@ -288,7 +330,8 @@ function QuotationTab({
               : undefined
           }
         />
-      ) : view === 'saved' && analysisId && (!result.data || result.isError) ? (
+      )}
+      {view === 'saved' && analysisId && (!result.data || result.isError) ? (
         <AnalysisProgress
           name={tab.name}
           message={result.isError ? 'Could not load results.' : 'Loading results…'}

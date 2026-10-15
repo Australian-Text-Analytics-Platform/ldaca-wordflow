@@ -45,6 +45,8 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
         .routes(utoipa_axum::routes!(publish_concordance))
         .routes(utoipa_axum::routes!(preview_quotation))
         .routes(utoipa_axum::routes!(run_quotation))
+        .routes(utoipa_axum::routes!(resume_quotation))
+        .routes(utoipa_axum::routes!(quotation_output))
         .routes(utoipa_axum::routes!(query_quotation))
         .routes(utoipa_axum::routes!(publish_quotation))
         .routes(utoipa_axum::routes!(result))
@@ -530,7 +532,7 @@ async fn run_quotation(
     Path(id): Path<Uuid>,
     InputJson(input): InputJson<QuotationRequest>,
 ) -> Result<axum::response::Response> {
-    let task = project.submit_quotation(id, input).await?;
+    let task = project.submit_quotation(id, input, false).await?;
     identified_task_response(task.id, task.wait().await.map(Json).into_response())
 }
 #[utoipa::path(
@@ -783,4 +785,28 @@ async fn download_topic_preview(
     }
     .media_type();
     file_response(project.download_topic_preview(tab, id, input).await?, media)
+}
+
+#[utoipa::path(
+    post, path = "/api/project/tabs/{id}/quotation/resume", operation_id = "analysis_api_resume_quotation", tag = "analysis_api", params(("id" = String, Path)),
+    request_body = QuotationRequest,
+    responses((status = 200, body = Analysis, headers(("x-wordflow-task-id" = String))), (status = 400, body = crate::error::ErrorEnvelope))
+)]
+async fn resume_quotation(
+    State(project): State<ProjectRuntime>,
+    Path(id): Path<Uuid>,
+    InputJson(input): InputJson<QuotationRequest>,
+) -> Result<axum::response::Response> {
+    let task = project.submit_quotation(id, input, true).await?;
+    identified_task_response(task.id, task.wait().await.map(Json).into_response())
+}
+#[utoipa::path(
+    get, path = "/api/project/analyses/{id}/quotation", operation_id = "analysis_api_quotation_output", tag = "analysis_api", params(("id" = String, Path)),
+    responses((status = 200, body = Option<crate::project::quotation::QuotationOutput>), (status = 400, body = crate::error::ErrorEnvelope))
+)]
+async fn quotation_output(
+    State(project): State<ProjectRuntime>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Option<crate::project::quotation::QuotationOutput>>> {
+    Ok(Json(project.quotation_output(id).await?))
 }

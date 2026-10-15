@@ -152,7 +152,10 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
       if (provider) {
         await parameters.$('label*=Rows per request').$('input').setValue('7');
         await parameters.$('label*=Retries per request').$('input').setValue('1');
-        await parameters.$('label*=Concurrent requests').$('input').setValue('2');
+        const concurrency = parameters.$('label*=Concurrent requests').$('input');
+        await expect(concurrency).toHaveValue('2');
+        // Keep the provider's native Custom default. setValue can append to a controlled number input.
+
       }
       await setAnalysisPaneSize('narrow');
       await researchScreenshot('annotation-ai-parameters-narrow', parameters);
@@ -197,7 +200,7 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
       const corrected = original.map((r, i) => (i === 0 ? { ...r, correction: 'B' } : r));
       if (provider) {
         expect(await sourceRows(base, sourceName)).toEqual(corrected);
-        await chooseColumn('Annotation processing', 'Fill missing only', parameters);
+        await chooseColumn('Annotation processing', 'Only rows without annotation', parameters);
       }
       await parameters.$('button=Run').click();
       const results = $('[aria-label="Annotation Results"]');
@@ -210,7 +213,7 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
         );
         expect(await sourceRows(base, sourceName)).toEqual(missing);
         provider.setMode('partial');
-        await chooseColumn('Annotation processing', 'Reprocess all', parameters);
+        await chooseColumn('Annotation processing', 'All rows', parameters);
         const partialStart = provider.requests();
         await parameters.$('button=Run').click();
         await browser.waitUntil(() => provider.requests() > partialStart);
@@ -241,7 +244,7 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
         );
         expect(await sourceRows(base, sourceName)).toEqual(completed);
         expect(provider.calls.slice(before).flat().sort()).toEqual(
-          original.flatMap((r) => (r.text?.trim() ? [r.text] : [])).sort(),
+          [...new Set(original.flatMap((r) => (r.text?.trim() ? [r.text] : [])))].sort(),
         );
         expect(provider.calls.every((batch) => batch.length <= 7)).toBe(true);
         expect(provider.peak()).toBeLessThanOrEqual(2);
@@ -251,10 +254,11 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
         if (!tab?.analysis) throw new Error('Missing completed Annotation');
         const saved = await annotationApi.getAnnotationResult(base, tab.analysis.id);
         if (!saved) throw new Error('Completed Annotation analysis has no saved output');
+        expect(saved.request).toHaveProperty('inference.concurrency', 2);
         const report = saved.report;
         expect([report.processed, report.skipped, report.failed]).toEqual([36, 3, 0]);
       }
-      await expect(parameters.$('button=Run')).toHaveAttribute('aria-disabled', 'true');
+      await expect(parameters.$('button=Run')).toHaveAttribute('aria-disabled', 'false');
       await results.$('button=Captured Codebook and examples').click();
       const context = results.$('[aria-label="Captured inference context"]');
       await expect(context.$('table')).toHaveText(expect.stringContaining('Description'));
@@ -268,9 +272,13 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
       await results.waitForExist({ reverse: true });
       await expect(parameters.$('button=Run')).toHaveAttribute('aria-disabled', 'false');
       if (provider) {
+        await parameters.$('summary=Advanced settings and examples').click();
+        await expect(parameters.$('label*=Concurrent requests').$('input')).toHaveValue('2');
+        await parameters.$('summary=Advanced settings and examples').click();
         const savedRows = await sourceRows(base, sourceName);
         provider.setMode('authentication');
         expectAppError(/HTTP 401: Check the connection API key/);
+        const tasksBefore = new Set((await tasksApi.getTasks(base)).tasks.map((task) => task.id));
         const before = provider.requests();
         await parameters.$('button=Run').click();
         await browser.waitUntil(() => provider.requests() > before);
@@ -279,7 +287,9 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
             (t) => t.error?.code === 'annotation_provider_authentication_failed',
           ),
         );
+        const authenticationTasks = (await tasksApi.getTasks(base)).tasks.filter((task) => !tasksBefore.has(task.id));
         expect(provider.requests() - before).toBeLessThanOrEqual(2);
+        expect(authenticationTasks).toHaveLength(1);
         expect(await sourceRows(base, sourceName)).toEqual(savedRows);
         const failed = (await analysesApi.listTabs(base, undefined, 'annotation')).find((t) => t.analysis);
         expect(failed?.analysis?.has_result).toBe(false);

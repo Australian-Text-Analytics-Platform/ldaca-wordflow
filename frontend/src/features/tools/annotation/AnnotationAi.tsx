@@ -29,6 +29,7 @@ import { AnalysisResultBoundary } from '../common/components/AnalysisResultBound
 import { NodeColumnSelector } from '../common/components/NodeColumnSelector';
 import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
 import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
+import { ThinkingControls } from './ThinkingControls';
 import { AnnotationOutput } from './AnnotationOutput';
 import type { CorrectionSession } from './CorrectionDraft';
 import { useAnnotationPreview } from './useAnnotationPreview';
@@ -60,6 +61,20 @@ export function AnnotationAi({
   const cache = useQueryClient();
   const host = useHostServices();
   const hostBase = host?.base ?? base;
+  const hostCache = host?.client ?? cache;
+  const providers = useQuery(
+    {
+      queryKey: ['host', hostBase, 'ai-providers'],
+      queryFn: ({ signal }) => aiApi.aiConnections(hostBase, signal),
+    },
+    hostCache,
+  );
+  const rememberConcurrency = useMutation({
+    meta: { reportError: false },
+    mutationFn: ({ provider, concurrency }: { provider: string; concurrency: number }) =>
+      aiApi.rememberAnnotationConcurrency(hostBase, provider, concurrency),
+    onSuccess: () => hostCache.invalidateQueries({ queryKey: ['host', hostBase, 'ai-providers'] }),
+  });
   const capabilities = useQuery(
     {
       queryKey: [
@@ -123,8 +138,6 @@ export function AnnotationAi({
       request.inference.model.trim(),
     );
   const partial = (result.data?.report.failed ?? 0) > 0;
-  const unchanged =
-    Boolean(id) && matchesAnalysisRequest('annotation', request, tab.analysis?.request_status);
   const reason = restored.blocked
     ? 'Start with current defaults before running this analysis.'
     : editor
@@ -133,9 +146,7 @@ export function AnnotationAi({
         ? 'This analysis is already running.'
         : !ready
           ? 'Choose a source, document column, Codebook and provider/model first.'
-          : unchanged && !recovery.failed && !partial
-            ? 'These settings already have saved results. Change the parameters or clear results to run again.'
-            : undefined;
+          : undefined;
   const displayedSetup =
     editor?.setup ??
     (preview.state
@@ -185,7 +196,18 @@ export function AnnotationAi({
           provider={request.inference.provider}
           model={request.inference.model}
           onChange={(provider, model) => {
-            update({ provider, model });
+            const chosen = providers.data?.find((connection) => connection.id === provider);
+            update({
+              provider,
+              model,
+              ...(provider !== request.inference.provider
+                ? {
+                    reasoning: 'default',
+                    thinking: null,
+                    concurrency: chosen?.annotation_concurrency ?? request.inference.concurrency,
+                  }
+                : {}),
+            });
           }}
         />
         <label className="block space-y-1">
@@ -211,8 +233,8 @@ export function AnnotationAi({
             ariaLabel="Annotation processing"
             value={request.processing}
             options={[
-              { value: 'all', label: 'Reprocess all' },
-              { value: 'missing', label: 'Fill missing only' },
+              { value: 'all', label: 'All rows' },
+              { value: 'missing', label: 'Only rows without annotation' },
             ]}
             onChange={(value) => {
               onChange({
@@ -255,8 +277,15 @@ export function AnnotationAi({
                   placeholder="Provider default"
                   disabled={
                     !capabilities.data ||
-                    (!capabilities.data.temperature_with_reasoning &&
-                      !['default', 'off'].includes(request.inference.reasoning ?? 'default') &&
+                    (!capabilities.data.temperature_with_thinking &&
+                      Boolean(
+                        request.inference.thinking &&
+                        request.inference.thinking.control !== 'disabled' &&
+                        !(
+                          request.inference.thinking.control === 'reasoning_effort' &&
+                          request.inference.thinking.value === 'none'
+                        ),
+                      ) &&
                       request.inference.temperature === null)
                   }
                   onChange={(e) => {
@@ -264,20 +293,14 @@ export function AnnotationAi({
                   }}
                 />
               </label>
-              <label className="min-w-40 flex-1">
-                Reasoning
-                <SearchableSelect
-                  ariaLabel="Reasoning"
-                  value={request.inference.reasoning}
-                  options={(capabilities.data?.reasoning ?? ['default']).map((value) => ({
-                    value,
-                    label: value === 'default' ? 'Provider default' : value,
-                  }))}
-                  onChange={(value) => {
-                    update({ reasoning: value as annotationApi.AnnotationInference['reasoning'] });
-                  }}
-                />
-              </label>
+              <ThinkingControls
+                value={request.inference.thinking}
+                legacy={Boolean(
+                  request.inference.reasoning && request.inference.reasoning !== 'default',
+                )}
+                capabilities={capabilities.data}
+                onChange={(thinking) => update({ thinking, reasoning: 'default' })}
+              />
             </div>
             <div className="flex flex-wrap gap-3">
               {(['batch_size', 'retries', 'concurrency'] as const).map((key) => (
@@ -290,8 +313,32 @@ export function AnnotationAi({
                   <Input
                     type="number"
                     min={key === 'retries' ? 0 : 1}
-                    max={key === 'batch_size' ? 100 : 10}
+                    max={
+                      key === 'batch_size'
+                        ? 100
+                        : key === 'concurrency'
+                          ? (capabilities.data?.max_concurrency ?? 32)
+                          : 10
+                    }
                     value={request.inference[key]}
+                    onBlur={() => {
+                      const value = request.inference.concurrency;
+                      if (
+                        key === 'concurrency' &&
+                        Number.isInteger(value) &&
+                        value >= 1 &&
+                        value <= 32 &&
+                        providers.data?.some(
+                          (provider) =>
+                            provider.id === request.inference.provider && !provider.built_in,
+                        )
+                      ) {
+                        rememberConcurrency.mutate({
+                          provider: request.inference.provider,
+                          concurrency: value,
+                        });
+                      }
+                    }}
                     onChange={(e) => {
                       update({ [key]: Number(e.target.value) });
                     }}
@@ -444,7 +491,7 @@ export function AnnotationAi({
         tabId={tab.id}
         name="AI Annotation"
         tasks={tasks}
-        error={run.error}
+        error={run.error ?? rememberConcurrency.error}
         active={active}
         busy={busy}
       />

@@ -42,6 +42,8 @@ pub struct Connection {
     pub provider: Provider,
     pub endpoint: Option<String>,
     pub credential_mode: CredentialMode,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub annotation_concurrency: Option<usize>,
 }
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ConnectionInfo {
@@ -274,6 +276,7 @@ impl AiConfiguration {
                 provider: request.provider,
                 endpoint: request.endpoint.map(|s| s.trim_end_matches('/').into()),
                 credential_mode: CredentialMode::None,
+                annotation_concurrency: None,
             };
             change_credential(host, state, &mut row, request.credential)?;
             let mut next = connections(state)?.clone();
@@ -310,6 +313,25 @@ impl AiConfiguration {
                 }
                 return Err(error);
             }
+            state.connections = Some(next);
+            Ok(info(host, state, row))
+        })
+        .await
+    }
+    pub(crate) async fn annotation_concurrency(
+        &self,
+        id: Uuid,
+        concurrency: usize,
+    ) -> Result<ConnectionInfo> {
+        self.access(move |host, state| {
+            let mut row = connection(state, id)?;
+            if !(1..=32).contains(&concurrency) {
+                return Err(Error::invalid("Choose concurrency 1–32"));
+            }
+            row.annotation_concurrency = Some(concurrency);
+            let mut next = connections(state)?.clone();
+            next.insert(id, row.clone());
+            persist(host, &next)?;
             state.connections = Some(next);
             Ok(info(host, state, row))
         })
@@ -391,8 +413,10 @@ fn credential(host: &Host, state: &State, row: &Connection) -> Result<Option<Str
         CredentialMode::Remembered => host.secrets.get(&row.id.to_string()),
     }
 }
-fn info(host: &Host, state: &State, row: Connection) -> ConnectionInfo {
+fn info(host: &Host, state: &State, mut row: Connection) -> ConnectionInfo {
     let credential = credential(host, state, &row);
+    row.annotation_concurrency
+        .get_or_insert(inference::capabilities(row.provider, "").default_concurrency);
     ConnectionInfo {
         connection: row,
         has_credential: credential.as_ref().is_ok_and(Option::is_some),
@@ -568,6 +592,44 @@ mod tests {
             endpoint: Some("http://127.0.0.1:8000/v1".into()),
             credential,
         }
+    }
+    #[tokio::test]
+    async fn annotation_concurrency_is_per_connection_and_survives_reopen() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("providers.json");
+        let host = configured(path.clone());
+        let first = host
+            .create(create(CredentialUpdate::Keep))
+            .await
+            .unwrap()
+            .connection
+            .id;
+        let second = host
+            .create(create(CredentialUpdate::Keep))
+            .await
+            .unwrap()
+            .connection
+            .id;
+        host.annotation_concurrency(first, 32).await.unwrap();
+        assert!(host.annotation_concurrency(second, 33).await.is_err());
+        let reopened = configured(path);
+        let rows = reopened.list().await.unwrap();
+        assert_eq!(
+            rows.iter()
+                .find(|r| r.connection.id == first)
+                .unwrap()
+                .connection
+                .annotation_concurrency,
+            Some(32)
+        );
+        assert_eq!(
+            rows.iter()
+                .find(|r| r.connection.id == second)
+                .unwrap()
+                .connection
+                .annotation_concurrency,
+            Some(2)
+        );
     }
     #[tokio::test]
     async fn browser_keys_are_request_scoped_and_never_enter_metadata_or_other_operations() {

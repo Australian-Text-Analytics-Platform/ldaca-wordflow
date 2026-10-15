@@ -1,5 +1,6 @@
 use super::*;
 use crate::project::annotation::execution::{Preview, PreviewRequest, Request, Run};
+use futures_util::{StreamExt, pin_mut};
 
 impl ProjectRuntime {
     pub(crate) async fn annotation_review(
@@ -60,7 +61,7 @@ impl ProjectRuntime {
                     let inference = ai.prepare_inference(&client, config).await?;
                     context.progress("Annotating documents", Some(0.0));
                     loop {
-                        let (mut next, batch) = context.run_blocking(move |context| {
+                        let (next, batch) = context.run_blocking(move |context| {
                             context.check_cancelled()?;
                             let batch = run.next()?;
                             Ok((run, batch))
@@ -69,16 +70,24 @@ impl ProjectRuntime {
                             run = next;
                             break;
                         }
-                        let predictions = inference.predict(
-                            &batch.texts, &next.context.codes, &next.context.examples,
+                        run = next;
+                        let codes = run.context.codes.clone();
+                        let examples = run.context.examples.clone();
+                        let batches = inference.predict_batches(
+                            &batch.texts, &codes, &examples,
                             context.cancellation(),
-                        ).await?;
-                        run = context.run_blocking(move |context| {
-                            context.check_cancelled()?;
-                            next.stage(batch.refs, predictions)?;
-                            Ok(next)
-                        }).await?;
-                        context.progress("Annotating documents", Some(run.fraction()));
+                        )?;
+                        pin_mut!(batches);
+                        while let Some(completed) = batches.next().await {
+                            let (offset, predictions) = completed?;
+                            let refs = batch.refs[offset..offset + predictions.len()].to_vec();
+                            run = context.run_blocking(move |context| {
+                                context.check_cancelled()?;
+                                run.stage(refs, predictions)?;
+                                Ok(run)
+                            }).await?;
+                            context.progress("Annotating documents", Some(run.fraction()));
+                        }
                     }
                     context.progress("Saving labels and run report", Some(1.0));
                     let result = context.run_blocking(move |context| {

@@ -181,8 +181,8 @@ export async function quotationScenario(base: string, prefix: string) {
   if (!completedId) throw new Error('Saved quotation result missing');
   const manifest = await quotationApi.getQuotationResult(base, completedId);
   if (!manifest) throw new Error('Completed Quotation analysis has no saved output');
-  expect(manifest.result.version).toBe(2);
-  expect(manifest.result.payload.document_count).toBe(3);
-  expect(manifest.result.payload.matching_documents).toBe(2);
-  expect(manifest.result.payload.match_count).toBeGreaterThanOrEqual(3);
+  expect(manifest.version).toBe(2);
+  expect(manifest.manifest.document_count).toBe(3);
+  expect(manifest.manifest.matching_documents).toBe(2);
+  expect(manifest.manifest.match_count).toBeGreaterThanOrEqual(3);
 }

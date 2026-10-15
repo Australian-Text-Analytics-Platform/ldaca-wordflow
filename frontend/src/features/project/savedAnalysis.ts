@@ -7,7 +7,10 @@ const outputKey = (base: string, id: string | null) => ['native', base, 'analyse
 function ownsOutput(cache: QueryClient, base: string, tab: Tab, id: string) {
   const tabs = cache.getQueryData<Tab[]>(tabsKey(base, tab));
   const current = tabs === undefined ? tab : tabs.find((item) => item.id === tab.id);
-  return current?.analysis?.id === id && current.analysis.has_result;
+  return (
+    current?.analysis?.id === id &&
+    Boolean(current.analysis.has_result || current.analysis.quotation_partial)
+  );
 }
 
 /** Reconcile a confirmed absence without replacing requests, settings or a newer analysis. */
@@ -15,7 +18,10 @@ function markOutputAbsent(cache: QueryClient, base: string, tab: Tab, id: string
   cache.setQueriesData<Tab[]>({ queryKey: ['native', base, 'tabs'] }, (tabs) =>
     tabs?.map((item) =>
       item.id === tab.id && item.analysis?.id === id
-        ? { ...item, analysis: { ...item.analysis, has_result: false } }
+        ? {
+            ...item,
+            analysis: { ...item.analysis, has_result: false, quotation_partial: undefined },
+          }
         : item,
     ),
   );
@@ -28,7 +34,7 @@ export function savedAnalysisQuery<T>(
   tab: Tab,
   read: (id: string, signal: AbortSignal) => Promise<T | null>,
 ) {
-  const id = tab.analysis?.has_result ? tab.analysis.id : null;
+  const id = tab.analysis?.has_result || tab.analysis?.quotation_partial ? tab.analysis.id : null;
   // Analysis identity owns the data; the cache and tab are live ownership guards.
   return queryOptions({
     queryKey: outputKey(base, id),

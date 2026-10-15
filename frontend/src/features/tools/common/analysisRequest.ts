@@ -46,7 +46,7 @@ const defaults: Requests = {
       concurrency: 10,
     },
     examples: null,
-    processing: 'all',
+    processing: 'missing',
   },
   'topic-modeling': {
     inputs: [],

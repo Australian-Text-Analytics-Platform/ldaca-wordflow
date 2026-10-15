@@ -1027,11 +1027,16 @@ function Inspection({
     toPayload: (row) => ({ record: row.source, textColumn: inputs[row.sourceIndex]?.column }),
   });
   const selected = controller.selectedItem;
+  const capturedText = controller.detailPayload?.textColumn
+    ? controller.detailPayload.record[controller.detailPayload.textColumn]
+    : undefined;
+
   const detailQuery: concordanceApi.ConcordanceQuery = {
     source_index: selected?.sourceIndex ?? 0,
     projection: 'documents',
     filter: {
       document_id: selected?.documentId,
+      expected_text: typeof capturedText === 'string' ? capturedText : undefined,
       excluded_terms: [],
       uncased: false,
       bins: [],
@@ -1047,6 +1052,7 @@ function Inspection({
       concordanceApi.queryConcordance(base, analysisId ?? '', detailQuery, signal),
     enabled: Boolean(analysisId && selected),
     staleTime: Infinity,
+    meta: { reportError: false },
   });
   const matches = full.data
     ? decodeConcordanceRows(full.data.table, selected?.sourceIndex ?? 0)[0]?.matches
@@ -1070,10 +1076,15 @@ function Inspection({
       customization={{
         label: 'Concordance',
         renderDocumentText: (text) => (
-          <HighlightedDocument
-            text={text}
-            matches={matches ?? controller.selectedItem?.matches ?? []}
-          />
+          <>
+            {full.error && (
+              <OperationError title="Could not refresh document details" error={full.error} />
+            )}
+            <HighlightedDocument
+              text={text}
+              matches={matches ?? controller.selectedItem?.matches ?? []}
+            />
+          </>
         ),
       }}
       navigation={controller.navigation}

@@ -78,9 +78,9 @@ export function QuotationResults({
   const saved = view === 'saved';
   const request =
     saved && result
-      ? result.result.version === 1
-        ? { input: result.result.payload.input }
-        : decodeAnalysisRequest('quotation', result.request_status).request
+      ? result.version === 1
+        ? { input: result.manifest.input }
+        : decodeAnalysisRequest('quotation', result.analysis.request_status).request
       : submitted?.request;
   const [page, setPage] = useState(1);
   const [pageSizes, setPageSizes] = useState({ preview: 50, saved: 20 });
@@ -97,7 +97,7 @@ export function QuotationResults({
   const context = typeof settings.context === 'number' ? settings.context : 5;
   const metadata = Array.isArray(settings.metadata) ? (settings.metadata as string[]) : [];
   const generated = Array.isArray(settings.fields) ? (settings.fields as string[]) : [];
-  const identity = JSON.stringify([view, saved ? result?.id : submitted?.generation]);
+  const identity = JSON.stringify([view, saved ? result?.analysis.id : submitted?.generation]);
   const [previousIdentity, setPreviousIdentity] = useState(identity);
   if (identity !== previousIdentity) {
     setPreviousIdentity(identity);
@@ -115,24 +115,28 @@ export function QuotationResults({
   };
   const data = useQuery({
     queryKey: saved
-      ? ['native', base, 'analyses', result?.id, 'quotation', query, input]
+      ? ['native', base, 'analyses', result?.analysis.id, 'quotation', query, input]
       : ['native', base, 'analysis-preview', tab.id, submitted?.generation, preview],
     queryFn: async ({ signal }): Promise<Page> => ({
       ...(await (saved
-        ? quotationApi.queryQuotation(base, result?.id ?? '', query, signal)
+        ? quotationApi.queryQuotation(base, result?.analysis.id ?? '', query, signal)
         : quotationApi.previewQuotation(base, tab.id, preview, signal))),
       input,
     }),
     enabled: active && Boolean(request) && (saved || !stopped),
     meta: {
-      ...(!saved || result?.result.version === 2 ? objectDependencies(input.source) : {}),
+      ...(!saved || result?.version === 2 ? objectDependencies(input.source) : {}),
       reportError: false,
     },
     placeholderData: keepPreviousData,
     staleTime: Infinity,
   });
+  if (saved && data.data && !data.isFetching && !data.isPlaceholderData) {
+    const last = Math.max(1, Math.ceil(data.data.totalRows / pageSize));
+    if (page > last) setPage(last);
+  }
   const retained = useRetainedPages(
-    [JSON.stringify([view, saved ? result?.id : null, input.source])],
+    [JSON.stringify([view, saved ? result?.analysis.id : null, input.source])],
     [data],
   );
   const [displayed] = retained.pages;
@@ -144,7 +148,7 @@ export function QuotationResults({
       : documentRows;
   const fields = rows[0]
     ? Object.keys(rows[0].source)
-    : (result?.result.payload.columns.map(([name]) => name) ?? []);
+    : (result?.manifest.columns.map(([name]) => name) ?? []);
   const selected = metadata.filter((name) => fields.includes(name));
   const displayColumns = orderedResultColumns(
     [
@@ -376,7 +380,7 @@ export function QuotationResults({
             {saved && result && (
               <ResultDownloadMenu
                 base={base}
-                id={result.id}
+                id={result.analysis.id}
                 selection={{ kind: 'quotation', query }}
                 columns={displayColumns}
                 document={{ column: input.column, metadata: true }}
@@ -523,7 +527,7 @@ export function QuotationResults({
         <QuotationDetail
           key={identity}
           base={base}
-          analysisId={saved ? result?.id : undefined}
+          analysisId={saved ? result?.analysis.id : undefined}
           column={displayInput.column}
           initialIndex={detail}
           rows={rows}
@@ -542,8 +546,8 @@ export function QuotationResults({
         <QuotationPublishDialog
           base={base}
           result={result}
-          sourceInput={result.result.version === 2 ? input : undefined}
-          columnNames={result.result.version === 2 ? fields : undefined}
+          sourceInput={result.version === 2 ? input : undefined}
+          columnNames={result.version === 2 ? fields : undefined}
           projection={publish}
           onClose={() => {
             setPublish(null);
@@ -592,18 +596,24 @@ function QuotationDetail({
     toPayload: (row) => ({ record: row.source, textColumn: column }),
   });
   const selected = controller.selectedItem;
+  const capturedText = controller.detailPayload?.textColumn
+    ? controller.detailPayload.record[controller.detailPayload.textColumn]
+    : undefined;
+
   const query: quotationApi.QuotationQuery = {
     projection: 'documents',
     page: 1,
     page_size: 1,
     sort: null,
     document_id: selected?.documentId,
+    expected_text: typeof capturedText === 'string' ? capturedText : undefined,
   };
   const full = useQuery({
     queryKey: ['native', base, 'analyses', analysisId, 'quotation', query],
     queryFn: ({ signal }) => quotationApi.queryQuotation(base, analysisId ?? '', query, signal),
     enabled: Boolean(analysisId && selected),
     staleTime: Infinity,
+    meta: { reportError: false },
   });
   const quotes = full.data ? quotationRows(full.data.table)[0]?.quotes : selected?.quotes;
   const opened = useRef(false);
@@ -639,11 +649,16 @@ function QuotationDetail({
             ),
           })),
         renderDocumentText: (text) => (
-          <QuotationText
-            text={text}
-            quotes={quotes ?? []}
-            anchor={selected?.quotes[0]?.quote_start_idx ?? undefined}
-          />
+          <>
+            {full.error && (
+              <OperationError title="Could not refresh document details" error={full.error} />
+            )}
+            <QuotationText
+              text={text}
+              quotes={quotes ?? []}
+              anchor={selected?.quotes[0]?.quote_start_idx ?? undefined}
+            />
+          </>
         ),
       }}
       navigation={controller.navigation}
@@ -667,7 +682,7 @@ function QuotationPublishDialog({
 }) {
   const cache = useQueryClient();
   const [result] = useState(initialResult);
-  const input = sourceInput ?? result.result.payload.input;
+  const input = sourceInput ?? result.manifest.input;
   const [name, setName] = useState(() =>
     suggestDataBlockName(
       [input.source.name],
@@ -681,13 +696,18 @@ function QuotationPublishDialog({
     ...quotationFields.map((field) => `QUOTE_${field}`.toLowerCase()),
     'quote_extraction',
   ]);
-  const choices = (columnNames ?? result.result.payload.columns.map(([name]) => name)).filter(
+  const choices = (columnNames ?? result.manifest.columns.map(([name]) => name)).filter(
     (name) => name !== input.column,
   );
   const mutation = useMutation({
     meta: { reportError: false },
     mutationFn: () =>
-      quotationApi.publishQuotation(base, result.id, { projection, name, metadata, fields }),
+      quotationApi.publishQuotation(base, result.analysis.id, {
+        projection,
+        name,
+        metadata,
+        fields,
+      }),
     onSuccess: onClose,
   });
   return (

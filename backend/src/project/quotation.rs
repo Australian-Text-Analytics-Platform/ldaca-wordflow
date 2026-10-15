@@ -2,7 +2,19 @@
 use super::analyses::*;
 use super::document_matches::*;
 use super::*;
-use ldaca_rs::quotation::QuotationExtractor;
+use ldaca_rs::quotation::{QuotationExtractor, Quote};
+mod execution;
+pub(crate) use execution::QuotationPartial;
+pub(in crate::project) use execution::partial;
+
+#[derive(Clone, Debug, Serialize, utoipa::ToSchema)]
+pub(crate) struct QuotationOutput {
+    pub analysis: Analysis,
+    pub version: i32,
+    pub manifest: QuotationResultV1,
+    #[schema(required = true)]
+    pub partial: Option<QuotationPartial>,
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -39,6 +51,8 @@ pub(crate) struct QuotationQuery {
     pub page_size: u64,
     pub sort: Option<SavedSort>,
     pub document_id: Option<String>,
+    #[serde(default)]
+    pub expected_text: Option<String>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -48,6 +62,7 @@ pub(crate) struct QuotationPublish {
     pub metadata: Vec<String>,
     pub fields: Vec<String>,
 }
+const MATCH_COLUMNS: &str = "speaker VARCHAR,speaker_start_idx BIGINT,speaker_end_idx BIGINT,quote VARCHAR,quote_start_idx BIGINT,quote_end_idx BIGINT,verb VARCHAR,verb_start_idx BIGINT,verb_end_idx BIGINT,quote_type VARCHAR,quote_token_count BIGINT,is_floating_quote BOOLEAN,quote_row_idx BIGINT";
 const FIELDS: &[&str] = &[
     "speaker",
     "speaker_start_idx",
@@ -149,7 +164,9 @@ fn calculate(
     cancellation: &CancellationToken,
 ) -> Result<(String, u64, u64)> {
     let matches = temporary_name();
-    conn.execute_batch(&format!("CREATE TEMP TABLE {matches}(document_id UBIGINT,speaker VARCHAR,speaker_start_idx BIGINT,speaker_end_idx BIGINT,quote VARCHAR,quote_start_idx BIGINT,quote_end_idx BIGINT,verb VARCHAR,verb_start_idx BIGINT,verb_end_idx BIGINT,quote_type VARCHAR,quote_token_count BIGINT,is_floating_quote BOOLEAN,quote_row_idx BIGINT)"))?;
+    conn.execute_batch(&format!(
+        "CREATE TEMP TABLE {matches}(document_id UBIGINT,{MATCH_COLUMNS})"
+    ))?;
     let (mut after, mut count, mut documents) = (0, 0, 0);
     loop {
         check_cancellation(cancellation)?;
@@ -157,7 +174,6 @@ fn calculate(
         if rows.is_empty() {
             break;
         }
-        let mut appender = conn.appender(&matches)?;
         for (id, text) in rows {
             check_cancellation(cancellation)?;
             after = id;
@@ -166,41 +182,65 @@ fn calculate(
             };
             let quotes = extractor.extract(&text).map_err(quote_error)?;
             documents += u64::from(!quotes.is_empty());
-            for quote in quotes {
-                check_cancellation(cancellation)?;
-                let (speaker, ss, se) = quote
-                    .speaker
-                    .map_or((None, None, None), |(v, s, e)| (Some(v), Some(s), Some(e)));
-                let (verb, vs, ve) = quote
-                    .verb
-                    .map_or((None, None, None), |(v, s, e)| (Some(v), Some(s), Some(e)));
-                appender.append_row(params![
-                    id,
-                    speaker,
-                    ss,
-                    se,
-                    quote.quote.0,
-                    quote.quote.1,
-                    quote.quote.2,
-                    verb,
-                    vs,
-                    ve,
-                    quote.kind,
-                    quote.tokens,
-                    quote.floating,
-                    quote.index
-                ])?;
-                count += 1;
-            }
+            count += append_quotes(conn, &matches, SqlValue::UBigInt(id), quotes, cancellation)?;
         }
-        appender.flush()?;
     }
     Ok((matches, count, documents))
 }
+fn append_quotes(
+    conn: &Connection,
+    table: &str,
+    id: SqlValue,
+    quotes: Vec<Quote>,
+    cancellation: &CancellationToken,
+) -> Result<u64> {
+    let count = quotes.len() as u64;
+    let relation = table.strip_prefix("wordflow.");
+    let mut appender = if let Some(table) = relation {
+        conn.appender_to_db(table, "wordflow")?
+    } else {
+        conn.appender(table)?
+    };
+    for quote in quotes {
+        check_cancellation(cancellation)?;
+        let (speaker, ss, se) = quote
+            .speaker
+            .map_or((None, None, None), |(v, s, e)| (Some(v), Some(s), Some(e)));
+        let (verb, vs, ve) = quote
+            .verb
+            .map_or((None, None, None), |(v, s, e)| (Some(v), Some(s), Some(e)));
+        appender.append_row(params![
+            id,
+            speaker,
+            ss,
+            se,
+            quote.quote.0,
+            quote.quote.1,
+            quote.quote.2,
+            verb,
+            vs,
+            ve,
+            quote.kind,
+            quote.tokens,
+            quote.floating,
+            quote.index
+        ])?;
+    }
+    appender.flush()?;
+    Ok(count)
+}
 fn manifest(conn: &Connection, id: Uuid) -> Result<QuotationResultV1> {
     let analysis = read_analysis(conn, id)?;
-    let mut result: QuotationResultV1 =
-        serde_json::from_value(analysis.output("quotation")?.clone())?;
+    let mut result: QuotationResultV1 = if analysis.result.is_some() {
+        serde_json::from_value(analysis.output("quotation")?.clone())?
+    } else {
+        execution::retained(conn, id)?.ok_or_else(|| {
+            Error::new(
+                "result_unavailable",
+                "This Quotation run has no committed output. Start Run.",
+            )
+        })?
+    };
     for artifact in [result.documents, result.matches, result.projection] {
         artifact_relation(conn, id, artifact)?;
     }
@@ -222,6 +262,8 @@ fn manifest(conn: &Connection, id: Uuid) -> Result<QuotationResultV1> {
             relation.sql()
         ))?;
         result.columns = mutations::columns(conn, &relation)?;
+        let joined = saved_projection(&result);
+        (result.document_count,result.matching_documents,result.match_count)=conn.query_row(&format!("SELECT count(DISTINCT document_id),count(DISTINCT document_id) FILTER(WHERE quote_row_idx IS NOT NULL),count(quote_row_idx) FROM ({joined})"),[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
     }
     Ok(result)
 }
@@ -241,7 +283,7 @@ impl Database {
     ) -> Result<DocumentPage> {
         self.conn.execute_batch("BEGIN TRANSACTION READ ONLY")?;
         check_tab(&self.conn, tab)?;
-        let docs = capture_documents(
+        let mut docs = capture_documents(
             &self.conn,
             &request.input,
             Some(DocumentSelection {
@@ -253,100 +295,62 @@ impl Database {
                     .map(|s| (s.column.as_str(), s.descending)),
             }),
         )?;
-        let (matches, match_count, matching_documents) = calculate(
-            &self.conn,
-            &docs,
-            request.page_size,
-            &mut extractor,
-            &self.cancellation,
-        )?;
-        let sql = format!(
-            "{} ORDER BY document_id",
-            document_rows(&projection(&docs.name, &matches))
-        );
-        let file = arrow_page(&self.conn, &sql, &[], &docs.metadata, &self.cancellation)?;
-        check_cancellation(&self.cancellation)?;
-        self.conn.execute_batch("COMMIT")?;
-        Ok(DocumentPage {
-            file,
-            total_rows: matching_documents,
-            has_next: docs.count > request.page_size,
-            document_count: docs.count.min(request.page_size),
-            match_count,
-        })
-    }
-    pub(super) fn run_quotation(
-        &mut self,
-        tab: Uuid,
-        id: Uuid,
-        request: QuotationRequest,
-        mut extractor: QuotationExtractor,
-        mut progress: impl FnMut(&str),
-    ) -> Result<Analysis> {
-        self.conn.execute_batch("BEGIN TRANSACTION READ ONLY")?;
-        check_tab(&self.conn, tab)?;
-        let mut docs = capture_documents(&self.conn, &request.input, None)?;
-        distinct_documents(&self.conn, &mut docs)?;
-        progress("Extracting quotations");
-        let (temporary_matches, _, _) = calculate(
+        let lookahead_count = distinct_preview_documents(&self.conn, &mut docs, request.page_size)?;
+        let (matches, _, _) = calculate(
             &self.conn,
             &docs,
             docs.count,
             &mut extractor,
             &self.cancellation,
         )?;
-        self.conn.execute_batch("COMMIT")?;
+        let rows = live_document_rows_in(
+            &docs.input,
+            &docs.name,
+            &docs.input.column,
+            &docs.columns,
+            docs.population.as_deref(),
+        );
+        let projection = format!(
+            "SELECT s.document_id,m.* EXCLUDE(document_id),s.source FROM ({rows}) s JOIN {matches} m ON m.document_id=s.processed_id"
+        );
+        let (match_count, matching_documents) = self.conn.query_row(
+            &format!("SELECT count(*),count(DISTINCT document_id) FROM ({projection})"),
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )?;
+        let sql = format!("{} ORDER BY document_id", document_rows(&projection));
+        let file = arrow_page(&self.conn, &sql, &[], &docs.metadata, &self.cancellation)?;
         check_cancellation(&self.cancellation)?;
-        progress("Saving results");
-        self.publish_analysis_version(
-            AcceptedAnalysis {
-                id,
-                tab_id: tab,
-                kind: "quotation",
-            },
-            2,
-            None,
-            move |conn| {
-                let documents = Uuid::new_v4();
-                let matches = Uuid::new_v4();
-                let view = Uuid::new_v4();
-                let documents_sql = format!("wordflow.{}", artifact_table(documents));
-                let matches_sql = format!("wordflow.{}", artifact_table(matches));
-                conn.execute_batch(&format!(
-                    "CREATE TABLE {documents_sql} AS SELECT * FROM {captured}
-                       ;
-                     CREATE TABLE {matches_sql} AS SELECT * FROM {temporary_matches};
-                     CREATE VIEW wordflow.{view} AS {projection}",
-                    captured = docs.name,
-                    view = artifact_table(view),
-                    projection = projection(&documents_sql,&matches_sql),
-                ))?;
-                for (artifact, name) in [
-                    (documents, "documents"),
-                    (matches, "matches"),
-                    (view, "projection"),
-                ] {
-                    register_table(conn, id, artifact, name)?;
-                }
-                docs.metadata.source_columns(std::slice::from_ref(&docs.input.column)).prefixed("source").store(conn,&Relation {schema:"wordflow".into(),name:artifact_table(documents)})?;
-                docs.metadata.source_columns(std::slice::from_ref(&docs.input.column)).prefixed("source").store(conn,&Relation {schema:"wordflow".into(),name:artifact_table(view)})?;
-                let joined = live_projection(&docs.input,&documents_sql,&matches_sql,&docs.input.column,&docs.columns);
-                let (document_count, matching_documents, match_count) = conn.query_row(&format!("SELECT count(DISTINCT document_id),count(DISTINCT document_id) FILTER(WHERE quote_row_idx IS NOT NULL),count(quote_row_idx) FROM ({joined})"), [], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
-                let processed_column = Some(docs.input.column.clone());
-                let result = QuotationResultV1 {
-                    input: docs.input,
-                    columns: docs.columns,
-                    documents,
-                    matches,
-                    projection: view,
-                    document_count,
-                    matching_documents,
-                    match_count,
-                    processed_column,
-                };
-                Ok(serde_json::to_value(result)?)
-            },
-        )
+        self.conn.execute_batch("COMMIT")?;
+        Ok(DocumentPage {
+            file,
+            total_rows: matching_documents,
+            has_next: lookahead_count > request.page_size,
+            document_count: lookahead_count.min(request.page_size),
+            match_count,
+        })
+    }
+    pub(super) fn quotation_output(&self, id: Uuid) -> Result<Option<QuotationOutput>> {
+        let analysis = read_analysis(&self.conn, id)?;
+        if analysis.kind != "quotation" {
+            return Err(Error::invalid("Choose a Quotation analysis"));
+        }
+        let partial = if analysis.result.is_none() {
+            execution::partial(&self.conn, id)?
+        } else {
+            None
+        };
+        if analysis.result.is_none() && partial.is_none() {
+            return Ok(None);
+        }
+        let version = analysis.result.as_ref().map_or(2, |result| result.version);
+        let manifest = manifest(&self.conn, id)?;
+        Ok(Some(QuotationOutput {
+            analysis,
+            version,
+            manifest,
+            partial,
+        }))
     }
 
     pub(super) fn quotation_page(
@@ -377,11 +381,24 @@ impl Database {
             ));
             sql.push_str(" AND document_id=?");
         }
+        if let Some(text) = &request.expected_text {
+            sql.push_str(&format!(
+                " AND encode(CAST(source.{} AS VARCHAR))=encode(?)",
+                query::quote(&source.input.column)
+            ));
+            parameters.push(SqlValue::Text(text.clone()));
+        }
         let (match_count, document_count): (u64, u64) = self.conn.query_row(
             &format!("SELECT count(*),count(DISTINCT document_id) FROM ({sql})"),
             params_from_iter(parameters.iter()),
             |r| Ok((r.get(0)?, r.get(1)?)),
         )?;
+        if request.expected_text.is_some() && document_count == 0 {
+            return Err(Error::new(
+                "result_stale",
+                "This document moved or changed. Refresh results and open it again.",
+            ));
+        }
         let order = if let Some(sort) = request.sort {
             let field = if sort.metadata {
                 let field = source
@@ -587,11 +604,11 @@ impl Database {
     }
 }
 
-pub(super) async fn prepare_extractor(
+pub(super) async fn prepare_model(
     client: reqwest::Client,
     cancellation: CancellationToken,
     path: PathBuf,
-) -> Result<QuotationExtractor> {
+) -> Result<Arc<Vec<u8>>> {
     use ldaca_rs::quotation::{MODEL_URL, is_pinned_model};
     let existing = match tokio::fs::read(&path).await {
         Ok(bytes) => Some(bytes),
@@ -631,6 +648,14 @@ pub(super) async fn prepare_extractor(
         bytes
     };
     check_cancellation(&cancellation)?;
+    Ok(Arc::new(bytes))
+}
+pub(super) async fn prepare_extractor(
+    client: reqwest::Client,
+    cancellation: CancellationToken,
+    path: PathBuf,
+) -> Result<QuotationExtractor> {
+    let bytes = prepare_model(client, cancellation, path).await?;
     tokio::task::spawn_blocking(move || QuotationExtractor::from_bytes(&bytes).map_err(quote_error))
         .await?
 }
@@ -728,6 +753,7 @@ mod tests {
             page_size: 20,
             sort: None,
             document_id: None,
+            expected_text: None,
         }
     }
     #[test]
@@ -1074,7 +1100,7 @@ mod tests {
     }
     #[test]
     #[ignore = "requires explicitly provisioned WORDFLOW_TEST_UDPIPE_MODEL"]
-    fn quotation_cancellation_keeps_new_request_without_output() {
+    fn quotation_cancellation_keeps_committed_batches_and_new_request() {
         let (mut project, tab, request) = setup();
         let first = project
             .database
@@ -1089,7 +1115,6 @@ mod tests {
                 }
             });
         assert!(error.is_err());
-        project.database.conn.execute_batch("ROLLBACK").unwrap();
         let pending = project
             .database
             .analysis_tab(tab)
@@ -1106,7 +1131,8 @@ mod tests {
                 .query_row("SELECT count(*) FROM wordflow.artifacts", [], |r| r
                     .get::<_, i64>(0))
                 .unwrap(),
-            0
+            4
         );
+        assert_eq!(pending.quotation_partial.unwrap().checked_texts, 2);
     }
 }

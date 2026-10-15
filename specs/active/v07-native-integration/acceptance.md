@@ -584,3 +584,56 @@ The legacy nested-glyph word-cloud click report remains reproduction required;
 no unrelated glyph or Safari remount workaround was introduced. Browser acceptance
 uses the instrumented debug API host. Final WebKit, uninstrumented release,
 Windows and physical-control gates remain open. No push or publication occurred.
+
+
+## v0.7.12–v0.7.13 batch 4: incremental Annotation and Quotation
+
+Annotation captures distinct eligible exact texts once and commits completed provider
+batches directly to the protected source Table as they arrive. Completed labels
+survive cancellation, fatal errors, Clear, tab deletion and reopen. New tabs default
+to Only rows without annotation; explicit All rows and manual drafts remain.
+Concurrency is validated and remembered per connection. Model capabilities expose
+verified provider-native controls; unknown models use defaults and Custom sends
+only standard Chat Completions fields. Timeouts remain fatal without uncertain retries.
+
+Quotation uses bounded native workers with separate extractor instances and commits
+checked texts, matches and progress in the same transaction. Versioned partial
+outputs survive process exit and reopen without restarting a task. Explicit Resume
+requires matching extraction configuration and skips checked texts, including empty
+outcomes. A generation guard prevents superseded workers from restoring cleared
+results. Partial refresh/completion preserves page and page size.
+
+Clicked-document details now verify the captured exact text as well as the query-time
+source position. Reordered live sources show an ordinary Refresh error instead of
+opening another document's matches. Concordance and Quotation Preview deduplicate
+only the captured page, then expand results back to that same page's duplicate rows.
+
+Observed checks:
+
+- Backend: 247 library, 59 integration and two CLI tests pass, followed by the
+  additional captured-Preview population regression. Strict all-target/all-feature
+  Clippy, formatting and generated API checks pass.
+- Native HTTP Annotation acceptance commits a fast duplicate-text batch before a
+  blocked batch fails with HTTP 504, retains original diagnostics without retry,
+  protects source mutation and verifies persisted labels after host reopen.
+- Quotation checkpoint regressions cover zero outcomes, atomic rollback, Resume
+  matching, generation/Clear guards, publication independence and a real subprocess
+  exit without database teardown. The committed WAL reopens with the partial output.
+- Four explicitly provisioned real-UDPipe tests pass. Real parallel Run acceptance
+  stops after 8/101 checked texts, reopens without active tasks and resumes all 101
+  distinct texts, joining 102 eligible source rows including duplicates and empty
+  text (NULL is excluded).
+- Frontend: all 813 tests and 17 script tests pass; focused partial-page, provider
+  control, download and saved-output regressions pass. Build, lint, tooling types,
+  Knip, documentation drift/links and API generation checks pass.
+- Chromium Concordance (two) and Quotation (one) journeys pass. Annotation browser
+  acceptance verifies actual accepted concurrency, fresh Preview, correction drafts,
+  repeated Run, fatal authentication and cancellation. A test driver entered 22
+  when asked to replace the native default 2; the test now asserts and uses that
+  default instead of silently accepting extra requests. Fresh dark and narrow
+  result screenshots were inspected.
+
+Browser acceptance uses the instrumented debug API host. Final WebKit/release and
+Windows durability, physical-control and signed-runtime gates remain open. The
+provider catalogue is a verified explicit subset, not a claim about unknown models.
+No push or release publication occurred.

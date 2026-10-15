@@ -758,8 +758,12 @@ breaks ties. Arrow pages include `X-Wordflow-Total-Rows`,
 
 Saved `projection` is `matches` or `documents`. A filter contains
 `excluded_terms`, `uncased`, selected zero-based `bins`, `bin_count` and
-optional decimal-string `document_id`. Bin counts are 1–1000. Filtering
-precedes pagination; L1/R1 frequencies remain based on the whole saved result.
+optional decimal-string `document_id` and `expected_text`. The latter guards a
+clicked source position against another current text and returns `result_stale`
+on mismatch. Bin counts are 1–1000. Filtering precedes pagination; L1/R1 frequencies
+remain based on the whole currently joined result. Version-1 results retain their
+historical snapshot. Preview deduplicates only its requested page, then expands
+matches to those captured duplicate rows; its lookahead is not processed.
 
 Each publication source contains `source_index`, output `name`, selected
 original `metadata` columns, generated `fields`, and captured `filter`.
@@ -767,8 +771,10 @@ The document column is required. Document outputs additionally require
 `CONC_extraction`. Match field keys are `left_context`, `matched_text`,
 `right_context`, `start_idx`, `end_idx`, `l1`, `r1`, `l1_frequency`,
 `r1_frequency` and `extraction`; outputs use the established `CONC_` names
-(`CONC_l1_freq` and `CONC_r1_freq` for frequencies). All selected Tables
-commit together. Existing objects are never overwritten.
+(`CONC_l1_freq` and `CONC_r1_freq` for frequencies). All selected outputs commit
+together. New publications are live source-joined Views owning independent hidden
+copies of checked texts and generated outputs, including checked empty outcomes.
+Existing objects are never overwritten.
 
 
 ## Quotation interfaces
@@ -781,8 +787,10 @@ requests contain no engine selector or remote URL.
 | Method and path | Request | Response |
 | --- | --- | --- |
 | `POST /tabs/{id}/quotation/preview` | `input`, `page`, `page_size`, nullable metadata `sort` | Arrow original rows with nested `quotes` |
-| `POST /tabs/{id}/quotation` | `input` | Saved result manifest |
-| `POST /analyses/{id}/quotation/query` | `projection`, `page`, `page_size`, nullable `sort`, optional `document_id` | Arrow page |
+| `POST /tabs/{id}/quotation` | `input` | Completed Analysis; completed batches persist before acknowledgement |
+| `POST /tabs/{id}/quotation/resume` | Same `input` | Explicitly resumes a compatible partial run |
+| `GET /analyses/{id}/quotation` | — | Typed `QuotationOutput`, or null before any output/checkpoint |
+| `POST /analyses/{id}/quotation/query` | `projection`, `page`, `page_size`, nullable `sort`, optional `document_id` and `expected_text` | Arrow page |
 | `POST /analyses/{id}/quotation/publish` | `projection`, output `name`, selected `metadata` and `fields` | Created schema-qualified object |
 
 `input` is `{source: {schema, name}, column}`. Pages start at 1 and sizes are
@@ -794,17 +802,31 @@ use the same `X-Wordflow-Total-Rows`, `X-Wordflow-Document-Count`,
 Saved `projection` is `matches` (default) or `documents`. Sort is
 `{field, metadata, descending}`; document projection accepts metadata only.
 `document_id` is an optional unsigned decimal string for full-document inspection.
-Stable document ID and quotation order break ties. No live source is read.
+Version-2 reads join current source rows by exact processed text, then order current
+source positions and within-document quotation order before paging/downloads.
+`expected_text` guards full-document inspection against a source position that
+now contains another text; a mismatch returns `result_stale`. Historical version-1
+snapshots retain their saved source and ordering.
 
 Generated fields are `quote`, `speaker`, `verb`, their `*_start_idx` and
 `*_end_idx` character offsets, `quote_type`, `quote_token_count`,
 `is_floating_quote` and `quote_row_idx`. Missing speaker/verb spans are NULL.
 Publication requires the original document column. Match outputs prefix selected
 fields with `QUOTE_`; document outputs additionally require `QUOTE_extraction`,
-joining retained quotation text with newlines. Existing objects and conflicting
-column names are rejected. The result descriptor has payload version 1 and owns
-three private relations; its counts include total source documents, matching
-documents and quotations. Context length and colors are not execution parameters.
+joining retained quotation text with newlines. Checked empty outcomes are included
+in publication. Optional conflicting metadata is disabled; generated fields use
+unique suffixes. A new public live View owns independent hidden output copies and
+current-source bindings. Native project-format upgrade occurs only at publication.
+
+Version-2 output owns checked-text, match and private projection relations. Its
+Quotation-only checkpoint is a version-1 owned blob containing extraction identity,
+generation, relation manifest and checked/total counts. It contains no source
+metadata or persisted task. `Analysis.result` remains null during partial execution.
+`QuotationOutput` has `analysis`, `version`, `manifest` and nullable `partial`;
+tab summaries derive optional `quotation_partial` from the same artifact. Resume
+rejects changed configuration or completed analyses and skips every checked exact
+text, including zero-output texts. Clear/deletion removes its artifacts. Publication
+copies are independent. Context length and colours are presentation settings.
 
 ### Plots
 
@@ -896,6 +918,8 @@ publish. Source rows remain distinct even when their text is identical.
 | `POST /api/ai/providers/{id}` | Name and credential action; provider/endpoint identity is immutable |
 | `DELETE /api/ai/providers/{id}` | Removes saved configuration and credential |
 | `GET /api/ai/providers/{id}/models` | Model identifiers, cached per configuration revision |
+| `GET /api/ai/providers/{id}/capabilities?model=…` | Supported native thinking controls and concurrency limits/defaults, without inference |
+| `PATCH /api/ai/providers/{id}/annotation` | `{concurrency}`; remembers 1–32 in that connection's metadata |
 | `POST /api/project/annotation/codebook` | Qualified source and code/description fields; returns validated live codes |
 | `POST /api/project/annotation/codebooks` | Name; creates and registers an empty Codebook |
 | `POST /api/project/tabs/{id}/annotation/edit` | `manual`, `corrections` or `codebook` setup; returns the shared cell-edit session |
@@ -916,10 +940,38 @@ provider is chosen. Custom accepts HTTP(S) endpoints without embedded credential
 The execution request has `setup`, `inference`, optional `examples`, and
 `processing` (`all` or `missing`). Setup identifies source, document, annotation,
 optional correction and Codebook. Inference captures connection UUID, model,
-prompt, optional temperature, reasoning, batch size (1–100), retries (0–10) and
-concurrency (1–10). Examples capture source, text/label fields, selection
+prompt, optional temperature and native `thinking`, batch size (1–100), retries
+(0–10) and concurrency (1–32 remotely, one for Apple). Safe connection metadata
+returns the remembered/effective `annotation_concurrency`: Custom defaults to two,
+other remote providers to ten. `processing` defaults to `missing`; explicit saved
+`all` remains unchanged. Examples capture source, text/label fields, selection
 (`random`, `first`, `last`), per-code limit (1–10), and seed. No key is accepted
 in a project execution request. Preview permits an empty annotation destination.
+
+Thinking is null/absent for provider defaults. Explicit values are tagged by native
+control, for example `{"control":"reasoning_effort","value":"xhigh"}`,
+`thinking_budget` or `budget_tokens` with an integer value, `thinking_level`,
+`adaptive_effort` or `openrouter_effort` with an advertised effort, and `disabled`.
+Capabilities expose the implemented controls, effort choices, budget bounds and
+temperature compatibility. Unknown model IDs expose provider defaults only. The
+historical `reasoning` field accepts only `default` for new execution; old explicit
+shared-scale choices require an explicit native selection. Custom uses standard
+Chat Completions fields and no vendor extensions or capability probes.
+
+The implemented catalogue is in `ai/inference/controls.rs`. Provider field/range
+references are [OpenAI reasoning](https://developers.openai.com/api/docs/guides/reasoning),
+[Gemini Generate Content thinking](https://ai.google.dev/gemini-api/docs/generate-content/thinking?hl=en),
+[Claude extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking),
+[Claude effort](https://platform.claude.com/docs/en/build-with-claude/effort) and
+[OpenRouter reasoning](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
+Unsupported explicit values fail before provider submission. Original provider
+HTTP diagnostics are retained; timeouts abort without uncertain retries.
+
+Run captures distinct eligible exact texts and eligible row references once. Each
+completed request batch atomically updates only those source rows under the existing
+Table protection lease and publishes normal source-change notifications. Committed
+labels survive Stop, later failure, crash, Clear and tab deletion. Final report
+publication does not rewrite labels. Preview remains fresh and temporary.
 
 Corrections require the displayed page's `expected` mutation stamp. Shared
 `/cell-edits/{session_id}/page`, `/save` and `/cancel` routes retain staged changes

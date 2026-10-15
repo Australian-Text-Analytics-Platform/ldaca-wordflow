@@ -79,7 +79,10 @@ structured labels; it does not fall back to a cloud provider.
 Enter an instruction, or press Tab in the empty instruction field to accept the
 suggested prompt. **Advanced settings and examples** contains provider-aware
 inference controls and execution limits. Empty temperature and **Provider
-default** reasoning leave those choices to the provider. Unsupported explicit
+default** thinking leave those choices to the provider. Available controls use
+the selected provider's effort, thinking level or token budget directly. Unknown
+models use provider defaults. A historical shared reasoning setting requires an
+explicit new choice before running again. Unsupported explicit
 settings fail visibly instead of being silently ignored.
 
 An optional example source supplies text and reviewed labels. Choose Random,
@@ -89,8 +92,10 @@ examples, inference proceeds without examples. **Use as Example** selects the
 current source and correction column. When corrections are staged, use **Save
 and use as examples** first.
 
-Default execution uses batches of 20 documents, two retries and up to ten
-concurrent requests. Only document text, your instruction, the Codebook and
+Default execution uses batches of 20 distinct eligible texts and two retries.
+Custom connections default to two concurrent requests; other remote connections
+default to ten. Choose 1–32; each connection remembers its own setting. Apple uses
+one request at a time. Only document text, your instruction, the Codebook and
 selected examples are sent to the selected provider. Unrelated metadata is not
 sent. Cloud providers may charge for inference.
 
@@ -100,7 +105,7 @@ sent. Cloud providers may charge for inference.
 saving a request/result. Every explicit page or page-size action captures the
 current form and makes fresh predictions. Old predictions clear immediately.
 Typing, focus, theme changes and presentation controls do not invoke the model.
-Already-labelled nonblank documents are included; **Fill missing only** affects
+Already-labelled nonblank documents are included; **Only rows without annotation** affects
 Run alone.
 
 Successful predictions remain visible alongside explicit failed-row states.
@@ -116,17 +121,21 @@ for any unsaved edits. A new visit never automatically invokes a provider.
 <h3 id="help-annotation-run-all">Run and review</h3>
 
 **Run** captures the current request independently of Preview. The default
-**Reprocess all** predicts every nonblank document. **Fill missing only** selects
-NULL, empty or whitespace-only destination labels; existing invalid nonblank
+**Only rows without annotation** selects NULL, empty or whitespace-only destination
+labels. **All rows** explicitly reprocesses every nonblank document; existing saved
+All choices are retained. In missing-only mode, existing invalid nonblank
 labels are preserved. NULL/blank documents are skipped without changing labels.
 The progress card and Task Centre show the same task, with cancellation.
 
-Run protects the target Table, stages predictions and writes successful labels
-atomically with its saved report. Fatal failure or cancellation before commit
-changes no labels and retains the submitted parameters. An individual document
-failure preserves that row's old label while other successful predictions can
-commit. A successful None prediction may clear an existing label. Partial runs
-offer **Rerun**; inspect **Failed-row diagnostics** to see what failed.
+Run protects the target Table and sends each distinct eligible exact text once.
+Each completed request batch immediately writes its successful labels atomically
+to eligible source rows, preserving duplicate rows. Stop, a later failure, a crash,
+Clear and tab deletion keep labels already committed. A provider timeout fails the
+run without retrying that uncertain request; its original diagnostic remains
+visible. An individual invalid prediction preserves that row's old label. A
+successful None prediction may clear an eligible label. Run again in missing-only
+mode to continue from stored labels without Clear. A completed report includes
+**Failed-row diagnostics** for individual failed predictions.
 
 **Results** distinguishes historical processed/preserved/skipped/failed counts
 from current source labels. **Captured Codebook and examples** shows the actual
@@ -141,10 +150,9 @@ context/diagnostics. It retains source labels, submitted Run parameters and any
 open correction draft. Committed Table-label Undo is not implemented; review
 staged edits before Save. Existing View Undo remains separate.
 
-An unchanged, fully successful request disables Run and Preview. Change execution
-settings or Clear results to run again; presentation changes do not enable Run.
-Partial results and loading failures offer Rerun. Failed/cancelled runs with no
-completed result remain runnable. A completed Run is independent of navigation.
+Run and Preview remain explicit and available after a completed or stopped run.
+Missing-only Run continues from committed labels; Preview always performs fresh
+page inference. A completed Run is independent of navigation.
 
 Reopening restores shared setup from the latest successful Manual Start or
 accepted AI Run, plus saved AI inference controls. It never starts editing or

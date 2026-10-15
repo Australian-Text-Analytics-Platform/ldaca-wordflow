@@ -288,17 +288,34 @@ analysis keeps its own native matcher and concrete result contract.
 
 Preview validates the tab and input before preparing the pinned UDPipe model,
 then captures a source page plus one lookahead row in a read-only transaction.
-Only the requested documents are extracted. Zero quotes yield no displayed row;
+Only distinct exact texts in the requested page are extracted, then expanded to
+that captured page's duplicate source rows. The lookahead and duplicate texts
+outside that page cannot enter its output. Concordance Preview shares this native
+page-population capture. Zero quotes yield no displayed row;
 multiple quotes remain nested in their original document. Preview has request
 cancellation and no persistent result or task record. Context clipping and field
 visibility are frontend presentation changes, not extraction requests.
 
-Run uses the pinned native extractor and existing task, editor and publication
-boundaries. Version-2 results use the same processed-text/current-source contract
+Run uses up to four process-available native workers, each constructing and owning
+its UDPipe extractor from shared read-only model bytes. A single database writer
+commits each completed eight-text batch with its checked-text records and matches
+in one transaction. A Quotation-only version-1 checkpoint artifact records the
+manifest, extraction identity, generation and checked/total counts. It stores no
+task or source-metadata snapshot. Stop, failure and process exit preserve committed
+batches. Explicit Resume requires the same submitted input and extractor/model
+identity and excludes checked exact texts, including zero-quotation outcomes.
+Opening a project never resumes extraction. Generation, tab claims and cancellation
+prevent cleared or superseded workers from restoring outputs. The ordinary
+Analysis result remains absent until completion; typed Quotation output and tab
+summary projections expose partial state through existing artifact ownership.
+
+Version-2 results use the same processed-text/current-source contract
 as Concordance, with a separate checked-documents Table and scalar-quotation
 Table. Zero-quotation texts are retained as processed records and excluded from
 presentation. Document queries group quotations; match queries page individual
-occurrences. Both apply SQL ordering before paging and direct downloads.
+occurrences. Both apply SQL ordering before paging and direct downloads. Full-document details
+also require the clicked exact text at its query-time source position, so a moved
+or edited row reports a stale-detail error instead of fetching another document.
 Publication includes checked empty outcomes and copies generated outputs into
 independent backing relations for a live View. Historical version-1 results
 remain snapshot-based until Rerun. The [quotation runtime reference](../../reference/quotation-runtime.md)
@@ -435,12 +452,16 @@ opening an editor successfully. Opening a saved tab never opens an editor.
 
 AI Run reserves the target Table before accepting the submitted request into a
 new Analysis. It captures the Codebook and selected examples consistently, reads
-eligible text in bounded keyset batches, and stages predictions in a temporary
-relation. One publication transaction claims the exact accepted Analysis, updates
-successful labels, and stores a version-1 report plus context and diagnostics
-artifacts. Failure or cancellation before commit changes no source labels. A
-failed individual prediction preserves its existing label; a successful NULL
-prediction may clear one. Clear removes only the report and owned artifacts.
+eligible source references and distinct exact texts in temporary relations. Each
+completed provider batch immediately commits successful labels atomically to only
+its captured eligible source rows. Exact UTF-8 keys preserve duplicates independently
+without sending their text repeatedly. Change notifications follow every commit.
+A later fatal error, cancellation, process exit, Clear or tab deletion retains
+those committed labels. New tabs default to missing labels; explicit saved All
+choices remain. A failed individual prediction preserves its existing label; a
+successful NULL prediction may clear one. Final publication stores only the
+version-1 historical report, context and source-row diagnostics. Clear removes
+only report/artifacts and never rewrites labels.
 
 Preview reads a fresh page and performs fresh inference on every explicit page
 action. It owns a cancellable runtime operation, no task or project records, and
@@ -470,7 +491,14 @@ Codebook and selected examples are sent. A single retry owner handles transient
 failures; malformed/context-limited responses split down to individual documents.
 Authentication/configuration failures abort the operation. Ambiguous read
 timeouts are not retried automatically. Discovery is cached by connection ID and
-revision; predictions are never cached.
+revision; predictions are never cached. Concurrency is 1–32 remotely, defaults
+to two for Custom and ten for other remote connections, and is remembered in that
+connection's safe metadata. Apple uses one request. Provider-native thinking
+controls are explicit tagged request values; unknown models omit thinking fields.
+The former shared reasoning scale is retained only for historical decoding and
+requires an explicit new choice before rerunning. Custom sends standard Chat
+Completions fields only. Provider HTTP bodies and transport diagnostics remain
+available in the responsible form/task error; timeouts are fatal without retry.
 
 On macOS, the built-in Apple connection uses a small Swift bridge to
 `FoundationModels`, weak-linked for older systems. Availability is checked at

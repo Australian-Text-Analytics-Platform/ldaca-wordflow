@@ -3224,6 +3224,149 @@ async fn annotation_manual_reuses_protected_editor_and_live_codebook() {
 }
 
 #[tokio::test]
+async fn annotation_commits_finished_batches_before_a_fatal_timeout_and_reopens_them() {
+    use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    #[derive(Clone)]
+    struct ProviderState {
+        release: Arc<tokio::sync::Notify>,
+        calls: Arc<AtomicUsize>,
+    }
+    async fn predict(
+        State(state): State<ProviderState>,
+        Json(body): Json<Value>,
+    ) -> (StatusCode, Json<Value>) {
+        state.calls.fetch_add(1, Ordering::SeqCst);
+        let texts: Vec<String> =
+            serde_json::from_str(body["messages"][1]["content"].as_str().unwrap()).unwrap();
+        assert_eq!(texts.len(), 1);
+        if texts[0] == "slow" {
+            state.release.notified().await;
+            return (
+                StatusCode::GATEWAY_TIMEOUT,
+                Json(json!({"error":{"message":"original fixture timeout diagnostic"}})),
+            );
+        }
+        assert_eq!(texts[0], "fast");
+        (
+            StatusCode::OK,
+            Json(
+                json!({"choices":[{"finish_reason":"stop","message":{"content":"{\"labels\":[\"A\"]}"}}]}),
+            ),
+        )
+    }
+    let state = ProviderState {
+        release: Arc::default(),
+        calls: Arc::new(AtomicUsize::new(0)),
+    };
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}/v1", listener.local_addr().unwrap());
+    let stop = CancellationToken::new();
+    let provider = tokio::spawn(
+        axum::serve(
+            listener,
+            Router::new()
+                .route("/v1/chat/completions", post(predict))
+                .with_state(state.clone()),
+        )
+        .with_graceful_shutdown(stop.clone().cancelled_owned())
+        .into_future(),
+    );
+    let mut app = App::start().await;
+    app.create().await;
+    app.sql(&[
+        "CREATE TABLE data.docs(rowid VARCHAR PRIMARY KEY,text VARCHAR,label VARCHAR)",
+        "INSERT INTO data.docs VALUES ('1','slow',NULL),('2','fast',NULL),('3','fast',NULL),('4','fast','B')",
+        "CREATE TABLE data.codes(code VARCHAR,description VARCHAR)",
+        "INSERT INTO data.codes VALUES ('A','first'),('B','second')",
+        "INSERT INTO wordflow.nodes(table_name) VALUES ('docs'),('codes')"
+    ]).await;
+    let connection: Value = app
+        .client
+        .post(format!("{}/api/ai/providers", app.url))
+        .json(&json!({"name":"Partial fixture","provider":"custom","endpoint":endpoint}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let tab: Value = app
+        .post("/tabs", json!({"kind":"annotation"}))
+        .await
+        .json()
+        .await
+        .unwrap();
+    let request = json!({"setup":{"source":{"schema":"data","name":"docs"},"document":"text","annotation":"label","codebook":{"source":{"schema":"data","name":"codes"},"code":"code","description":"description"}},"processing":"missing","inference":{"provider":connection["id"],"model":"fixture","prompt":"classify","temperature":null,"batch_size":1,"concurrency":2,"retries":10}});
+    let running = tokio::spawn(
+        app.client
+            .post(format!(
+                "{}/api/project/tabs/{}/annotation",
+                app.url,
+                tab["id"].as_str().unwrap()
+            ))
+            .json(&request)
+            .send(),
+    );
+    timeout(Duration::from_secs(10), async {
+        while app
+            .number("SELECT count(*) FROM data.docs WHERE label='A'")
+            .await
+            != 2
+        {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(!running.is_finished());
+    assert_eq!(
+        app.number("SELECT count(*) FROM data.docs WHERE rowid='4' AND label='B'")
+            .await,
+        1
+    );
+    assert_eq!(
+        app.post(
+            "/nodes/docs/columns",
+            json!({"operation":"add","column":"new","sql_type":"VARCHAR"})
+        )
+        .await
+        .status(),
+        409
+    );
+    state.release.notify_one();
+    let failed = running.await.unwrap().unwrap();
+    assert_eq!(failed.status(), 400);
+    assert!(failed.headers().contains_key("x-wordflow-task-id"));
+    let error: Value = failed.json().await.unwrap();
+    assert!(
+        error["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("original fixture timeout diagnostic")
+    );
+    assert_eq!(state.calls.load(Ordering::SeqCst), 2);
+    app.reopen().await;
+    assert_eq!(
+        app.number("SELECT count(*) FROM data.docs WHERE label='A'")
+            .await,
+        2
+    );
+    assert_eq!(
+        app.number("SELECT count(*) FROM data.docs WHERE text='slow' AND label IS NULL")
+            .await,
+        1
+    );
+    stop.cancel();
+    provider.await.unwrap().unwrap();
+    app.shutdown.cancel();
+    app.task.await.unwrap().unwrap();
+}
+
+#[tokio::test]
 async fn annotation_ai_fresh_preview_atomic_run_and_live_report() {
     use axum::{
         Json, Router,

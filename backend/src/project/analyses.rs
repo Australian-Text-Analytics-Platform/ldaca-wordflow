@@ -23,6 +23,8 @@ pub(crate) struct AnalysisSummary {
     pub request: Value,
     pub request_status: RequestRestoration,
     pub has_result: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quotation_partial: Option<quotation::QuotationPartial>,
 }
 #[derive(Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -357,6 +359,13 @@ fn read_tabs(conn: &Connection, kind: Option<&str>) -> Result<Vec<Tab>> {
                             &serde_json::from_str(&row.get::<_, String>(6)?)?,
                         ),
                         has_result: row.get(7)?,
+                        quotation_partial: if row.get::<_, String>(1)? == "quotation"
+                            && !row.get::<_, bool>(7)?
+                        {
+                            quotation::partial(conn, decode_uuid(&id)?)?
+                        } else {
+                            None
+                        },
                         created_at: row.get(8)?,
                     })
                 })

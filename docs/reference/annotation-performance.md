@@ -1,8 +1,9 @@
 # Annotation verification and performance
 
-Annotation Run reads bounded text batches and stages predictions before one
-atomic source-label update. These measurements cover that database path, not
-provider throughput or a supported-corpus limit. See [native ownership](../architecture/backend/native-analyses.md#annotation)
+Annotation Run now deduplicates eligible exact texts and commits each completed
+provider batch directly to its protected source Table. The measurements below
+are historical evidence for the earlier staging/final-publication path, not a
+performance claim for incremental execution or a supported-corpus limit. See [native ownership](../architecture/backend/native-analyses.md#annotation)
 and [the API](native-project-api.md#annotation-and-host-ai-connections).
 
 ## Local measurements, 27 September 2026

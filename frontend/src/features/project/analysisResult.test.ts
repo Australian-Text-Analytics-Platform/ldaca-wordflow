@@ -11,7 +11,6 @@ afterEach(() => vi.unstubAllGlobals());
 const readers = [
   { kind: 'frequency', read: getFrequencyResult },
   { kind: 'concordance', read: getConcordanceResult },
-  { kind: 'quotation', read: getQuotationResult },
   {
     kind: 'trends',
     read: (base: string, id: string) => getPlotResult(base, id, 'trends'),
@@ -76,3 +75,23 @@ it.each([null, {}, { corpora: [null] }, { corpora: [{ source: null }] }])(
     );
   },
 );
+
+it('reads Quotation partial output without claiming a completed analysis', async () => {
+  const partial = {
+    analysis: { kind: 'quotation', result: null },
+    version: 2,
+    manifest: {},
+    partial: { checked_texts: 1, total_texts: 3 },
+  };
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(partial))
+      .mockResolvedValueOnce(Response.json(null))
+      .mockResolvedValueOnce(Response.json({ ...partial, version: 99 })),
+  );
+  expect(await getQuotationResult('http://test', 'saved')).toEqual(partial);
+  expect(await getQuotationResult('http://test', 'saved')).toBeNull();
+  await expect(getQuotationResult('http://test', 'saved')).rejects.toThrow(/unsupported/i);
+});

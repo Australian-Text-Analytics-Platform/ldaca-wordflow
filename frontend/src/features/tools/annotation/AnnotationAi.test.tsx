@@ -31,6 +31,7 @@ vi.mock('@/features/ai/api', async (original) => ({
   aiCapabilities: vi.fn(),
   aiConnections: vi.fn(),
   aiModels: vi.fn(),
+  rememberAnnotationConcurrency: vi.fn(),
 }));
 vi.mock('@/features/table-editing/api', async (original) => ({
   ...(await original<object>()),
@@ -94,8 +95,13 @@ beforeEach(() => {
   ]);
   vi.mocked(aiApi.aiModels).mockResolvedValue(['system']);
   vi.mocked(aiApi.aiCapabilities).mockResolvedValue({
-    reasoning: ['default'],
-    temperature_with_reasoning: true,
+    thinking: [],
+    efforts: [],
+    budget_min: 0,
+    budget_max: 0,
+    temperature_with_thinking: true,
+    max_concurrency: 1,
+    default_concurrency: 1,
   });
   vi.mocked(annotationApi.annotationCodebook).mockResolvedValue([
     { code: 'A', description: 'First' },
@@ -187,22 +193,103 @@ it('removes cleared output immediately without waiting for the change observer',
 it('uses backend model controls and lets an incompatible temperature be cleared', async () => {
   const user = userEvent.setup();
   vi.mocked(aiApi.aiCapabilities).mockResolvedValue({
-    reasoning: ['default', 'low'],
-    temperature_with_reasoning: false,
+    thinking: ['reasoning_effort'],
+    efforts: ['low'],
+    budget_min: 0,
+    budget_max: 0,
+    temperature_with_thinking: false,
+    max_concurrency: 32,
+    default_concurrency: 10,
   });
   mount(empty, {
     ...request,
-    inference: { ...request.inference, reasoning: 'low', temperature: 1 },
+    inference: {
+      ...request.inference,
+      thinking: { control: 'reasoning_effort', value: 'low' },
+      temperature: 1,
+    },
   });
   await user.click(screen.getByText('Advanced settings and examples'));
   const temperature = await screen.findByRole('spinbutton', { name: 'Temperature' });
   await waitFor(() => expect(temperature).toBeEnabled());
-  await user.click(screen.getByRole('combobox', { name: 'Reasoning' }));
+  await user.click(screen.getByRole('combobox', { name: 'Reasoning effort' }));
   expect(screen.getByRole('option', { name: 'low' })).toBeInTheDocument();
   expect(screen.queryByRole('option', { name: 'off' })).not.toBeInTheDocument();
   await user.keyboard('{Escape}');
   await user.clear(temperature);
   expect(temperature).toBeDisabled();
+});
+it('restores and remembers concurrency independently for each provider configuration', async () => {
+  const user = userEvent.setup();
+  const rows: aiApi.AiConnection[] = [
+    {
+      id: 'custom',
+      revision: '1',
+      name: 'Local Custom',
+      provider: 'custom',
+      endpoint: 'http://fixture/v1',
+      credential_mode: 'none',
+      has_credential: false,
+      credential_error: null,
+      built_in: false,
+      annotation_concurrency: 2,
+    },
+    {
+      id: 'remote',
+      revision: '1',
+      name: 'Remote OpenAI',
+      provider: 'openai',
+      endpoint: null,
+      credential_mode: 'session',
+      has_credential: true,
+      credential_error: null,
+      built_in: false,
+      annotation_concurrency: 17,
+    },
+  ];
+  vi.mocked(aiApi.aiConnections).mockImplementation(async () => structuredClone(rows));
+  vi.mocked(aiApi.aiCapabilities).mockResolvedValue({
+    thinking: [],
+    efforts: [],
+    budget_min: 0,
+    budget_max: 0,
+    temperature_with_thinking: true,
+    max_concurrency: 32,
+    default_concurrency: 10,
+  });
+  vi.mocked(aiApi.rememberAnnotationConcurrency).mockImplementation(
+    async (_base, id, concurrency) => {
+      const row = rows.find((row) => row.id === id)!;
+      row.annotation_concurrency = concurrency;
+      return structuredClone(row);
+    },
+  );
+  mount(empty, {
+    ...request,
+    inference: { ...request.inference, provider: 'custom', concurrency: 2 },
+  });
+  await user.click(screen.getByText('Advanced settings and examples'));
+  await user.click(screen.getByRole('combobox', { name: 'AI connection' }));
+  await user.click(await screen.findByRole('option', { name: 'Remote OpenAI' }));
+  const concurrency = screen.getByRole('spinbutton', { name: 'Concurrent requests' });
+  expect(concurrency).toHaveValue(17);
+  expect(concurrency).toHaveAttribute('max', '32');
+  await user.clear(concurrency);
+  await user.type(concurrency, '32');
+  await user.tab();
+  await waitFor(() =>
+    expect(aiApi.rememberAnnotationConcurrency).toHaveBeenCalledWith(
+      'http://annotation-ai',
+      'remote',
+      32,
+    ),
+  );
+  await user.click(screen.getByRole('combobox', { name: 'AI connection' }));
+  await user.click(screen.getByRole('option', { name: 'Local Custom' }));
+  expect(concurrency).toHaveValue(2);
+  await user.click(screen.getByRole('combobox', { name: 'AI connection' }));
+  await user.click(screen.getByRole('option', { name: 'Remote OpenAI' }));
+  expect(concurrency).toHaveValue(32);
 });
 it('keeps Preview explicit, clears predictions immediately, and suppresses superseded responses', async () => {
   const user = userEvent.setup();

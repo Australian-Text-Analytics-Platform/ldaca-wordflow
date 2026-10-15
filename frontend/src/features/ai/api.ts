@@ -76,3 +76,12 @@ export async function aiCapabilities(
     })
   ).json();
 }
+
+export async function rememberAnnotationConcurrency(base: string, id: string, concurrency: number) {
+  return (
+    await request(base, '/api/ai/providers/{id}/annotation', 'patch', {
+      path: { id },
+      body: { concurrency },
+    })
+  ).json();
+}

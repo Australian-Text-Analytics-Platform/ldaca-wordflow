@@ -16,6 +16,7 @@ where
         .routes(utoipa_axum::routes!(update, remove))
         .routes(utoipa_axum::routes!(models))
         .routes(utoipa_axum::routes!(model_capabilities))
+        .routes(utoipa_axum::routes!(annotation_concurrency))
 }
 #[utoipa::path(
     get, path = "/api/ai/providers", operation_id = "ai_http_list",
@@ -270,4 +271,24 @@ async fn model_capabilities(
 ) -> Result<Json<inference::InferenceCapabilities>> {
     let provider = config.provider(id).await?;
     Ok(Json(inference::capabilities(provider, &selection.model)))
+}
+
+#[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+struct AnnotationConcurrency {
+    concurrency: usize,
+}
+#[utoipa::path(
+    patch, path = "/api/ai/providers/{id}/annotation", operation_id = "ai_http_annotation_concurrency",
+    tag = "ai_http", params(("id" = String, Path)), request_body = AnnotationConcurrency,
+    responses((status = 200, body = ConnectionInfo), (status = 400, body = crate::error::ErrorEnvelope))
+)]
+async fn annotation_concurrency(
+    State(config): State<super::AiConfiguration>,
+    Path(id): Path<Uuid>,
+    Json(input): Json<AnnotationConcurrency>,
+) -> Result<Json<ConnectionInfo>> {
+    Ok(Json(
+        config.annotation_concurrency(id, input.concurrency).await?,
+    ))
 }

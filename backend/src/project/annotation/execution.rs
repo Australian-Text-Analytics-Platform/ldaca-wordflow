@@ -1,4 +1,4 @@
-//! Annotation captures inference context once and stages predictions before one atomic label update.
+//! Annotation captures eligible exact texts once and commits each completed provider batch.
 use super::*;
 use crate::ai::inference::{Example, Inference, Label, Prediction};
 use duckdb::arrow::{
@@ -10,8 +10,8 @@ use duckdb::arrow::{
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Processing {
-    #[default]
     All,
+    #[default]
     Missing,
 }
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, utoipa::ToSchema)]
@@ -71,12 +71,13 @@ pub(in crate::project) struct Run {
     pub db: Database,
     pub request: Request,
     pub context: Context,
+    tab: Uuid,
     relation: Relation,
     row_type: String,
     total: u64,
     eligible: u64,
     skipped: u64,
-    after: Option<String>,
+    after: u64,
     processed: u64,
     failed: u64,
 }
@@ -240,19 +241,23 @@ impl Run {
         let tx = db.conn.transaction()?;
         let context = request.capture_context(&tx)?;
         let document = trimmed(&query::quote(&request.setup.document));
-        let (total, eligible, skipped) = tx.query_row(&format!("SELECT count(*),count(*) FILTER(WHERE {}),count(*) FILTER(WHERE {document} IS NULL OR {document}='') FROM {}",eligible(&request),relation.sql()),[],|r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
+        let (total, eligible_count, skipped) = tx.query_row(&format!("SELECT count(*),count(*) FILTER(WHERE {}),count(*) FILTER(WHERE {document} IS NULL OR {document}='') FROM {}",eligible(&request),relation.sql()),[],|r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
+        tx.execute_batch(&format!(
+            "CREATE TEMP TABLE annotation_eligible AS SELECT CAST(rowid AS VARCHAR) AS row_ref, encode({}) AS text FROM {} WHERE {};              CREATE TEMP TABLE annotation_inputs AS SELECT row_number() OVER ()::UBIGINT AS id,decode(text) AS text FROM (SELECT DISTINCT text FROM annotation_eligible);              CREATE TEMP TABLE annotation_predictions(row_ref VARCHAR PRIMARY KEY,label VARCHAR,failure VARCHAR)",
+            query::quote(&request.setup.document), relation.sql(), eligible(&request)
+        ))?;
         tx.commit()?;
-        db.conn.execute_batch("CREATE TEMP TABLE annotation_predictions(row_ref VARCHAR PRIMARY KEY, label VARCHAR, failure VARCHAR)")?;
         Ok(Self {
             db,
             request,
             context,
+            tab,
             relation,
             row_type,
             total,
-            eligible,
+            eligible: eligible_count,
             skipped,
-            after: None,
+            after: 0,
             processed: 0,
             failed: 0,
         })
@@ -260,18 +265,9 @@ impl Run {
     pub(in crate::project) fn next(&mut self) -> Result<Batch> {
         check_cancellation(&self.db.cancellation)?;
         let limit = self.request.inference.batch_size * self.request.inference.concurrency;
-        let after = self.after.as_ref().map_or_else(String::new, |value| {
-            format!(
-                " AND rowid > CAST({} AS {})",
-                query::literal(value),
-                self.row_type
-            )
-        });
         let sql = format!(
-            "SELECT CAST(rowid AS VARCHAR),{} FROM {} WHERE {}{after} ORDER BY rowid LIMIT {limit}",
-            query::quote(&self.request.setup.document),
-            self.relation.sql(),
-            eligible(&self.request)
+            "SELECT id::VARCHAR,text FROM annotation_inputs WHERE id>{} ORDER BY id LIMIT {limit}",
+            self.after
         );
         let rows = self
             .db
@@ -280,7 +276,9 @@ impl Run {
             .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?
             .collect::<duckdb::Result<Vec<_>>>()?;
         if let Some((id, _)) = rows.last() {
-            self.after = Some(id.clone());
+            self.after = id
+                .parse()
+                .map_err(|_| Error::invalid("Invalid captured text identity"))?;
         }
         let (refs, texts) = rows.into_iter().unzip();
         Ok(Batch { refs, texts })
@@ -296,22 +294,49 @@ impl Run {
                 "Annotation lost prediction alignment",
             ));
         }
-        let mut appender = self.db.conn.appender("annotation_predictions")?;
-        for (row_ref, prediction) in refs.into_iter().zip(predictions) {
-            check_cancellation(&self.db.cancellation)?;
-            let (label, error) = match prediction {
-                Prediction::Success { label } => {
-                    self.processed += 1;
-                    (label, None)
-                }
-                Prediction::Failed { error } => {
-                    self.failed += 1;
-                    (None, Some(serde_json::to_string(&error)?))
-                }
-            };
-            appender.append_row(params![row_ref, label, error])?;
+        let selected = refs
+            .iter()
+            .map(|id| query::literal(id))
+            .collect::<Vec<_>>()
+            .join(",");
+        if selected.is_empty() {
+            return Ok(());
         }
-        appender.flush()?;
+        let tx = self.db.conn.transaction()?;
+        analyses::claim_tab(&tx, self.tab, "annotation")?;
+        let pending = PendingChange::new(
+            &tx,
+            ChangeScope::object(self.relation.clone()),
+            &self.db.cancellation,
+        );
+        let (mut processed, mut failed) = (0, 0);
+        {
+            let mut appender = tx.appender("annotation_predictions")?;
+            for (row_ref, prediction) in refs.into_iter().zip(predictions) {
+                check_cancellation(&self.db.cancellation)?;
+                let count: u64 = tx.query_row("SELECT count(*) FROM annotation_eligible e JOIN annotation_inputs i ON e.text=encode(i.text) WHERE i.id=CAST(? AS UBIGINT)",[&row_ref], |r| r.get(0))?;
+                let (label, error) = match prediction {
+                    Prediction::Success { label } => {
+                        processed += count;
+                        (label, None)
+                    }
+                    Prediction::Failed { error } => {
+                        failed += count;
+                        (None, Some(serde_json::to_string(&error)?))
+                    }
+                };
+                appender.append_row(params![row_ref, label, error])?;
+            }
+            appender.flush()?;
+        }
+        let label = query::quote(&self.request.setup.annotation);
+        tx.execute_batch(&format!(
+            "UPDATE {} AS target SET {label}=p.label FROM annotation_predictions p JOIN annotation_inputs i ON i.id=CAST(p.row_ref AS UBIGINT) JOIN annotation_eligible e ON e.text=encode(i.text) WHERE p.failure IS NULL AND p.row_ref IN ({selected}) AND target.rowid=CAST(e.row_ref AS {}) AND CAST(target.rowid AS VARCHAR)=e.row_ref AND encode(target.{})=e.text",
+            self.relation.sql(), self.row_type, query::quote(&self.request.setup.document)
+        ))?;
+        pending.commit(tx, &self.db.changes, &self.db.cancellation)?;
+        self.processed += processed;
+        self.failed += failed;
         Ok(())
     }
     pub(in crate::project) fn fraction(&self) -> f64 {
@@ -334,13 +359,11 @@ impl Run {
             diagnostics: diagnostics_id,
         };
         let context = serde_json::to_vec(&self.context)?;
-        self.db.publish_analysis_with_scope(analyses::AcceptedAnalysis {id,tab_id:tab,kind:"annotation"},Some(self.relation.clone()),|conn| {
-            let label=query::quote(&self.request.setup.annotation);
-            conn.execute_batch(&format!("UPDATE {} AS target SET {label}=predictions.label FROM annotation_predictions AS predictions WHERE predictions.failure IS NULL AND target.rowid=CAST(predictions.row_ref AS {}) AND CAST(target.rowid AS VARCHAR)=predictions.row_ref",self.relation.sql(),self.row_type))?;
+        self.db.publish_analysis_with_scope(analyses::AcceptedAnalysis {id,tab_id:tab,kind:"annotation"},None,|conn| {
             analyses::register_blob(conn,id,context_id,"inference_context","application/json",&context)?;
             // Diagnostics retain historical references only; live review never joins them to current rows.
             let diagnostics = analyses::artifact_table(diagnostics_id);
-            conn.execute_batch(&format!("CREATE TABLE wordflow.{} AS SELECT row_ref, failure FROM annotation_predictions WHERE failure IS NOT NULL", query::quote(&diagnostics)))?;
+            conn.execute_batch(&format!("CREATE TABLE wordflow.{} AS SELECT e.row_ref,p.failure FROM annotation_predictions p JOIN annotation_inputs i ON i.id=CAST(p.row_ref AS UBIGINT) JOIN annotation_eligible e ON e.text=encode(i.text) WHERE p.failure IS NOT NULL", query::quote(&diagnostics)))?;
             analyses::register_table(conn,id,diagnostics_id,"diagnostics")?;
             Ok(serde_json::to_value(report)?)
         })
@@ -514,6 +537,7 @@ mod tests {
                 prompt: "test".into(),
                 temperature: None,
                 reasoning: Default::default(),
+                thinking: None,
                 batch_size: 2,
                 retries: 0,
                 concurrency: 2,
@@ -524,7 +548,7 @@ mod tests {
         (project, tab, request)
     }
     #[test]
-    fn bounded_batches_keep_typed_identifier_order_without_skipping_duplicates() {
+    fn bounded_batches_send_each_distinct_eligible_text_once() {
         let (project, tab, mut request) = fixture();
         request.inference.batch_size = 1;
         request.inference.concurrency = 1;
@@ -544,9 +568,10 @@ mod tests {
             if batch.refs.is_empty() {
                 break;
             }
-            ids.extend(batch.refs);
+            ids.extend(batch.texts);
         }
-        assert_eq!(ids, ["01", "1", "4"]);
+        ids.sort();
+        assert_eq!(ids, ["no code", "same"]);
     }
     #[test]
     #[ignore = "explicit local Annotation database benchmark"]
@@ -631,7 +656,7 @@ mod tests {
         );
     }
     #[test]
-    fn run_stages_typed_references_and_publishes_labels_and_report_atomically() {
+    fn completed_batches_commit_duplicate_rows_before_the_final_report() {
         let (project, tab, request) = fixture();
         let mut run = Run::capture(
             project
@@ -651,29 +676,34 @@ mod tests {
             )
             .unwrap();
         let batch = run.next().unwrap();
-        assert_eq!(batch.refs, vec!["01", "1", "4"]);
-        run.stage(
-            batch.refs,
-            vec![
-                Prediction::Success {
-                    label: Some("A".into()),
-                },
-                Prediction::Failed {
-                    error: Error::invalid("bad row"),
-                },
-                Prediction::Success { label: None },
-            ],
-        )
-        .unwrap();
+        assert_eq!(batch.texts.len(), 2);
+        let predictions = batch
+            .texts
+            .iter()
+            .map(|text| {
+                if text == "same" {
+                    Prediction::Success {
+                        label: Some("A".into()),
+                    }
+                } else {
+                    Prediction::Failed {
+                        error: Error::invalid("bad row"),
+                    }
+                }
+            })
+            .collect();
+        run.stage(batch.refs, predictions).unwrap();
         assert_eq!(
             project
                 .database
                 .conn
-                .query_row("SELECT label FROM data.docs WHERE rowid='01'", [], |r| {
-                    r.get::<_, String>(0)
-                })
+                .query_row(
+                    "SELECT count(*) FROM data.docs WHERE text='same' AND label='A'",
+                    [],
+                    |r| r.get::<_, u64>(0)
+                )
                 .unwrap(),
-            "old"
+            2
         );
         let analysis = run.publish(tab, id).unwrap();
         let report: Report = serde_json::from_value(analysis.result.unwrap().payload).unwrap();
@@ -701,7 +731,7 @@ mod tests {
                 .database
                 .conn
                 .query_row(
-                    "SELECT label IS NULL FROM data.docs WHERE rowid='4'",
+                    "SELECT label='old' FROM data.docs WHERE rowid='4'",
                     [],
                     |r| r.get::<_, bool>(0)
                 )
@@ -767,7 +797,7 @@ mod tests {
         assert!(project.database.analysis(id).unwrap().result.is_none());
     }
     #[test]
-    fn deleted_tab_and_constraint_failure_leave_every_label_unchanged() {
+    fn batch_failure_rolls_back_and_completed_labels_survive_tab_deletion() {
         for delete in [false, true] {
             let (mut project, tab, request) = fixture();
             let mut run = Run::capture(
@@ -788,22 +818,24 @@ mod tests {
                 )
                 .unwrap();
             let batch = run.next().unwrap();
-            run.stage(
-                batch.refs,
-                vec![
-                    Prediction::Success {
-                        label: Some("A".into())
-                    };
-                    3
-                ],
-            )
-            .unwrap();
-            if delete {
-                project.database.delete_analysis_tab(tab).unwrap();
-            } else {
+            if !delete {
                 project.database.conn.execute_batch("DROP TABLE data.docs; CREATE TABLE data.docs(rowid VARCHAR PRIMARY KEY,text VARCHAR,label VARCHAR CHECK(label='old'),extra INTEGER); INSERT INTO data.docs VALUES ('01','same','old',1),('1','same',NULL,2),('4','no code','old',5)").unwrap();
             }
-            assert!(run.publish(tab, id).is_err());
+            let predictions = vec![
+                Prediction::Success {
+                    label: Some("A".into())
+                };
+                batch.refs.len()
+            ];
+            let staged = run.stage(batch.refs, predictions);
+            if delete {
+                staged.unwrap();
+                project.database.delete_analysis_tab(tab).unwrap();
+                assert!(run.publish(tab, id).is_err());
+            } else {
+                assert!(staged.is_err());
+                assert_eq!(run.processed, 0);
+            }
             assert_eq!(
                 project
                     .database
@@ -812,12 +844,59 @@ mod tests {
                         r.get::<_, String>(0)
                     })
                     .unwrap(),
-                "old"
+                if delete { "A" } else { "old" }
             );
-            if !delete {
-                assert!(project.database.analysis(id).unwrap().result.is_none());
-            }
         }
+    }
+    #[test]
+    fn cancellation_preserves_completed_batches_and_missing_retry_limits_duplicate_updates() {
+        let (mut project, tab, mut request) = fixture();
+        request.processing = Processing::Missing;
+        project
+            .database
+            .conn
+            .execute_batch("INSERT INTO data.docs VALUES ('5','same',NULL,6)")
+            .unwrap();
+        let cancellation = CancellationToken::new();
+        let mut run = Run::capture(
+            project.database.connection(cancellation.clone()).unwrap(),
+            request,
+            tab,
+        )
+        .unwrap();
+        let batch = run.next().unwrap();
+        assert_eq!(batch.texts, ["same"]);
+        run.stage(
+            batch.refs,
+            vec![Prediction::Success {
+                label: Some("B".into()),
+            }],
+        )
+        .unwrap();
+        cancellation.cancel();
+        assert!(run.next().is_err());
+        drop(run);
+        project.database.delete_analysis_tab(tab).unwrap();
+        assert_eq!(
+            project
+                .database
+                .conn
+                .query_row("SELECT count(*) FROM data.docs WHERE label='B'", [], |r| {
+                    r.get::<_, u64>(0)
+                })
+                .unwrap(),
+            2
+        );
+        assert_eq!(
+            project
+                .database
+                .conn
+                .query_row("SELECT label FROM data.docs WHERE rowid='01'", [], |r| {
+                    r.get::<_, String>(0)
+                })
+                .unwrap(),
+            "old"
+        );
     }
     #[test]
     fn preview_captures_one_page_with_aligned_identity_and_writes_no_analysis() {

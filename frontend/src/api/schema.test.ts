@@ -27,8 +27,8 @@ describe('native OpenAPI contracts', () => {
         );
       }
     }
-    // Include saved, captured-Preview and sampled-Topics download adapters.
-    expect(ids.size).toBe(137);
+    // Includes result downloads, Quotation partial/Resume and provider concurrency.
+    expect(ids.size).toBe(140);
     const refs = JSON.stringify(contract).matchAll(/"\$ref":"([^"]+)"/g);
     for (const [, ref] of refs) {
       expect(ref?.startsWith('#/components/schemas/')).toBe(true);

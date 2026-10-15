@@ -22,6 +22,7 @@ vi.mock('@/features/tools/quotation/api', async (original) => ({
   ...(await original<object>()),
   previewQuotation: vi.fn(),
   runQuotation: vi.fn(),
+  resumeQuotation: vi.fn(),
   getQuotationResult: vi.fn(),
   queryQuotation: vi.fn(),
 }));
@@ -174,13 +175,18 @@ it('keeps request controls usable and reruns after incompatible saved output fai
     },
   ]);
   vi.mocked(quotationApi.getQuotationResult).mockResolvedValue({
-    request_status: { status: 'supported', request: { kind: 'quotation', request: request } },
-    id: 'broken',
-    tab_id: tab.id,
-    kind: 'quotation',
-    created_at: '',
-    request,
-    result: { version: 1, payload: null, finished_at: '' },
+    analysis: {
+      request_status: { status: 'supported', request: { kind: 'quotation', request: request } },
+      id: 'broken',
+      tab_id: tab.id,
+      kind: 'quotation',
+      created_at: '',
+      request,
+      result: { version: 1, payload: null, finished_at: '' },
+    },
+    version: 1,
+    manifest: null,
+    partial: null,
   } as unknown as quotationApi.QuotationAnalysisResult);
   vi.mocked(quotationApi.runQuotation).mockRejectedValue(new Error('Test execution failure'));
   try {
@@ -239,25 +245,26 @@ it.each([0, 1])(
       },
     ]);
     vi.mocked(quotationApi.getQuotationResult).mockResolvedValue({
-      request_status: { status: 'supported', request: { kind: 'quotation', request: request } },
-      id: 'result',
-      tab_id: tab.id,
-      kind: 'quotation',
-      created_at: '',
-      request,
-      result: {
-        version: 1,
-        payload: {
-          input: request.input,
-          columns: [['text', 'VARCHAR']],
-          documents: 'documents',
-          matches: 'matches',
-          projection: 'projection',
-          document_count: 1,
-          matching_documents: count,
-          match_count: count,
-        },
-        finished_at: '',
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'quotation', request: request } },
+        id: 'result',
+        tab_id: tab.id,
+        kind: 'quotation',
+        created_at: '',
+        request,
+        result: null,
+      },
+      version: 1,
+      partial: null,
+      manifest: {
+        input: request.input,
+        columns: [['text', 'VARCHAR']],
+        documents: 'documents',
+        matches: 'matches',
+        projection: 'projection',
+        document_count: 1,
+        matching_documents: count,
+        match_count: count,
       },
     });
     vi.mocked(quotationApi.queryQuotation).mockResolvedValue(page);
@@ -392,4 +399,89 @@ it('requires explicit defaults for unsupported requests and retains original JSO
   ).not.toBeInTheDocument();
   expect(analysesApi.updateTab).not.toHaveBeenCalled();
   expect(original.future_option.value).toBe('future');
+});
+
+it('keeps the current page through partial refresh, Resume and completion', async () => {
+  const user = userEvent.setup();
+  const partial = { checked_texts: 8, total_texts: 100 };
+  const summary: analysesApi.Tab = {
+    ...tab,
+    analysis: {
+      id: 'partial',
+      created_at: '',
+      request,
+      request_status: { status: 'supported', request: { kind: 'quotation', request } },
+      has_result: false,
+      quotation_partial: partial,
+    },
+  };
+  const output: quotationApi.QuotationAnalysisResult = {
+    analysis: {
+      id: 'partial',
+      tab_id: tab.id,
+      kind: 'quotation',
+      created_at: '',
+      request,
+      request_status: summary.analysis!.request_status,
+      result: null,
+    },
+    version: 2,
+    manifest: {
+      input: request.input,
+      columns: [['text', 'VARCHAR']],
+      documents: 'documents',
+      matches: 'matches',
+      projection: 'projection',
+      document_count: 8,
+      matching_documents: 8,
+      match_count: 45,
+      processed_column: 'text',
+    },
+    partial,
+  };
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([summary]);
+  vi.mocked(quotationApi.getQuotationResult).mockResolvedValue(output);
+  vi.mocked(quotationApi.queryQuotation).mockResolvedValue({ ...page, totalRows: 45 });
+  let complete: (() => void) | undefined;
+  vi.mocked(quotationApi.resumeQuotation).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        complete = () =>
+          resolve({
+            ...output.analysis,
+            result: { version: 2, payload: output.manifest, finished_at: '' },
+          });
+      }),
+  );
+  const { client } = mount();
+  await screen.findByRole('region', { name: 'Quotation results' });
+  await user.click(screen.getByRole('link', { name: 'Go to next page' }));
+  await waitFor(() =>
+    expect(vi.mocked(quotationApi.queryQuotation).mock.lastCall?.[2].page).toBe(2),
+  );
+  expect(screen.getByRole('combobox', { name: 'Quotations per page' })).toHaveValue('20');
+  await user.click(screen.getByRole('button', { name: 'Resume', exact: true }));
+  await waitFor(() =>
+    expect(quotationApi.resumeQuotation).toHaveBeenCalledWith(base, tab.id, request),
+  );
+  expect(screen.getByRole('region', { name: 'Quotation results' })).toBeInTheDocument();
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ['native', base, 'analyses', 'partial'] });
+  });
+  expect(vi.mocked(quotationApi.queryQuotation).mock.lastCall?.[2].page).toBe(2);
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...summary,
+      analysis: { ...summary.analysis!, has_result: true, quotation_partial: undefined },
+    },
+  ]);
+  vi.mocked(quotationApi.getQuotationResult).mockResolvedValue({ ...output, partial: null });
+  await act(async () => {
+    complete?.();
+    await Promise.resolve();
+  });
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Resume', exact: true })).not.toBeInTheDocument(),
+  );
+  expect(vi.mocked(quotationApi.queryQuotation).mock.lastCall?.[2].page).toBe(2);
 });

@@ -167,6 +167,8 @@ fn tab_check(conn: &Connection, id: Uuid) -> Result<()> {
 }
 struct CapturedSource {
     documents: String,
+    population: Option<String>,
+    population_count: u64,
     matches: String,
     columns: Vec<(String, String)>,
     metadata: arrow_metadata::Annotations,
@@ -193,13 +195,19 @@ impl CapturedSource {
                 sort: p.sort.as_ref().map(|s| (s.column.as_str(), s.descending)),
             }),
         )?;
-        if page.is_none() {
+        let population_count = if let Some(page) = page {
+            distinct_preview_documents(conn, &mut captured, page.page_size)?
+        } else {
+            let count = captured.count;
             distinct_documents(conn, &mut captured)?;
-        }
+            count
+        };
         let matches = temporary_name();
         conn.execute_batch(&format!("CREATE TEMP TABLE {matches}(document_id UBIGINT, match_order UBIGINT, left_context VARCHAR, matched_text VARCHAR, right_context VARCHAR, start_idx BIGINT, end_idx BIGINT, l1 VARCHAR, r1 VARCHAR, extraction VARCHAR)"))?;
         Ok(Self {
             documents: captured.name,
+            population: captured.population,
+            population_count,
             matches,
             columns: captured.columns,
             metadata: captured.metadata,
@@ -304,8 +312,31 @@ impl Database {
         self.conn.execute_batch("BEGIN TRANSACTION READ ONLY")?;
         tab_check(&self.conn, tab)?;
         let mut source = CapturedSource::capture(&self.conn, &request.input, Some(&request))?;
-        source.calculate(&self.conn, &matcher, request.page_size, &self.cancellation)?;
-        let projection = projection_sql(&source.documents, &source.matches);
+        source.calculate(
+            &self.conn,
+            &matcher,
+            source.document_count,
+            &self.cancellation,
+        )?;
+        let rows = live_document_rows_in(
+            &DocumentInput {
+                source: source.input.source.clone(),
+                column: source.input.column.clone(),
+            },
+            &source.documents,
+            &source.input.column,
+            &source.columns,
+            source.population.as_deref(),
+        );
+        let projection = format!(
+            "SELECT s.document_id,m.* EXCLUDE(document_id),s.source,count(*) OVER (PARTITION BY m.l1)::UBIGINT AS l1_frequency,count(*) OVER (PARTITION BY m.r1)::UBIGINT AS r1_frequency FROM ({rows}) s JOIN {} m ON m.document_id=s.processed_id",
+            source.matches
+        );
+        let (match_count, matching_documents) = self.conn.query_row(
+            &format!("SELECT count(*),count(DISTINCT document_id) FROM ({projection})"),
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )?;
         let file = arrow_page(
             &self.conn,
             &document_page_sql(&projection),
@@ -317,10 +348,10 @@ impl Database {
         self.conn.execute_batch("COMMIT")?;
         Ok(DocumentPage {
             file,
-            total_rows: source.matching_documents,
-            has_next: source.document_count > request.page_size,
-            document_count: source.document_count.min(request.page_size),
-            match_count: source.match_count,
+            total_rows: matching_documents,
+            has_next: source.population_count > request.page_size,
+            document_count: source.population_count.min(request.page_size),
+            match_count,
         })
     }
     pub(super) fn run_concordance(
@@ -419,6 +450,8 @@ mod tests {
                 self.conn.execute_batch(&format!("CREATE TEMP TABLE {matches}(document_id UBIGINT, match_order UBIGINT, left_context VARCHAR, matched_text VARCHAR, right_context VARCHAR, start_idx BIGINT, end_idx BIGINT, l1 VARCHAR, r1 VARCHAR, extraction VARCHAR)"))?;
                 let mut source = CapturedSource {
                     documents: docs.name,
+                    population: None,
+                    population_count: docs.count,
                     matches,
                     columns: docs.columns,
                     metadata: docs.metadata,
@@ -476,6 +509,56 @@ mod tests {
         )
     }
 
+    #[test]
+    fn live_details_reject_another_text_at_the_clicked_source_position() {
+        let (mut project, tab, input, search) = setup();
+        project
+            .database
+            .conn
+            .execute_batch("INSERT INTO data.docs VALUES ('other cat',[],'other')")
+            .unwrap();
+        let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
+        let request = ConcordanceRequest {
+            inputs: vec![input],
+            search,
+        };
+        let id = project
+            .database
+            .begin_analysis_run(tab, "concordance", serde_json::to_value(&request).unwrap())
+            .unwrap();
+        project
+            .database
+            .run_concordance(tab, id, request, vec![matcher], |_| {})
+            .unwrap();
+        project
+            .database
+            .conn
+            .execute_batch("DELETE FROM data.docs WHERE document_id<>'other'")
+            .unwrap();
+        let mut reader = project
+            .database
+            .connection(CancellationToken::new())
+            .unwrap();
+        let error = reader
+            .concordance_page(
+                id,
+                ConcordanceQuery {
+                    source_index: 0,
+                    projection: Projection::Documents,
+                    page: 1,
+                    page_size: 1,
+                    sort: None,
+                    filter: ConcordanceFilter {
+                        document_id: Some("1".into()),
+                        expected_text: Some("😀 cat cat".into()),
+                        ..Default::default()
+                    },
+                },
+            )
+            .err()
+            .unwrap();
+        assert_eq!(error.code, "result_stale");
+    }
     #[test]
     fn historical_downloads_keep_original_text_bindings_after_a_source_column_rename() {
         use super::super::result_downloads::{ResultColumn, ResultDownload, ResultSelection};

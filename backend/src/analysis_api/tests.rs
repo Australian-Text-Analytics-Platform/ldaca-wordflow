@@ -342,6 +342,126 @@ async fn concordance_preview_saved_queries_and_publication_have_distinct_ownersh
 
 #[tokio::test]
 #[ignore = "requires explicitly provisioned WORDFLOW_QUOTATION_MODEL"]
+async fn quotation_parallel_stop_reopen_and_explicit_resume_keep_checked_texts() {
+    let directory = tempfile::tempdir().unwrap();
+    let paths = wordflow_storage::AppDirectories::browser(directory.path()).unwrap();
+    for path in paths.all() {
+        std::fs::create_dir_all(path).unwrap();
+    }
+    let model_path = paths.cache.join("udpipe");
+    std::fs::create_dir_all(&model_path).unwrap();
+    std::fs::copy(
+        std::env::var_os("WORDFLOW_QUOTATION_MODEL").unwrap(),
+        model_path.join(ldaca_rs::quotation::MODEL_FILENAME),
+    )
+    .unwrap();
+    let project = ProjectRuntime::new(CancellationToken::new());
+    project.set_storage(paths.clone()).unwrap();
+    let path = directory.path().join("partial.wfpj");
+    project.create(Some(path.clone())).await.unwrap();
+    project.sql(SqlBatch{script:Some("CREATE TABLE data.documents AS SELECT 'Alice said, \"The project will finish tomorrow morning.\" Document '||i||'.' AS text,i AS category FROM range(100) t(i); INSERT INTO data.documents SELECT * FROM data.documents WHERE category=0; INSERT INTO data.documents VALUES ('',100),(NULL,101)".into()),response:SqlResponse::Command,..Default::default()}).await.unwrap();
+    let router = crate::api::router()
+        .split_for_parts()
+        .0
+        .with_state(project.clone());
+    let tab = json_body(
+        send(
+            &router,
+            "POST",
+            "/api/project/tabs",
+            json!({"kind":"quotation"}),
+        )
+        .await,
+    )
+    .await;
+    let tab = Uuid::parse_str(tab["id"].as_str().unwrap()).unwrap();
+    let input: QuotationRequest = serde_json::from_value(
+        json!({"input":{"source":{"schema":"data","name":"documents"},"column":"text"}}),
+    )
+    .unwrap();
+    let task = project
+        .submit_quotation(tab, input.clone(), false)
+        .await
+        .unwrap();
+    let task_id = task.id;
+    let started = std::time::Instant::now();
+    let id = tokio::time::timeout(std::time::Duration::from_secs(45), async {
+        loop {
+            if let Some(analysis) = project.tabs(Some("quotation".into())).await.unwrap()[0]
+                .analysis
+                .as_ref()
+                && analysis
+                    .quotation_partial
+                    .as_ref()
+                    .is_some_and(|partial| partial.checked_texts > 0)
+            {
+                assert!(!analysis.has_result);
+                break analysis.id;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    project.cancel_task(task_id).unwrap();
+    assert!(task.wait().await.is_err());
+    let partial = project.quotation_output(id).await.unwrap().unwrap();
+    let checked = partial.partial.unwrap().checked_texts;
+    assert!(checked > 0 && checked < 101, "checked {checked}");
+    assert_eq!(project.tasks().tasks.len(), 1);
+    project.close().await.unwrap();
+    let project = ProjectRuntime::new(CancellationToken::new());
+    project.set_storage(paths).unwrap();
+    project.open(path).await.unwrap();
+    assert!(project.tasks().tasks.is_empty());
+    let reopened = project.quotation_output(id).await.unwrap().unwrap();
+    assert!(reopened.analysis.result.is_none());
+    assert_eq!(reopened.partial.unwrap().checked_texts, checked);
+    let resumed = project
+        .submit_quotation(tab, input, true)
+        .await
+        .unwrap()
+        .wait()
+        .await
+        .unwrap();
+    assert_eq!(resumed.id, id);
+    let output = project.quotation_output(id).await.unwrap().unwrap();
+    assert!(output.partial.is_none());
+    assert_eq!(output.manifest.document_count, 102);
+    let ledger = format!("result_{}", output.manifest.documents.simple());
+    let count = project
+        .sql(SqlBatch {
+            script: Some(format!("SELECT count(*)::BIGINT FROM wordflow.{ledger}")),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    let crate::project::SqlOutput::Arrow { file, .. } = count else {
+        panic!("Arrow")
+    };
+    let batch = arrow_ipc::reader::StreamReader::try_new(file.reopen().unwrap(), None)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        batch
+            .column(0)
+            .as_any()
+            .downcast_ref::<duckdb::arrow::array::Int64Array>()
+            .unwrap()
+            .value(0),
+        101
+    );
+    eprintln!(
+        "parallel Quotation: Stop retained {checked}/101 texts, reopen and Resume completed in {:?}",
+        started.elapsed()
+    );
+    project.close().await.unwrap();
+}
+
+#[tokio::test]
+#[ignore = "requires explicitly provisioned WORDFLOW_QUOTATION_MODEL"]
 async fn quotation_preview_tasks_and_saved_publication_use_native_ownership() {
     let model = std::env::var_os("WORDFLOW_QUOTATION_MODEL").unwrap();
     let directory = tempfile::tempdir().unwrap();

@@ -587,6 +587,20 @@ pub(super) fn document_batch(
 pub(super) fn distinct_documents(conn: &Connection, docs: &mut CapturedDocuments) -> Result<()> {
     distinct_documents_in(conn, docs, false)
 }
+/// Deduplicate only the requested Preview page and retain that exact population.
+pub(super) fn distinct_preview_documents(
+    conn: &Connection,
+    docs: &mut CapturedDocuments,
+    size: u64,
+) -> Result<u64> {
+    let lookahead_count = docs.count;
+    conn.execute(
+        &format!("DELETE FROM {} WHERE document_id>?", docs.name),
+        [size],
+    )?;
+    distinct_documents_in(conn, docs, true)?;
+    Ok(lookahead_count)
+}
 pub(super) fn distinct_documents_in(
     conn: &Connection,
     docs: &mut CapturedDocuments,
@@ -655,6 +669,44 @@ pub(crate) struct DocumentPage {
 mod publication_tests {
     use super::*;
 
+    #[test]
+    fn distinct_preview_texts_expand_only_the_captured_page_population() {
+        let project = Project::untitled().unwrap();
+        project.database.conn.execute_batch("CREATE TABLE data.docs(text VARCHAR,id BIGINT); INSERT INTO data.docs VALUES ('same',1),('same',2),('outside',3),('same',4); INSERT INTO wordflow.nodes(table_name) VALUES ('docs')").unwrap();
+        let conn = &project.database.conn;
+        let mut docs = capture_documents(
+            conn,
+            &DocumentInput {
+                source: "docs".into(),
+                column: "text".into(),
+            },
+            Some(DocumentSelection {
+                page: 1,
+                size: 2,
+                sort: None,
+            }),
+        )
+        .unwrap();
+        assert_eq!(distinct_preview_documents(conn, &mut docs, 2).unwrap(), 3);
+        assert_eq!(docs.count, 1);
+        let rows = live_document_rows_in(
+            &docs.input,
+            &docs.name,
+            "text",
+            &docs.columns,
+            docs.population.as_deref(),
+        );
+        let ids = conn
+            .prepare(&format!(
+                "SELECT source.id FROM ({rows}) ORDER BY document_id"
+            ))
+            .unwrap()
+            .query_map([], |row| row.get::<_, i64>(0))
+            .unwrap()
+            .collect::<duckdb::Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(ids, [1, 2]);
+    }
     #[test]
     fn processed_text_equality_is_exact_even_with_case_insensitive_source_collations() {
         let p = Project::untitled().unwrap();

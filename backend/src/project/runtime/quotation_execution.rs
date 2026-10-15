@@ -43,6 +43,7 @@ impl ProjectRuntime {
         &self,
         tab_id: Uuid,
         input: QuotationRequest,
+        resume: bool,
     ) -> Result<crate::TaskHandle<Analysis>> {
         self.ensure_writable().await?;
         let tab = self.with_project(move |p| p.analysis_tab(tab_id)).await?;
@@ -58,7 +59,11 @@ impl ProjectRuntime {
                 let submitted = serde_json::to_value(&input)?;
                 let analysis_id = runtime
                     .with_writable_project(move |p| {
-                        p.begin_analysis_run(tab_id, "quotation", submitted)
+                        if resume {
+                            p.quotation_resume(tab_id, &serde_json::from_value(submitted)?)
+                        } else {
+                            p.begin_analysis_run(tab_id, "quotation", submitted)
+                        }
                     })
                     .await?;
                 let selected = input.input.clone();
@@ -66,7 +71,7 @@ impl ProjectRuntime {
                     .with_project(move |p| p.validate_quotation_input(tab_id, &selected))
                     .await?;
                 context.progress("Loading quotation model", None);
-                let extractor = quotation::prepare_extractor(
+                let model = quotation::prepare_model(
                     runtime.shared.client.clone(),
                     context.cancellation().clone(),
                     runtime.quotation_path()?,
@@ -75,13 +80,24 @@ impl ProjectRuntime {
                 context.check_cancelled()?;
                 runtime
                     .with_writable_project(move |p| {
-                        p.run_quotation(tab_id, analysis_id, input, extractor, |message| {
-                            context.progress(message, None)
-                        })
+                        p.run_quotation_parallel(
+                            tab_id,
+                            analysis_id,
+                            input,
+                            model,
+                            resume,
+                            |message, fraction| context.progress(message, fraction),
+                        )
                     })
                     .await
             },
         )
+    }
+    pub(crate) async fn quotation_output(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<quotation::QuotationOutput>> {
+        self.with_project(move |p| p.quotation_output(id)).await
     }
     pub(crate) async fn submit_quotation_publication(
         &self,

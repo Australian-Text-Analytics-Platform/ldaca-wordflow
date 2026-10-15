@@ -94,6 +94,16 @@
             "format": "uuid",
             "type": "string"
           },
+          "quotation_partial": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QuotationPartial"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "request": {},
           "request_status": {
             "$ref": "#/components/schemas/RequestRestoration"
@@ -105,6 +115,19 @@
           "request",
           "request_status",
           "has_result"
+        ],
+        "type": "object"
+      },
+      "AnnotationConcurrency": {
+        "additionalProperties": false,
+        "properties": {
+          "concurrency": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "concurrency"
         ],
         "type": "object"
       },
@@ -1186,6 +1209,13 @@
             },
             "type": "array"
           },
+          "expected_text": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "uncased": {
             "default": false,
             "type": "boolean"
@@ -1410,6 +1440,13 @@
       "Connection": {
         "additionalProperties": false,
         "properties": {
+          "annotation_concurrency": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "credential_mode": {
             "$ref": "#/components/schemas/CredentialMode"
           },
@@ -1447,6 +1484,13 @@
         "allOf": [
           {
             "properties": {
+              "annotation_concurrency": {
+                "minimum": 0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
               "credential_mode": {
                 "$ref": "#/components/schemas/CredentialMode"
               },
@@ -3015,6 +3059,16 @@
               "number",
               "null"
             ]
+          },
+          "thinking": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Thinking"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3028,21 +3082,47 @@
         "type": "object"
       },
       "InferenceCapabilities": {
-        "description": "Controls implemented by this adapter, not an exhaustive provider capability catalogue.",
         "properties": {
-          "reasoning": {
+          "budget_max": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "budget_min": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "default_concurrency": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "efforts": {
             "items": {
-              "$ref": "#/components/schemas/Reasoning"
+              "type": "string"
             },
             "type": "array"
           },
-          "temperature_with_reasoning": {
+          "max_concurrency": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "temperature_with_thinking": {
             "type": "boolean"
+          },
+          "thinking": {
+            "items": {
+              "$ref": "#/components/schemas/ThinkingKind"
+            },
+            "type": "array"
           }
         },
         "required": [
-          "reasoning",
-          "temperature_with_reasoning"
+          "thinking",
+          "efforts",
+          "budget_min",
+          "budget_max",
+          "temperature_with_thinking",
+          "max_concurrency",
+          "default_concurrency"
         ],
         "type": "object"
       },
@@ -4173,6 +4253,56 @@
         ],
         "type": "object"
       },
+      "QuotationOutput": {
+        "properties": {
+          "analysis": {
+            "$ref": "#/components/schemas/Analysis"
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/QuotationResultV1"
+          },
+          "partial": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QuotationPartial"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "analysis",
+          "version",
+          "manifest",
+          "partial"
+        ],
+        "type": "object"
+      },
+      "QuotationPartial": {
+        "properties": {
+          "checked_texts": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_texts": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "checked_texts",
+          "total_texts"
+        ],
+        "type": "object"
+      },
       "QuotationPreview": {
         "additionalProperties": false,
         "properties": {
@@ -4241,6 +4371,12 @@
         "additionalProperties": false,
         "properties": {
           "document_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expected_text": {
             "type": [
               "string",
               "null"
@@ -5900,6 +6036,146 @@
         ],
         "type": "string"
       },
+      "Thinking": {
+        "oneOf": [
+          {
+            "properties": {
+              "control": {
+                "enum": [
+                  "reasoning_effort"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "control"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "control": {
+                "enum": [
+                  "thinking_budget"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "format": "int32",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "value",
+              "control"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "control": {
+                "enum": [
+                  "thinking_level"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "control"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "control": {
+                "enum": [
+                  "budget_tokens"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "format": "int32",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "value",
+              "control"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "control": {
+                "enum": [
+                  "adaptive_effort"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "control"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "control": {
+                "enum": [
+                  "disabled"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "control"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "control": {
+                "enum": [
+                  "openrouter_effort"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "control"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ThinkingKind": {
+        "enum": [
+          "reasoning_effort",
+          "thinking_budget",
+          "thinking_level",
+          "budget_tokens",
+          "adaptive_effort",
+          "disabled",
+          "openrouter_effort"
+        ],
+        "type": "string"
+      },
       "TimeUnit": {
         "enum": [
           "second",
@@ -7207,6 +7483,54 @@
         ]
       }
     },
+    "/api/ai/providers/{id}/annotation": {
+      "patch": {
+        "operationId": "ai_http_annotation_concurrency",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationConcurrency"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ai_http"
+        ]
+      }
+    },
     "/api/ai/providers/{id}/capabilities": {
       "get": {
         "operationId": "ai_http_capabilities",
@@ -8493,6 +8817,51 @@
               }
             },
             "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "analysis_api"
+        ]
+      }
+    },
+    "/api/project/analyses/{id}/quotation": {
+      "get": {
+        "operationId": "analysis_api_quotation_output",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/QuotationOutput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -17793,6 +18162,61 @@
               }
             },
             "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "analysis_api"
+        ]
+      }
+    },
+    "/api/project/tabs/{id}/quotation/resume": {
+      "post": {
+        "operationId": "analysis_api_resume_quotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Analysis"
+                }
+              }
+            },
+            "headers": {
+              "x-wordflow-task-id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "tags": [

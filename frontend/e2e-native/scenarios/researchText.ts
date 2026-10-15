@@ -169,9 +169,9 @@ export async function researchQuotationScenario(base: string, prefix: string) {
     const id = await runResearchAnalysis(base, 'quotation', panel);
     const saved = await quotationApi.getQuotationResult(base, id);
     if (!saved) throw new Error('Completed Quotation analysis has no saved output');
-    expect(saved.result.payload.document_count).toBe(28);
-    expect(saved.result.payload.matching_documents).toBe(26);
-    expect(saved.result.payload.match_count).toBe(39);
+    expect(saved.manifest.document_count).toBe(28);
+    expect(saved.manifest.matching_documents).toBe(26);
+    expect(saved.manifest.match_count).toBe(39);
     await results.$('[role="tab"]=Documents').click();
     await results.$('th=tags').waitForExist();
     await researchScreenshot(`${prefix}-quotation-documents`, results);
