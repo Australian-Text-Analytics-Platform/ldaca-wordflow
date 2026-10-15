@@ -1,5 +1,6 @@
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
+import { Key } from 'webdriverio';
 import { role, testId, post, rect, press, screenshot } from './fixtures';
 
 it('graph menus use actual collision bounds and keep keyboard navigation', async () => {
@@ -19,23 +20,30 @@ it('graph menus use actual collision bounds and keep keyboard navigation', async
   const graph = browser.$('.react-flow');
   const area = await rect(graph);
   const start = await rect(card);
-  await browser
-    .action('pointer', { id: 'mouse' })
-    .move({ x: Math.round(start.x + 30), y: Math.round(start.y + 20), duration: 0 })
-    .perform(true);
-  await browser.action('pointer', { id: 'mouse' }).down()
-    // React Flow starts its drag on the first move beyond the click threshold.
-    .move({ x: Math.round(start.x + 35), y: Math.round(start.y + 25), duration: 50 })
-    .perform(true);
-  await browser
-    .action('pointer', { id: 'mouse' })
-    .move({
-      x: Math.round(area.x + area.width - start.width + 15),
-      y: Math.round(area.y + area.height - start.height + 5),
-      duration: 200,
-    })
-    .perform(true);
-  await browser.action('pointer', { id: 'mouse' }).up().perform(true);
+  const modifier = process.platform === 'darwin' ? Key.Command : Key.Control;
+  await browser.action('key', { id: 'graph-modifier' }).down(modifier).perform(true);
+  try {
+    await expect(card).toHaveAttribute('draggable', 'false');
+    await browser
+      .action('pointer', { id: 'mouse' })
+      .move({ x: Math.round(start.x + 30), y: Math.round(start.y + 20), duration: 0 })
+      .perform(true);
+    await browser.action('pointer', { id: 'mouse' }).down()
+      // React Flow starts its drag on the first move beyond the click threshold.
+      .move({ x: Math.round(start.x + 35), y: Math.round(start.y + 25), duration: 50 })
+      .perform(true);
+    await browser
+      .action('pointer', { id: 'mouse' })
+      .move({
+        x: Math.round(area.x + area.width - start.width + 15),
+        y: Math.round(area.y + area.height - start.height + 5),
+        duration: 200,
+      })
+      .perform(true);
+    await browser.action('pointer', { id: 'mouse' }).up().perform(true);
+  } finally {
+    await browser.action('key', { id: 'graph-modifier' }).up(modifier).perform();
+  }
   expect((await rect(card)).y).toBeGreaterThan(start.y + 200);
   const trigger = role('button', { name: 'Data Block actions' });
   const action = await rect(trigger);

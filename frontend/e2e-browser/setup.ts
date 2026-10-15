@@ -5,7 +5,6 @@ import { browser } from '@wdio/globals';
 import {
   role,
   setTestPreferences,
-  registerQueries,
   resetProject,
   baseUrl,
   clearResponseStubs,
@@ -31,7 +30,6 @@ const networkEvents = [
 // Mocha setup failures stop the scenario rather than merely logging a runner-hook error.
 export const mochaHooks = {
   async beforeAll() {
-    registerQueries();
     await startErrorCapture();
   },
   afterAll: stopErrorCapture,

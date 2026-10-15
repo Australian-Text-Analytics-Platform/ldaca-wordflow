@@ -169,7 +169,7 @@ export async function researchQuotationScenario(base: string, prefix: string) {
     const id = await runResearchAnalysis(base, 'quotation', panel);
     const saved = await quotationApi.getQuotationResult(base, id);
     if (!saved) throw new Error('Completed Quotation analysis has no saved output');
-    expect(saved.manifest.document_count).toBe(28);
+    expect(saved.manifest.document_count).toBe(27);
     expect(saved.manifest.matching_documents).toBe(26);
     expect(saved.manifest.match_count).toBe(39);
     await results.$('[role="tab"]=Documents').click();
@@ -186,8 +186,11 @@ export async function researchQuotationScenario(base: string, prefix: string) {
     await setAnalysisPaneSize('normal');
     await setResearchTheme(false);
     await results.$('[role="tab"]=Documents').click();
-    await results.$('button=Add to Project').click();
-    if (!(await $('[role="menuitem"]').isExisting())) await browser.keys('ArrowDown');
+    await results.$('button=Add to Project').execute((element) => {
+      element.focus();
+    });
+    await browser.keys('ArrowDown');
+    await $('[role="menuitem"]=Documents').waitForDisplayed();
     await $('[role="menuitem"]=Documents').click();
     const dialog = $('[role="dialog"]');
     await dialog.$('input').setValue(`${source}_published`);
@@ -199,9 +202,9 @@ export async function researchQuotationScenario(base: string, prefix: string) {
         sql: `SELECT document_id, tags FROM data.${ objectsApi.identifier(`${source}_published`)} ORDER BY document_id`,
       },
     ]);
-    expect(rows.numRows).toBe(26);
+    expect(rows.numRows).toBe(27);
     expect(rows.toArray().map((r: Record<string, unknown>) => Number(r.document_id))).toEqual(
-      Array.from({ length: 26 }, (_, i) => i + 3),
+      Array.from({ length: 27 }, (_, i) => i + 2),
     );
     await expect($('[data-testid="project-data-overlay"]')).not.toExist();
   });

@@ -76,6 +76,13 @@ real interaction, accessibility and data transformation checks. Browser tests li
 under `frontend/e2e-browser`; each spec owns a fresh Rust runtime and each
 scenario clears its temporary project after accepted tasks have settled. WebdriverIO scenarios under `frontend/e2e-native` exercise
 the actual Tauri host; see the [native testing procedure](desktop-runtime.md#automated-native-tests).
+Reset deletes independently published Data Blocks through native dependency
+deletion before clearing fixture schemas. Dropping schemas alone leaves their
+private owned joins behind and can break a later complete-project export.
+Accessible browser locators use Testing Library through WDIO function selectors,
+which resolve a remounted parent before querying its children. Retain regression
+coverage for initially absent actions and stale nested actions. Keep WDIO within
+the Tauri adapter's supported major version when updating automation packages.
 
 ## Representative file-import journeys
 

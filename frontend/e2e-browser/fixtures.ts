@@ -1,10 +1,11 @@
 import type { components } from '@/api/generated/native';
 import { browser } from '@wdio/globals';
-import { Key, type ChainablePromiseElement } from 'webdriverio';
+import { Key, type ChainablePromiseElement, type ElementFunction } from 'webdriverio';
 import type { ByRoleOptions, MatcherOptions, queries } from '@testing-library/dom';
 import { resolve } from 'node:path';
 import { cancelTask, dismissTask, getTasks } from '@/features/project/tasksApi';
-import { executeSql, querySql } from '@/features/project/api';
+import { deleteObjects, dependencyGraph, executeSql, projectStatus, querySql } from '@/features/project/api';
+import { dependentSelection } from '@/features/project/deletionSelection';
 import { deleteTab, listTabs } from '@/features/tools/common/analysisApi';
 import { identifier } from '@/features/project/objects';
 
@@ -25,38 +26,43 @@ declare global {
   }
 }
 
-// A WDIO custom locator delegates accessible-name matching to Testing Library.
-// Returned elements retain WDIO's native refetching, assertions and action APIs.
-export function registerQueries() {
-  browser.addLocatorStrategy('testingLibrary', (encoded: string, root?: HTMLElement) => {
-    if (!window.TestingLibraryDom) return [];
-    const { query, matcher, options } = JSON.parse(encoded, (_key, value: unknown) => {
-      if (value && typeof value === 'object' && 'regex' in value && 'flags' in value) {
-        return new RegExp(String(value.regex), String(value.flags));
-      }
-      return value;
-    }) as { query: Query; matcher: string | RegExp; options: Options };
-    const { index, ...queryOptions } = options;
-    const matches = window.TestingLibraryDom[query](
-      root ?? document.body,
-      matcher as string,
-      queryOptions,
-    );
-    return index === undefined ? matches : matches.slice(index, index >= 0 ? index + 1 : undefined);
-  });
+function queryElements(this: HTMLElement | Window, encoded: string) {
+  if (!window.TestingLibraryDom) return [];
+  const { query, matcher, options } = JSON.parse(encoded, (_key, value: unknown) => {
+    if (value && typeof value === 'object' && 'regex' in value && 'flags' in value) {
+      return new RegExp(String(value.regex), String(value.flags));
+    }
+    return value;
+  }) as { query: Query; matcher: string | RegExp; options: Options };
+  const { index, ...queryOptions } = options;
+  const matches = window.TestingLibraryDom[query](
+    this instanceof HTMLElement ? this : document.body,
+    matcher as string,
+    queryOptions,
+  );
+  return index === undefined ? matches : matches.slice(index, index >= 0 ? index + 1 : undefined);
 }
 const encode = (query: Query, matcher: string | RegExp, options: Options) =>
   JSON.stringify({ query, matcher, options }, (_key, value: unknown) =>
     value instanceof RegExp ? { regex: value.source, flags: value.flags } : value,
   );
+// Function selectors bind `this` to the freshly resolved parent. WDIO v9 custom
+// strategies instead retain a stale parent in their arguments after a remount.
+const selector = (query: Query, matcher: string | RegExp, options: Options) =>
+  // WDIO serializes functions without closures. Bake JSON-escaped test arguments
+  // into this runner-only selector; no application code enables dynamic evaluation.
+  // oxlint-disable-next-line typescript/no-implied-eval
+  new Function(
+    `return (${queryElements.toString()}).call(this, ${JSON.stringify(encode(query, matcher, options))});`,
+  ) as ElementFunction;
 const locator =
   (query: Query) =>
   (matcher: string | RegExp, options: Options = {}, scope: Scope = browser) =>
-    scope.custom$('testingLibrary', encode(query, matcher, options));
+    scope.$(selector(query, matcher, options));
 const locators =
   (query: Query) =>
   (matcher: string | RegExp, options: Options = {}, scope: Scope = browser) =>
-    scope.custom$$('testingLibrary', encode(query, matcher, options));
+    scope.$$(selector(query, matcher, options));
 export const role = locator('queryAllByRole');
 export const roles = locators('queryAllByRole');
 export const text = locator('queryAllByText');
@@ -91,6 +97,14 @@ export async function resetProject(base = baseUrl) {
   await finishTestTasks(base);
   for (const task of (await getTasks(base)).tasks) await dismissTask(base, task.id);
   for (const tab of await listTabs(base)) await deleteTab(base, tab.id);
+  // Published outputs survive tab deletion; their native owner releases the backing relations.
+  if ((await projectStatus(base))?.schema_version === 2) {
+    const published = await querySql(base, [{ sql: 'SELECT node_name FROM wordflow.publications' }]);
+    const roots = published.toArray().map((row: Record<string, unknown>) => ({
+      schema: 'data', name: String(row.node_name),
+    }));
+    if (roots.length) await deleteObjects(base, dependentSelection(await dependencyGraph(base), roots));
+  }
   const schemas = await querySql(base, [
     {
       sql: "SELECT schema_name FROM duckdb_schemas() WHERE database_name=current_database() AND NOT internal AND schema_name<>'wordflow'",

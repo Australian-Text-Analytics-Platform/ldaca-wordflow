@@ -74,7 +74,9 @@ it('closes and reopens a saved project through native file opening, deduplicatin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind: 'complete_project' }),
       });
-      expect(response.ok).toBe(true);
+      if (!response.ok) {
+        throw new Error(`Complete-project export failed (${response.status}): ${await response.text()}`);
+      }
       await writeFile(path, new Uint8Array(await response.arrayBuffer()));
       for (let visit = 0; visit < 2; visit++) {
         await openFile();

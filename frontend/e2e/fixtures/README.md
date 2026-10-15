@@ -16,7 +16,7 @@ continue to generate large datasets separately with the existing opt-in flags.
 | `dense-trends.json`, `.parquet` | 720 records over 2025-12-24 to 2026-01-08, 8 unequal groups, missing days, long labels, NULL measurements and offset-bearing timestamps. Exercises first legend redraw, dense ticks, resize, and single-month Calendar bounds across a year boundary. |
 | `public-discourse-reference.json` | 72 documents, including NULL and blank text; 70 matching documents and 333 case-insensitive whole-word occurrences of `policy`. |
 | `public-discourse-study.json` | 54 documents; 52 matching documents and 248 occurrences of `policy`. A different vocabulary mix for comparison. |
-| `public-discourse-quotations.json` | 28 records, including NULL and non-quotation text; 26 matching documents and 39 quotations with the pinned extractor. Nested tags and long topic labels. |
+| `public-discourse-quotations.json` | 28 source records, including one NULL text; 27 processed and published documents, including one non-quotation text; 26 matching documents and 39 quotations with the pinned extractor. Nested tags and long topic labels. |
 | `annotation-documents.json`, `annotation-codebook.json` | 39 source rows and two synthetic codes. Explicit text keys include `"01"` and `"1"`; data includes duplicate/Unicode/long documents, three blank/NULL documents, invalid labels and correction/metadata columns. Manual tests preserve patches across pages; AI tests run 36 nonblank documents through real HTTP or the local Apple model. |
 | `topic-consultation-reference.json`, `topic-consultation-study.json` | 96 and 64 synthetic consultation rows with three unequal themes, varied first-person experiences, deliberate duplicate documents, long text, NULLs/blanks, Chinese and emoji, nested metadata and a deliberate `TOPIC_top1` name collision. Joint Preview selects 60/40 rows; Run retains all 96/64. Topic IDs are model-derived, not hand-authored labels. |
 
@@ -67,7 +67,7 @@ assertions; the importer checks its row count and typed columns.
   publication across the complete result.
 - Screenshots under `frontend/.tmp/wdio/` are review evidence, not pixel-baseline
   assertions. Existing session-error capture fails on unexpected application errors.
-- Export reads all 480 rows back in CSV, JSON, NDJSON, Parquet and Arrow, checks ZIP members, and opens selected/complete project files in fresh native runtimes. The native reopen scenario additionally closes and reopens a real project window via the desktop document coordinator.
+- Export reads all 480 rows back in CSV, XLSX, JSON and Parquet, checks ZIP members, and opens selected/complete project files in fresh native runtimes. The native reopen scenario additionally closes and reopens a real project window via the desktop document coordinator.
 - Annotation uses a controlled external HTTP provider with successful, partial, authentication-failure and held-response modes. Assertions check exact source changes, fresh Preview calls, bounded batching, cancellation and unchanged failed rows. Apple/live-provider acceptance remains opt-in.
 - The joined-data journey imports survey and participant files, creates a Join through Preprocessing, runs Compare, publishes original rows and verifies those rows survive Clear and reload.
 - Topic Modelling's `topic-modeling.spec.ts` scenarios additionally check shared
