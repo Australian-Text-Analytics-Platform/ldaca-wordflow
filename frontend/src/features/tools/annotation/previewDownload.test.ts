@@ -1,4 +1,4 @@
-import { expect, it } from 'vite-plus/test';
+import { expect, it, vi } from 'vite-plus/test';
 import { tableFromArrays } from 'apache-arrow';
 import { previewDownload } from './previewDownload';
 import type { AnnotationPreview } from './api';
@@ -33,4 +33,28 @@ it('exports only completed Preview rows with aligned predictions and preserves s
     'skipped',
   ]);
   expect(output.table.getChild('AI_prediction_error')?.get(1)).toBe('original diagnostic');
+});
+
+it('preserves missing, empty, blank and Unicode predictions without dynamic compilation', () => {
+  const values = [null, '', ' ', '猫😀'];
+  const preview = {
+    table: tableFromArrays({ id: Int32Array.from([1, 2, 3, 4]) }),
+    predictions: values.map((label) => ({ status: 'success', label })),
+  } as AnnotationPreview;
+  const blocked = () => {
+    throw new EvalError('Dynamic compilation is blocked by desktop CSP');
+  };
+  vi.stubGlobal('Function', new Proxy(Function, { construct: blocked, apply: blocked }));
+  try {
+    const output = previewDownload(preview);
+    expect(output.table.getChild('AI_prediction')?.toArray()).toEqual(values);
+    expect(output.table.getChild('AI_prediction_error')?.toArray()).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

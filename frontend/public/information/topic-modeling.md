@@ -31,18 +31,20 @@ vocabulary, not necessarily the topic's meaning or an author's intent.
 
 <h3 id="info-topic-modeling-segmentation">Why segmentation matters</h3>
 
-Automatic segmentation prefers blank-line, Unicode sentence, word, and token
-boundaries within the model budget. Line begins from each non-empty physical
+Automatic segmentation packs neighbouring whole paragraphs within the model
+budget, without cutting a paragraph to fill spare space. Line begins from each non-empty physical
 line, and Sentence begins from Unicode sentence boundaries. Oversized semantic
 units are split further. Every source span is owned by at most one segment, so
 coverage is neither repeated nor silently discarded.
 
 <h3 id="info-topic-modeling-what-you-can-do">What you can do</h3>
 
-- Fit temporary sampled Previews before committing to an all-row Run.
+- Fit temporary sampled Previews before committing to a complete Run of distinct
+  exact texts within each input.
 - Explore prominent and niche language patterns.
 - Compare the contribution of two corpora to the same discovered topics.
-- Adjust the displayed number of real Topics from the natural fit down to one.
+- Adjust a requested Topic count through the retained hierarchy, subject to the
+  optional hard maximum size.
 - Count each row in bubbles for its strongest one or more positive Topics.
 - Inspect representative words, topic sizes, similarity, and outliers.
 - Pan and zoom the fitted Topic graph, or cumulatively lasso Topics to filter
@@ -54,27 +56,33 @@ coverage is neither repeated nor silently discarded.
 Topic modelling is not a classifier or a definitive account of what a corpus
 is “about”. Clusters can reflect subject matter, genre, author, boilerplate,
 document length, or data-cleaning artefacts. Topic −1 is the expected outlier
-group rather than an error. Sampling, segmentation, Min topic size, the
+group rather than an error. Sampling, segmentation, maximum Topic size, the
 displayed number of topics, and the random seed can all affect the result, so
 compare configurations and return to the source documents when naming or
 interpreting a topic.
 
-Min topic size controls the smallest number of Topic Segments that can
-form a natural HDBSCAN Topic during the initial run. Its default is 10 and its
-minimum is 2. Changing it requires a new run and may change the maximum natural
-Topic count.
+HDBSCAN uses the fixed internal minimum size of 10 and default density settings.
+Maximum Topic size defaults to unlimited; a finite cap must be above 10 and is a
+hard segment limit. Requested number of Topics is a target; Wordflow reports the
+achieved count when the cap makes that target unreachable. There is one fit,
+without automatic retries or a silently increased cap.
 
-The Number of topics Result control merges HDBSCAN's natural real Topics; it
-does not rerun the model and cannot split above that natural count. Topic −1 is
-never counted or merged. After each change Wordflow recalculates representative
-words, coordinates, and document assignments.
+Count-only adjustments reuse the retained hierarchy. Maximum-size changes reuse
+reduced vectors for one HDBSCAN fit. True −1 outliers have a separate grey footer,
+without map coordinates or contribution to the real Topic count. Successful
+adjustments replace owned outputs atomically; failure preserves the last valid
+result. Older analyses missing intermediates ask for Rerun.
 
 Top topics per document defaults to two or the available real-topic count when smaller. A bubble counts a source row when that
 Topic has a positive share among the row's strongest N real-topic shares.
 Outlier −1 and zero shares do not count; ties at the cutoff all count. A row can
 therefore contribute to several bubbles, and bubble totals can exceed the
-number of source rows. Changing only Top N updates counts without changing the
-map layout or clearing graph interactions.
+number of source rows. Count chips show dominant-document counts and each Data
+Block's or metadata group's own share. Changing only Top N updates bubble sizes
+and publication membership without changing the map layout or clearing graph
+interactions. New results derive counts and metadata from current source rows
+matching checked exact texts; metadata edits never change fitted assignments or
+coordinates. Historical results keep their original meaning until Rerun.
 
 The term *topic* is technical rather than authorial. A critical overview is
 available in [this open-access article](https://doi.org/10.1177/14614456241293075)

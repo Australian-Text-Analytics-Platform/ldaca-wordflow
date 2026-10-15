@@ -20,8 +20,11 @@ jump to its explanation. All written Help is bundled with your application.
 
 A **Data Block** is a table of documents and their metadata. A **Table** stores
 rows; a **View** reads its sources through a live SQL query. The Project Graph
-shows their relationships. Saved analyses retain the inputs captured by their
-successful Run; later source edits do not silently recalculate those results.
+shows their relationships. New Topics, Concordance and Quotation results retain
+processed exact texts and outputs, then attach to current source rows. Duplicate
+rows remain separate; metadata edits update the view without recalculating fitted
+outputs. Historical analyses keep their saved meaning until Rerun. Frequency and
+Plots retain their original result populations.
 
 <h2 id="help-analysis-lifecycle">How Preview, Run and Clear work</h2>
 
@@ -34,10 +37,14 @@ request. Data Builder Preview reads the query that Apply will use.
 the analysis output. It creates one task with progress and cancellation in
 **Tasks**. You can switch tools or projects while accepted work continues.
 Frequency and Plots have no Preview. AI Run writes predictions to its Table;
-manual annotation edits use their own Save and Cancel.
+manual annotation edits use their own Save and Cancel. Annotation writes each
+completed batch directly and retains committed labels after Stop or failure.
+Quotation also retains completed batches; Resume skips checked texts under the
+same configuration, including texts with no quotations.
 
 **Clear results** removes owned analysis outputs and artifacts, preserving your
-settings. For tools whose matching saved settings disable Run, Clear allows
+settings. Annotation keeps its committed source labels. Published result Views own
+independent copies of generated outputs. For tools whose matching saved settings disable Run, Clear allows
 another Run against changed source data. Topic result adjustments reuse retained
 stages; an explicit Run always enters every stage. Older analyses missing those
 stages ask you to Rerun.

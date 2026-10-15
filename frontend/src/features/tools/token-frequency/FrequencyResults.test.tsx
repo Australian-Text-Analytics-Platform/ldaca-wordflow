@@ -483,6 +483,7 @@ it('opens a Concordance Preview using the saved source and clicked token', async
     mode: 'text',
     whole_word: true,
     regex: false,
+    ignore_punctuation: true,
   });
 });
 

@@ -24,5 +24,7 @@ No push or release publication is authorized by this implementation task.
 - [x] Batch 3: Topics fitting, adjustments and presentation.
 - [x] Batch 4: incremental Annotation and Quotation.
 - [x] Batch 5: LDaCA, caches and shared UI.
-- [ ] Batch 6: native Help, updater and documentation.
-- [ ] Required checks and native acceptance; retain existing outstanding platform gates.
+- [x] Batch 6: native Help, updater and documentation.
+- [x] Required package checks and isolated Chromium/macOS WebKit acceptance.
+- [x] Uninstrumented macOS release build and native API runtime checks.
+- [ ] Physical native Help/search, release visual/performance, Windows and signed production acceptance; retain the existing platform gates.

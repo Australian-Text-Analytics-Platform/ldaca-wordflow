@@ -38,7 +38,7 @@ const tutorial = {
   'ui.data-viewer': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-data-viewer',
-    label: 'Data Viewer',
+    label: 'Data View',
   },
   'ui.project-files': {
     file: 'tutorials/ui.md',
@@ -513,10 +513,10 @@ const reference = {
   },
 } as const satisfies Record<string, DocTarget>;
 
-/** Bundled docs registry consumed before or instead of the remote docs registry. */
+/** Canonical registry for bundled Help, Information and References. */
 export const BUNDLED_REGISTRY: RegistryShape = { tutorial, info, reference };
 
-/** Files that ship inside `frontend/public/` and can serve as remote fallbacks. */
+/** Files referenced by the bundled content targets. */
 export const BUNDLED_FILES: ReadonlySet<string> = new Set(
   [...Object.values(tutorial), ...Object.values(info), ...Object.values(reference)].map(
     (t) => t.file,

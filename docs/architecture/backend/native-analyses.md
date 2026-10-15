@@ -47,10 +47,11 @@ Frequency persists full count Tables and a comparison View over those counts,
 but no permanent source document copy. Results remain readable after their
 sources change or disappear.
 
-Future functions that publish selected original rows must retain those rows
-with their result. Saved row positions must never be applied to a freshly read
-source. A Data Block explicitly published from a result must own its data
-independently, so deleting the analysis cannot remove or break it.
+Historical snapshot analyses retain their original rows; their saved row positions
+must never be applied to a freshly read source. Version-2 exact-text lookups retain
+processed texts and generated outputs instead of complete source rows. A published
+Data Block owns its generated data independently, so deleting the analysis cannot
+remove or break it.
 
 ## Execution ownership
 
@@ -91,8 +92,10 @@ Cleanup reads ownership records and the catalogue without decoding result JSON o
 evaluating broken Views. It drops owned Views before Tables and tolerates missing
 relations. It never sweeps unrelated private relations or published Data Blocks.
 Duplicate admission, editor conflicts and initial-transaction failure preserve
-existing state. Later failure or cancellation leaves the accepted request without
-output. Settings updates cannot overwrite requests because they update a different
+existing state. For one-shot publication, later failure or cancellation leaves the
+accepted request without output. Incremental Annotation source commits and
+Quotation batches have the durable boundaries described below. Settings updates
+cannot overwrite requests because they update a different
 record.
 
 Tokenizer preparation uses `TaskContext::run_blocking` without holding a database
@@ -120,8 +123,8 @@ a successful commit cannot turn that result into a failure.
 
 Progress reports stages rather than invented percentages. Task summaries contain
 the tab association, not refresh effects, result tables or model credentials. The existing in-memory retention and Close/Quit ownership apply.
-Reload reconnects to active tasks; reopening a project restores successful results
-without recovery or resumption of interrupted work.
+Reload reconnects to active tasks; reopening reads saved outputs, including durable
+partial Quotation batches, without automatically resuming interrupted work.
 
 ## Atomic publication and deletion
 

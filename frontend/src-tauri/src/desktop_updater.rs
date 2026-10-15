@@ -314,10 +314,19 @@ pub(crate) enum UpdaterSnapshot {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(tag = "status", rename_all = "camelCase")]
+#[serde(
+    tag = "status",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub(crate) enum CheckOutcome {
-    UpToDate { current_version: String },
-    Available { update: UpdateMetadata },
+    UpToDate {
+        current_version: String,
+        notes: String,
+    },
+    Available {
+        update: UpdateMetadata,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -621,6 +630,7 @@ pub(crate) async fn check_for_updates(
         }
         None => Ok(CheckOutcome::UpToDate {
             current_version: app.package_info().version.to_string(),
+            notes: include_str!("../../public/releases/installed.md").into(),
         }),
     }
 }
@@ -779,6 +789,24 @@ mod tests {
         DesktopUpdaterState, OperationPhase, StoredPreferences, UpdaterSnapshot,
         AUTOMATIC_CHECK_INTERVAL,
     };
+    #[test]
+    fn up_to_date_serializes_the_installed_version_and_bundled_notes() {
+        let notes = include_str!("../../public/releases/installed.md");
+        let version = env!("CARGO_PKG_VERSION");
+        assert!(
+            notes.starts_with(&format!("# Wordflow {version}\n")),
+            "Update bundled installed-version notes when bumping the native version"
+        );
+        let value = serde_json::to_value(super::CheckOutcome::UpToDate {
+            current_version: version.into(),
+            notes: notes.into(),
+        })
+        .unwrap();
+        assert_eq!(value["status"], "upToDate");
+        assert_eq!(value["currentVersion"], version);
+        assert!(value.get("current_version").is_none());
+        assert_eq!(value["notes"], notes);
+    }
 
     #[test]
     fn dev_configuration_disables_updates_without_changing_production() {

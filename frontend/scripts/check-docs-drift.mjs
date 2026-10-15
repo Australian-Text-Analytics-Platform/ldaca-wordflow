@@ -12,6 +12,7 @@ import { dirname, extname, join, posix, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { BUNDLED_REGISTRY, TUTORIAL_INDEX_TARGET } from '../src/tutorials/bundledRegistry.ts';
+import { checkNativeHelpIndex } from './generate-native-help.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const FRONTEND_DIR = resolve(SCRIPT_DIR, '..');
@@ -241,7 +242,11 @@ async function run() {
     registry: BUNDLED_REGISTRY,
     documents,
     availablePaths,
-    extraTargets: [{ name: 'tutorial:index', target: TUTORIAL_INDEX_TARGET }],
+    extraTargets: [
+      { name: 'tutorial:index', target: TUTORIAL_INDEX_TARGET },
+      // Embedded by the native updater rather than linked from the Help viewer.
+      { name: 'updater:installed', target: { file: 'releases/installed.md' } },
+    ],
   });
   if (missingLiterals.length) {
     problems.unshift(
@@ -288,4 +293,4 @@ async function run() {
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : '';
-if (import.meta.url === invokedPath) await run();
+if (import.meta.url === invokedPath) { await checkNativeHelpIndex(); await run(); }

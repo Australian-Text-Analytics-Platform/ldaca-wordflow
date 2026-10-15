@@ -38,6 +38,7 @@ mod tests {
             ("backend-status", json!({"status": "stopping"})),
             ("backend-status", json!({"status": "stopped"})),
             ("focus-table-editor", json!(null)),
+            ("open-help", json!(null)),
             (
                 "project-error",
                 json!({"code": "desktop_error", "message": "Save failed"}),
@@ -56,6 +57,7 @@ mod tests {
                 "project-error",
                 "project-changed",
                 "focus-table-editor",
+                "open-help",
             ] {
                 let received = received.clone();
                 listener.listen(name, move |event| {

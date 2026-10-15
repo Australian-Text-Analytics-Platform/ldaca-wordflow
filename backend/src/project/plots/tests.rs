@@ -493,6 +493,22 @@ fn date_periods_and_duplicate_grouping_are_validated_before_run() {
             .contains("day or larger")
     );
     assert!(validate(&request("day"), &columns).is_ok());
+    for kind in ["VARCHAR", "BOOLEAN", "BIGINT"] {
+        assert!(
+            validate(&request("day"), &[("date".into(), kind.into())])
+                .unwrap_err()
+                .message
+                .contains("date or timestamp axis")
+        );
+    }
+    let numeric = PlotRequest::decode(PlotMode::Trends, json!({"source":{"name":"corpus"},"axis":"date","groups":[],"measure":"count","value":null,"interval":{"type":"numeric","width":"1","origin":null},"timezone":"UTC"})).unwrap();
+    assert!(validate(&numeric, &[("date".into(), "BIGINT".into())]).is_ok());
+    assert!(
+        validate(&numeric, &columns)
+            .unwrap_err()
+            .message
+            .contains("numeric axis")
+    );
     let mut duplicate = request("day");
     if let PlotRequest::Trends(ref mut trends) = duplicate {
         trends.groups = vec!["date".into(), "date".into()];

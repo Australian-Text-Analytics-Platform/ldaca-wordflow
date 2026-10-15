@@ -19,6 +19,7 @@ fn native(error: impl std::fmt::Display) -> Error {
 
 pub(crate) struct Document {
     pub(crate) backend: Arc<BackendSupervisor>,
+    pub(crate) help: Mutex<crate::native_help::Navigation>,
     path: Mutex<Option<PathBuf>>,
     actions: AsyncMutex<()>,
     close: AsyncMutex<Option<Result<bool>>>,
@@ -102,7 +103,11 @@ pub(crate) fn report(window: &WebviewWindow, error: &Error) {
     tracing::error!(%error, window = window.label(), "Document operation failed");
     let _ = emit_to_window(window, "project-error", error);
 }
-async fn open_window(app: &AppHandle, path: Option<PathBuf>) -> Result<()> {
+async fn open_window(
+    app: &AppHandle,
+    path: Option<PathBuf>,
+    help: Option<crate::native_help::HelpTarget>,
+) -> Result<()> {
     tracing::info!(?path, "Opening project window");
     let registry = app.state::<Documents>();
     let _opening = registry.opening_gate.lock().await;
@@ -111,6 +116,9 @@ async fn open_window(app: &AppHandle, path: Option<PathBuf>) -> Result<()> {
         None => None,
     };
     let state = app.state::<Documents>();
+    let focused_help = help
+        .as_ref()
+        .and_then(|_| focused(app).map(|window| window.label().to_owned()));
     let mut windows = state.windows.lock().map_err(native)?;
     if state
         .quit
@@ -118,6 +126,27 @@ async fn open_window(app: &AppHandle, path: Option<PathBuf>) -> Result<()> {
         .map_or(true, |outcome| matches!(*outcome, Some(Ok(true))))
     {
         return Err(native("The application is quitting"));
+    }
+    if let Some(target) = help.as_ref() {
+        if let Some(label) = focused_help
+            .filter(|label| windows.contains_key(label))
+            .or_else(|| windows.keys().next().cloned())
+        {
+            let document = windows[&label].clone();
+            drop(windows);
+            document
+                .help
+                .lock()
+                .map_err(native)?
+                .request(target.clone());
+            if let Some(window) = app.get_webview_window(&label) {
+                window.unminimize().map_err(native)?;
+                window.set_focus().map_err(native)?;
+                emit_to_window(&window, "open-help", ()).map_err(native)?;
+                return Ok(());
+            }
+            return Err(native("The Help destination window is closing"));
+        }
     }
     if let Some(path) = &path {
         for (label, document) in windows.iter() {
@@ -158,8 +187,13 @@ async fn open_window(app: &AppHandle, path: Option<PathBuf>) -> Result<()> {
             .inner()
             .clone(),
     ));
+    let mut help_navigation = crate::native_help::Navigation::default();
+    if let Some(target) = help {
+        help_navigation.request(target);
+    }
     let document = Arc::new(Document {
         backend: backend.clone(),
+        help: Mutex::new(help_navigation),
         path: Mutex::new(path.clone()),
         actions: AsyncMutex::new(()),
         close: AsyncMutex::new(None),
@@ -196,20 +230,29 @@ impl Drop for PendingOpen {
             .fetch_sub(1, Ordering::SeqCst);
     }
 }
-fn enqueue_open(app: &AppHandle, path: Option<PathBuf>) {
+fn enqueue_open(
+    app: &AppHandle,
+    path: Option<PathBuf>,
+    help: Option<crate::native_help::HelpTarget>,
+) {
     app.state::<Documents>()
         .opening
         .fetch_add(1, Ordering::SeqCst);
     let pending = PendingOpen(app.clone());
     tauri::async_runtime::spawn(async move {
         let app = &pending.0;
-        if let Err(error) = open_window(app, path).await {
+        let title = if help.is_some() {
+            "Cannot open Help"
+        } else {
+            "Cannot open project"
+        };
+        if let Err(error) = open_window(app, path, help).await {
             if let Some(window) = focused(app) {
                 report(&window, &error);
             } else {
                 app.dialog()
                     .message(error.to_string())
-                    .title("Cannot open project")
+                    .title(title)
                     .show(|_| {});
             }
         }
@@ -220,7 +263,7 @@ pub(crate) fn ensure_window(app: &AppHandle) {
     if state.opening.load(Ordering::SeqCst) == 0
         && state.windows.lock().is_ok_and(|windows| windows.is_empty())
     {
-        enqueue_open(app, None);
+        enqueue_open(app, None, None);
     }
 }
 pub(crate) fn open_paths(app: &AppHandle, paths: impl IntoIterator<Item = PathBuf>) {
@@ -229,9 +272,12 @@ pub(crate) fn open_paths(app: &AppHandle, paths: impl IntoIterator<Item = PathBu
             .extension()
             .is_some_and(|ext| ext.eq_ignore_ascii_case("wfpj"))
         {
-            enqueue_open(app, Some(path));
+            enqueue_open(app, Some(path), None);
         }
     }
+}
+pub(crate) fn show_help(app: &AppHandle, target: crate::native_help::HelpTarget) {
+    enqueue_open(app, None, Some(target));
 }
 pub(crate) fn argument_paths(args: impl IntoIterator<Item = String>, cwd: &Path) -> Vec<PathBuf> {
     args.into_iter()
@@ -574,10 +620,10 @@ async fn perform(
     command: ProjectCommand,
 ) -> Result<()> {
     match command {
-        ProjectCommand::New => enqueue_open(app, None),
+        ProjectCommand::New => enqueue_open(app, None, None),
         ProjectCommand::Open => {
             if let Some(path) = choose_open(app, window).await? {
-                enqueue_open(app, Some(path));
+                enqueue_open(app, Some(path), None);
             }
         }
         ProjectCommand::Save | ProjectCommand::SaveAs => {
@@ -789,6 +835,7 @@ mod destination_tests {
         let backend = Arc::new(BackendSupervisor::new());
         let info = backend.project.create(Some(path)).await.unwrap();
         Arc::new(Document {
+            help: Mutex::new(crate::native_help::Navigation::default()),
             backend,
             path: Mutex::new(info.path),
             actions: AsyncMutex::new(()),

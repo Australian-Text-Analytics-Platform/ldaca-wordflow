@@ -15,7 +15,7 @@ export type UpdaterSnapshot =
   | { status: 'installing' };
 
 export type CheckOutcome =
-  | { status: 'upToDate'; currentVersion: string }
+  | { status: 'upToDate'; currentVersion: string; notes: string }
   | { status: 'available'; update: UpdateMetadata };
 
 export type DownloadEvent =

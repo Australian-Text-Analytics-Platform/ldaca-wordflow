@@ -33,7 +33,9 @@ describe('UpdaterWindow', () => {
   });
 
   it('shows checking and then the up-to-date state for a manual check', async () => {
-    let finishCheck: ((value: { status: 'upToDate'; currentVersion: string }) => void) | undefined;
+    let finishCheck:
+      | ((value: { status: 'upToDate'; currentVersion: string; notes: string }) => void)
+      | undefined;
     mocks.checkForUpdates.mockReturnValue(
       new Promise((resolve) => {
         finishCheck = resolve;
@@ -42,8 +44,16 @@ describe('UpdaterWindow', () => {
     render(<UpdaterWindow mode="manual" />);
 
     expect(screen.getByText('Checking for updates…')).toBeInTheDocument();
-    finishCheck?.({ status: 'upToDate', currentVersion: '0.7.5' });
+    finishCheck?.({
+      status: 'upToDate',
+      currentVersion: '8.0.0',
+      notes: '# Wordflow 8.0.0\n\nBundled installed-version notes.',
+    });
     expect(await screen.findByText('Wordflow is up to date')).toBeInTheDocument();
+    expect(screen.getByText('You’re using version 8.0.0.')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Installed version notes' })).toHaveTextContent(
+      'Bundled installed-version notes.',
+    );
   });
 
   it('renders GFM notes safely and opens HTTPS links through native IPC', async () => {

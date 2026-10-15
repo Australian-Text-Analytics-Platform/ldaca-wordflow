@@ -8,6 +8,7 @@ mod events;
 mod feedback;
 #[cfg(target_os = "macos")]
 mod macos_quit;
+mod native_help;
 mod recent_projects;
 mod supervisor;
 
@@ -115,6 +116,8 @@ fn install_application_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::e
         .and_then(|menu| menu.get(HELP_SUBMENU_ID))
         .and_then(|item| item.as_submenu().cloned())
     {
+        let home = MenuItemBuilder::with_id("wordflow-help", "Wordflow Help").build(app)?;
+        help.prepend(&home)?;
         help.append(&feedback)?;
     }
     Ok(())
@@ -164,6 +167,7 @@ pub fn run() {
         .manage(desktop_updater::DesktopUpdaterState::default())
         .invoke_handler(tauri::generate_handler![
             get_backend_status,
+            native_help::take_pending_help,
             feedback::open_feedback,
             feedback::open_external_link,
             app_storage::get_preferences,
@@ -200,6 +204,8 @@ pub fn run() {
             install_application_menu(app.handle())?;
             #[cfg(target_os = "macos")]
             macos_quit::install(app.handle())?;
+            #[cfg(target_os = "macos")]
+            native_help::install(app.handle())?;
             documents::open_paths(
                 app.handle(),
                 documents::argument_paths(std::env::args(), &std::env::current_dir()?),
@@ -209,6 +215,9 @@ pub fn run() {
                 documents::menu_action(app_handle, event.id().as_ref());
                 if event.id() == "send-feedback" {
                     feedback::show_from_menu(app_handle.clone());
+                }
+                if event.id() == "wordflow-help" {
+                    documents::show_help(app_handle, native_help::home());
                 }
                 if event.id() == CHECK_FOR_UPDATES_MENU_ID {
                     desktop_updater::show_manual_check(app_handle.clone());

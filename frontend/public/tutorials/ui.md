@@ -176,7 +176,8 @@ Desktop can open existing folders; web can copy their paths. This page does not
 change storage locations. **Inspect cache sizes** reads reusable token and
 embedding cache sizes on demand. Each **Clear** requires its own confirmation and
 is unavailable while that cache is in use. Models, assets, projects and saved
-analysis outputs are retained.
+analysis outputs are retained. After clearing embeddings, a Topic adjustment may
+ask you to Rerun if it needs segment vectors that are no longer cached.
 
 **Guidance** enables contextual hints and resets their history after confirmation.
 Hints explain the active tool's setup, main action, results and next steps.
@@ -191,6 +192,9 @@ running work. Resetting history keeps your current enable choice.
 <h2 id="help-ui-help-feedback">Help and Feedback</h2>
 
 Help opens bundled guides with a pinned title, partner logos and zoom controls.
+The desktop **Help → Wordflow Help** menu opens the Help home. On macOS, the
+native Help search also finds bundled Wordflow sections. Help stays available
+while an analysis is running.
 A **?** opens its section once below the header. Information and References use
 the same viewer. References shows the application version, acknowledgement
 citation, concept DOI and contributors.

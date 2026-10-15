@@ -143,6 +143,10 @@ waiting processes between different locks. Models, language/ICU assets, projects
 and owned analysis artifacts are outside this maintenance boundary. No cache quota
 or automatic clearing is introduced.
 
+Clearing embeddings can leave a retained Topic adjustment without its exact
+segment vectors. That adjustment reports an ordinary error requesting Rerun;
+clearing does not automatically recompute embeddings or alter saved results.
+
 Wordflow explicitly supplies HF, tokenizer, embedding and Lindera asset contexts;
 registries include that context in their keys. It does not use ambient `HF_HOME`,
 `LINDERA_DICT_PATH`, `WORDFLOW_CACHE_DIR`, `WORDFLOW_EMBEDDING_CACHE` or production

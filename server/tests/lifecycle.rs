@@ -158,6 +158,135 @@ async fn permanent_untitled_names_and_working_metadata_survive_close() {
     assert_eq!(response["project"]["title"], "Untitled-3");
     host.close().await.unwrap();
 }
+
+#[tokio::test]
+#[ignore = "subprocess helper for external project ownership"]
+async fn project_download_owner_child() {
+    use std::io::Write;
+    let runtime = wordflow_backend::ProjectRuntime::new(tokio_util::sync::CancellationToken::new());
+    runtime
+        .open(
+            std::env::var_os("WORDFLOW_TEST_DOWNLOAD_PROJECT")
+                .unwrap()
+                .into(),
+        )
+        .await
+        .unwrap();
+    println!("project owner ready");
+    std::io::stdout().flush().unwrap();
+    std::io::stdin().read_line(&mut String::new()).unwrap();
+    runtime.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn closed_project_download_is_a_snapshot_and_respects_external_ownership() {
+    use std::io::{BufRead, Write};
+    use std::process::{Command, Stdio};
+    let (directory, host) = host().await;
+    let id = create(&host).await;
+    let (status, result) = call(
+        &host,
+        "POST",
+        &format!("/project/{id}/api/project/import"),
+        json!({"sources":[{"table_name":"documents","sql":"SELECT '猫' AS text, 42 AS value"}]}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{result}");
+    assert_eq!(
+        call(
+            &host,
+            "POST",
+            "/api/server/project/close",
+            json!({"project_id":id})
+        )
+        .await
+        .0,
+        StatusCode::NO_CONTENT
+    );
+    let path = directory.path().join("admin/projects/Untitled-1.wfpj");
+    let original = std::fs::read(&path).unwrap();
+    let mut owner = Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "project_download_owner_child",
+            "--ignored",
+            "--nocapture",
+        ])
+        .env("WORDFLOW_TEST_DOWNLOAD_PROJECT", &path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut output = std::io::BufReader::new(owner.stdout.take().unwrap());
+    loop {
+        let mut line = String::new();
+        assert!(output.read_line(&mut line).unwrap() > 0);
+        if line.contains("project owner ready") {
+            break;
+        }
+    }
+    for (method, route, body) in [
+        (
+            "GET",
+            "/api/server/files/projects/Untitled-1.wfpj",
+            Value::Null,
+        ),
+        (
+            "POST",
+            "/api/server/project",
+            json!({"name":"Untitled-1.wfpj"}),
+        ),
+        (
+            "DELETE",
+            "/api/server/files/projects/Untitled-1.wfpj",
+            Value::Null,
+        ),
+    ] {
+        assert!(!call(&host, method, route, body).await.0.is_success());
+    }
+    owner.stdin.take().unwrap().write_all(b"release\n").unwrap();
+    assert!(owner.wait().unwrap().success());
+    assert_eq!(std::fs::read(&path).unwrap(), original);
+    let response = host
+        .router()
+        .oneshot(
+            Request::builder()
+                .uri("/api/server/files/projects/Untitled-1.wfpj")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let snapshot = directory.path().join("download.wfpj");
+    std::fs::write(
+        &snapshot,
+        to_bytes(response.into_body(), usize::MAX).await.unwrap(),
+    )
+    .unwrap();
+    let runtime = wordflow_backend::ProjectRuntime::new(tokio_util::sync::CancellationToken::new());
+    runtime.open(snapshot).await.unwrap();
+    let response = wordflow_backend::router(
+        vec![],
+        tokio_util::sync::CancellationToken::new(),
+        runtime.clone(),
+    )
+    .oneshot(
+        Request::builder()
+            .uri("/api/project/graph")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let graph: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    assert_eq!(graph["nodes"][0]["table_name"], "documents", "{graph}");
+    runtime.close().await.unwrap();
+    assert!(host.status().await.unwrap().projects.is_empty());
+    host.close().await.unwrap();
+}
 #[tokio::test]
 async fn user_event_stream_notifies_preference_changes_and_project_registry_changes() {
     let (_directory, host) = host().await;

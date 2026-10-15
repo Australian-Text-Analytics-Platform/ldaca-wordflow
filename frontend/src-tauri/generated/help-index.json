@@ -1,0 +1,794 @@
+[
+  {
+    "kind": "tutorial",
+    "key": "index",
+    "file": "tutorials/index.md",
+    "anchor": "help-tutorial-index",
+    "label": "Tutorial index",
+    "title": "Wordflow Help — Tutorial index"
+  },
+  {
+    "kind": "tutorial",
+    "key": "ui.tool-choice",
+    "file": "tutorials/ui.md",
+    "anchor": "help-ui-tool-choice",
+    "label": "Tool Choice",
+    "title": "Interface — Tool Choice"
+  },
+  {
+    "kind": "tutorial",
+    "key": "ui.data-selection",
+    "file": "tutorials/ui.md",
+    "anchor": "help-ui-data-selection",
+    "label": "Data Selection",
+    "title": "Interface — Data Selection"
+  },
+  {
+    "kind": "tutorial",
+    "key": "ui.task-centre",
+    "file": "tutorials/ui.md",
+    "anchor": "help-ui-task-centre",
+    "label": "Task Centre",
+    "title": "Interface — Task Centre"
+  },
+  {
+    "kind": "tutorial",
+    "key": "ui.project-graph-view",
+    "file": "tutorials/ui.md",
+    "anchor": "help-ui-project-graph-view",
+    "label": "Project Graph",
+    "title": "Interface — Project Graph"
+  },
+  {
+    "kind": "tutorial",
+    "key": "ui.data-viewer",
+    "file": "tutorials/ui.md",
+    "anchor": "help-ui-data-viewer",
+    "label": "Data View",
+    "title": "Interface — Data View"
+  },
+  {
+    "kind": "tutorial",
+    "key": "ui.project-files",
+    "file": "tutorials/ui.md",
+    "anchor": "help-ui-project-files",
+    "label": "Project files",
+    "title": "Interface — Project files"
+  },
+  {
+    "kind": "tutorial",
+    "key": "ui.help-feedback",
+    "file": "tutorials/ui.md",
+    "anchor": "help-ui-help-feedback",
+    "label": "Help and Feedback",
+    "title": "Interface — Help and Feedback"
+  },
+  {
+    "kind": "tutorial",
+    "key": "data-loader.tab",
+    "file": "tutorials/data-loader.md",
+    "anchor": "help-data-loader-section",
+    "label": "Data loader overview",
+    "title": "Data loader overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "data-loader.files.section",
+    "file": "tutorials/data-loader.md",
+    "anchor": "help-data-loader-files-section",
+    "label": "Files and uploads section",
+    "title": "Data Loader — Files and uploads section"
+  },
+  {
+    "kind": "tutorial",
+    "key": "data-loader.upload.button",
+    "file": "tutorials/data-loader.md",
+    "anchor": "help-data-loader-upload-button",
+    "label": "Upload files",
+    "title": "Data Loader — Upload files"
+  },
+  {
+    "kind": "tutorial",
+    "key": "data-loader.import-sample.button",
+    "file": "tutorials/data-loader.md",
+    "anchor": "help-data-loader-import-sample-button",
+    "label": "Import sample data",
+    "title": "Data Loader — Import sample data"
+  },
+  {
+    "kind": "tutorial",
+    "key": "data-loader.import-ldaca.button",
+    "file": "tutorials/data-loader.md",
+    "anchor": "help-data-loader-import-ldaca-button",
+    "label": "Import from LDaCA",
+    "title": "Data Loader — Import from LDaCA"
+  },
+  {
+    "kind": "tutorial",
+    "key": "data-loader.add.button",
+    "file": "tutorials/data-loader.md",
+    "anchor": "help-data-loader-add-button",
+    "label": "Add file to project",
+    "title": "Data Loader — Add file to project"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.join.tab",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-join-section",
+    "label": "Join sub-tab overview",
+    "title": "Data Editor and Data Builder — Join sub-tab overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.join.column",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-join-column-picker",
+    "label": "Join column picker",
+    "title": "Data Editor and Data Builder — Join column picker"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.join.join-type",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-join-type",
+    "label": "Join type selector",
+    "title": "Data Editor and Data Builder — Join type selector"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.join.new-node-name",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-join-node-name",
+    "label": "Join output name",
+    "title": "Data Editor and Data Builder — Join output name"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.common.node-selection",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-common-node-selection",
+    "label": "Data block selection",
+    "title": "Data Editor and Data Builder — Data block selection"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.common.apply-button",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-common-apply-button",
+    "label": "Apply action",
+    "title": "Data Editor and Data Builder — Apply action"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.common.preview",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-common-preview",
+    "label": "Preview table",
+    "title": "Data Editor and Data Builder — Preview table"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.filter.tab",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-filter-section",
+    "label": "Filter sub-tab overview",
+    "title": "Data Editor and Data Builder — Filter sub-tab overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.filter.conditions",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-filter-conditions",
+    "label": "Filter conditions",
+    "title": "Data Editor and Data Builder — Filter conditions"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.filter.new-node-name",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-filter-new-node-name",
+    "label": "Filter output name",
+    "title": "Data Editor and Data Builder — Filter output name"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.slice.tab",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-slice-section",
+    "label": "Sample sub-tab overview",
+    "title": "Data Editor and Data Builder — Sample sub-tab overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.slice.offset",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-slice-offset",
+    "label": "Slice offset",
+    "title": "Data Editor and Data Builder — Slice offset"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.slice.length",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-slice-length",
+    "label": "Slice length",
+    "title": "Data Editor and Data Builder — Slice length"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.slice.new-node-name",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-slice-new-node-name",
+    "label": "Sample output name",
+    "title": "Data Editor and Data Builder — Sample output name"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.concat.tab",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-concat-section",
+    "label": "Stack sub-tab overview",
+    "title": "Data Editor and Data Builder — Stack sub-tab overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.concat.new-node-name",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-concat-new-node-name",
+    "label": "Stack output name",
+    "title": "Data Editor and Data Builder — Stack output name"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.concat.deduplicate",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-concat-deduplicate",
+    "label": "Deduplicate stacked rows",
+    "title": "Data Editor and Data Builder — Deduplicate stacked rows"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.concat.schema-status",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-concat-schema-status",
+    "label": "Schema status",
+    "title": "Data Editor and Data Builder — Schema status"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.build.tab",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-build-section",
+    "label": "Build sub-tab overview",
+    "title": "Data Editor and Data Builder — Build sub-tab overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.build.builder",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-build-builder",
+    "label": "Expression builder",
+    "title": "Data Editor and Data Builder — Expression builder"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.build.expression",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-build-expression",
+    "label": "Advanced expression",
+    "title": "Data Editor and Data Builder — Advanced expression"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.build.column-name",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-build-column-name",
+    "label": "Computed column name",
+    "title": "Data Editor and Data Builder — Computed column name"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.find.tab",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-find-replace",
+    "label": "Find sub-tab overview",
+    "title": "Data Editor and Data Builder — Find sub-tab overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "preprocessing.sql.tab",
+    "file": "tutorials/preprocessing.md",
+    "anchor": "help-preprocessing-sql-section",
+    "label": "SQL console",
+    "title": "Data Editor and Data Builder — SQL console"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.tab",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-section",
+    "label": "Token frequency overview",
+    "title": "Frequency tutorial — Token frequency overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.parameters",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-parameters",
+    "label": "Token frequency parameters",
+    "title": "Frequency tutorial — Token frequency parameters"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.results",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-results",
+    "label": "Token frequency results",
+    "title": "Frequency tutorial — Token frequency results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.clear-results",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-clear-results",
+    "label": "Clear results",
+    "title": "Frequency tutorial — Clear results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.reference",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-reference",
+    "label": "Study and reference corpora",
+    "title": "Frequency tutorial — Study and reference corpora"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.token-limit",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-token-limit",
+    "label": "Cloud display limit",
+    "title": "Frequency tutorial — Cloud display limit"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.list-limit",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-list-limit",
+    "label": "List display limit",
+    "title": "Frequency tutorial — List display limit"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.token-filter",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-token-filter",
+    "label": "Filter tokens",
+    "title": "Frequency tutorial — Filter tokens"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.unified-word-cloud",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-unified-word-cloud",
+    "label": "Juxtorpus",
+    "title": "Frequency tutorial — Juxtorpus"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.statistical-measures",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-statistical-measures",
+    "label": "Statistical measures",
+    "title": "Frequency tutorial — Statistical measures"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.stop-words",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-stop-words",
+    "label": "Stop words",
+    "title": "Frequency tutorial — Stop words"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.token-frequency.run",
+    "file": "tutorials/token-frequency.md",
+    "anchor": "help-token-frequency-run",
+    "label": "Run token frequency",
+    "title": "Frequency tutorial — Run token frequency"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.concordance.tab",
+    "file": "tutorials/concordance.md",
+    "anchor": "help-concordance-section",
+    "label": "Concordance overview",
+    "title": "Concordance tutorial — Concordance overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.concordance.parameters",
+    "file": "tutorials/concordance.md",
+    "anchor": "help-concordance-parameters",
+    "label": "Concordance parameters",
+    "title": "Concordance tutorial — Concordance parameters"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.concordance.results",
+    "file": "tutorials/concordance.md",
+    "anchor": "help-concordance-results",
+    "label": "Concordance results",
+    "title": "Concordance tutorial — Concordance results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.concordance.clear-results",
+    "file": "tutorials/concordance.md",
+    "anchor": "help-concordance-clear-results",
+    "label": "Clear results",
+    "title": "Concordance tutorial — Clear results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.concordance.search-term",
+    "file": "tutorials/concordance.md",
+    "anchor": "help-concordance-search-term",
+    "label": "Concordance search term",
+    "title": "Concordance tutorial — Concordance search term"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.concordance.search-mode",
+    "file": "tutorials/concordance.md",
+    "anchor": "help-concordance-search-mode",
+    "label": "Concordance search mode",
+    "title": "Concordance tutorial — Concordance search mode"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.concordance.regex-toggle",
+    "file": "tutorials/concordance.md",
+    "anchor": "help-concordance-regex-toggle",
+    "label": "Regex mode toggle",
+    "title": "Concordance tutorial — Regex mode toggle"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.tab",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-section",
+    "label": "Topic modelling overview",
+    "title": "Topic modelling tutorial — Topic modelling overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.parameters",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-parameters",
+    "label": "Topic modelling parameters",
+    "title": "Topic modelling tutorial — Topic modelling parameters"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.clear-results",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-clear-results",
+    "label": "Clear results",
+    "title": "Topic modelling tutorial — Clear results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.results",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-results",
+    "label": "Topic modelling results",
+    "title": "Topic modelling tutorial — Topic modelling results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.sampling",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-sampling",
+    "label": "Sampling",
+    "title": "Topic modelling tutorial — Sampling"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.options",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-options",
+    "label": "Topic parameters",
+    "title": "Topic modelling tutorial — Topic parameters"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.segmentation-method",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-segmentation-method",
+    "label": "Segmentation method",
+    "title": "Topic modelling tutorial — Segmentation method"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.max-segment-tokens",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-max-segment-tokens",
+    "label": "Maximum tokens per segment",
+    "title": "Topic modelling tutorial — Maximum tokens per segment"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.number-of-clusters",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-number-of-clusters",
+    "label": "Number of topics",
+    "title": "Topic modelling tutorial — Number of topics"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.random-seed",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-random-seed",
+    "label": "Random seed",
+    "title": "Topic modelling tutorial — Random seed"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.topic-modeling.words-per-topic",
+    "file": "tutorials/topic-modeling.md",
+    "anchor": "help-topic-modeling-words-per-topic",
+    "label": "Words per topic",
+    "title": "Topic modelling tutorial — Words per topic"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.plots.parameters",
+    "file": "tutorials/plots.md",
+    "anchor": "plots-parameters",
+    "label": "Plots parameters",
+    "title": "Plots parameters"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.plots.grouping",
+    "file": "tutorials/plots.md",
+    "anchor": "plots-grouping",
+    "label": "Grouping",
+    "title": "Plots — Grouping"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.sequential-analysis.tab",
+    "file": "tutorials/sequential-analysis.md",
+    "anchor": "help-sequential-section",
+    "label": "Sequential analysis overview",
+    "title": "Trends tutorial — Sequential analysis overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.sequential-analysis.parameters",
+    "file": "tutorials/sequential-analysis.md",
+    "anchor": "help-sequential-parameters",
+    "label": "Sequential analysis parameters",
+    "title": "Trends tutorial — Sequential analysis parameters"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.sequential-analysis.results",
+    "file": "tutorials/sequential-analysis.md",
+    "anchor": "help-sequential-results",
+    "label": "Sequential analysis results",
+    "title": "Trends tutorial — Sequential analysis results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.sequential-analysis.clear-results",
+    "file": "tutorials/sequential-analysis.md",
+    "anchor": "help-sequential-clear-results",
+    "label": "Clear results",
+    "title": "Trends tutorial — Clear results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.sequential-analysis.time-column",
+    "file": "tutorials/sequential-analysis.md",
+    "anchor": "help-sequential-time-column",
+    "label": "Time column selector",
+    "title": "Trends tutorial — Time column selector"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.sequential-analysis.frequency",
+    "file": "tutorials/sequential-analysis.md",
+    "anchor": "help-sequential-frequency",
+    "label": "Frequency selector",
+    "title": "Trends tutorial — Frequency selector"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.quotation.tab",
+    "file": "tutorials/quotation.md",
+    "anchor": "help-quotation-section",
+    "label": "Quotation extraction overview",
+    "title": "Quotation Extraction tutorial — Quotation extraction overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.annotation.tab",
+    "file": "tutorials/annotation.md",
+    "anchor": "help-annotation-section",
+    "label": "Annotation overview",
+    "title": "Annotation tutorial — Annotation overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.annotation.parameters",
+    "file": "tutorials/annotation.md",
+    "anchor": "help-annotation-setup",
+    "label": "Annotation setup",
+    "title": "Annotation tutorial — Annotation setup"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.quotation.parameters",
+    "file": "tutorials/quotation.md",
+    "anchor": "help-quotation-parameters",
+    "label": "Quotation parameters",
+    "title": "Quotation Extraction tutorial — Quotation parameters"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.quotation.results",
+    "file": "tutorials/quotation.md",
+    "anchor": "help-quotation-results",
+    "label": "Quotation results",
+    "title": "Quotation Extraction tutorial — Quotation results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.quotation.clear-results",
+    "file": "tutorials/quotation.md",
+    "anchor": "help-quotation-clear-results",
+    "label": "Clear results",
+    "title": "Quotation Extraction tutorial — Clear results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.quotation.context-length",
+    "file": "tutorials/quotation.md",
+    "anchor": "help-quotation-context-length",
+    "label": "Quotation context length",
+    "title": "Quotation Extraction tutorial — Quotation context length"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.export.tab",
+    "file": "tutorials/export.md",
+    "anchor": "help-export-section",
+    "label": "Export overview",
+    "title": "Export data and projects — Export overview"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.export.parameters",
+    "file": "tutorials/export.md",
+    "anchor": "help-export-parameters",
+    "label": "Export parameters",
+    "title": "Export data and projects — Export parameters"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.export.results",
+    "file": "tutorials/export.md",
+    "anchor": "help-export-results",
+    "label": "Export results",
+    "title": "Export data and projects — Export results"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.export.format",
+    "file": "tutorials/export.md",
+    "anchor": "help-export-format",
+    "label": "Export format selector",
+    "title": "Export data and projects — Export format selector"
+  },
+  {
+    "kind": "tutorial",
+    "key": "analysis.export.run",
+    "file": "tutorials/export.md",
+    "anchor": "help-export-run",
+    "label": "Export action",
+    "title": "Export data and projects — Export action"
+  },
+  {
+    "kind": "info",
+    "key": "general.overview",
+    "file": "information/general.md",
+    "anchor": "info-general-overview",
+    "label": "About Wordflow",
+    "title": "About Wordflow"
+  },
+  {
+    "kind": "info",
+    "key": "data-loader.overview",
+    "file": "information/data-loader.md",
+    "anchor": "info-data-loader-overview",
+    "label": "About the Data Loader",
+    "title": "About the Data Loader"
+  },
+  {
+    "kind": "info",
+    "key": "preprocessing.overview",
+    "file": "information/preprocessing.md",
+    "anchor": "info-preprocessing-overview",
+    "label": "About Data Preprocessing",
+    "title": "About Data Builder — About Data Preprocessing"
+  },
+  {
+    "kind": "info",
+    "key": "concordance.overview",
+    "file": "information/concordance.md",
+    "anchor": "info-concordance-overview",
+    "label": "About Concordance Search",
+    "title": "About Concordance Search"
+  },
+  {
+    "kind": "info",
+    "key": "quotation.overview",
+    "file": "information/quotation.md",
+    "anchor": "info-quotation-overview",
+    "label": "About Quotation Extraction",
+    "title": "About Quotation Extraction"
+  },
+  {
+    "kind": "info",
+    "key": "sequential-analysis.overview",
+    "file": "information/sequential-analysis.md",
+    "anchor": "info-sequential-analysis-overview",
+    "label": "About Sequential Analysis",
+    "title": "About Trends and Sequence — About Sequential Analysis"
+  },
+  {
+    "kind": "info",
+    "key": "token-frequency.overview",
+    "file": "information/token-frequency.md",
+    "anchor": "info-token-frequency-overview",
+    "label": "About Token Frequency Analysis",
+    "title": "About Frequency Analysis — About Token Frequency Analysis"
+  },
+  {
+    "kind": "info",
+    "key": "topic-modeling.overview",
+    "file": "information/topic-modeling.md",
+    "anchor": "info-topic-modeling-overview",
+    "label": "About Topic Modelling",
+    "title": "About Topic Modelling"
+  },
+  {
+    "kind": "info",
+    "key": "export.overview",
+    "file": "information/export.md",
+    "anchor": "info-export-overview",
+    "label": "About Exporting Data",
+    "title": "About Exporting Data"
+  },
+  {
+    "kind": "info",
+    "key": "annotation.overview",
+    "file": "information/annotation.md",
+    "anchor": "info-annotation-overview",
+    "label": "About Annotation",
+    "title": "About Annotation"
+  },
+  {
+    "kind": "reference",
+    "key": "general.platform",
+    "file": "references/general.md",
+    "anchor": "ref-general-platform",
+    "label": "Cite LDaCA Wordflow",
+    "title": "Cite LDaCA Wordflow"
+  }
+]

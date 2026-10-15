@@ -121,8 +121,9 @@ cache exists. Data View uses lookahead pagination. The preview shell remains
 mounted during loading and errors. Window-local per-node state retains widths,
 pinning and expansion through tab switches and node renames. Column operations
 capture their table name and kind before submission, so completion reconciles
-that node even when another preview is active. Multi-node deletion runs sequentially
-within the selection action, retains failed selections and reports one aggregate error. Supported column edits reconcile sorting before
+that node even when another preview is active. Data Block deletion confirms the
+complete dependent closure and executes the selected batch atomically through the
+native mutation owner. Supported column edits reconcile sorting before
 refetch; schemas refresh before row invalidation after broader mutations. Both Utf8 and Utf8View display as string while
 retaining their exact Arrow types. No independent native display name
 is stored: shared card labels receive the actual table name. The graph header
@@ -270,6 +271,12 @@ available, fail without interrupting startup, and suppress only the exact
 skipped version. Manual checks bypass both cadence and skip suppression. The
 desktop-only General setting changes automatic checking; browser deployments
 render no setting and make no updater request.
+
+Manual up-to-date responses serialize `currentVersion` explicitly in camel case
+and include notes bundled with the installed native version, currently 8.0.0.
+The existing Markdown presentation escapes HTML and opens permitted HTTPS links
+through the native updater owner. This does not change update checks, promotion,
+signature validation, installation or release publication.
 
 ```mermaid
 sequenceDiagram
@@ -430,6 +437,22 @@ bundle identity, rather than webview profile. Test native menu history in a dedi
 verifying a clean production bundle.
 
 Application preferences use typed Rust IPC and Tauri Store at the resolved config path. Startup loads them before editor/updater rendering; successful field patches broadcast across windows. See the canonical [storage and preference contract](../../reference/application-storage.md).
+
+### Bundled native Help
+
+Help → Wordflow Help opens the bundled index on macOS and Windows. macOS also
+registers an `NSUserInterfaceItemSearching` handler. Build generation projects the
+canonical bundled registry and page headings into a checked native index; there
+is no separately authored or remote Help catalogue. Searches match all query
+words, prioritise title prefixes and respect AppKit's result limit. Search
+callbacks may run off the main thread and only read immutable content metadata.
+
+Actions reuse the document coordinator and existing document viewer. A document
+owns its latest pending navigation with a revision until the renderer reads it;
+older responses cannot replace a newer target. The native event is window
+targeted. If there are no document windows, normal asynchronous document creation
+prepares one with the pending target. Help does not acquire a Table-edit or
+analysis mutation gate and remains available during Run.
 
 ### Independent feedback and external links
 

@@ -30,14 +30,18 @@ analysis without materializing a whole-corpus result in the browser.
   **Documents per page** controls how many source documents are evaluated for
   the current page. Documents without a match are omitted, while one document
   can produce several rows. Page, page-size, and source-metadata sort changes
-  request only the needed Preview source page. Saved results query retained
-  documents and matches independently of later Data Block changes.
+  request only the needed Preview source page. New saved results join retained
+  processed texts and matches to current source rows by exact text. Metadata edits
+  update the view; edited, removed or newly unprocessed texts do not match. A
+  missing source shows an ordinary engine error. Historical results keep their
+  original snapshot meaning until Rerun.
 
 - What can I sort?
   In separated Preview tables, selected source metadata is sortable and
   generated scalar headers explain that Run is required. After Run,
-  separated saved tables also sort matched text, L1/R1, their frequencies and
-  match offsets, with stable document/match tie-breaking. Full document and left/right
+  separated saved tables also sort matched text, L1/R1 and their frequencies,
+  with stable source/match tie-breaking. Start and End stay out of table/sort choices.
+  Full document and left/right
   context strings remain display-only, as do all combined-table headers.
 
 - What are L1 and R1?
@@ -53,8 +57,10 @@ analysis without materializing a whole-corpus result in the browser.
 - What do Preview and Run do?
   **Preview** calculates only the requested document page, without saving its request
   or output. Leaving the tab discards it. **Run** saves
-  matching documents and occurrences privately in the project. **Saved results**
-  reads those immutable outputs. Table pages matches; Dispersion pages documents.
+  checked texts, including empty outcomes, and occurrences privately in the
+  project. Table pages non-empty matches; Dispersion pages matching documents.
+  Add to Project also includes checked texts with empty outputs and copies its
+  generated outputs into an independently owned live View.
 
 - How do Dispersion controls work?
   Document bars and pagination appear above the matched-term legend and summary.

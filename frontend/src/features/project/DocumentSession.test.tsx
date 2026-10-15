@@ -97,7 +97,8 @@ describe('native document snapshot', () => {
     });
     expect(screen.getByText('Project contents')).toBe(contents);
     view.unmount();
-    expect(mocks.stop).toHaveBeenCalledTimes(2);
+    expect(mocks.listeners.has('open-help')).toBe(true);
+    expect(mocks.stop).toHaveBeenCalledTimes(3);
   });
   it('does not create a project while the host is unbound', async () => {
     mocks.status.mockResolvedValue(null);

@@ -14,7 +14,10 @@ Stopwords and wildcard filters control which saved tokens you see. They do not c
 
 Each named analysis tab stores its latest successful result inside the `.wfpj` file. Failed or cancelled runs preserve that result. Input changes remain local drafts until a successful run; saved results remain readable if the original Data Block changes or is removed. Only a new explicit Run reads the current source again.
 
-Download tables as CSV or Markdown and clouds as PNG, JPEG or SVG. Bundled downloads can include stopword text. Native exports use a file chooser; accepted work continues through Tasks. Frequency does not currently open Concordance from a word click because that analysis has not yet been restored.
+Download Frequency tables as CSV or Markdown and clouds as PNG, JPEG or SVG.
+Bundled downloads can include stopword text. Desktop exports use a native file
+chooser; accepted work continues through Tasks. Clicking a word opens Concordance
+with the existing punctuation-matching defaults.
 
 For the complete workflow, see the [Frequency tutorial](../tutorials/token-frequency.md). Background material is available in the [ATAP text-analysis methods collection](https://www.atap.edu.au/text-analysis/methods/) and the [legacy keyword-analysis notebook](https://github.com/Australian-Text-Analytics-Platform/keywords-analysis). Use the application's Feedback action to contact the Wordflow team.
 

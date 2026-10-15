@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { useUIStore } from '@/stores/uiStore';
@@ -21,24 +21,40 @@ describe('DocumentModalHost', () => {
     const view = render(<DocumentModalHost />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-    useUIStore.getState().openDocument({
-      kind: 'tutorial',
-      key: 'ui.tool-choice',
-      file: 'tutorials/ui.md',
-      anchor: 'help-ui-tool-choice',
-    });
+    await act(async () =>
+      useUIStore.getState().openDocument({
+        kind: 'tutorial',
+        key: 'ui.tool-choice',
+        file: 'tutorials/ui.md',
+        anchor: 'help-ui-tool-choice',
+      }),
+    );
     expect(await screen.findByTestId('document-view')).toHaveTextContent('tutorial:ui.tool-choice');
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
 
-    useUIStore.getState().openDocument({
-      kind: 'info',
-      key: 'general.overview',
-      file: 'information/general.md',
-      anchor: 'info-general-overview',
-    });
+    await act(async () =>
+      useUIStore.getState().openDocument({
+        kind: 'info',
+        key: 'general.overview',
+        file: 'information/general.md',
+        anchor: 'info-general-overview',
+      }),
+    );
     view.rerender(<DocumentModalHost />);
     expect(await screen.findByTestId('document-view')).toHaveTextContent(
       'information:general.overview',
+    );
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    await act(async () =>
+      useUIStore.getState().openDocument({
+        kind: 'reference',
+        key: 'general.platform',
+        file: 'references/general.md',
+        anchor: 'ref-general-platform',
+      }),
+    );
+    expect(await screen.findByTestId('document-view')).toHaveTextContent(
+      'reference:general.platform',
     );
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
   });

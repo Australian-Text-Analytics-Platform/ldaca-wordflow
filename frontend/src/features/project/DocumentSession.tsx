@@ -19,9 +19,11 @@ import { useEffect, useState } from 'react';
 import NativeSettings from './NativeSettings';
 import { reportProjectError } from './projectErrors';
 import ProjectView, { type ProjectTool } from './ProjectView';
+import { useNativeHelp } from '@/features/desktop-help/useNativeHelp';
 
 /** The native host initializes and owns the document, including Save and Close. */
 export default function DocumentSession({ base }: { base: string }) {
+  useNativeHelp();
   const cache = useQueryClient();
   const server = useServer();
   const [activeTool, setActiveTool] = useState<ProjectTool>('data-loader');

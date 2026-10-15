@@ -83,6 +83,12 @@ Discovery resolves the invoking document window. Tauri publishes window-targeted
 `backend-status`, `project-changed` and `project-error` events. React reads an
 initial snapshot and subscribes, without polling or lifecycle acknowledgements.
 
+`take_pending_help` reads and consumes the invoking document's latest queued
+bundled Help navigation as `{revision, target}` or null. `open-help` is a
+window-targeted notification; the renderer resolves its kind/key through the
+canonical bundled registry and opens the existing viewer. Native Help search and
+menu ownership are described in the [desktop architecture](../architecture/frontend/desktop.md#bundled-native-help).
+
 ## Project Boundary
 
 `.wfpj` is an ordinary DuckDB database with Wordflow metadata. The shared

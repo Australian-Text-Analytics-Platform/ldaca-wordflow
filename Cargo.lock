@@ -4021,8 +4021,11 @@ dependencies = [
 name = "ldaca-wordflow"
 version = "8.0.0"
 dependencies = [
+ "block2",
  "http",
  "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "reqwest 0.13.5",
  "serde",
  "serde_json",

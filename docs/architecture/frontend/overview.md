@@ -67,6 +67,7 @@ select the API-only project preview.
   the manual-format dialog. Failed manual submissions retain the entered format.
 - TanStack Query owns database state. Zustand owns graph selection, the displayed preview, pins, positions
   and other interaction state. Local forms own unsubmitted input.
+  See [state and data flow](state-and-data-flow.md) for request, result and draft lifetimes.
 - `features/theme/` applies the live VS Code theme. The host preference adapter
   loads theme, layout and recent files before React renders and synchronizes
   confirmed changes across windows. The Vite plugin in `frontend/theme/plugin.ts`

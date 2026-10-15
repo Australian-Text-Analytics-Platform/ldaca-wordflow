@@ -9,6 +9,8 @@ Topic modelling discovers recurring themes in a collection. Wordflow divides
 each document into **Topic Segments**, embeds those segments, groups similar
 segments, and rolls their topic assignments back up to each source document.
 
+<img src="tutorials/assets/ui/topic_results.png" alt="Native Topic results with retained-stage controls, source counts and an explanation of Colour by availability" width="2582" height="1800" />
+
 <h2 id="help-topic-modeling-parameters">Parameter panel</h2>
 
 <h3 id="help-topic-modeling-data-block">Step 1 — Select your data</h3>

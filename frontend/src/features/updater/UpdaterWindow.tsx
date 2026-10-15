@@ -17,7 +17,7 @@ import {
 
 type ViewState =
   | { status: 'checking' }
-  | { status: 'upToDate'; currentVersion: string }
+  | { status: 'upToDate'; currentVersion: string; notes: string }
   | { status: 'available'; update: UpdateMetadata }
   | {
       status: 'downloading';
@@ -223,7 +223,7 @@ export function UpdaterWindow({ mode }: { mode: 'manual' | 'available' }) {
 
       {view.status === 'upToDate' && (
         <div
-          className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center"
+          className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto p-8 text-center"
           role="status"
         >
           <CheckCircle2 className="size-10 text-chart-3" aria-hidden />
@@ -233,6 +233,12 @@ export function UpdaterWindow({ mode }: { mode: 'manual' | 'available' }) {
               You’re using version {view.currentVersion}.
             </p>
           </div>
+          <section
+            aria-label="Installed version notes"
+            className="w-full rounded-md border border-surface-border bg-panel/30 p-4 text-left"
+          >
+            <ReleaseNotes notes={view.notes} />
+          </section>
         </div>
       )}
 

@@ -114,9 +114,12 @@ export async function topicModelingScenario(
       await wordInput.setValue('3');
       await browser.keys('Tab');
       const topicBubble = results.$(`[data-testid="topic-flow-node-${topicId}"]`);
-      await topicBubble.execute(element => element.focus());
       const tooltip = $(`[data-testid="topic-flow-tooltip-${topicId}"]`);
-      await tooltip.waitForExist();
+      // Presentation responses can replace the trigger after the input changes.
+      await browser.waitUntil(async () => {
+        await topicBubble.execute(element => { element.blur(); element.focus(); });
+        return tooltip.isExisting();
+      }, { timeoutMsg: 'Representative-word tooltip did not open after changing word count' });
       const labels = async () => String(await tooltip.$('span.sr-only').execute(element => element.textContent ?? ''));
       await browser.waitUntil(async () => (await labels()).split('; ').length <= 3);
       expect(await labels()).toContain(`${removedWord},`);

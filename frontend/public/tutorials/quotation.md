@@ -66,6 +66,8 @@ refresh results and reopen it before fetching its full matches.
 
 Quotation cells show up to three lines. Clipped cells reveal their full highlighted content on hover or focus. Row Details uses a shorter scrollable document box and reveals the clicked quotation; extraction-pattern explanations appear beside their codes.
 
+<img src="tutorials/assets/ui/row_details.png" alt="Quotation Row Details with the clicked quotation highlighted and complete nested source metadata" width="2582" height="1800" />
+
 Click **Document** or a source metadata header to sort. The Reset sort icon restores original order and page one. In Preview, sorting is
 applied before source pagination; only the resulting page is extracted. Generated
 quotation fields are sortable in the saved **Quotations** tab, where every quotation

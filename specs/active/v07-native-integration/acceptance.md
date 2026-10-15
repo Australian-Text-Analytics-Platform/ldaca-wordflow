@@ -693,3 +693,75 @@ Public Oni configuration/OpenAPI were checked at version 2.1.5; actual imports u
 bounded loopback fixtures, without private portal data or stored credentials.
 Final WebKit, uninstrumented release and carried-forward Windows/physical/signed
 runtime gates remain open. No push or publication occurred.
+
+## v0.7.12–v0.7.13 batch 6 and local delivery
+
+Native Help uses a generated projection of the canonical bundled registry.
+Help → Wordflow Help targets the owning document's existing viewer. AppKit search
+matches bundled titles without touching UI from background search callbacks;
+window-scoped versioned delivery rejects stale renderer responses. Up-to-date
+updater responses serialize `currentVersion` and include bundled native 8.0.0
+notes. Test updater endpoints remain disabled; no update/release was published.
+
+The register contains all 80 entries with separate recorded outcomes: 45 native
+implementations (including V07-234 after reproduction), 13 already satisfied,
+17 deliberate departures, four deferred and V07-262 still requiring reproduction.
+The audit has 204 unique commit rows, matching the pinned Git range. The deferred
+design scope and original release, upload, hard-link and security decisions remain.
+
+Local evidence:
+
+- Locked native desktop tests: 39 pass. Search limits, all-word matching, queued
+  delivery, window isolation and updater casing/installed notes have focused
+  regressions. Frontend native-intent tests cover superseded replies and cleanup.
+- Server: 11 authentication tests and 13 lifecycle tests pass; one subprocess
+  helper is ignored normally. The new actual-process regression rejects Open,
+  Delete and Download while another process owns the project, then downloads and
+  reopens a valid closed-project snapshot without adding a server session.
+- Backend/library checks from batches 1–5 remain accepted. The focused bundled
+  DuckDB axis regression additionally rejects incompatible numeric/date types.
+  Final all-target/all-feature strict Clippy across backend, server and desktop,
+  Rust formatting and generated API checks pass.
+- Frontend: 820 tests and 17 script tests pass. Build, lint, formatting, tooling,
+  Knip, version checks, bundled-doc validation, Markdown links and diff checks pass.
+  Nine development-launcher regressions verify the preserved port/identity policy.
+- Isolated macOS WebKit passes Topics, both Concordance journeys, Quotation,
+  Manual/AI Annotation, graph input transfer and Export: eight tests across six
+  specs. Optional Apple Foundation Models inference is skipped in this lane;
+  batch 3's real embedding-provider checks remain separate evidence.
+- WebKit exposed dynamic Arrow null-predicate compilation in the new AI Preview
+  download adapter. Explicit Utf8Builder validity removes that CSP violation.
+  A regression blocks Function compilation and preserves NULL, empty, blank and
+  Unicode values. Native AI Preview and Run then pass without relaxing CSP.
+  The Topic focus check now waits for its committed trigger after presentation
+  responses; no native remount or glyph workaround was added.
+- The uninstrumented release build succeeds with isolated Test identity, ordinary
+  production frontend assets and no E2E feature. Its 144.64 MiB app passes strict
+  ad-hoc signature verification and frontend instrumentation rejection. Executable
+  SHA-256 is `2cd7320d51f946c881a307e0b88007528293b8a922b5257580c983c3f51642ea`.
+  This is not notarized/signed production distribution acceptance.
+- That release runtime reports 8.0.0, imports/materialises synthetic data, inspects
+  reusable caches and completes two real native Annotation runs with two held
+  local-provider batches each. All 24 labels and one task per Run are retained.
+  A concurrent SQL mutation is rejected with the original read-only engine error;
+  no provider or user credentials/data are involved.
+
+Canonical native state-flow documentation replaces obsolete Python analysis-forest
+descriptions. Bundled tutorials/information describe live results, incremental
+commits, explicit Resume, current clustering controls and cache clearing. Current
+WebKit Topic/Row Details captures update tutorial illustrations; they are test-lane
+screenshots, not uninstrumented release visual acceptance. The validated docs mirror
+is updated locally only.
+
+Computer Use screen capture failed when selecting the release bundle. Physical
+macOS Help menu/search, Help during Run, release visual/performance acceptance,
+Windows controls/locking and signed production runtime remain open. Automatic
+approval review rejected terminating the idle Test QA process through SIGTERM,
+because that bypasses native Quit. The idle synthetic project was subsequently
+closed through the supported native API. The Test application and cache lock
+remain open pending explicit approval or manual Quit; they must be cleaned before
+another cache-owning Test run. This is an acceptance/cleanup limitation, not a
+product fallback. The integration spec remains active.
+
+All changes and the docs mirror are delivered as local commits. No push, public
+release, updater publication, tag movement or legacy-project migration occurred.
