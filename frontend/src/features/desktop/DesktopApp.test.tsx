@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { invoke } from '@tauri-apps/api/core';
+import * as projectErrors from '../project/projectErrors';
 import DesktopApp from './DesktopApp';
 
 vi.mock('../project/ProjectApp', () => ({ default: () => <div>Wordflow is ready</div> }));
@@ -52,6 +53,33 @@ describe('desktop lifecycle screen', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Connection refused');
     });
   });
+
+  it.each(['request', 'body'])(
+    'does not report a cancelled readiness %s as a backend failure',
+    async (stage) => {
+      const error = new DOMException('signal is aborted without reason', 'AbortError');
+      const report = vi
+        .spyOn(projectErrors, 'reportProjectError')
+        .mockImplementation(() => undefined);
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation(async () => {
+          if (stage === 'request') throw error;
+          return {
+            ok: true,
+            json: async () => {
+              throw error;
+            },
+          };
+        }),
+      );
+      render(<DesktopApp backendUrl="http://127.0.0.1:49152" />);
+      await act(async () => undefined);
+      expect(report).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Starting Wordflow');
+    },
+  );
 
   it('keeps the mounted project after a later backend failure event', async () => {
     let event: ((value: { payload: unknown }) => void) | undefined;

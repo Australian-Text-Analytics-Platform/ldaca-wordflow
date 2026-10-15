@@ -41,6 +41,8 @@ export default function DesktopApp({ backendUrl }: { backendUrl?: string }) {
         reportProjectError(state.error, 'Backend unavailable', 'backend-status');
     }
     const fail = (error: unknown) => {
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError')
+        return;
       apply({
         status: 'failed',
         error: {
