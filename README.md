@@ -15,7 +15,7 @@ Current stable release: **Wordflow 0.7.14**, released 14 October 2026
 ([release notes](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/tag/v0.7.14)).
 Wordflow 0.8 is in beta (see [Wordflow 0.8 development](#wordflow-08-development-beta) below).
 
-| Way in | Who it suits | How |
+| Option | Who it suits | How |
 | --- | --- | --- |
 | **Online** | Anyone who wants to keep their Projects and come back to them from any computer | Open <https://wordflow.ldaca.edu.au> and sign in through CILogon with your university or another account CILogon supports. Runs on the ARDC Nectar Research Cloud. |
 | **ARDC BinderHub** | Australian and New Zealand researchers trying Wordflow or teaching with it | [Launch Wordflow 0.7.14 on Binder](https://binderhub.rc.nectar.org.au/v2/gh/Australian-Text-Analytics-Platform/LDaCa_Text_Analytics_Tools/main?labpath=index.ipynb). Sign in with your institution (AAF or Tuakiri); nothing to install. The session ends when you close it, so download any Project you want to keep. |
