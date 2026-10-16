@@ -990,6 +990,36 @@ def test_concordance_run_all_group_stores_results_without_publishing_nodes(
             "First matches",
             "Second matches",
         ]
+        # Add to Project without the document column (issue 355) publishes a
+        # Data Block with no document column; it used to fail silently (issue 398).
+        without_document_creation = client.post(
+            f"/api/workspaces/{workspace_id}/tabs/{tab_id}/analyses",
+            json={
+                "execution_scope": "supporting",
+                "parent_analysis_id": group_id,
+                "request": {
+                    "kind": "concordance_match_data_block_creation",
+                    "sources": [
+                        {
+                            "source_node_id": first_node_id,
+                            "selected_columns": ["source", "CONC_matched_text"],
+                            "new_node_name": "Matches without text",
+                        }
+                    ],
+                },
+            },
+            headers=unsafe,
+        )
+        assert without_document_creation.status_code == 201, without_document_creation.text
+        without_document_published = _wait_analysis(
+            client, workspace_id, without_document_creation.json()["id"]
+        )
+        assert without_document_published["state"] == "succeeded", without_document_published
+        (no_text_node_id,) = cast(list[str], without_document_published["output_node_ids"])
+        no_text_node = client.get(f"/api/workspaces/{workspace_id}/nodes/{no_text_node_id}").json()
+        assert no_text_node["name"] == "Matches without text"
+        assert no_text_node.get("document") is None
+        output_node_ids = [*output_node_ids, no_text_node_id]
         assert (
             client.delete(
                 f"/api/workspaces/{workspace_id}/tabs/{tab_id}/analyses",

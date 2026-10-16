@@ -42,6 +42,21 @@ const createsWorkspaceDataBlocks = (kind: string): boolean =>
   kind === 'sequential_data_block_creation' ||
   kind === 'topic_modeling_data_block_creation';
 
+/**
+ * Add to Project returns as soon as its creation task is accepted, so a
+ * failure later on would only show as a failed row in Tasks (issue 398).
+ * Each failed creation is reported once, with the failure's own words.
+ */
+const reportedCreationFailures = new Set<string>();
+
+export const reportFailedDataBlockCreation = (analysisId: string, failure: unknown): void => {
+  if (reportedCreationFailures.has(analysisId)) return;
+  reportedCreationFailures.add(analysisId);
+  toastError(failure, 'Try again, or see Tasks for the details.', {
+    title: "Couldn't add the new Data Block to the Project.",
+  });
+};
+
 const nextPage = (page: { page: number; total_pages: number }): number | undefined =>
   page.page < page.total_pages ? page.page + 1 : undefined;
 
@@ -214,6 +229,9 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
             if (createsWorkspaceDataBlocks(data.request.kind)) {
               useFreshNodesStore.getState().markCreated(workspaceId, data.output_node_ids);
             }
+          }
+          if (data.state === 'failed' && createsWorkspaceDataBlocks(data.request.kind)) {
+            reportFailedDataBlockCreation(data.id, data.error);
           }
         } catch (error) {
           console.warn("Couldn't refresh analysis activity", error);

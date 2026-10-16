@@ -14,7 +14,11 @@ import { queryKeys } from '@/lib/queryKeys';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
 import { analysisResponse } from '@/test/msw/fixtures';
 import { server } from '@/test/msw/server';
-import { useTaskResources, useWorkspaceTaskInbox } from '../useWorkspaceTaskInbox';
+import {
+  reportFailedDataBlockCreation,
+  useTaskResources,
+  useWorkspaceTaskInbox,
+} from '../useWorkspaceTaskInbox';
 import type { WorkspaceTaskStreamClientOptions } from '../useWorkspaceTaskStreamClient';
 
 let emitEvent: ((payload: unknown) => void) | undefined;
@@ -663,5 +667,23 @@ describe('useWorkspaceTaskInbox', () => {
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
     expect(view.result.current.tasks.some((task) => task.task_id === 'import-1')).toBe(true);
+  });
+});
+
+describe('failed Add to Project (issue 398)', () => {
+  it('reports each failed Data Block creation once, in plain words with Details', () => {
+    mocks.toastError.mockReset();
+    const failure = {
+      code: 'analysis_execution_failed',
+      message: 'Something went wrong in Wordflow.',
+      diagnostic: 'ValueError: Child Analysis Data Block metadata is invalid',
+    };
+    reportFailedDataBlockCreation('creation-1', failure);
+    reportFailedDataBlockCreation('creation-1', failure);
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Couldn't add the new Data Block to the Project.",
+      expect.anything(),
+    );
   });
 });

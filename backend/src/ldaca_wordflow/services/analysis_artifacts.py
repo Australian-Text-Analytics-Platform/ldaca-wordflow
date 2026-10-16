@@ -726,9 +726,10 @@ def _validate_published_data_block_identity(
             )
         ],
     )
+    # The document column may be left out since issue 355; the new Data Block
+    # then has none (issue 398). One it has must be among the chosen columns.
     if (
-        document is None
-        or document not in selected_columns
+        (document is not None and document not in selected_columns)
         or metadata.name != requested_name
         or metadata.provenance != expected_provenance
         or metadata.document != document
