@@ -318,8 +318,8 @@ Project**. It opens the same window, with the same column choices, and saves
 the table as CSV or Excel (a ZIP when you choose several sources), in the
 order the table shows, without adding anything to the Project.
 
-The document column is ticked and marked *recommended*: with it you can check
-each result against the original text later. **Select none** leaves it ticked;
+The document column starts ticked: with it you can check each result against
+the original text later, or run another analysis on the new Data Block. **Select none** leaves it ticked;
 only unticking it yourself leaves it out. Excel cells hold at most 32,767
 characters, so a long document cannot go in an Excel file. Untick the document
 column to download the other columns as Excel;
@@ -332,7 +332,7 @@ See [Excel's cell limit](export.md#help-export-excel-limit).
 Use **Add to Project** to create new Data Blocks after reviewing the
 result. From Table view, **Add Concordance Matches to Project** creates a Data
 Block with one row per match and the columns you select; the document column
-is recommended and starts selected, and you can untick it. From Dispersion view,
+starts selected, and you can untick it. From Dispersion view,
 **Add Concordance Documents to Project** creates a Data Block with one row per
 qualifying original row. It contains the required original document, required
 `CONC_extraction` (surviving KWIC extractions joined with plain newlines), and

@@ -56,7 +56,6 @@ const addColumn = (columns: AddToWorkspaceColumn[], next: AddToWorkspaceColumn):
   if (next.defaultSelected) existing.defaultSelected = true;
   existing.requiredDescription ??= next.requiredDescription;
   existing.dependsOn ??= next.dependsOn;
-  existing.recommendedDescription ??= next.recommendedDescription;
   existing.keepOnSelectNone ??= next.keepOnSelectNone;
   existing.uncheckedWarning ??= next.uncheckedWarning;
 };
@@ -84,9 +83,11 @@ const createResultSource = (
   columnOrder: readonly string[],
 ): AddToWorkspaceSource => {
   const columns: AddToWorkspaceColumn[] = [];
-  // One row per match: the document is recommended but can be left out, since
+  // One row per match: the document starts ticked but can be left out, since
   // a long one can break an Excel download (issue 355). Leaving it out is the
-  // user's own choice: Select none keeps it. One row per document: it is the row.
+  // user's own choice: Select none keeps it, and unticking it shows why it
+  // matters. No "(recommended)" label (Monika, issue 399). One row per
+  // document: it is the row.
   const positions = source.analysis_columns.filter((column) =>
     DOCUMENT_POSITION_COLUMNS.has(column),
   );
@@ -97,7 +98,6 @@ const createResultSource = (
       : {
           name: source.document_column,
           defaultSelected: true,
-          recommendedDescription: 'recommended',
           keepOnSelectNone: true,
           uncheckedWarning:
             `Without ${source.document_column}, you can't check these results against the original text later.` +

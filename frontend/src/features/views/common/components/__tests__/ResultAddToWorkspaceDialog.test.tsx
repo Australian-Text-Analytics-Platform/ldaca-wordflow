@@ -116,7 +116,7 @@ describe('ResultAddToWorkspaceDialog', () => {
     );
 
     expect(screen.queryByRole('switch', { name: 'Sync columns' })).not.toBeInTheDocument();
-    const document = screen.getByRole('checkbox', { name: 'text (recommended)' });
+    const document = screen.getByRole('checkbox', { name: 'text' });
     const metadata = screen.getByRole('checkbox', { name: 'speaker' });
     const analysis = screen.getByRole('checkbox', { name: 'CONC_matched_text' });
     expect(document).toBeChecked();

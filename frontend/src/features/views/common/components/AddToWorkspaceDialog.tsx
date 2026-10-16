@@ -28,8 +28,6 @@ export interface AddToWorkspaceColumn {
    * unticked and disabled.
    */
   dependsOn?: string;
-  /** Shown after the name while ticked, e.g. "recommended" (issue 355). */
-  recommendedDescription?: string;
   /** Select none leaves it ticked: only unticking it removes it (issue 355). */
   keepOnSelectNone?: boolean;
   /** Shown under the columns while this column is unticked (issue 355). */
@@ -358,11 +356,6 @@ export function AddToWorkspaceDialog({
                                 {required ? (
                                   <span className="text-description">
                                     ({column.requiredDescription ?? 'required'})
-                                  </span>
-                                ) : null}
-                                {column.recommendedDescription && !required ? (
-                                  <span className="text-description">
-                                    ({column.recommendedDescription})
                                   </span>
                                 ) : null}
                               </span>
