@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +48,85 @@ interface FilePreviewContentProps {
   previewHint?: string;
 }
 
+/** Preview column widths a drag or arrow key can set (issue 400). */
+const MIN_COLUMN_WIDTH = 64;
+const MAX_COLUMN_WIDTH = 1200;
+/** The default width cap (12rem), where a column starts when first dragged. */
+const DEFAULT_COLUMN_WIDTH = 192;
+const KEY_STEP = 16;
+
+/**
+ * A cell shows one line, so a long text is cut before it reaches the page:
+ * Safari's engine (also the Mac desktop app) draws a very long single line
+ * (about 40,000 characters) as blank, leaving only the "…" (issue 400).
+ */
+const MAX_CELL_CHARACTERS = 2000;
+const cellText = (value: unknown): string => {
+  const text = typeof value === 'string' ? value : value == null ? '' : JSON.stringify(value);
+  return text.length > MAX_CELL_CHARACTERS ? `${text.slice(0, MAX_CELL_CHARACTERS)}…` : text;
+};
+
+const clampWidth = (width: number) =>
+  Math.round(Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, width)));
+
+/**
+ * A drag handle on a preview column's right edge (issue 400). Drag or use the
+ * arrow keys to widen the column and see more of its text; double-click to
+ * restore the default width.
+ */
+function ColumnResizeHandle({
+  column,
+  width,
+  onResize,
+  onReset,
+}: {
+  column: string;
+  width: number | undefined;
+  onResize: (width: number) => void;
+  onReset: () => void;
+}) {
+  const start = useRef<{ x: number; width: number } | null>(null);
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={`Resize column ${column}`}
+      aria-valuenow={width ?? DEFAULT_COLUMN_WIDTH}
+      aria-valuemin={MIN_COLUMN_WIDTH}
+      aria-valuemax={MAX_COLUMN_WIDTH}
+      tabIndex={0}
+      title="Drag to resize; double-click to reset"
+      className="absolute inset-y-0 right-0 w-1.5 cursor-col-resize touch-none select-none hover:bg-focus/40 focus-visible:bg-focus/60 focus-visible:outline-none"
+      onPointerDown={(event) => {
+        event.preventDefault();
+        const th = event.currentTarget.parentElement;
+        start.current = {
+          x: event.clientX,
+          width: width ?? th?.getBoundingClientRect().width ?? DEFAULT_COLUMN_WIDTH,
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (!start.current) return;
+        onResize(clampWidth(start.current.width + event.clientX - start.current.x));
+      }}
+      onPointerUp={(event) => {
+        start.current = null;
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      }}
+      onDoubleClick={onReset}
+      onKeyDown={(event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const current = width ?? DEFAULT_COLUMN_WIDTH;
+        onResize(clampWidth(current + (event.key === 'ArrowRight' ? KEY_STEP : -KEY_STEP)));
+      }}
+    />
+  );
+}
+
 /**
  * Shared file preview layout used by AddFilePanel and FilePreviewPanel.
  * Owns the Dialog + Card chrome, Excel sheet selector, and preview table.
@@ -85,6 +164,12 @@ export function FilePreviewContent({
     selectedSheet,
     setSelectedSheet,
   } = data;
+  // Widths set by dragging a column's edge; unset columns keep the 12rem cap.
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const widthStyle = (column: string): React.CSSProperties | undefined => {
+    const width = columnWidths[column];
+    return width === undefined ? undefined : { width, minWidth: width, maxWidth: width };
+  };
 
   const handleSheetChange = (value: string) => {
     const next = value || null;
@@ -161,8 +246,22 @@ export function FilePreviewContent({
                     <thead>
                       <tr className="bg-panel">
                         {columns.map((column) => (
-                          <th key={column} className="px-2 py-1 text-left font-medium">
+                          <th
+                            key={column}
+                            className="relative truncate px-2 py-1 text-left font-medium"
+                            style={widthStyle(column)}
+                          >
                             {column}
+                            <ColumnResizeHandle
+                              column={column}
+                              width={columnWidths[column]}
+                              onResize={(width) => {
+                                setColumnWidths((current) => ({ ...current, [column]: width }));
+                              }}
+                              onReset={() => {
+                                setColumnWidths(({ [column]: _removed, ...rest }) => rest);
+                              }}
+                            />
                           </th>
                         ))}
                       </tr>
@@ -173,10 +272,15 @@ export function FilePreviewContent({
                           {columns.map((column) => (
                             <td
                               key={column}
-                              className="max-w-48 truncate px-2 py-1"
-                              title={String((row[column] ?? '') as string | number | boolean)}
+                              className={
+                                columnWidths[column] === undefined
+                                  ? 'max-w-48 truncate px-2 py-1'
+                                  : 'truncate px-2 py-1'
+                              }
+                              style={widthStyle(column)}
+                              title={cellText(row[column])}
                             >
-                              {String((row[column] ?? '') as string | number | boolean)}
+                              {cellText(row[column])}
                             </td>
                           ))}
                         </tr>

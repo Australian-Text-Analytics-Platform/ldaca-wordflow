@@ -61,6 +61,24 @@ describe('FilePreviewPanel pagination', () => {
     expect(screen.getAllByRole('row')).toHaveLength(11);
   });
 
+  it('lets a column be widened to read more of its text (issue 400)', async () => {
+    const user = userEvent.setup();
+    renderPreviewPanel();
+    await screen.findByText('page-1-row-10');
+
+    const handle = screen.getByRole('separator', { name: 'Resize column document' });
+    const header = screen.getByRole('columnheader', { name: /document/ });
+    expect(header.style.width).toBe('');
+
+    handle.focus();
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(header.style.width).toBe('224px');
+    expect(screen.getByRole('cell', { name: 'page-1-row-1' }).style.maxWidth).toBe('224px');
+
+    await user.dblClick(handle);
+    expect(header.style.width).toBe('');
+  });
+
   it('returns to page 1 when the page size changes', async () => {
     const user = userEvent.setup();
     renderPreviewPanel();
