@@ -465,7 +465,7 @@ fn open_updater_window(app: &AppHandle, manual: bool) -> Result<(), String> {
     }
 
     let mode = if manual { "manual" } else { "available" };
-    WebviewWindowBuilder::new(
+    let builder = WebviewWindowBuilder::new(
         app,
         UPDATER_WINDOW_LABEL,
         WebviewUrl::App(format!("updater.html?mode={mode}").into()),
@@ -476,9 +476,37 @@ fn open_updater_window(app: &AppHandle, manual: bool) -> Result<(), String> {
     .resizable(true)
     .maximizable(false)
     .center()
-    .build()
-    .map(|_| ())
-    .map_err(|error| error.to_string())
+    .focused(true);
+    let window = above_main_window(app, builder)?
+        .build()
+        .map_err(|error| error.to_string())?;
+    // Brought to the front, even if the main window finished loading after it.
+    let _ = window.set_focus();
+    Ok(())
+}
+
+/// On Windows the update window that the check at start opens could end up
+/// behind the main window, which finishes loading after it (Monika, issue
+/// 401). Owned by the main window, it always stays above it, until the user
+/// closes it or updates. macOS would attach it as a child that moves with the
+/// main window, so there it stays a separate window.
+#[cfg(windows)]
+fn above_main_window<'a>(
+    app: &AppHandle,
+    builder: WebviewWindowBuilder<'a, tauri::Wry, AppHandle>,
+) -> Result<WebviewWindowBuilder<'a, tauri::Wry, AppHandle>, String> {
+    match app.get_webview_window("main") {
+        Some(main) => builder.parent(&main).map_err(|error| error.to_string()),
+        None => Ok(builder),
+    }
+}
+
+#[cfg(not(windows))]
+fn above_main_window<'a>(
+    _app: &AppHandle,
+    builder: WebviewWindowBuilder<'a, tauri::Wry, AppHandle>,
+) -> Result<WebviewWindowBuilder<'a, tauri::Wry, AppHandle>, String> {
+    Ok(builder)
 }
 
 /// Open the updater window for Help > Check for Updates (issue 247).
