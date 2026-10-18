@@ -12,6 +12,8 @@ interface AnnotationRunAllSettingsProps {
   maxConcurrency: number;
   /** The selected provider's default: 2 for Custom, 10 otherwise. */
   defaultMaxConcurrency: number;
+  /** apollo-deploy: a provider's own limit on requests at once. */
+  maxConcurrencyLimit?: { value: number; note: string };
   onMaxConcurrencyCommit: (value: number) => void;
   disabled?: boolean;
 }
@@ -26,9 +28,11 @@ export function AnnotationRunAllSettings({
   onProcessingModeChange,
   maxConcurrency,
   defaultMaxConcurrency,
+  maxConcurrencyLimit,
   onMaxConcurrencyCommit,
   disabled,
 }: AnnotationRunAllSettingsProps) {
+  const concurrencyMax = maxConcurrencyLimit?.value ?? MAX_ANNOTATION_CONCURRENCY;
   return (
     <section aria-labelledby="annotation-run-all-settings" className="space-y-4">
       <div className="space-y-0.5">
@@ -108,20 +112,21 @@ export function AnnotationRunAllSettings({
           id="annotation-ai-max-concurrency"
           type="number"
           min={1}
-          max={MAX_ANNOTATION_CONCURRENCY}
+          max={concurrencyMax}
           step={1}
           defaultValue={String(maxConcurrency)}
-          disabled={disabled}
+          disabled={(disabled ?? false) || concurrencyMax === 1}
           className="w-28"
           onBlur={(event) => {
             const parsed = Number(event.target.value);
             const safe = Number.isFinite(parsed) ? Math.trunc(parsed) : defaultMaxConcurrency;
-            onMaxConcurrencyCommit(Math.min(MAX_ANNOTATION_CONCURRENCY, Math.max(1, safe)));
+            onMaxConcurrencyCommit(Math.min(concurrencyMax, Math.max(1, safe)));
           }}
         />
         <p className="text-label-secondary text-description">
-          How many requests Run sends at the same time (default {defaultMaxConcurrency} for this
-          provider). Match a local server's own limit.
+          {maxConcurrencyLimit
+            ? maxConcurrencyLimit.note
+            : `How many requests Run sends at the same time (default ${String(defaultMaxConcurrency)} for this provider). Match a local server's own limit.`}
         </p>
       </div>
 

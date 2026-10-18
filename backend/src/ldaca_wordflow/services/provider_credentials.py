@@ -8,6 +8,7 @@ import uuid
 import anyio
 from pydantic import SecretStr, ValidationError
 
+from .. import apollo_deploy  # apollo-deploy:
 from ..domain.annotation import AnnotationProviderSnapshot
 from ..infrastructure.storage.private_toml import (
     PrivateTomlError,
@@ -178,6 +179,10 @@ class ProviderCredentialStore:
         *,
         supplied: SecretStr | str | None = None,
     ) -> str | None:
+        # apollo-deploy: the built-in Apollo LLM provider uses no stored or
+        # supplied key; callers bind this marker to the signed-in user.
+        if apollo_deploy.claims_annotation_provider(snapshot, supplied):
+            return apollo_deploy.UNBOUND_CREDENTIAL
         if self._settings.multi_user:
             credential = _secret_value(supplied)
             if snapshot.provider != "custom" and credential is None:

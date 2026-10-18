@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import cast
 
+from ... import apollo_deploy  # apollo-deploy:
 from ...analysis.annotation_examples import AnnotationExample
 from ...domain.annotation import AnnotationClass
 from ...domain.workspace.analysis import (
@@ -65,6 +66,8 @@ def resolve_provider_adapter(
     if provider_id == "custom":
         if base_url is None:
             raise ValueError("Custom annotation providers require a base URL")
+        if apollo_deploy.is_apollo_base_url(base_url):  # apollo-deploy:
+            return apollo_deploy.annotation_adapter()
         return CustomOpenAICompatibleAnnotationAdapter(base_url)
     if base_url is not None:
         raise ValueError("Built-in annotation providers cannot define a base URL")
@@ -260,7 +263,10 @@ async def annotate_all(
     size = request.batch_size
     chunks = [texts[start : start + size] for start in range(0, len(texts), size)]
     semaphore = asyncio.Semaphore(
-        request.max_concurrency or default_max_concurrency(source.provider)
+        apollo_deploy.cap_concurrency(  # apollo-deploy: one request at a time
+            adapter,
+            request.max_concurrency or default_max_concurrency(source.provider),
+        )
     )
     completed_rows = 0
     failed_batch_count = 0

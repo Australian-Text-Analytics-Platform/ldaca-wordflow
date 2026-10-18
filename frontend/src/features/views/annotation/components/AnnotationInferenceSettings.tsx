@@ -19,6 +19,8 @@ interface AnnotationInferenceSettingsProps {
   onProcessingModeChange: (value: 'reprocess_all' | 'fill_missing') => void;
   maxConcurrency: number;
   defaultMaxConcurrency: number;
+  /** apollo-deploy: a provider's own limit on requests at once. */
+  maxConcurrencyLimit?: { value: number; note: string };
   onMaxConcurrencyCommit: (value: number) => void;
   reasoningEnabled: boolean;
   onReasoningEnabledChange: (enabled: boolean) => void;
@@ -40,6 +42,7 @@ export function AnnotationInferenceSettings({
   onProcessingModeChange,
   maxConcurrency,
   defaultMaxConcurrency,
+  maxConcurrencyLimit,
   onMaxConcurrencyCommit,
   reasoningEnabled,
   onReasoningEnabledChange,
@@ -93,6 +96,7 @@ export function AnnotationInferenceSettings({
         onProcessingModeChange={onProcessingModeChange}
         maxConcurrency={maxConcurrency}
         defaultMaxConcurrency={defaultMaxConcurrency}
+        maxConcurrencyLimit={maxConcurrencyLimit}
         onMaxConcurrencyCommit={onMaxConcurrencyCommit}
         disabled={disabled}
       />

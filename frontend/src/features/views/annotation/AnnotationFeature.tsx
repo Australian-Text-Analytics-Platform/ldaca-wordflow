@@ -1,7 +1,7 @@
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import { tabColumnLayout } from '@/features/views/common/columnOrder';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { Analysis, AnnotationResult, AnnotationRunAllResult } from '@/api';
 import { sqlIdentifier, sqlTable } from '@/api';
@@ -68,6 +68,11 @@ import { useAnnotationAiPreview } from './hooks/useAnnotationAiPreview';
 import { useAnnotationClassDescriptions } from './hooks/useAnnotationClassDescriptions';
 import { useAnnotationTabSettings } from './hooks/useAnnotationTabSettings';
 import { defaultAnnotationConcurrency } from './annotationTabSettings';
+import {
+  APOLLO_CONCURRENCY_NOTE,
+  apolloConcurrencyLimit,
+  useApolloProvider,
+} from '@/features/apollo-deploy/apolloProvider';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
@@ -255,25 +260,39 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     providerCredentials.annotationProviders.find(
       (configuration) => configuration.id === aiProviderConfigurationId,
     ) ?? null;
+  // apollo-deploy: Apollo LLM starts on the server's default model.
+  const apolloProvider = useApolloProvider();
+  const providerModels = useMemo(() => {
+    const configuration = apolloProvider?.configuration;
+    const defaultModel = apolloProvider?.default_model;
+    if (!configuration || !defaultModel || aiProviderModels[configuration.id]) {
+      return aiProviderModels;
+    }
+    return { ...aiProviderModels, [configuration.id]: defaultModel };
+  }, [aiProviderModels, apolloProvider]);
 
   useEffect(() => {
     if (selectedAiProvider) return;
+    // apollo-deploy: wait for the server's provider, so a saved Apollo LLM
+    // selection is not cleared and a new tab selects it.
+    if (apolloProvider === undefined) return;
     const fallback = resolveAnnotationProviderConfiguration(
       providerCredentials.annotationProviders,
       aiProviderConfigurationId,
       aiProviderType,
     );
     if (fallback) {
-      selectAiProvider(fallback.id, fallback.provider, aiProviderModels[fallback.id] ?? '');
+      selectAiProvider(fallback.id, fallback.provider, providerModels[fallback.id] ?? '');
     } else if (aiProviderConfigurationId) {
       clearAiProvider();
     }
   }, [
     aiProviderConfigurationId,
-    aiProviderModels,
+    apolloProvider,
     aiProviderType,
     clearAiProvider,
     providerCredentials.annotationProviders,
+    providerModels,
     selectAiProvider,
     selectedAiProvider,
   ]);
@@ -1179,7 +1198,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                             [configurationId]: model,
                           });
                         }}
-                        providerModels={aiProviderModels}
+                        providerModels={providerModels}
                         model={aiModel}
                         disabled={controlsLocked}
                         onAdvancedOpenChange={(open) => {
@@ -1217,9 +1236,15 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                               processingMode={aiProcessingMode}
                               onProcessingModeChange={setAiProcessingMode}
                               maxConcurrency={aiMaxConcurrency}
-                              defaultMaxConcurrency={defaultAnnotationConcurrency(
-                                selectedAiProvider?.provider ?? null,
-                              )}
+                              defaultMaxConcurrency={
+                                apolloConcurrencyLimit(selectedAiProvider?.id) ??
+                                defaultAnnotationConcurrency(selectedAiProvider?.provider ?? null)
+                              }
+                              maxConcurrencyLimit={
+                                apolloConcurrencyLimit(selectedAiProvider?.id) === undefined
+                                  ? undefined
+                                  : { value: 1, note: APOLLO_CONCURRENCY_NOTE }
+                              }
                               onMaxConcurrencyCommit={commitAiMaxConcurrency}
                               reasoningEnabled={aiReasoningEnabled}
                               onReasoningEnabledChange={setAiReasoningEnabled}

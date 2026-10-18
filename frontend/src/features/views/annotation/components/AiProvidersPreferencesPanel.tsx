@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
 import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
 import { providerConfigurationSecondaryText } from '../aiProviders';
+import { isApolloConfiguration } from '@/features/apollo-deploy/apolloProvider';
 import { AddAnnotationProviderDialog } from './AddAnnotationProviderDialog';
 import { EditAnnotationProviderDialog } from './EditAnnotationProviderDialog';
 import { toastError } from '@/lib/toastError';
@@ -115,33 +116,40 @@ export function AiProvidersPreferencesPanel() {
                       {providerConfigurationSecondaryText(configuration)}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant="outline">
-                      {configuration.has_api_key ? 'Key saved' : 'No key'}
+                  {/* apollo-deploy: the server's provider is read-only. */}
+                  {isApolloConfiguration(configuration.id) ? (
+                    <Badge variant="outline" className="shrink-0">
+                      Read-only
                     </Badge>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={pending}
-                      onClick={() => {
-                        setEditTarget(configuration);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={pending}
-                      onClick={() => {
-                        setDeleteTarget(configuration);
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
+                  ) : (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge variant="outline">
+                        {configuration.has_api_key ? 'Key saved' : 'No key'}
+                      </Badge>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => {
+                          setEditTarget(configuration);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => {
+                          setDeleteTarget(configuration);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -165,7 +173,12 @@ export function AiProvidersPreferencesPanel() {
           onClick={() => {
             setClearOpen(true);
           }}
-          disabled={pending || credentials.annotationProviders.length === 0}
+          disabled={
+            pending ||
+            credentials.annotationProviders.every((configuration) =>
+              isApolloConfiguration(configuration.id),
+            )
+          }
         >
           Clear all providers
         </Button>

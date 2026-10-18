@@ -28,6 +28,9 @@ class OpenAIAnnotationAdapter:
     # Send chat_template_kwargs.enable_thinking (vLLM, SGLang, oMLX), so a
     # model that thinks by default, such as Qwen, follows the Reasoning switch.
     send_thinking_switch: bool = False
+    # apollo-deploy: the OpenAI ``user`` field, set only by the Apollo adapter
+    # from the signed-in account (never from the client or for other providers).
+    end_user: str | None = None
 
     async def complete(
         self,
@@ -63,6 +66,7 @@ class OpenAIAnnotationAdapter:
             self.send_thinking_switch
             and self.base_url not in _THINKING_SWITCH_REJECTED
         )
+        end_user: str | Omit = omit if self.end_user is None else self.end_user  # apollo-deploy:
 
         async def create(extra_body: dict[str, object] | None):
             if self.supports_json_response_format:
@@ -74,6 +78,7 @@ class OpenAIAnnotationAdapter:
                     max_completion_tokens=max_completion_tokens(config),
                     response_format={"type": "json_object"},
                     stream=False,
+                    user=end_user,  # apollo-deploy:
                     extra_body=extra_body,
                 )
             return await client.chat.completions.create(
@@ -83,6 +88,7 @@ class OpenAIAnnotationAdapter:
                 reasoning_effort=reasoning_effort,
                 max_completion_tokens=max_completion_tokens(config),
                 stream=False,
+                user=end_user,  # apollo-deploy:
                 extra_body=extra_body,
             )
 

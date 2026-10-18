@@ -22,6 +22,7 @@ from ..shared.document_fingerprint import require_same_documents
 from ..shared.empty_values import empty_last_key
 from ..shared.topic_types import UNGROUPED_TOPIC_ID
 from .category_order import natural_key
+from .. import apollo_deploy  # apollo-deploy:
 from ..domain.annotation import provider_failure_message
 from ..analysis.concordance_core import compute_node_concordance_page
 from ..analysis.annotation_examples import prepare_annotation_examples
@@ -849,9 +850,13 @@ class AnalysisResultService:
                 annotation_query = effective_query
 
                 async def credential() -> str | None:
-                    return await self._credentials.resolve_annotation_provider(
+                    resolved = await self._credentials.resolve_annotation_provider(
                         annotation_request,
                         supplied=annotation_query.api_key,
+                    )
+                    # apollo-deploy: an Apollo LLM Preview is bound to this user.
+                    return await apollo_deploy.bind_credential(
+                        resolved, user_id, "preview"
                     )
 
                 payload, new_labels = await _query_annotation_snapshot(

@@ -16,6 +16,7 @@ import anyio
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from pydantic import ValidationError
 
+from .. import apollo_deploy  # apollo-deploy:
 from ..analysis.result_integrity import validate_analysis_result_integrity
 from ..domain.workspace.tab import MAX_ANNOTATION_PREVIEW_LABELS
 from ..domain.workspace import (
@@ -288,6 +289,14 @@ class AnalysisService:
             if annotation_request is not None
             else None
         )
+        # apollo-deploy: bind an Apollo LLM credential to this signed-in user;
+        # a Run that waits for the user's previous one says so in Tasks.
+        credential = await apollo_deploy.bind_credential(
+            credential,
+            user_id,
+            "run" if isinstance(request, AnnotationRunAllAnalysisRequest) else "preview",
+        )
+        apollo_waiting = apollo_deploy.queued_progress(credential, user_id)
         timestamp = self._clock()
         records_to_schedule: list[AnalysisRecord] = []
         is_concordance_group = (
@@ -451,6 +460,8 @@ class AnalysisService:
                 records_to_schedule.append(record)
             tab.modified_at = timestamp
             tab.revision += 1
+            if apollo_waiting is not None:  # apollo-deploy:
+                self._live_progress[(workspace_id, record.id)] = apollo_waiting
             resource = self._project(lease, record)
 
         try:
@@ -921,6 +932,8 @@ class AnalysisService:
                     await reserve_launch(key)
                     reserved = True
                     lease.workspace.replace_analysis(record.start(self._clock()))
+                    # apollo-deploy: drop "Waiting for your previous Apollo LLM run".
+                    self._live_progress.pop((key.workspace_id, key.analysis_id), None)
                 except Exception as exc:
                     failure = failure_from_exception(exc, code="analysis_start_failed")
                     if not isinstance(exc, AppError):

@@ -36,6 +36,7 @@ from ._middleware import (
     RequestLoggingMiddleware,
     normalized_scope_path,
 )
+from .apollo_deploy.api import router as apollo_router  # apollo-deploy:
 from .api.app_update import router as app_update_router
 from .api.auth import router as auth_router
 from .api.annotations import router as annotations_router
@@ -304,6 +305,7 @@ def _register_routers(app: FastAPI) -> None:
     """Attach API routers in one deterministic order."""
 
     for router in (
+        apollo_router,  # apollo-deploy:
         app_update_router,
         auth_router,
         annotations_router,

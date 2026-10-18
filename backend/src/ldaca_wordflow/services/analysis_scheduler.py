@@ -9,6 +9,8 @@ import uuid
 
 from anyio.abc import TaskGroup
 
+from .. import apollo_deploy  # apollo-deploy:
+
 from .analysis_execution_types import (
     AnalysisExecutionControl,
     AnalysisExecutionKey,
@@ -91,9 +93,13 @@ class AnalysisScheduler(AnalysisExecutionControl):
                 order_key=lambda item: (item.created_at, item.key.analysis_id),
                 runner=runner,
                 finished=self._finished,
+                # apollo-deploy: a user's Apollo LLM Runs go one at a time.
+                eligible=lambda item: apollo_deploy.scheduler_eligible(item.credential),
             )
             for lane, slots in capacities.items()
         }
+        for kernel in self._kernels.values():  # apollo-deploy:
+            apollo_deploy.user_gate().add_waker(kernel.wake)
 
     def _kernel_for(
         self, lane: AnalysisLane
@@ -198,6 +204,7 @@ class AnalysisScheduler(AnalysisExecutionControl):
             await kernel.wait_idle()
 
     async def _finished(self, item: ScheduledAnalysis) -> None:
+        apollo_deploy.scheduler_finished(item.credential)  # apollo-deploy:
         await self._work_removed(item.key)
 
 

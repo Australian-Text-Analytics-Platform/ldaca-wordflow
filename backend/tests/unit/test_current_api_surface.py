@@ -18,6 +18,7 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/data-root", "get_data_root"),
     ("PUT", "/api/data-root", "update_data_root"),
     ("POST", "/api/annotation-providers/models", "list_annotation_models"),
+    ("GET", "/api/apollo/provider", "get_apollo_provider"),  # apollo-deploy:
     ("GET", "/api/auth/cilogon/callback", "cilogon_callback"),
     ("GET", "/api/auth/cilogon/login", "cilogon_login"),
     ("POST", "/api/auth/google/callback", "google_callback"),
