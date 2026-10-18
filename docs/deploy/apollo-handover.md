@@ -136,6 +136,100 @@ Redeploy the previous image tag on the same `/data` volume. None of these
 changes alter the Project format. Annotation tabs that used Apollo LLM will
 show no provider selected in a build without it.
 
+## How it works (for diagnosing problems)
+
+- **Request path.** The browser sends the Apollo configuration id
+  (`3c4d70f7-4c43-5e66-9f39-6a4b478319bc`) and the placeholder URL
+  `https://apollo-llm.invalid/v1`, never a key.
+  1. `services/provider_credentials.py` recognises the request
+     (`apollo_deploy.claims_annotation_provider`) and returns a marker.
+  2. `services/analyses.py` (Runs) and `services/analysis_results.py`
+     (Preview pages) look up the signed-in account
+     (`apollo_deploy/binding.py`, `EndUserResolver`: `users.email`, or the
+     first `user_identities.subject`).
+  3. They swap the marker for a signed token,
+     `apollo-user:v1:<purpose>:<user id>:<end user>:<HMAC>`. The HMAC key is
+     derived from the gateway key.
+  4. The token travels where an API key would, through the scheduler and into
+     the worker process.
+  5. `apollo_deploy/adapter.py` checks the signature, then calls LiteLLM with
+     the real URL and key from the environment, adding `user=<end user>`.
+- **Rotating `APOLLO_LLM_API_KEY`** makes tokens of Runs still queued at the
+  time invalid. Restart (which ends queued Runs anyway) after a key change.
+- **One request at a time per user** has three parts:
+  - the scheduler starts a user's Apollo Run only when no other Run or Preview
+    of theirs is going (`apollo_deploy/gate.py`, hooked into
+    `services/fair_scheduler.py` and `services/fair_queue.py`);
+  - a Run sends one request at a time (`cap_concurrency` in
+    `infrastructure/providers/annotation_ai.py`);
+  - a user's Previews take turns, and a Preview during their Run is refused
+    with HTTP 409 `apollo_llm_run_active`.
+
+  All of this is held in memory in the one server process.
+- **Rate limits.** The adapter retries a 429 up to 8 times, waiting 2, 4, 8 …
+  up to 60 s (or `Retry-After`, capped at 60 s), about 3 minutes in all. After
+  that, the batch's own "Retries if a request fails" setting applies.
+- **What LiteLLM receives:**
+  - an ordinary chat completion with `model`, `messages`, `temperature`,
+    `max_completion_tokens` and `user`;
+  - no `response_format`, since JSON is asked for in the prompt;
+  - `chat_template_kwargs.enable_thinking` (the Thinking switch). If the
+    gateway answers that with HTTP 400, Wordflow sends the request once more
+    without it and stops sending it for the rest of the process.
+- **Client lifetime (#404).** Each request opens a client and closes it when
+  it ends. Connecting gives up after 15 s; an answer may take up to 300 s.
+
+## How it was tested
+
+- **Unit tests** (`backend/tests/unit/test_apollo_deploy.py`, 16 tests) cover:
+  - the provider is listed without key fields;
+  - the key appears in no response, log or error;
+  - `user` comes only from the session (forged and typed-in values are
+    refused);
+  - a user's Runs go one after another while another user's Run goes ahead;
+  - a Run sends one request at a time;
+  - 429s are retried with backoff;
+  - a wrong setting stops start-up;
+  - without `APOLLO_LLM_BASE_URL` the build behaves like upstream.
+- **#404 tests** (`test_annotation_client_lifecycle.py`, 10 tests): every
+  client is closed, on success and on failure. A soak test runs with
+  `WORDFLOW_ANNOTATION_SOAK_REQUESTS=300`.
+- **Frontend tests:** `frontend/src/features/apollo-deploy/__tests__/` (6) and
+  `features/auth/components/__tests__/CILogonLogin.test.tsx` (2).
+- **End to end, on a Mac, in single-user mode** (end user `root@localhost`),
+  against a local stand-in for the gateway that logged each request, driving
+  the app in WebKit:
+  - Apollo LLM was preselected with the default model, and Requests at once
+    was 1 and locked;
+  - one Preview, then two Runs of 60 rows each, one row per request, in two
+    tabs;
+  - the second Run showed "Waiting for your previous Apollo LLM run";
+  - the gateway log had 127 completions, all with `user`, never two open at
+    once, no `response_format`, and the 429 retried after 1 s;
+  - the key was in no log line and nowhere in the data folder.
+- **Not tested here:**
+  - the real LiteLLM and vLLM (use the test model deployed on Apollo);
+  - Run:ai sign-in past the Keycloak login page (the button reaches it);
+  - hosted mode with real users;
+  - the Docker image (no Docker on the build Mac);
+  - the GitHub image workflow.
+
+  These are what your checks are for.
+
+## If something goes wrong
+
+| What you see | Look at |
+|---|---|
+| Apollo LLM isn't listed | `GET /api/apollo/provider` says `"enabled": false`: `APOLLO_LLM_BASE_URL` isn't set in the container. |
+| The server doesn't start | The log names the `APOLLO_LLM_*` or `CILOGON_*` setting that is wrong (for example a default model not in `APOLLO_LLM_MODELS`). |
+| The model list is empty | The ids in `APOLLO_LLM_MODELS` must match the gateway's `/v1/models` ids exactly. |
+| Every request fails with "The AI provider rejected the API key" | Wrong `APOLLO_LLM_API_KEY`, or the key was changed while Runs were queued (restart). |
+| Every request fails with "The AI provider rejected the request" | The model isn't allowed for this key in LiteLLM, or isn't in `APOLLO_LLM_MODELS`. |
+| `user` is empty in LiteLLM's spend logs | Check the request reached this build (`/health/ready` version ends in `+apollo.N`); `user` is set on every Apollo completion. |
+| A user's Run stays queued | That user has another Apollo Run going (Tasks shows "Waiting for your previous Apollo LLM run"), or the medium lane (`ANALYSIS_MEDIUM_CAPACITY`) is full with other users' Runs. |
+| A request still waits 300 s | Confirm the image includes `b42d2614` (#404). Note the time, model and Run, and report it with the LiteLLM and vLLM logs for that minute. |
+| Sign-in fails with an email conflict | That email already signed in through another issuer in this data folder; use a fresh `/data` for Run:ai. |
+
 ## Report back
 
 Report to Chao: the image tag deployed, the readiness output, and the result of
