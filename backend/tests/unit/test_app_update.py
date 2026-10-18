@@ -28,6 +28,21 @@ def test_versions_compare_by_number():
     assert not is_newer("garbage", "0.7.13")
 
 
+def test_prereleases_sort_between_releases():
+    # 0.7.15-pre installs as 0.7.15rc0: newer than 0.7.14, older than 0.7.15.
+    assert version_key("0.7.15rc0") == (0, 7, 15)
+    assert version_key("0.7.15-pre") == (0, 7, 15)
+    assert not is_newer("0.7.14", "0.7.15rc0")
+    assert not is_newer("0.7.15-pre", "0.7.15rc0")
+    assert is_newer("0.7.15", "0.7.15rc0")
+    assert is_newer("0.7.15", "0.7.15-pre")
+    assert is_newer("0.7.15rc1", "0.7.15rc0")
+    assert is_newer("0.7.15rc0", "0.7.15b2")
+    assert not is_newer("0.7.15rc0", "0.7.15")
+    assert not is_newer("0.8", "0.8.0")
+    assert is_newer("99.0.0", "0.7.15rc0")
+
+
 @pytest.mark.parametrize(
     ("latest", "available"), [("99.0.0", True), ("0.0.1", False), (None, False)]
 )
