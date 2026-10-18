@@ -5,6 +5,8 @@ Apollo cluster. It adds one built-in Annotation provider, **Apollo LLM**, that
 reaches a LiteLLM gateway through the server, bills each request to the
 signed-in user, and lets each user send one request at a time.
 
+To roll out a new build on Apollo, follow [the handover](apollo-handover.md).
+
 **None of this goes into the released version.** The branch is never merged
 into `v0.7` or `main`, and it is never published to PyPI, the desktop
 installers or GitHub Releases. Its only output is a container image on GHCR.

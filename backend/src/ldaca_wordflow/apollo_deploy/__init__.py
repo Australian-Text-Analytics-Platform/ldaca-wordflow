@@ -33,9 +33,15 @@ _resolver: EndUserResolver | None = None
 
 
 def install(sessions: SessionService) -> None:
-    """Called once per runtime with the service that knows signed-in users."""
+    """Called once per runtime with the service that knows signed-in users.
+
+    Reads the APOLLO_LLM_* settings here, so a wrong one stops start-up
+    instead of failing the first Apollo request.
+    """
 
     global _resolver
+    apollo_settings.cache_clear()
+    apollo_settings()
     _resolver = EndUserResolver(sessions)
 
 

@@ -7,7 +7,7 @@ import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import anyio
 import pytest
@@ -298,6 +298,17 @@ def test_redact_removes_keys_but_keeps_ordinary_words(apollo_env: None) -> None:
     assert redact("api_key=xyz123") == "api_key=[redacted]"
     message = "maximum context length is 8192 tokens"
     assert redact(message) == message
+
+
+def test_wrong_settings_stop_start_up_without_showing_secrets(
+    apollo_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("APOLLO_LLM_DEFAULT_MODEL", "not-offered")
+
+    with pytest.raises(ValueError, match="APOLLO_LLM_DEFAULT_MODEL") as error:
+        apollo_deploy.install(cast(Any, object()))
+
+    assert GATEWAY_KEY not in str(error.value)
 
 
 # The user field ------------------------------------------------------------------------
