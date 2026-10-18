@@ -4,6 +4,7 @@ import asyncio
 import uuid
 
 import pytest
+from openai import Timeout
 
 from ldaca_wordflow.domain import AnnotationClass
 from ldaca_wordflow.domain.workspace import (
@@ -35,6 +36,19 @@ from ldaca_wordflow.infrastructure.providers.annotation_openai import (
     CustomOpenAICompatibleAnnotationAdapter,
     OpenAIAnnotationAdapter,
 )
+
+
+class _ClosableClient:
+    """SDK client fakes are used as ``async with`` blocks or closed by hand."""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
 
 
 class _ProviderStatusError(Exception):
@@ -209,7 +223,7 @@ def _install_fake_openai(monkeypatch, *, model_ids: list[str] | None = None) -> 
         def list(self):
             return _AsyncModelIterator(model_ids or [])
 
-    class _FakeAsyncOpenAI:
+    class _FakeAsyncOpenAI(_ClosableClient):
         def __init__(self, **_kwargs) -> None:
             self.chat = _FakeChat()
             self.models = _FakeModels()
@@ -244,7 +258,7 @@ def _install_fake_anthropic(monkeypatch) -> tuple[dict, dict]:
         def list(self):
             return _AsyncModelIterator([])
 
-    class _FakeAsyncAnthropic:
+    class _FakeAsyncAnthropic(_ClosableClient):
         def __init__(self, **kwargs) -> None:
             constructor_kwargs.update(kwargs)
             self.messages = _FakeMessages()
@@ -313,7 +327,7 @@ async def test_anthropic_omits_sampling_and_thinking_overrides_when_disabled(
     )
 
     assert result == '{"labels": ["positive"]}'
-    assert constructor_kwargs["timeout"] == 300.0
+    assert constructor_kwargs["timeout"] == Timeout(300.0, connect=15.0)
     assert constructor_kwargs["max_retries"] == 0
     assert "temperature" not in create_kwargs
     assert isinstance(create_kwargs["thinking"], Omit)
@@ -399,7 +413,7 @@ async def test_complete_openai_classifies_context_limit_errors(monkeypatch):
         def __init__(self) -> None:
             self.completions = _ContextLimitedCompletions()
 
-    class _FakeAsyncOpenAI:
+    class _FakeAsyncOpenAI(_ClosableClient):
         def __init__(self, **_kwargs) -> None:
             self.chat = _FakeChat()
 
@@ -424,7 +438,7 @@ async def test_custom_model_discovery_uses_its_base_url_and_allows_no_key(
         def list(self):
             return _AsyncModelIterator(["local-model"])
 
-    class _FakeAsyncOpenAI:
+    class _FakeAsyncOpenAI(_ClosableClient):
         def __init__(self, **kwargs) -> None:
             constructor_kwargs.update(kwargs)
             self.models = _FakeModels()
@@ -451,11 +465,11 @@ async def test_google_model_discovery_has_bounded_timeout_and_retry(monkeypatch)
 
             return items()
 
-    class _Aio:
+    class _Aio(_ClosableClient):
         def __init__(self) -> None:
             self.models = _Models()
 
-    class _Client:
+    class _Client(_ClosableClient):
         def __init__(self, **kwargs) -> None:
             constructor_kwargs.update(kwargs)
             self.aio = _Aio()
@@ -485,7 +499,7 @@ async def test_custom_chat_completion_uses_its_base_url_and_allows_no_key(
         def __init__(self) -> None:
             self.completions = _FakeCompletions()
 
-    class _FakeAsyncOpenAI:
+    class _FakeAsyncOpenAI(_ClosableClient):
         def __init__(self, **kwargs) -> None:
             constructor_kwargs.update(kwargs)
             self.chat = _FakeChat()
@@ -500,7 +514,7 @@ async def test_custom_chat_completion_uses_its_base_url_and_allows_no_key(
     assert result == '{"labels": ["positive"]}'
     assert constructor_kwargs["base_url"] == "http://localhost:8080/v1"
     assert constructor_kwargs["api_key"] == "no-key-required"
-    assert constructor_kwargs["timeout"] == 300.0
+    assert constructor_kwargs["timeout"] == Timeout(300.0, connect=15.0)
     assert create_kwargs["model"] == "local-model"
     # Reasoning off reaches models that think by default (Qwen on oMLX).
     assert create_kwargs["extra_body"] == {
@@ -522,7 +536,7 @@ async def test_custom_chat_completion_drops_a_rejected_thinking_switch(monkeypat
         def __init__(self) -> None:
             self.completions = _FakeCompletions()
 
-    class _FakeAsyncOpenAI:
+    class _FakeAsyncOpenAI(_ClosableClient):
         def __init__(self, **_kwargs) -> None:
             self.chat = _FakeChat()
 
@@ -548,7 +562,7 @@ async def test_openai_never_sends_the_thinking_switch(monkeypatch):
         def __init__(self) -> None:
             self.completions = _FakeCompletions()
 
-    class _FakeAsyncOpenAI:
+    class _FakeAsyncOpenAI(_ClosableClient):
         def __init__(self, **_kwargs) -> None:
             self.chat = _FakeChat()
 
@@ -579,7 +593,7 @@ async def test_annotation_preview_retries_provider_read_timeouts(monkeypatch):
         def __init__(self) -> None:
             self.completions = _TimeoutCompletions()
 
-    class _FakeAsyncOpenAI:
+    class _FakeAsyncOpenAI(_ClosableClient):
         def __init__(self, **_kwargs) -> None:
             self.chat = _FakeChat()
 
@@ -619,7 +633,7 @@ async def test_annotation_preview_retries_a_truncated_openrouter_completion(
         def __init__(self) -> None:
             self.completions = _FakeCompletions()
 
-    class _FakeAsyncOpenAI:
+    class _FakeAsyncOpenAI(_ClosableClient):
         def __init__(self, **kwargs) -> None:
             constructor_kwargs.append(kwargs)
             self.chat = _FakeChat()
@@ -652,7 +666,7 @@ async def test_annotation_preview_rejects_the_wrong_number_of_labels_after_retri
         def __init__(self) -> None:
             self.completions = _FakeCompletions()
 
-    class _FakeAsyncOpenAI:
+    class _FakeAsyncOpenAI(_ClosableClient):
         def __init__(self, **_kwargs) -> None:
             self.chat = _FakeChat()
 
@@ -677,11 +691,11 @@ async def test_google_completion_disables_sdk_retries_and_bounds_output(monkeypa
             generate_kwargs.update(kwargs)
             return type("Response", (), {"text": '{"labels": ["positive"]}'})()
 
-    class _FakeAio:
+    class _FakeAio(_ClosableClient):
         def __init__(self) -> None:
             self.models = _FakeModels()
 
-    class _FakeClient:
+    class _FakeClient(_ClosableClient):
         def __init__(self, **kwargs) -> None:
             constructor_kwargs.update(kwargs)
             self.aio = _FakeAio()

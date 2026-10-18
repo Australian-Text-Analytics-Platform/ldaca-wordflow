@@ -6,11 +6,12 @@ from dataclasses import dataclass
 
 from .annotation_adapter import (
     ANSWER_TOKEN_HEADROOM,
-    INFERENCE_TIMEOUT_SECONDS,
     MODEL_DISCOVERY_MAX_RETRIES,
     MODEL_DISCOVERY_TIMEOUT_SECONDS,
     AnnotationAiError,
     InferenceConfig,
+    INFERENCE_CONNECT_TIMEOUT_SECONDS,
+    INFERENCE_TIMEOUT_SECONDS,
     completion_error,
     reasoning_budget_tokens,
 )
@@ -50,14 +51,9 @@ class AnthropicAnnotationAdapter:
                 "Anthropic requires an API key",
                 code="annotation_provider_authentication_failed",
             )
-        from anthropic import AsyncAnthropic, Omit, omit
+        from anthropic import AsyncAnthropic, Omit, Timeout, omit
         from anthropic.types import OutputConfigParam, TextBlock, ThinkingConfigParam
 
-        client = AsyncAnthropic(
-            api_key=api_key,
-            timeout=INFERENCE_TIMEOUT_SECONDS,
-            max_retries=0,
-        )
         max_tokens = ANSWER_TOKEN_HEADROOM
         thinking: ThinkingConfigParam | Omit = omit
         output_config: OutputConfigParam | Omit = omit
@@ -69,17 +65,25 @@ class AnthropicAnnotationAdapter:
                 output_config = {"effort": config.reasoning_effort}
             else:
                 thinking = {"type": "enabled", "budget_tokens": budget}
-        try:
-            message = await client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                system=system,
-                messages=[{"role": "user", "content": user}],
-                thinking=thinking,
-                output_config=output_config,
-            )
-        except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
-            raise completion_error(error, "Anthropic request failed") from error
+        # Closed when the request ends, never left for the garbage collector.
+        async with AsyncAnthropic(
+            api_key=api_key,
+            timeout=Timeout(
+                INFERENCE_TIMEOUT_SECONDS, connect=INFERENCE_CONNECT_TIMEOUT_SECONDS
+            ),
+            max_retries=0,
+        ) as client:
+            try:
+                message = await client.messages.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    system=system,
+                    messages=[{"role": "user", "content": user}],
+                    thinking=thinking,
+                    output_config=output_config,
+                )
+            except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
+                raise completion_error(error, "Anthropic request failed") from error
         return "".join(
             block.text for block in message.content if isinstance(block, TextBlock)
         )
@@ -92,18 +96,18 @@ class AnthropicAnnotationAdapter:
             )
         from anthropic import AsyncAnthropic
 
-        client = AsyncAnthropic(
+        ids: set[str] = set()
+        async with AsyncAnthropic(
             api_key=api_key,
             timeout=MODEL_DISCOVERY_TIMEOUT_SECONDS,
             max_retries=MODEL_DISCOVERY_MAX_RETRIES,
-        )
-        ids: set[str] = set()
-        try:
-            async for model in client.models.list():
-                if isinstance(model.id, str) and model.id:
-                    ids.add(model.id)
-        except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
-            raise completion_error(error, "Model listing failed") from error
+        ) as client:
+            try:
+                async for model in client.models.list():
+                    if isinstance(model.id, str) and model.id:
+                        ids.add(model.id)
+            except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
+                raise completion_error(error, "Model listing failed") from error
         return sorted(ids, key=str.lower)
 
 
