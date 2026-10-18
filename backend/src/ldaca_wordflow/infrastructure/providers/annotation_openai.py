@@ -17,9 +17,10 @@ from .annotation_adapter import (
 )
 
 
-# Custom servers that rejected the thinking switch; it isn't sent to them
-# again in this process.
+# Custom servers that rejected the thinking switch, or the labels schema as
+# response_format (issue 406); neither is sent to them again in this process.
 _THINKING_SWITCH_REJECTED: set[str] = set()
+_LABELS_SCHEMA_REJECTED: set[str] = set()
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +30,9 @@ class OpenAIAnnotationAdapter:
     # Send chat_template_kwargs.enable_thinking (vLLM, SGLang, oMLX), so a
     # model that thinks by default, such as Qwen, follows the Reasoning switch.
     send_thinking_switch: bool = False
+    # Send the batch's labels schema as a strict json_schema response_format,
+    # so the server enforces one known label (or null) per text (issue 406).
+    send_labels_schema: bool = False
 
     async def complete(
         self,
@@ -41,6 +45,7 @@ class OpenAIAnnotationAdapter:
         from openai import AsyncOpenAI, Omit, Timeout, omit
         from openai.types import ReasoningEffort
         from openai.types.chat import ChatCompletionMessageParam
+        from openai.types.chat.completion_create_params import ResponseFormat
 
         messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system},
@@ -58,6 +63,37 @@ class OpenAIAnnotationAdapter:
             self.send_thinking_switch
             and self.base_url not in _THINKING_SWITCH_REJECTED
         )
+        labels_schema = (
+            config.labels_schema
+            if self.send_labels_schema
+            and self.base_url not in _LABELS_SCHEMA_REJECTED
+            else None
+        )
+
+        def response_format(with_schema: bool) -> ResponseFormat | Omit:
+            if with_schema and labels_schema is not None:
+                return {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "labels",
+                        "strict": True,
+                        "schema": labels_schema,
+                    },
+                }
+            if self.supports_json_response_format:
+                return {"type": "json_object"}
+            return omit
+
+        # The full request first; a server that rejects an optional part (the
+        # labels schema, the thinking switch) gets the request without it.
+        schema_on = labels_schema is not None
+        variants = [(schema_on, thinking_switch)]
+        if schema_on:
+            variants.append((False, thinking_switch))
+        if thinking_switch:
+            variants.append((schema_on, False))
+        if schema_on and thinking_switch:
+            variants.append((False, False))
 
         # Each request's client is closed when the request ends. Clients left
         # for the garbage collector made about 1 in 80 requests on a hosted
@@ -70,51 +106,42 @@ class OpenAIAnnotationAdapter:
             ),
             max_retries=0,
         ) as client:
-
-            async def create(extra_body: dict[str, object] | None):
-                if self.supports_json_response_format:
-                    return await client.chat.completions.create(
-                        model=model,
-                        messages=messages,
-                        temperature=temperature,
-                        reasoning_effort=reasoning_effort,
-                        max_completion_tokens=max_completion_tokens(config),
-                        response_format={"type": "json_object"},
-                        stream=False,
-                        extra_body=extra_body,
-                    )
-                return await client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    reasoning_effort=reasoning_effort,
-                    max_completion_tokens=max_completion_tokens(config),
-                    stream=False,
-                    extra_body=extra_body,
-                )
-
             try:
-                try:
-                    completion = await create(
-                        {
-                            "chat_template_kwargs": {
-                                "enable_thinking": config.reasoning_enabled
-                            }
-                        }
-                        if thinking_switch
-                        else None
-                    )
-                except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
-                    rejected = completion_error(error, "OpenAI request failed")
-                    if (
-                        not thinking_switch
-                        or rejected.code != "annotation_provider_request_rejected"
-                    ):
-                        raise
-                    # A server that rejects the switch gets the request without it.
-                    completion = await create(None)
+                for index, (with_schema, with_thinking) in enumerate(variants):
+                    try:
+                        completion = await client.chat.completions.create(
+                            model=model,
+                            messages=messages,
+                            temperature=temperature,
+                            reasoning_effort=reasoning_effort,
+                            max_completion_tokens=max_completion_tokens(config),
+                            response_format=response_format(with_schema),
+                            stream=False,
+                            extra_body=(
+                                {
+                                    "chat_template_kwargs": {
+                                        "enable_thinking": config.reasoning_enabled
+                                    }
+                                }
+                                if with_thinking
+                                else None
+                            ),
+                        )
+                    except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
+                        rejected = completion_error(error, "OpenAI request failed")
+                        if (
+                            index == len(variants) - 1
+                            or rejected.code != "annotation_provider_request_rejected"
+                        ):
+                            raise
+                        continue
+                    # Remember only what the server took the request without.
                     if self.base_url is not None:
-                        _THINKING_SWITCH_REJECTED.add(self.base_url)
+                        if schema_on and not with_schema:
+                            _LABELS_SCHEMA_REJECTED.add(self.base_url)
+                        if thinking_switch and not with_thinking:
+                            _THINKING_SWITCH_REJECTED.add(self.base_url)
+                    break
             except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
                 raise completion_error(error, "OpenAI request failed") from error
         choice = completion.choices[0]
@@ -159,6 +186,7 @@ class CustomOpenAICompatibleAnnotationAdapter:
             base_url=self.base_url,
             supports_json_response_format=False,
             send_thinking_switch=True,
+            send_labels_schema=True,
         ).complete(model, api_key, system, user, config)
 
     async def list_models(self, api_key: str | None) -> list[str]:
