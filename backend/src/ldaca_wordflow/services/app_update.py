@@ -42,16 +42,46 @@ def deployment_kind(
     return "pip"
 
 
-def version_key(version: str) -> tuple[int, ...] | None:
-    """The numbers of an x.y.z version, or None for anything else."""
+_VERSION = re.compile(
+    r"v?(\d+(?:\.\d+)*)(?:[-.]?(a|alpha|b|beta|c|rc|pre|preview)[-.]?(\d*))?",
+    re.IGNORECASE,
+)
+# A prerelease sorts below its final release (issue 410):
+# 0.7.14 < 0.7.15-pre (0.7.15rc0) < 0.7.15.
+_STAGES = {"a": 0, "alpha": 0, "b": 1, "beta": 1, "c": 2, "rc": 2, "pre": 2, "preview": 2}
+_FINAL = 3
 
-    match = re.fullmatch(r"v?(\d+(?:\.\d+)*)", version.strip())
-    return tuple(int(part) for part in match.group(1).split(".")) if match else None
+
+def _parts(version: str) -> tuple[tuple[int, ...], int, int] | None:
+    match = _VERSION.fullmatch(version.strip())
+    if match is None:
+        return None
+    numbers = tuple(int(part) for part in match.group(1).split("."))
+    if match.group(2) is None:
+        return numbers, _FINAL, 0
+    return numbers, _STAGES[match.group(2).lower()], int(match.group(3) or 0)
+
+
+def version_key(version: str) -> tuple[int, ...] | None:
+    """The release numbers of an x.y.z version, also for a prerelease such as
+    0.7.15-pre or 0.7.15rc0; None for anything else."""
+
+    parts = _parts(version)
+    return parts[0] if parts else None
 
 
 def is_newer(latest: str, current: str) -> bool:
-    latest_key, current_key = version_key(latest), version_key(current)
-    return latest_key is not None and current_key is not None and latest_key > current_key
+    latest_parts, current_parts = _parts(latest), _parts(current)
+    if latest_parts is None or current_parts is None:
+        return False
+    # Pad so 0.8 and 0.8.0 compare equal.
+    width = max(len(latest_parts[0]), len(current_parts[0]))
+
+    def key(parts: tuple[tuple[int, ...], int, int]) -> tuple[tuple[int, ...], int, int]:
+        numbers, stage, number = parts
+        return numbers + (0,) * (width - len(numbers)), stage, number
+
+    return key(latest_parts) > key(current_parts)
 
 
 async def latest_version(url: str) -> str | None:
