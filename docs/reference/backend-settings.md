@@ -104,15 +104,31 @@ constructs final Settings.
 | `GOOGLE_CLIENT_ID` | Optional hosted Google provider client ID |
 | `CILOGON_CLIENT_ID` | CILogon OIDC client ID |
 | `CILOGON_CLIENT_SECRET` | CILogon OIDC client secret |
-| `CILOGON_ISSUER` | Exact trusted HTTPS issuer origin |
+| `CILOGON_ISSUER` | Exact trusted HTTPS issuer: an origin, or an origin with a path such as a Keycloak realm |
+| `CILOGON_SCOPES` | OIDC scopes requested at sign-in, as a JSON list; must include `openid` and `email` |
 | `CILOGON_REDIRECT_URI` | Exact registered callback URL |
 | `SESSION_TTL_HOURS` | Hosted Session lifetime |
 | `SESSION_COOKIE_SECURE` | Require HTTPS Session cookie |
 
 Multi-user mode requires Google or the complete CILogon client, secret, and
-redirect configuration. `CILOGON_ISSUER` is an origin such as
-`https://cilogon.aaf.edu.au`; discovery is derived internally by appending
-`/.well-known/openid-configuration`.
+redirect configuration. `CILOGON_ISSUER` is the provider's exact issuer: an
+origin such as `https://cilogon.aaf.edu.au`, or an origin with a path such as
+the Keycloak realm `https://gpu.sydney.edu.au/auth/realms/runai`. Discovery is
+derived internally by appending `/.well-known/openid-configuration` to it, and
+the discovered endpoints must be on the issuer's HTTPS host.
+
+`CILOGON_SCOPES` defaults to `["openid","email","profile","org.cilogon.userinfo"]`.
+Providers other than CILogon may not define `org.cilogon.userinfo`, so set, for
+example, `CILOGON_SCOPES=["openid","email","profile"]` for Keycloak. Each entry is
+one scope token, entries are unique, and `openid` and `email` are required
+because sign-in needs the `email` claim.
+
+Identities are kept per issuer: changing `CILOGON_ISSUER` never links a sign-in
+to an existing identity from another issuer. Email addresses are unique across
+users, so someone who already signed in with one issuer and then signs in with
+another issuer using the same email is refused ("Email belongs to a different
+identity provider"). Use a fresh data folder when moving a deployment to a new
+provider.
 
 Single-user identity is not configurable. Startup always provisions and uses
 `root` / `Root User` / `root@localhost`.

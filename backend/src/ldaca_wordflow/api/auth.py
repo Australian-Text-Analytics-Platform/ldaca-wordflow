@@ -280,7 +280,8 @@ async def cilogon_login(
             "response_type": "code",
             "client_id": settings.cilogon_client_id,
             "redirect_uri": _cilogon_redirect_uri(runtime.session_service),
-            "scope": "openid email profile org.cilogon.userinfo",
+            # Configurable for other OIDC providers, such as Keycloak (issue 403).
+            "scope": " ".join(settings.cilogon_scopes),
             "state": state_token,
             "code_challenge": _pkce_challenge(code_verifier),
             "code_challenge_method": "S256",

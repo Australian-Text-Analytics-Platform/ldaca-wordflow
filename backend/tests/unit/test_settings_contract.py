@@ -107,12 +107,14 @@ def test_network_and_capacity_settings_are_bounded() -> None:
         Settings(shutdown_grace_seconds=float("inf"))
     with pytest.raises(ValidationError):
         Settings(ldaca_oni_timeout=0)
-    with pytest.raises(ValidationError, match="HTTPS origin"):
+    with pytest.raises(ValidationError, match="HTTPS issuer URL"):
         Settings(cilogon_issuer="http://issuer.example")
-    with pytest.raises(ValidationError, match="HTTPS origin"):
-        Settings(cilogon_issuer="https://issuer.example/tenant")
-    for malformed in ("https:", "https:///"):
-        with pytest.raises(ValidationError, match="HTTPS origin"):
+    # An issuer may have a path, such as a Keycloak realm (issue 403).
+    assert Settings(cilogon_issuer="https://issuer.example/tenant").cilogon_issuer == (
+        "https://issuer.example/tenant"
+    )
+    for malformed in ("https:", "https:///", "https://issuer.example/../tenant"):
+        with pytest.raises(ValidationError, match="HTTPS issuer URL"):
             Settings(cilogon_issuer=malformed)
 
 

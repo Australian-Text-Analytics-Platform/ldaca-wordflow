@@ -45,6 +45,28 @@ SESSION_COOKIE_SECURE=true
 The secret file supplies only `CILOGON_CLIENT_SECRET`. See
 [CILogon secrets](cilogon-secrets.md).
 
+#### Other OIDC providers (Keycloak, Run:ai)
+
+The same sign-in works with other OIDC providers that support discovery, the
+authorization code flow with PKCE (S256) and the `email` claim. Set the
+provider's exact issuer, including any path, and the scopes it defines. For
+example, the Run:ai Keycloak realm on the University's Apollo cluster:
+
+```ini
+MULTI_USER=true
+CILOGON_ISSUER=https://gpu.sydney.edu.au/auth/realms/runai
+CILOGON_CLIENT_ID=<client registered in realm "runai">
+CILOGON_REDIRECT_URI=https://<host>/api/auth/cilogon/callback
+CILOGON_SCOPES=["openid","email","profile"]
+SESSION_COOKIE_SECURE=true
+```
+
+`CILOGON_CLIENT_SECRET` goes in the secret file as above. Keycloak doesn't
+define `org.cilogon.userinfo`, so leave it out of `CILOGON_SCOPES`. The sign-in
+button still reads "Sign in with CILogon" (issue 403). Use a fresh data folder:
+email addresses are unique across users, so an account made with one issuer
+blocks the same email from signing in with another.
+
 ### Analysis capacity
 
 Analyses run in three lanes, each with its own slots (issue 328), so quick

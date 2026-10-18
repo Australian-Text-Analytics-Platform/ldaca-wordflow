@@ -37,8 +37,8 @@ the file has the expected owner/mode.
 ## Provider Configuration
 
 The service definition contains the non-secret client ID, exact redirect URI,
-and `CILOGON_ISSUER`. Use the issuer origin only; Wordflow derives the discovery
-URL. Test and production issuers are separate registrations and must match the
+and `CILOGON_ISSUER`. Use the provider's exact issuer (an origin, or a Keycloak
+realm URL with its path); Wordflow derives the discovery URL. Test and production issuers are separate registrations and must match the
 configured client and callback.
 
 ## Rotation

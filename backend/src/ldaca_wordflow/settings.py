@@ -1,5 +1,6 @@
 """Immutable, environment-backed bootstrap configuration."""
 
+import re
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from ipaddress import ip_address
 from typing import Any, Literal
@@ -42,6 +43,9 @@ class RemoteQuotationEngineSetting(BaseModel):
             raise ValueError("Remote quotation engine URL must be an exact origin")
         return value
 
+
+# RFC 6749 section 3.3: scope-token = 1*( %x21 / %x23-5B / %x5D-7E ).
+_SCOPE_TOKEN = re.compile(r"[\x21\x23-\x5b\x5d-\x7e]+")
 
 class Settings(BaseSettings):
     """One immutable, fully validated runtime configuration snapshot.
@@ -254,7 +258,18 @@ class Settings(BaseSettings):
     )
     cilogon_issuer: str = Field(
         default="https://test.cilogon.aaf.edu.au",
-        description="Exact trusted CILogon OIDC issuer",
+        description=(
+            "Exact trusted OIDC issuer: an HTTPS origin, or one with a path such as "
+            "a Keycloak realm (issue 403)"
+        ),
+    )
+    cilogon_scopes: tuple[str, ...] = Field(
+        default=("openid", "email", "profile", "org.cilogon.userinfo"),
+        description=(
+            "OIDC scopes requested at sign-in (JSON list). Must include openid and "
+            "email; other providers, such as Keycloak, may not define "
+            "org.cilogon.userinfo (issue 403)"
+        ),
     )
     cilogon_redirect_uri: str = Field(
         default="",
@@ -418,7 +433,12 @@ class Settings(BaseSettings):
     @field_validator("cilogon_issuer")
     @classmethod
     def validate_cilogon_issuer(cls, value: str) -> str:
-        """Require one HTTPS issuer origin with no mutable URL components."""
+        """Require one exact HTTPS issuer with no mutable URL components.
+
+        The issuer may have a path, as a Keycloak realm does
+        (``https://host/auth/realms/runai``); discovery appends
+        ``/.well-known/openid-configuration`` to it (issue 403).
+        """
 
         candidate = value.strip().rstrip("/")
         parsed = urlsplit(candidate)
@@ -426,6 +446,7 @@ class Settings(BaseSettings):
             port = parsed.port
         except ValueError as exc:
             raise ValueError("CILogon issuer must use a valid HTTPS port") from exc
+        segments = parsed.path.split("/")[1:] if parsed.path else []
         if (
             parsed.scheme != "https"
             or parsed.hostname is None
@@ -434,11 +455,39 @@ class Settings(BaseSettings):
             or parsed.password is not None
             or parsed.query
             or parsed.fragment
-            or parsed.path not in {"", "/"}
             or (port is not None and port != 443)
+            or any(segment in {"", ".", ".."} for segment in segments)
+            or any(character.isspace() or character == "\\" for character in candidate)
         ):
-            raise ValueError("CILogon issuer must be an exact HTTPS origin")
+            raise ValueError(
+                "CILogon issuer must be an exact HTTPS issuer URL "
+                "(an origin, or an origin with a path such as a Keycloak realm)"
+            )
         return candidate
+
+    @field_validator("cilogon_scopes")
+    @classmethod
+    def validate_cilogon_scopes(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+        """Require unique RFC 6749 scope tokens, including openid and email.
+
+        The callback needs the ``email`` claim, and ``openid`` makes it an OIDC
+        request (issue 403).
+        """
+
+        scopes = tuple(values)
+        if not scopes:
+            raise ValueError("CILogon scopes must not be empty")
+        if not all(_SCOPE_TOKEN.fullmatch(scope) for scope in scopes):
+            raise ValueError(
+                "Each CILogon scope must be one scope token "
+                "(no spaces, quotes or backslashes)"
+            )
+        if len(set(scopes)) != len(scopes):
+            raise ValueError("CILogon scopes must be unique")
+        missing = [scope for scope in ("openid", "email") if scope not in scopes]
+        if missing:
+            raise ValueError(f"CILogon scopes must include {' and '.join(missing)}")
+        return scopes
 
     @field_validator("cilogon_redirect_uri")
     @classmethod
