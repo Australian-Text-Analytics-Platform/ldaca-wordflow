@@ -5,6 +5,7 @@ from __future__ import annotations
 from ..domain.annotation import provider_failure_message
 from ..infrastructure.providers.annotation_ai import (
     AnnotationAiError,
+    list_model_options,
     resolve_provider_adapter,
 )
 from ..shared.errors import (
@@ -38,10 +39,10 @@ class AnnotationService:
             supplied=request.api_key,
         )
         try:
-            discovered = await resolve_provider_adapter(
-                request.provider,
-                request.provider_base_url,
-            ).list_models(api_key)
+            discovered = await list_model_options(
+                resolve_provider_adapter(request.provider, request.provider_base_url),
+                api_key,
+            )
         except AnnotationAiError as exc:
             # A plain sentence for users; the provider's text is the cause,
             # shown under Details (issue 205).
@@ -54,7 +55,12 @@ class AnnotationService:
             provider_configuration_id=request.provider_configuration_id,
             provider=request.provider,
             provider_base_url=request.provider_base_url,
-            models=discovered,
+            models=[option.id for option in discovered],
+            model_descriptions={
+                option.id: option.description
+                for option in discovered
+                if option.description
+            },
         )
 
 __all__ = ["AnnotationService"]

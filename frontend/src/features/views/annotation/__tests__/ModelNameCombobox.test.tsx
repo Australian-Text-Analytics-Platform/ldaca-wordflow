@@ -79,6 +79,26 @@ describe('ModelNameCombobox', () => {
     expect(onCommit).toHaveBeenCalledWith('openrouter/beta');
   });
 
+  it('shows a model description under its id, and nothing extra without one', async () => {
+    listAnnotationModelsWithProviderCredential.mockResolvedValueOnce({
+      data: {
+        models: ['openrouter/alpha', 'openrouter/beta'],
+        model_descriptions: { 'openrouter/alpha': 'Fastest; good for large runs.' },
+      },
+    });
+    const { onChange } = renderCombobox();
+    fireEvent.focus(screen.getByPlaceholderText('Search or type a model name'));
+
+    expect(await screen.findByText('Fastest; good for large runs.')).toBeInTheDocument();
+    const [described, plain] = screen.getAllByRole('button');
+    expect(described).toHaveTextContent('openrouter/alphaFastest; good for large runs.');
+    expect(described).toHaveAttribute('title', 'Fastest; good for large runs.');
+    expect(plain).toHaveTextContent(/^openrouter\/beta$/);
+    expect(plain).not.toHaveAttribute('title');
+    fireEvent.click(described as HTMLElement);
+    expect(onChange).toHaveBeenCalledWith('openrouter/alpha');
+  });
+
   it('keeps manual model entry available when Custom discovery fails', async () => {
     listAnnotationModelsWithProviderCredential.mockRejectedValueOnce(new Error('offline'));
     const customConfiguration: AnnotationProviderConfigurationView = {

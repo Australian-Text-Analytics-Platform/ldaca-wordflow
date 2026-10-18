@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import cast
 
@@ -14,6 +15,11 @@ from .annotation_adapter import (
     INFERENCE_TIMEOUT_SECONDS,
     completion_error,
     max_completion_tokens,
+)
+from .model_descriptions import (
+    ModelOption,
+    litellm_model_descriptions,
+    sanitize_description,
 )
 
 
@@ -33,6 +39,8 @@ class OpenAIAnnotationAdapter:
     # Send the batch's labels schema as a strict json_schema response_format,
     # so the server enforces one known label (or null) per text (issue 406).
     send_labels_schema: bool = False
+    # Also look for model descriptions in LiteLLM's /model/info (Custom only).
+    describe_from_model_info: bool = False
 
     async def complete(
         self,
@@ -151,10 +159,12 @@ class OpenAIAnnotationAdapter:
             )
         return choice.message.content or ""
 
-    async def list_models(self, api_key: str | None) -> list[str]:
+    async def _listed_models(self, api_key: str | None) -> list[ModelOption]:
+        """The /models list, sorted, with any description field it carries."""
+
         from openai import AsyncOpenAI
 
-        ids: set[str] = set()
+        options: dict[str, str | None] = {}
         async with AsyncOpenAI(
             api_key=api_key or "no-key-required",
             base_url=self.base_url,
@@ -164,10 +174,36 @@ class OpenAIAnnotationAdapter:
             try:
                 async for model in client.models.list():
                     if isinstance(model.id, str) and model.id:
-                        ids.add(model.id)
+                        # OpenRouter-style lists add a description field.
+                        extra = getattr(model, "model_extra", None) or {}
+                        options[model.id] = options.get(model.id) or sanitize_description(
+                            extra.get("description")
+                        )
             except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
                 raise completion_error(error, "Model listing failed") from error
-        return sorted(ids, key=str.lower)
+        return [
+            ModelOption(model, options[model])
+            for model in sorted(options, key=str.lower)
+        ]
+
+    async def list_models(self, api_key: str | None) -> list[str]:
+        return [option.id for option in await self._listed_models(api_key)]
+
+    async def list_model_options(self, api_key: str | None) -> list[ModelOption]:
+        """Models with a one-line description where the server offers one."""
+
+        if not self.describe_from_model_info or self.base_url is None:
+            return await self._listed_models(api_key)
+        # Asked at the same time, so /model/info (at most 5 s) adds no wait
+        # beyond its own cap and never fails the list.
+        listed, info = await asyncio.gather(
+            self._listed_models(api_key),
+            litellm_model_descriptions(self.base_url, api_key),
+        )
+        return [
+            ModelOption(option.id, option.description or info.get(option.id))
+            for option in listed
+        ]
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,6 +230,13 @@ class CustomOpenAICompatibleAnnotationAdapter:
             base_url=self.base_url,
             supports_json_response_format=False,
         ).list_models(api_key)
+
+    async def list_model_options(self, api_key: str | None) -> list[ModelOption]:
+        return await OpenAIAnnotationAdapter(
+            base_url=self.base_url,
+            supports_json_response_format=False,
+            describe_from_model_info=True,
+        ).list_model_options(api_key)
 
 
 __all__ = [

@@ -28,6 +28,7 @@ from .annotation_openai import (
     CustomOpenAICompatibleAnnotationAdapter,
     OpenAIAnnotationAdapter,
 )
+from .model_descriptions import ModelOption
 
 # Requests open at once when the Run doesn't say: commercial providers take
 # many; a Custom provider is often a local server that runs one or two.
@@ -81,6 +82,20 @@ def resolve_provider_adapter(
         return adapters[provider_id]
     except KeyError as exc:
         raise ValueError("Unsupported annotation provider") from exc
+
+
+async def list_model_options(
+    adapter: AnnotationProviderAdapter, api_key: str | None
+) -> list[ModelOption]:
+    """Models with optional one-line descriptions (issue 407).
+
+    Adapters that can describe their models do; the rest list ids only.
+    """
+
+    describe = getattr(adapter, "list_model_options", None)
+    if describe is not None:
+        return await describe(api_key)
+    return [ModelOption(model) for model in await adapter.list_models(api_key)]
 
 
 def build_annotation_system_prompt(
@@ -411,5 +426,6 @@ __all__ = [
     "build_annotation_system_prompt",
     "build_annotation_user_prompt",
     "build_labels_schema",
+    "list_model_options",
     "resolve_provider_adapter",
 ]
