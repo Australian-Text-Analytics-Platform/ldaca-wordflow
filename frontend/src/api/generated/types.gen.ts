@@ -290,6 +290,10 @@ export type AnnotationAnalysisRequest = {
      */
     reasoning_enabled?: boolean;
     /**
+     * Task Context
+     */
+    task_context?: string;
+    /**
      * Temperature
      */
     temperature?: number;
@@ -393,6 +397,10 @@ export type AnnotationAnalysisSubmission = {
      * Reasoning Enabled
      */
     reasoning_enabled?: boolean;
+    /**
+     * Task Context
+     */
+    task_context?: string;
     /**
      * Temperature
      */
@@ -7118,6 +7126,10 @@ export type AnnotationAnalysisSubmissionWritable = {
      * Reasoning Enabled
      */
     reasoning_enabled?: boolean;
+    /**
+     * Task Context
+     */
+    task_context?: string;
     /**
      * Temperature
      */

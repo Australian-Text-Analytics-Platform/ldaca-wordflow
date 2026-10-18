@@ -15,6 +15,7 @@ from pydantic import (
     model_validator,
 )
 
+from ..domain.annotation import TASK_CONTEXT_CODE
 from ..domain.workspace.provenance import (
     CastDerivation,
     CloneDerivation,
@@ -423,7 +424,8 @@ class AnnotationClassesNodeEditRequest(_StrictRequest):
     kind: Literal["annotation_classes"] = "annotation_classes"
     class_column: NonEmptyColumnName
     description_column: NonEmptyColumnName
-    rows: list[AnnotationClassRow] = Field(default_factory=list, max_length=200)
+    # Up to 200 codes, plus the optional Task context row (issue 408).
+    rows: list[AnnotationClassRow] = Field(default_factory=list, max_length=201)
 
     @model_validator(mode="after")
     def validate_columns_and_rows(self) -> AnnotationClassesNodeEditRequest:
@@ -432,6 +434,8 @@ class AnnotationClassesNodeEditRequest(_StrictRequest):
         normalized = [row.class_name.casefold() for row in self.rows]
         if len(normalized) != len(set(normalized)):
             raise ValueError("Annotation class names must be unique")
+        if sum(name != TASK_CONTEXT_CODE for name in normalized) > 200:
+            raise ValueError("A codebook can have at most 200 codes")
         return self
 
 

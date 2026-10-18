@@ -59,6 +59,7 @@ const mocks = vi.hoisted(() => ({
   exampleSelected: false,
   classSelected: false,
   classRows: [] as { class: string; description: string }[],
+  taskContext: '',
   providerConfigurations: [] as {
     id: string;
     name: string;
@@ -279,7 +280,11 @@ vi.mock('@/features/views/common/components/RunAllReviewTable', () => ({
 }));
 
 vi.mock('../hooks/useAnnotationClassDescriptions', () => ({
-  useAnnotationClassDescriptions: () => ({ rows: mocks.classRows, query: {} }),
+  useAnnotationClassDescriptions: () => ({
+    rows: mocks.classRows,
+    taskContext: mocks.taskContext,
+    query: {},
+  }),
 }));
 
 vi.mock('@/features/provider-credentials/useProviderCredentials', () => ({
@@ -359,6 +364,7 @@ describe('AnnotationFeature', () => {
     mocks.exampleSelected = false;
     mocks.classSelected = false;
     mocks.classRows = [];
+    mocks.taskContext = '';
     mocks.providerConfigurations = [];
     mocks.sourceColumnNames = ['text'];
     mocks.workspaceNodes = [];
@@ -418,6 +424,7 @@ describe('AnnotationFeature', () => {
     mocks.exampleSelected = true;
     mocks.classSelected = true;
     mocks.classRows = [{ class: 'support', description: 'Supports the claim' }];
+    mocks.taskContext = '  Posts from a workers forum.  ';
     mocks.providerConfigurations = [
       {
         id: 'provider-1',
@@ -471,7 +478,12 @@ describe('AnnotationFeature', () => {
       max_examples_per_class: 3,
       example_sampling_method: 'random',
       example_random_seed: 42,
+      // The codebook's Task context goes with the request (issue 408).
+      task_context: 'Posts from a workers forum.',
     });
+    expect(previewRequest.classes).toEqual([
+      { name: 'support', description: 'Supports the claim' },
+    ]);
 
     await user.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());

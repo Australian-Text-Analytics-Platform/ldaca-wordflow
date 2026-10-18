@@ -29,6 +29,14 @@ either directly or with predictions from a configured AI provider.
    code's descriptions or merge them, or give each code its own description.
    AI Preview and Run wait until each code has one description.
 
+   **Task context** (optional, at the top of the Edit dialog) says what the
+   texts are and what the codes are for, for example "Posts from a workers'
+   forum, 2019 to 2023; the codes record attitudes to working from home". It
+   is saved with the Codebook, so it goes wherever the Codebook is used, and
+   AI annotation sends it after the **Prompt**, before the codes. In the
+   Codebook Data Block it is one row named `__task_context__`; that row is
+   never a code.
+
 4. Use the **Manual / AI** switch to choose a mode. The source and Codebook are
    shared between both modes.
 

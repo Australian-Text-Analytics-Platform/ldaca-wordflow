@@ -597,6 +597,12 @@
             "title": "Reasoning Enabled",
             "type": "boolean"
           },
+          "task_context": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Task Context",
+            "type": "string"
+          },
           "temperature": {
             "default": 0.0,
             "maximum": 2.0,
@@ -825,6 +831,12 @@
             "title": "Reasoning Enabled",
             "type": "boolean"
           },
+          "task_context": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Task Context",
+            "type": "string"
+          },
           "temperature": {
             "default": 0.0,
             "maximum": 2.0,
@@ -927,7 +939,7 @@
             "items": {
               "$ref": "#/components/schemas/AnnotationClassRow"
             },
-            "maxItems": 200,
+            "maxItems": 201,
             "title": "Rows",
             "type": "array"
           }

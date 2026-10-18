@@ -84,6 +84,11 @@ def provider_failure_message(code: str, provider: str | None) -> str:
 
 AnnotationExampleSamplingMethod = Literal["random", "first_n", "last_n"]
 
+# The codebook row that holds the optional Task context (issue 408): code
+# `__task_context__`, text in the description column. Never a code.
+TASK_CONTEXT_CODE = "__task_context__"
+TASK_CONTEXT_MAX_CHARS = 2_000
+
 AnnotationClassName = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1),
@@ -141,6 +146,8 @@ class AnnotationProviderSnapshot(BaseModel):
 
 
 __all__ = [
+    "TASK_CONTEXT_CODE",
+    "TASK_CONTEXT_MAX_CHARS",
     "AnnotationClass",
     "AnnotationExampleSamplingMethod",
     "AnnotationProvider",

@@ -56,6 +56,35 @@ describe('useAnnotationClassDescriptions', () => {
     ]);
   });
 
+  it('keeps the Task context row out of the codes (issue 408)', async () => {
+    queryWorkspaceSqlTable.mockResolvedValueOnce({
+      rows: [
+        { class: 'support', description: 'positive' },
+        { class: '__task_context__', description: 'Posts from a workers forum.' },
+        { class: 'reject', description: 'negative' },
+      ],
+      hasNext: false,
+      etag: '"revision-1"',
+    });
+    const { result } = renderHook(
+      () =>
+        useAnnotationClassDescriptions({
+          workspaceId: 'workspace-1',
+          nodeId: 'classes-node',
+          classColumn: 'class',
+          descriptionColumn: 'description',
+        }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.query.isSuccess).toBe(true));
+
+    expect(result.current.rows).toEqual([
+      { class: 'support', description: 'positive' },
+      { class: 'reject', description: 'negative' },
+    ]);
+    expect(result.current.taskContext).toBe('Posts from a workers forum.');
+  });
+
   it('remains disabled until every selector is present', () => {
     const { result } = renderHook(
       () =>

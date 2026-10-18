@@ -102,8 +102,9 @@ def build_annotation_system_prompt(
     instruction: str,
     classes: list[AnnotationClass],
     examples: list[AnnotationExample] | None = None,
+    task_context: str = "",
 ) -> str:
-    """Assemble the instruction, classes, examples, and strict JSON contract."""
+    """Assemble the instruction, Task context, classes, examples, and strict JSON contract."""
 
     class_lines = "\n".join(
         f"- {option.name}: {option.description.strip()}"
@@ -111,9 +112,12 @@ def build_annotation_system_prompt(
         else f"- {option.name}"
         for option in classes
     )
-    parts = [
-        instruction.strip(),
-        "",
+    parts = [instruction.strip(), ""]
+    if task_context.strip():
+        # The codebook's Task context (issue 408): what the texts are and
+        # what the codes are for.
+        parts.extend(["Task context:", task_context.strip(), ""])
+    parts += [
         "The batch and JSON response rules below take precedence over any conflicting "
         "response-format wording in the instruction.",
         "",
@@ -263,12 +267,14 @@ async def _annotate_batch(
     config: InferenceConfig,
     max_retries: int,
     examples: list[AnnotationExample] | None = None,
+    *,
+    task_context: str = "",
 ) -> list[str | None]:
     """Classify one batch with shared prompt, retry, and label policy."""
 
     if not texts:
         return []
-    system = build_annotation_system_prompt(instruction, classes, examples)
+    system = build_annotation_system_prompt(instruction, classes, examples, task_context)
     user = build_annotation_user_prompt(texts)
     known_labels = [option.name for option in classes]
     if examples is not None:
@@ -308,6 +314,7 @@ async def annotate_preview(
         _inference_config(request),
         request.max_retries_per_batch,
         examples,
+        task_context=request.task_context,
     )
 
 
@@ -374,6 +381,7 @@ async def annotate_all(
                     config,
                     source.max_retries_per_batch,
                     examples,
+                    task_context=source.task_context,
                 )
         except AnnotationAiError as error:
             if error.code in _BATCH_PROVIDER_FAILURES:
