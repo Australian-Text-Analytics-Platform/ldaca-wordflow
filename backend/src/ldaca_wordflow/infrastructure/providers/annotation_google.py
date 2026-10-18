@@ -52,20 +52,24 @@ class GoogleAnnotationAdapter:
             if config.reasoning_enabled
             else None
         )
+        # Both of the SDK's HTTP clients are closed when the request ends.
         try:
-            response = await client.aio.models.generate_content(
-                model=model,
-                contents=user,
-                config=types.GenerateContentConfig(
-                    system_instruction=system,
-                    temperature=config.temperature,
-                    max_output_tokens=max_completion_tokens(config),
-                    response_mime_type="application/json",
-                    thinking_config=thinking_config,
-                ),
-            )
+            async with client.aio as aio:
+                response = await aio.models.generate_content(
+                    model=model,
+                    contents=user,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system,
+                        temperature=config.temperature,
+                        max_output_tokens=max_completion_tokens(config),
+                        response_mime_type="application/json",
+                        thinking_config=thinking_config,
+                    ),
+                )
         except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
             raise completion_error(error, "Google request failed") from error
+        finally:
+            client.close()
         return response.text or ""
 
     async def list_models(self, api_key: str | None) -> list[str]:
@@ -88,11 +92,14 @@ class GoogleAnnotationAdapter:
         )
         ids: set[str] = set()
         try:
-            async for model in await client.aio.models.list():
-                if isinstance(model.name, str) and model.name:
-                    ids.add(_strip_model_prefix(model.name))
+            async with client.aio as aio:
+                async for model in await aio.models.list():
+                    if isinstance(model.name, str) and model.name:
+                        ids.add(_strip_model_prefix(model.name))
         except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
             raise completion_error(error, "Model listing failed") from error
+        finally:
+            client.close()
         return sorted(ids, key=str.lower)
 
 

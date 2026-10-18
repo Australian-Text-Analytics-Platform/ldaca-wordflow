@@ -153,6 +153,12 @@ def _install_fake_openai(monkeypatch: pytest.MonkeyPatch, outcomes: list[Any]) -
             self.chat = type("Chat", (), {"completions": _Completions()})()
             self.models = _Models()
 
+        async def __aenter__(self) -> Any:
+            return self
+
+        async def __aexit__(self, *_exc: object) -> None:
+            return None
+
     monkeypatch.setattr("openai.AsyncOpenAI", _FakeAsyncOpenAI)
     return calls
 
@@ -259,6 +265,12 @@ def test_gateway_errors_never_carry_the_key(
     class _FakeAsyncOpenAI:
         def __init__(self, **_kwargs: Any) -> None:
             self.models = _FailingModels()
+
+        async def __aenter__(self) -> Any:
+            return self
+
+        async def __aexit__(self, *_exc: object) -> None:
+            return None
 
     monkeypatch.setattr("openai.AsyncOpenAI", _FakeAsyncOpenAI)
     caplog.set_level(logging.DEBUG)

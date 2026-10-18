@@ -8,6 +8,9 @@ from typing import Literal, Protocol
 from ...domain.annotation import AnnotationProviderFailureCode
 
 INFERENCE_TIMEOUT_SECONDS = 300.0
+# A connection that can't be opened fails fast; a long answer still has the
+# full inference time.
+INFERENCE_CONNECT_TIMEOUT_SECONDS = 15.0
 MODEL_DISCOVERY_TIMEOUT_SECONDS = 90.0
 MODEL_DISCOVERY_MAX_RETRIES = 1
 ANSWER_TOKEN_HEADROOM = 4096
@@ -157,6 +160,7 @@ __all__ = [
     "AnnotationContextLimitError",
     "AnnotationProviderAdapter",
     "AnnotationResponseError",
+    "INFERENCE_CONNECT_TIMEOUT_SECONDS",
     "INFERENCE_TIMEOUT_SECONDS",
     "InferenceConfig",
     "MODEL_DISCOVERY_MAX_RETRIES",
