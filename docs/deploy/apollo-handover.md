@@ -28,7 +28,7 @@ publish it to PyPI or GitHub Releases.
 | Image build: linux/amd64, python:3.14-slim, tini, models pre-downloaded | `daddbf02` | `deploy/apollo/Dockerfile`, `deploy/apollo/prefetch_models.py`, `.github/workflows/apollo-image.yml` |
 | **#404** Provider clients are closed after every request (the 1-in-80 stalls of 300 s you measured), and a connection that can't be opened fails after 15 s | `b42d2614` (merged in `01e7fe4b`) | `backend/src/ldaca_wordflow/infrastructure/providers/annotation_{adapter,openai,anthropic,google}.py` |
 | **#405** The sign-in button reads **Sign in with SSO** (no CILogon name or icon), so Run:ai users aren't sent to the wrong brand | `b456ad60` (merged in `705952a0`) | `frontend/src/features/auth/components/{CILogonLogin,LoginScreen}.tsx` |
-| Model descriptions in the Apollo LLM model list, from the gateway's `/model/info` or `APOLLO_LLM_MODEL_DESCRIPTIONS` | `aa273d44` | `backend/src/ldaca_wordflow/apollo_deploy/{catalogue,api,config}.py`, `frontend/src/features/views/annotation/components/ModelNameCombobox.tsx` |
+| Model descriptions in the Apollo LLM model list, from the gateway's `/model/info` or `APOLLO_LLM_MODEL_DESCRIPTIONS` | (this commit) | `backend/src/ldaca_wordflow/apollo_deploy/{catalogue,api,config}.py`, `frontend/src/features/views/annotation/components/ModelNameCombobox.tsx` |
 | **#403** OIDC scopes are configurable and the issuer can have a path (Keycloak realm) | `dc2e98b0` (already on v0.7) | `backend/src/ldaca_wordflow/settings.py`, `api/auth.py` |
 
 The version reported by `/health/ready` is `0.7.14+apollo.<build number>`.
