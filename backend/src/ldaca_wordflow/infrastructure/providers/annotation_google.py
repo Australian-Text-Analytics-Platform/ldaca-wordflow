@@ -14,6 +14,7 @@ from .annotation_adapter import (
     max_completion_tokens,
     reasoning_budget_tokens,
 )
+from .model_descriptions import ModelOption, sanitize_description
 
 
 def _strip_model_prefix(name: str) -> str:
@@ -73,6 +74,9 @@ class GoogleAnnotationAdapter:
         return response.text or ""
 
     async def list_models(self, api_key: str | None) -> list[str]:
+        return [option.id for option in await self.list_model_options(api_key)]
+
+    async def list_model_options(self, api_key: str | None) -> list[ModelOption]:
         if api_key is None:
             raise AnnotationAiError(
                 "Google requires an API key",
@@ -90,17 +94,20 @@ class GoogleAnnotationAdapter:
                 ),
             ),
         )
-        ids: set[str] = set()
+        options: dict[str, str | None] = {}
         try:
             async with client.aio as aio:
                 async for model in await aio.models.list():
                     if isinstance(model.name, str) and model.name:
-                        ids.add(_strip_model_prefix(model.name))
+                        name = _strip_model_prefix(model.name)
+                        options[name] = options.get(name) or sanitize_description(
+                            getattr(model, "description", None)
+                        )
         except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
             raise completion_error(error, "Model listing failed") from error
         finally:
             client.close()
-        return sorted(ids, key=str.lower)
+        return [ModelOption(name, options[name]) for name in sorted(options, key=str.lower)]
 
 
 __all__ = ["GoogleAnnotationAdapter"]

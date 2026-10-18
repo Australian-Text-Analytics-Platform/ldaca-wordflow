@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import cast
 
 from ... import apollo_deploy  # apollo-deploy:
@@ -28,6 +29,7 @@ from .annotation_openai import (
     CustomOpenAICompatibleAnnotationAdapter,
     OpenAIAnnotationAdapter,
 )
+from .model_descriptions import ModelOption
 
 # Requests open at once when the Run doesn't say: commercial providers take
 # many; a Custom provider is often a local server that runs one or two.
@@ -83,6 +85,20 @@ def resolve_provider_adapter(
         return adapters[provider_id]
     except KeyError as exc:
         raise ValueError("Unsupported annotation provider") from exc
+
+
+async def list_model_options(
+    adapter: AnnotationProviderAdapter, api_key: str | None
+) -> list[ModelOption]:
+    """Models with optional one-line descriptions (issue 407).
+
+    Adapters that can describe their models do; the rest list ids only.
+    """
+
+    describe = getattr(adapter, "list_model_options", None)
+    if describe is not None:
+        return await describe(api_key)
+    return [ModelOption(model) for model in await adapter.list_models(api_key)]
 
 
 def build_annotation_system_prompt(
@@ -141,11 +157,65 @@ def build_annotation_user_prompt(texts: list[str]) -> str:
     )
 
 
+def build_labels_schema(labels: list[str], count: int) -> dict[str, object]:
+    """The answer for one batch as a strict JSON schema (issue 406).
+
+    ``labels`` is an array of exactly ``count`` items, each one of the known
+    labels (the classes, plus labels the examples add) or null.
+    """
+
+    known = list(dict.fromkeys(labels))
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["labels"],
+        "properties": {
+            "labels": {
+                "type": "array",
+                "minItems": count,
+                "maxItems": count,
+                "items": {"enum": [*known, None]},
+            }
+        },
+    }
+
+
+_CODE_FENCE = re.compile(r"\A\s*```[A-Za-z0-9_-]*[ \t]*\n?(.*?)\n?[ \t]*```\s*\Z", re.DOTALL)
+
+
+def _parse_answer(content: str) -> object:
+    """The JSON answer, also when a model wraps it in a code fence or prose.
+
+    Tried in order: the text as it is; the text inside one surrounding
+    Markdown code fence; the first top-level JSON object in the text.
+    """
+
+    try:
+        return json.loads(content)
+    except (ValueError, TypeError):
+        pass
+    fenced = _CODE_FENCE.match(content)
+    if fenced is not None:
+        try:
+            return json.loads(fenced.group(1))
+        except ValueError:
+            pass
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", content):
+        try:
+            value, _end = decoder.raw_decode(content, match.start())
+        except ValueError:
+            continue
+        if isinstance(value, dict):
+            return value
+    raise ValueError("no JSON object in the answer")
+
+
 def align_labels(content: str, count: int, class_names: list[str]) -> list[str | None]:
     """Validate and canonicalize one complete Annotation JSON response."""
 
     try:
-        parsed = json.loads(content)
+        parsed = _parse_answer(content)
     except (ValueError, TypeError) as error:
         raise AnnotationResponseError(
             "Annotation response was not valid JSON"
@@ -206,6 +276,9 @@ async def _annotate_batch(
     known_labels = [option.name for option in classes]
     if examples is not None:
         known_labels.extend(example.label for example in examples)
+    config = replace(
+        config, labels_schema=build_labels_schema(known_labels, len(texts))
+    )
     for attempt in range(max_retries + 1):
         try:
             content = await adapter.complete(model, api_key, system, user, config)
@@ -358,5 +431,7 @@ __all__ = [
     "annotate_preview",
     "build_annotation_system_prompt",
     "build_annotation_user_prompt",
+    "build_labels_schema",
+    "list_model_options",
     "resolve_provider_adapter",
 ]

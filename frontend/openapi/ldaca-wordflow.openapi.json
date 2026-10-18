@@ -1066,6 +1066,13 @@
         "additionalProperties": false,
         "description": "Sorted model identifiers returned by one configured provider.",
         "properties": {
+          "model_descriptions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Model Descriptions",
+            "type": "object"
+          },
           "models": {
             "items": {
               "type": "string"
@@ -13454,7 +13461,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "LDaCA Wordflow API",
-    "version": "0.7.8-dev"
+    "version": "0.7.13"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -13557,7 +13564,7 @@
     },
     "/api/app-update": {
       "get": {
-        "description": "Ask the Latest GitHub release for the newest version, once per app start.\n\nThe desktop app checks by itself, so its backend does not ask; neither\ndoes a backend with the check turned off. The page shows a notice when a\nnewer version exists.",
+        "description": "Ask the Latest GitHub release for the newest version.\n\nThe desktop app checks by itself, so its backend does not ask; neither\ndoes a backend with the check turned off. The page shows a notice when a\nnewer version exists.",
         "operationId": "get_app_update",
         "responses": {
           "200": {

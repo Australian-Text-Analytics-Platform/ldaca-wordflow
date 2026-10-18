@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from ...domain.annotation import AnnotationProviderFailureCode
 
@@ -127,6 +127,10 @@ class InferenceConfig:
     temperature: float
     reasoning_enabled: bool
     reasoning_effort: Literal["low", "medium", "high"]
+    # The JSON schema of one batch's answer (issue 406): exactly one label per
+    # text, each a known label or null. Adapters that can make the server
+    # enforce it send it; the others ignore it.
+    labels_schema: dict[str, Any] | None = None
 
 
 def reasoning_budget_tokens(effort: str) -> int:

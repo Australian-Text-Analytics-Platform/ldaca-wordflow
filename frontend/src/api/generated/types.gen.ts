@@ -528,6 +528,12 @@ export type AnnotationModelsRequest = {
  */
 export type AnnotationModelsResource = {
     /**
+     * Model Descriptions
+     */
+    model_descriptions?: {
+        [key: string]: string;
+    };
+    /**
      * Models
      */
     models: Array<string>;

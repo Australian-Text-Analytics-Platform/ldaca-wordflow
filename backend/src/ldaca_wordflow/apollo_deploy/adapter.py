@@ -18,6 +18,7 @@ from ..infrastructure.providers.annotation_adapter import (
     InferenceConfig,
 )
 from ..infrastructure.providers.annotation_openai import OpenAIAnnotationAdapter
+from ..infrastructure.providers.model_descriptions import ModelOption
 from .binding import ApolloBindingError, decode_binding
 from .config import APOLLO_PROVIDER_NAME, apollo_settings
 from .gate import user_gate
@@ -97,6 +98,11 @@ class ApolloAnnotationAdapter:
             # prompt only, and send the thinking switch as Custom providers do.
             supports_json_response_format=False,
             send_thinking_switch=True,
+            # vLLM behind LiteLLM enforces it: one known label (or null) per
+            # text, so fenced or short answers don't split batches (#406).
+            send_labels_schema=True,
+            # Descriptions from LiteLLM's /model/info (#407).
+            describe_from_model_info=True,
             end_user=end_user,
         )
 
@@ -151,15 +157,28 @@ class ApolloAnnotationAdapter:
     async def list_models(self, api_key: str | None) -> list[str]:
         """Models from the gateway, with the gateway key; the client's key is ignored."""
 
+        return [option.id for option in await self.list_model_options(api_key)]
+
+    async def list_model_options(self, api_key: str | None) -> list[ModelOption]:
+        """Gateway models in the APOLLO_LLM_MODELS order, with descriptions.
+
+        A description comes from APOLLO_LLM_MODEL_DESCRIPTIONS where set, else
+        from the gateway (its /models list, then LiteLLM's /model/info).
+        """
+
         settings = apollo_settings()
         try:
-            listed = await self._inner(None).list_models(settings.gateway_key())
+            listed = await self._inner(None).list_model_options(settings.gateway_key())
         except AnnotationAiError as error:
             raise _safe(error) from None
-        if not settings.models:
-            return listed
-        available = set(listed)
-        return [model for model in settings.models if model in available]
+        if settings.models:
+            by_id = {option.id: option for option in listed}
+            listed = [by_id[model] for model in settings.models if model in by_id]
+        overrides = settings.model_descriptions
+        return [
+            ModelOption(option.id, overrides.get(option.id, option.description))
+            for option in listed
+        ]
 
 
 __all__ = ["ApolloAnnotationAdapter", "redact"]

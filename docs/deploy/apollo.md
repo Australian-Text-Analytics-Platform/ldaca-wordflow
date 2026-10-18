@@ -17,6 +17,13 @@ installers or GitHub Releases. Its only output is a container image on GHCR.
   provider list, for every signed-in user. It is read-only: no key to enter,
   no Edit or Delete. New Annotation tabs select it, with the server's default
   model.
+- **The model list** keeps the `APOLLO_LLM_MODELS` order and shows a one-line
+  description under each model where one is set (see "Model descriptions"
+  below). Choosing a model still sets its id.
+- **Answers are enforced by the server.** Every request asks for a strict JSON
+  schema: exactly one label per text, each a code or null. vLLM behind LiteLLM
+  enforces it, so models that wrap answers in code blocks or drop a label no
+  longer make Wordflow split batches.
 - **Requests at once** is 1 for Apollo LLM and can't be raised. The help text
   says why: Apollo LLM takes one request at a time for each person.
 - **A second Run while one is going** waits in the queue. Tasks shows
@@ -44,6 +51,7 @@ behaves exactly like upstream Wordflow.
 | `APOLLO_LLM_API_KEY` | with the URL | The gateway key (a LiteLLM virtual or master key). Put it in the secret file, not in `app.env`. |
 | `APOLLO_LLM_MODELS` | no | A JSON array of model ids, for example `["llama-3.3-70b","qwen3-32b"]`. When set, only these models are offered and accepted, in this order. When unset, every model the gateway lists is offered. |
 | `APOLLO_LLM_DEFAULT_MODEL` | no | The model new tabs start on. Must be in `APOLLO_LLM_MODELS` when that is set. |
+| `APOLLO_LLM_MODEL_DESCRIPTIONS` | no | A JSON object, model id to one line of text (at most 200 characters), for example `{"qwen3-32b":"fastest; good for large, straightforward classification runs"}`. Wins over the gateway's description. Usually not needed: set descriptions in LiteLLM instead. |
 | `APOLLO_LLM_USER_FIELD` | no | What is sent as the OpenAI `user` field: `email` (default) or `subject` (the identity provider's subject id). |
 
 The name "Apollo LLM", its default selection and the limit of one request at a
@@ -54,6 +62,17 @@ The rest of the server configuration is the usual hosted setup in
 realm, see its section "Other OIDC providers (Keycloak, Run:ai)". Also set
 `UPDATE_CHECK_ENABLED=false`, so users aren't told about public releases that
 this build doesn't follow.
+
+### Model descriptions
+
+The text under each model comes from LiteLLM: set `model_info.description` on
+each model in the LiteLLM configuration, and Wordflow reads it from
+`GET {APOLLO_LLM_BASE_URL}/model/info` with the gateway key. It is asked
+alongside the model list, capped at 5 s and kept for 5 minutes (1 minute after
+a failure), so a change in LiteLLM shows within 5 minutes. If the call fails,
+the models are listed without descriptions. `APOLLO_LLM_MODEL_DESCRIPTIONS`
+overrides a model's text where set. This uses the same mechanism as upstream
+Wordflow (#407); Apollo adds the configured order and the override.
 
 ## How the key and the user are kept safe
 

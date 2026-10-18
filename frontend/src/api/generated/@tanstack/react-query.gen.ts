@@ -63,7 +63,7 @@ export const getAppUpdateQueryKey = (options?: Options<GetAppUpdateData>) => cre
 /**
  * Get App Update
  *
- * Ask the Latest GitHub release for the newest version, once per app start.
+ * Ask the Latest GitHub release for the newest version.
  *
  * The desktop app checks by itself, so its backend does not ask; neither
  * does a backend with the check turned off. The page shows a notice when a

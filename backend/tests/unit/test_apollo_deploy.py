@@ -10,12 +10,14 @@ from pathlib import Path
 from typing import Any, cast
 
 import anyio
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from ldaca_wordflow import apollo_deploy
 from ldaca_wordflow.apollo_deploy import binding as apollo_binding
 from ldaca_wordflow.apollo_deploy.adapter import ApolloAnnotationAdapter, redact
+from ldaca_wordflow.infrastructure.providers import model_descriptions
 from ldaca_wordflow.apollo_deploy.config import (
     APOLLO_CONFIGURATION_ID,
     APOLLO_PLACEHOLDER_BASE_URL,
@@ -69,8 +71,30 @@ CONFIG = InferenceConfig(temperature=0.0, reasoning_enabled=False, reasoning_eff
 
 def _clear() -> None:
     apollo_settings.cache_clear()
+    model_descriptions.clear_model_info_cache()
     reset_user_gate()
     apollo_deploy._resolver = None
+
+
+_MODEL_INFO_SEEN: list[httpx.Request] = []
+
+
+def _model_info_responder(payload: dict | None) -> Any:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        _MODEL_INFO_SEEN.append(request)
+        if payload is None:
+            return httpx.Response(404)
+        return httpx.Response(200, json=payload)
+
+    return lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+
+@pytest.fixture(autouse=True)
+def _no_network_model_info(monkeypatch: pytest.MonkeyPatch) -> None:
+    """/model/info answers 404 unless a test sets descriptions."""
+
+    _MODEL_INFO_SEEN.clear()
+    monkeypatch.setattr(model_descriptions, "_http_client", _model_info_responder(None))
 
 
 @pytest.fixture
@@ -92,6 +116,7 @@ def no_apollo_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         "APOLLO_LLM_MODELS",
         "APOLLO_LLM_DEFAULT_MODEL",
         "APOLLO_LLM_USER_FIELD",
+        "APOLLO_LLM_MODEL_DESCRIPTIONS",
     ):
         monkeypatch.delenv(name, raising=False)
     _clear()
@@ -309,6 +334,117 @@ def test_wrong_settings_stop_start_up_without_showing_secrets(
         apollo_deploy.install(cast(Any, object()))
 
     assert GATEWAY_KEY not in str(error.value)
+
+
+# Model descriptions and the labels schema ---------------------------------------------
+
+_MODEL_INFO = {
+    "data": [
+        {"model_name": "qwen3-32b", "model_info": {"description": "Fastest; good for large runs."}},
+        {"model_name": "llama-3.3-70b", "model_info": {"description": "Careful;\n slower."}},
+    ]
+}
+
+
+def _list_apollo_models(client: TestClient) -> Any:
+    return client.post(
+        "/api/annotation-providers/models",
+        json={
+            "provider_configuration_id": str(APOLLO_CONFIGURATION_ID),
+            "provider": "custom",
+            "provider_base_url": APOLLO_PLACEHOLDER_BASE_URL,
+        },
+    )
+
+
+def test_apollo_models_keep_the_configured_order_with_gateway_descriptions(
+    apollo_env: None,
+    multi_user_test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Neither alphabetical nor the gateway's order: the configured order wins.
+    monkeypatch.setenv("APOLLO_LLM_MODELS", '["qwen3-32b", "llama-3.3-70b"]')
+    apollo_settings.cache_clear()
+    _install_fake_openai(monkeypatch, [])
+    monkeypatch.setattr(model_descriptions, "_http_client", _model_info_responder(_MODEL_INFO))
+    caplog.set_level(logging.DEBUG)
+
+    response = _list_apollo_models(multi_user_test_client)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["models"] == ["qwen3-32b", "llama-3.3-70b"]
+    assert body["model_descriptions"] == {
+        "qwen3-32b": "Fastest; good for large runs.",
+        "llama-3.3-70b": "Careful; slower.",
+    }
+    assert [str(r.url) for r in _MODEL_INFO_SEEN] == [f"{GATEWAY_URL}/model/info"]
+    assert _MODEL_INFO_SEEN[0].headers["Authorization"] == f"Bearer {GATEWAY_KEY}"
+    assert GATEWAY_KEY not in response.text + caplog.text
+    assert GATEWAY_URL not in response.text
+
+
+def test_configured_descriptions_win_over_the_gateway(
+    apollo_env: None, multi_user_test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(
+        "APOLLO_LLM_MODEL_DESCRIPTIONS", '{"qwen3-32b": "Our pick for big runs."}'
+    )
+    apollo_settings.cache_clear()
+    _install_fake_openai(monkeypatch, [])
+    monkeypatch.setattr(model_descriptions, "_http_client", _model_info_responder(_MODEL_INFO))
+
+    body = _list_apollo_models(multi_user_test_client).json()
+
+    assert body["models"] == ["llama-3.3-70b", "qwen3-32b"]
+    assert body["model_descriptions"] == {
+        "llama-3.3-70b": "Careful; slower.",
+        "qwen3-32b": "Our pick for big runs.",
+    }
+
+
+def test_a_gateway_without_model_info_still_lists_apollo_models(
+    apollo_env: None, multi_user_test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _install_fake_openai(monkeypatch, [])
+
+    body = _list_apollo_models(multi_user_test_client).json()
+
+    assert body["models"] == ["llama-3.3-70b", "qwen3-32b"]
+    assert body["model_descriptions"] == {}
+
+
+@pytest.mark.parametrize(
+    "value",
+    ['{"qwen3-32b": ""}', '{"": "text"}', '["qwen3-32b"]', '{"qwen3-32b": "' + "x" * 201 + '"}'],
+)
+def test_wrong_model_descriptions_are_refused(
+    apollo_env: None, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("APOLLO_LLM_MODEL_DESCRIPTIONS", value)
+    with pytest.raises(ValueError):
+        ApolloSettings()
+
+
+@pytest.mark.anyio
+async def test_apollo_always_sends_the_labels_schema(
+    apollo_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ldaca_wordflow.infrastructure.providers.annotation_ai import build_labels_schema
+
+    calls = _install_fake_openai(monkeypatch, ['{"labels": ["Relevant"]}'])
+    config = InferenceConfig(
+        temperature=0.0,
+        reasoning_enabled=False,
+        reasoning_effort="low",
+        labels_schema=build_labels_schema(["Relevant"], 1),
+    )
+
+    await ApolloAnnotationAdapter().complete("qwen3-32b", _binding(), "s", "u", config)
+
+    assert calls["creates"][-1]["response_format"]["type"] == "json_schema"
+    assert calls["creates"][-1]["response_format"]["json_schema"]["strict"] is True
 
 
 # The user field ------------------------------------------------------------------------

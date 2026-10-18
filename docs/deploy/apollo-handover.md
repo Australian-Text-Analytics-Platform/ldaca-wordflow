@@ -28,6 +28,8 @@ publish it to PyPI or GitHub Releases.
 | Image build: linux/amd64, python:3.14-slim, tini, models pre-downloaded | `daddbf02` | `deploy/apollo/Dockerfile`, `deploy/apollo/prefetch_models.py`, `.github/workflows/apollo-image.yml` |
 | **#404** Provider clients are closed after every request (the 1-in-80 stalls of 300 s you measured), and a connection that can't be opened fails after 15 s | `b42d2614` (merged in `01e7fe4b`) | `backend/src/ldaca_wordflow/infrastructure/providers/annotation_{adapter,openai,anthropic,google}.py` |
 | **#405** The sign-in button reads **Sign in with SSO** (no CILogon name or icon), so Run:ai users aren't sent to the wrong brand | `b456ad60` (merged in `705952a0`) | `frontend/src/features/auth/components/{CILogonLogin,LoginScreen}.tsx` |
+| **#406** Answers wrapped in code blocks are read, and every Apollo request sends a strict labels schema (`response_format` json_schema), so batches are no longer split for fenced or short answers | `1501e295` (merged in this merge) | `backend/src/ldaca_wordflow/infrastructure/providers/annotation_{ai,openai,adapter}.py`, `apollo_deploy/adapter.py` |
+| **#407** A one-line description under each model, from LiteLLM's `model_info.description` (or `APOLLO_LLM_MODEL_DESCRIPTIONS`), in the configured order | `6229ebae` (merged in this merge) | `infrastructure/providers/model_descriptions.py`, `services/annotations.py`, `apollo_deploy/{adapter,config}.py`, `frontend/.../ModelNameCombobox.tsx` |
 | **#403** OIDC scopes are configurable and the issuer can have a path (Keycloak realm) | `dc2e98b0` (already on v0.7) | `backend/src/ldaca_wordflow/settings.py`, `api/auth.py` |
 
 The version reported by `/health/ready` is `0.7.14+apollo.<build number>`.
@@ -84,6 +86,7 @@ UPDATE_CHECK_ENABLED=false
 APOLLO_LLM_BASE_URL=https://<litellm host>/v1
 APOLLO_LLM_MODELS=["<model id>","<model id>"]   # optional: offer only these, in this order
 APOLLO_LLM_DEFAULT_MODEL=<model id>              # optional
+APOLLO_LLM_MODEL_DESCRIPTIONS={"<model id>":"<one line>"}   # optional; normally set model_info.description in LiteLLM
 APOLLO_LLM_USER_FIELD=email                      # or subject
 ```
 
@@ -119,7 +122,9 @@ Runtime rules:
    Keycloak page and back into Wordflow.
 2. **Provider:** Settings → AI lists **Apollo LLM** first, marked Read-only. A
    new Annotation tab selects it with the default model, and Advanced settings
-   show **Requests at once** fixed at 1.
+   show **Requests at once** fixed at 1. The model list keeps the
+   `APOLLO_LLM_MODELS` order and shows each model's description underneath
+   (from LiteLLM's `model_info.description`, or `APOLLO_LLM_MODEL_DESCRIPTIONS`).
 3. **A Run:** annotate a few hundred rows. In LiteLLM's spend logs, every request
    carries the signed-in user (email or subject) in `user`.
 4. **One at a time:** start a second Run in another tab. Tasks shows "Waiting
@@ -172,7 +177,11 @@ show no provider selected in a build without it.
 - **What LiteLLM receives:**
   - an ordinary chat completion with `model`, `messages`, `temperature`,
     `max_completion_tokens` and `user`;
-  - no `response_format`, since JSON is asked for in the prompt;
+  - `response_format` `json_schema` (strict): `labels` is an array of exactly
+    as many items as texts in the batch, each a code (or an example's label)
+    or null (#406). If the gateway answers that with HTTP 400, Wordflow sends
+    the request again without it and stops sending it for the rest of the
+    process;
   - `chat_template_kwargs.enable_thinking` (the Thinking switch). If the
     gateway answers that with HTTP 400, Wordflow sends the request once more
     without it and stops sending it for the rest of the process.
@@ -205,7 +214,8 @@ show no provider selected in a build without it.
     tabs;
   - the second Run showed "Waiting for your previous Apollo LLM run";
   - the gateway log had 127 completions, all with `user`, never two open at
-    once, no `response_format`, and the 429 retried after 1 s;
+    once, and the 429 retried after 1 s (before #406, so without
+    `response_format`);
   - the key was in no log line and nowhere in the data folder.
 - **Not tested here:**
   - the real LiteLLM and vLLM (use the test model deployed on Apollo);
@@ -222,6 +232,8 @@ show no provider selected in a build without it.
 |---|---|
 | Apollo LLM isn't listed | `GET /api/apollo/provider` says `"enabled": false`: `APOLLO_LLM_BASE_URL` isn't set in the container. |
 | The server doesn't start | The log names the `APOLLO_LLM_*` or `CILOGON_*` setting that is wrong (for example a default model not in `APOLLO_LLM_MODELS`). |
+| Models show without descriptions | `/model/info` failed or the models have no `model_info.description` in LiteLLM. Set them in LiteLLM (or `APOLLO_LLM_MODEL_DESCRIPTIONS`); changes show within 5 minutes. |
+| Batches still split down to single rows | Check the Wordflow log for HTTP 400s from the gateway: if it refused `response_format`, Wordflow stopped sending it for the process. Restart after fixing the gateway. |
 | The model list is empty | The ids in `APOLLO_LLM_MODELS` must match the gateway's `/v1/models` ids exactly. |
 | Every request fails with "The AI provider rejected the API key" | Wrong `APOLLO_LLM_API_KEY`, or the key was changed while Runs were queued (restart). |
 | Every request fails with "The AI provider rejected the request" | The model isn't allowed for this key in LiteLLM, or isn't in `APOLLO_LLM_MODELS`. |

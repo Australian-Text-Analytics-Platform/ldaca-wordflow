@@ -114,6 +114,10 @@ saving, but a built-in provider marked **Needs API key** cannot list models,
 Preview, or Run until you add one. Custom endpoints may be keyless. Editing
 a key updates future requests; a Run already queued or running keeps the key
 captured when it was submitted.
+When the provider describes its models (OpenRouter, Google, or a LiteLLM
+gateway with model descriptions set), the **Model** list shows a one-line
+description under each model to help you choose; the model name is still what
+is used.
 An **Example Data Block** is optional; if used, choose both its text column and
 an existing annotation column containing reviewed labels. Set **Max examples
 per code**, then choose **Random**, **First N**, or **Last N**. Random sampling

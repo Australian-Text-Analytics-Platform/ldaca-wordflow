@@ -28,6 +28,8 @@ import { canListModels } from '../aiProviders';
 
 interface ModelDropdownOption {
   id: string;
+  /** One plain-text line from the provider, when it describes the model. */
+  description?: string;
 }
 
 interface ModelNameComboboxProps {
@@ -98,7 +100,8 @@ export function ModelNameCombobox({
         { id: configurationId, provider, base_url: baseUrl },
         signal,
       );
-      return data.models.map((modelId) => ({ id: modelId }));
+      const descriptions = data.model_descriptions ?? {};
+      return data.models.map((modelId) => ({ id: modelId, description: descriptions[modelId] }));
     },
     enabled: open && listingEnabled,
     staleTime: 5 * 60 * 1000,
@@ -187,6 +190,7 @@ export function ModelNameCombobox({
                 <button
                   key={model.id}
                   type="button"
+                  title={model.description}
                   className={cn(
                     'relative flex w-full rounded-sm px-2 py-2 pr-8 text-left text-body',
                     'hover:bg-list-hover hover:text-foreground',
@@ -200,6 +204,11 @@ export function ModelNameCombobox({
                 >
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate">{model.id}</span>
+                    {model.description ? (
+                      <span className="line-clamp-2 text-label-secondary text-description">
+                        {model.description}
+                      </span>
+                    ) : null}
                   </span>
                   {model.id === value ? (
                     <Check className="absolute right-2 top-2 size-4 shrink-0" aria-hidden="true" />

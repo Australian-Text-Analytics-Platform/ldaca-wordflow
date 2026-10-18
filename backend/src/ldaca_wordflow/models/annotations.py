@@ -30,6 +30,9 @@ class AnnotationModelsResource(AnnotationProviderSnapshot):
     """Sorted model identifiers returned by one configured provider."""
 
     models: list[str]
+    # One plain-text line (at most 200 characters) for the models the provider
+    # describes, keyed by model id (issue 407). Models without one are absent.
+    model_descriptions: dict[str, str] = Field(default_factory=dict)
 
 
 __all__ = [
