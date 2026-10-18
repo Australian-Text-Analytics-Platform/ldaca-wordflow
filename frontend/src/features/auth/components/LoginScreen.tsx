@@ -22,7 +22,7 @@ export function LoginScreen({ isLoading, error, authMethods = [] }: LoginScreenP
   const hasCILogon = authMethods.some((m) => m.name === 'cilogon' && m.enabled);
   const hasGoogle = authMethods.some((m) => m.name === 'google' && m.enabled);
   const providerLabel = hasCILogon
-    ? 'CILogon'
+    ? 'single sign-on (SSO)'
     : hasGoogle
       ? 'a Google account'
       : 'your institutional account';
