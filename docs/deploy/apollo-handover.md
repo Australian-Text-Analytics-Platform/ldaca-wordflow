@@ -30,6 +30,8 @@ publish it to PyPI or GitHub Releases.
 | **#405** The sign-in button reads **Sign in with SSO** (no CILogon name or icon), so Run:ai users aren't sent to the wrong brand | `b456ad60` (merged in `705952a0`) | `frontend/src/features/auth/components/{CILogonLogin,LoginScreen}.tsx` |
 | **#406** Answers wrapped in code blocks are read, and every Apollo request sends a strict labels schema (`response_format` json_schema), so batches are no longer split for fenced or short answers | `1501e295` (merged in `b6f16503`) | `backend/src/ldaca_wordflow/infrastructure/providers/annotation_{ai,openai,adapter}.py`, `apollo_deploy/adapter.py` |
 | **#407** A one-line description under each model, from LiteLLM's `model_info.description` (or `APOLLO_LLM_MODEL_DESCRIPTIONS`), in the configured order | `6229ebae` (merged in `b6f16503`) | `infrastructure/providers/model_descriptions.py`, `services/annotations.py`, `apollo_deploy/{adapter,config}.py`, `frontend/.../ModelNameCombobox.tsx` |
+| **#409** Project import and export have no size caps (a 0.7.14 export with a 4.3 MB manifest was refused); only free disk space and quotas limit them | `93c52cc7` (merged in `6a785205`) | `services/workspace_archives.py`, `settings.py`, `runtime.py` |
+| **#408** Optional **Task context** in the codebook, sent to the AI after the prompt | `a24ad20b` (merged in `6a785205`) | `features/views/annotation/` (codebook editor), `infrastructure/providers/annotation_ai.py` |
 | **#403** OIDC scopes are configurable and the issuer can have a path (Keycloak realm) | `dc2e98b0` (already on v0.7) | `backend/src/ldaca_wordflow/settings.py`, `api/auth.py` |
 
 Both branches are at version **0.7.15-pre**, a prerelease of 0.7.15 (Python
@@ -126,6 +128,8 @@ Runtime rules:
    show **Requests at once** fixed at 1. The model list keeps the
    `APOLLO_LLM_MODELS` order and shows each model's description underneath
    (from LiteLLM's `model_info.description`, or `APOLLO_LLM_MODEL_DESCRIPTIONS`).
+   In **Edit codebook**, a **Task context** filled in and saved shows on the
+   Codes card and not as a code.
 3. **A Run:** annotate a few hundred rows. In LiteLLM's spend logs, every request
    carries the signed-in user (email or subject) in `user`.
 4. **One at a time:** start a second Run in another tab. Tasks shows "Waiting
