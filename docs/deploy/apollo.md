@@ -17,9 +17,6 @@ installers or GitHub Releases. Its only output is a container image on GHCR.
   provider list, for every signed-in user. It is read-only: no key to enter,
   no Edit or Delete. New Annotation tabs select it, with the server's default
   model.
-- **The model list** shows a one-line description under each model (for
-  example "fastest; good for large, straightforward classification runs"), in
-  the order set by `APOLLO_LLM_MODELS`. Choosing a model still sets its id.
 - **Requests at once** is 1 for Apollo LLM and can't be raised. The help text
   says why: Apollo LLM takes one request at a time for each person.
 - **A second Run while one is going** waits in the queue. Tasks shows
@@ -47,7 +44,6 @@ behaves exactly like upstream Wordflow.
 | `APOLLO_LLM_API_KEY` | with the URL | The gateway key (a LiteLLM virtual or master key). Put it in the secret file, not in `app.env`. |
 | `APOLLO_LLM_MODELS` | no | A JSON array of model ids, for example `["llama-3.3-70b","qwen3-32b"]`. When set, only these models are offered and accepted, in this order. When unset, every model the gateway lists is offered. |
 | `APOLLO_LLM_DEFAULT_MODEL` | no | The model new tabs start on. Must be in `APOLLO_LLM_MODELS` when that is set. |
-| `APOLLO_LLM_MODEL_DESCRIPTIONS` | no | A JSON object, model id to one line of text (at most 200 characters), for example `{"qwen3-32b":"fastest; good for large, straightforward classification runs"}`. Wins over the gateway's own description. |
 | `APOLLO_LLM_USER_FIELD` | no | What is sent as the OpenAI `user` field: `email` (default) or `subject` (the identity provider's subject id). |
 
 The name "Apollo LLM", its default selection and the limit of one request at a
@@ -58,17 +54,6 @@ The rest of the server configuration is the usual hosted setup in
 realm, see its section "Other OIDC providers (Keycloak, Run:ai)". Also set
 `UPDATE_CHECK_ENABLED=false`, so users aren't told about public releases that
 this build doesn't follow.
-
-### Model descriptions
-
-The server reads them from the gateway: `GET {APOLLO_LLM_BASE_URL}/model/info`
-with the gateway key (LiteLLM's own endpoint, not part of the OpenAI API),
-taking `model_info.description` for each `model_name`. It keeps them for 5
-minutes (1 minute after a failure). If the call fails or a model has no
-description, the model is listed without one; the list itself never fails
-because of it. `APOLLO_LLM_MODEL_DESCRIPTIONS` wins where it is set. The
-browser gets them from `GET /api/apollo/models`, which returns
-`{"models": [{"id": "…", "description": "…" or null}]}`.
 
 ## How the key and the user are kept safe
 
@@ -149,7 +134,6 @@ hooks marked `apollo-deploy:` in these upstream files:
 - `frontend/src/features/views/annotation/components/AiProvidersPreferencesPanel.tsx`
 - `frontend/src/features/views/annotation/components/AnnotationInferenceSettings.tsx`
 - `frontend/src/features/views/annotation/components/inference-settings/AnnotationRunAllSettings.tsx`
-- `frontend/src/features/views/annotation/components/ModelNameCombobox.tsx`
 - `frontend/src/features/views/annotation/hooks/useAnnotationTabSettings.ts`
 - `.github/workflows/pypi-release.yml`, `desktop-release.yml`, `desktop-build.yml`
 

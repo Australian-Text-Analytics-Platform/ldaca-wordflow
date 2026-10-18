@@ -36,23 +36,6 @@ const fetchApolloProvider = async (): Promise<ApolloProvider> => {
   return data;
 };
 
-export interface ApolloModelOption {
-  id: string;
-  /** One line from the gateway (LiteLLM /model/info) or APOLLO_LLM_MODEL_DESCRIPTIONS. */
-  description: string | null;
-}
-
-/** Apollo models in the server's configured order, each with its description. */
-export const fetchApolloModels = async (signal?: AbortSignal): Promise<ApolloModelOption[]> => {
-  const { data } = await client.get<{ 200: { models: ApolloModelOption[] } }, unknown, true>({
-    security: [{ in: 'cookie', name: 'wordflow_session', type: 'apiKey' }],
-    url: '/api/apollo/models',
-    signal,
-    throwOnError: true,
-  });
-  return data.models;
-};
-
 /**
  * The Apollo provider when this server has one; null when it has none
  * (upstream behaviour); undefined until the server has answered.
