@@ -734,6 +734,7 @@ async def test_annotate_all_uses_twenty_row_batches_with_ten_in_flight(
         _config,
         _max_retries,
         _examples,
+        **_kwargs,
     ):
         nonlocal active, max_active
         active += 1
@@ -772,7 +773,7 @@ async def test_annotate_all_opens_the_requests_at_once_the_run_asks_for(
     active = 0
     max_active = 0
 
-    async def fake_annotate_batch(*args):
+    async def fake_annotate_batch(*args, **_kwargs):
         nonlocal active, max_active
         active += 1
         max_active = max(max_active, active)
@@ -814,6 +815,7 @@ async def test_annotate_all_splits_only_batches_rejected_by_the_context_limit(
         _config,
         _max_retries,
         _examples,
+        **_kwargs,
     ):
         attempted_sizes.append(len(texts))
         if len(texts) > 25:
@@ -853,6 +855,7 @@ async def test_annotate_all_splits_batches_with_exhausted_invalid_responses(
         _config,
         _max_retries,
         _examples,
+        **_kwargs,
     ):
         attempted_sizes.append(len(texts))
         if len(texts) > 25:
@@ -882,7 +885,7 @@ async def test_annotate_all_fails_a_batch_whose_provider_stays_unavailable(
 ):
     progress: list[tuple[int, int, int]] = []
 
-    async def fake_annotate_batch(*args):
+    async def fake_annotate_batch(*args, **_kwargs):
         texts = args[5]
         if texts[0] == "20":
             raise AnnotationAiError(
@@ -915,7 +918,7 @@ async def test_annotate_all_fails_a_batch_whose_provider_stays_unavailable(
 
 
 async def test_annotate_all_stops_when_the_provider_never_answers(monkeypatch):
-    async def fake_annotate_batch(*_args):
+    async def fake_annotate_batch(*_args, **_kwargs):
         raise AnnotationAiError(
             "provider unavailable",
             code="annotation_provider_unavailable",
@@ -937,7 +940,7 @@ async def test_annotate_all_stops_after_three_unanswered_batches_in_a_row(
 ):
     answered: list[str] = []
 
-    async def fake_annotate_batch(*args):
+    async def fake_annotate_batch(*args, **_kwargs):
         texts = args[5]
         if int(texts[0]) >= 3:
             raise AnnotationAiError(
@@ -975,6 +978,7 @@ async def test_annotate_all_treats_provider_wide_failures_as_fatal(
         _config,
         _max_retries,
         _examples,
+        **_kwargs,
     ):
         if texts[0] == "20":
             raise AnnotationAiError(
@@ -1019,6 +1023,7 @@ async def test_annotate_all_marks_only_irreducible_row_local_failures(
         _config,
         _max_retries,
         _examples,
+        **_kwargs,
     ):
         if "bad" in texts:
             raise failure_type("private provider detail")

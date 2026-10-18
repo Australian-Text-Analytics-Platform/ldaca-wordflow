@@ -12,8 +12,8 @@ Unknown settings are rejected.
 |---|---|
 | `DATA_ROOT` | Optional canonical operator-owned storage root; non-empty values are immutable at runtime |
 | `MAX_FILE_UPLOAD_BYTES` | Optional per-upload byte limit. Empty (default): no limit in any mode; on a hosted server the user's storage quota and `MIN_FREE_DISK_BYTES` bound uploads, and the browser reminds people before an upload over 50 MB (issues 248, 260) |
-| `MAX_WORKSPACE_ARCHIVE_BYTES` | Compressed import limit |
-| `MAX_WORKSPACE_EXPORT_BYTES` | Export expanded/compressed limit |
+| `MAX_WORKSPACE_ARCHIVE_BYTES` | Optional Project import limit (compressed bytes). Empty (default): no limit; a valid Wordflow export imports at any size. Free disk space (`MIN_FREE_DISK_BYTES`), the user's storage quota on a hosted server, and the ZIP checks (safe paths, declared sizes, compression ratio) still apply (issue 409) |
+| `MAX_WORKSPACE_EXPORT_BYTES` | Optional Project export limit. Empty (default): no limit; free disk space bounds it (issue 409). Data Block downloads stay within `MAX_RESPONSE_SNAPSHOT_BYTES` |
 | `MAX_DEFAULT_REQUEST_BODY_BYTES` | Default non-upload request limit |
 | `MAX_NODE_STORAGE_BYTES` | Per-Data-Block durable output limit |
 | `MAX_TEXT_RESPONSE_BYTES` | Raw-text response limit |

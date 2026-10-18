@@ -5,6 +5,7 @@ import { AnnotationClassDescriptionsEditor } from '../AnnotationClassDescription
 
 const mocks = vi.hoisted(() => ({
   rows: [] as { class: string; description: string }[],
+  taskContext: '',
   save: vi.fn(),
 }));
 
@@ -14,6 +15,7 @@ vi.mock('../../hooks/useAnnotationClassDescriptions', () => ({
   useAnnotationClassDescriptions: () => ({
     canLoad: true,
     rows: mocks.rows,
+    taskContext: mocks.taskContext,
     query: { isError: false, isLoading: false },
   }),
 }));
@@ -99,5 +101,63 @@ describe('AnnotationClassDescriptionsEditor codebook check (issue 389)', () => {
     ];
     renderEditor();
     expect(screen.queryByRole('status')).toBeNull();
+  });
+});
+
+describe('AnnotationClassDescriptionsEditor Task context (issue 408)', () => {
+  beforeEach(() => {
+    mocks.save.mockReset().mockResolvedValue(undefined);
+    mocks.rows = [{ class: 'support', description: 'Supports the claim' }];
+    mocks.taskContext = '';
+  });
+
+  it('saves the Task context as one reserved row after the codes', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const dialog = screen.getByRole('dialog');
+    await user.type(
+      within(dialog).getByLabelText(/Task context/),
+      '  Posts from a workers forum.  ',
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]?.[3]).toEqual([
+      { class: 'support', description: 'Supports the claim' },
+      { class: '__task_context__', description: 'Posts from a workers forum.' },
+    ]);
+  });
+
+  it('shows a saved Task context and removes the row when it is cleared', async () => {
+    const user = userEvent.setup();
+    mocks.taskContext = 'Posts from a workers forum.';
+    renderEditor();
+
+    expect(screen.getByText('Task context:')).toBeInTheDocument();
+    expect(screen.getByText(/Posts from a workers forum\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const dialog = screen.getByRole('dialog');
+    const field = within(dialog).getByLabelText(/Task context/);
+    expect(field).toHaveValue('Posts from a workers forum.');
+    await user.clear(field);
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]?.[3]).toEqual([
+      { class: 'support', description: 'Supports the claim' },
+    ]);
+  });
+
+  it('refuses a code named like the reserved row', async () => {
+    const user = userEvent.setup();
+    mocks.rows = [{ class: '__Task_Context__', description: '' }];
+    renderEditor();
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }));
+
+    expect(mocks.save).not.toHaveBeenCalled();
   });
 });

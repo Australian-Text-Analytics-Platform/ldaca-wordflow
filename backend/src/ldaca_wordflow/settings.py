@@ -72,15 +72,18 @@ class Settings(BaseSettings):
         ge=1,
         description="Optional maximum bytes in one user file upload; empty means no limit",
     )
-    max_workspace_archive_bytes: int = Field(
-        default=512 * 1024 * 1024,
+    # Projects can be many GB, and any valid Wordflow export must import
+    # again (issue 409): no size limit unless the operator sets one. Free disk
+    # space, per-user quotas and the ZIP checks still apply.
+    max_workspace_archive_bytes: int | None = Field(
+        default=None,
         ge=1,
-        description="Maximum compressed bytes in one workspace import",
+        description="Optional maximum compressed bytes in one Project import; empty means no limit",
     )
-    max_workspace_export_bytes: int = Field(
-        default=2 * 1024 * 1024 * 1024,
+    max_workspace_export_bytes: int | None = Field(
+        default=None,
         ge=1,
-        description="Maximum expanded and compressed bytes in a workspace export",
+        description="Optional maximum bytes in one Project export; empty means no limit",
     )
     max_default_request_body_bytes: int = Field(
         default=2 * 1024 * 1024,

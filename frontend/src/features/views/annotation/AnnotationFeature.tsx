@@ -656,6 +656,10 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
           provider_base_url: selectedAiProvider.base_url,
           model: aiModel,
           instruction: resolvedSystemPrompt,
+          // Sent only when set, as the stored request leaves it out when empty.
+          ...(classDescriptions.taskContext.trim()
+            ? { task_context: classDescriptions.taskContext.trim() }
+            : {}),
           temperature: aiTemperature,
           max_retries_per_batch: aiMaxRetriesPerBatch,
           max_examples_per_class: aiMaxExamplesPerClass,

@@ -138,17 +138,26 @@ class _PreparedArchive:
 
 @dataclass(frozen=True, slots=True)
 class WorkspaceArchiveLimits:
-    """Hard bounds checked before and while expanding an uploaded archive."""
+    """Bounds checked before and while expanding an uploaded archive.
 
-    max_archive_bytes: int = 512 * 1024 * 1024
-    max_members: int = 10_000
-    max_compressed_member_bytes: int = 256 * 1024 * 1024
-    max_member_bytes: int = 2 * 1024 * 1024 * 1024
-    max_expanded_bytes: int = 10 * 1024 * 1024 * 1024
+    Size caps are optional and off by default (issue 409): a valid Wordflow
+    export imports at any size. What always applies: every member expands to
+    exactly its declared size, the compression ratio stays below a ZIP-bomb
+    level, the declared total is reserved on disk (and against a hosted
+    user's quota) before extraction, and member paths are safe.
+    """
+
+    max_archive_bytes: int | None = None
+    max_members: int = 100_000
+    max_compressed_member_bytes: int | None = None
+    max_member_bytes: int | None = None
+    max_expanded_bytes: int | None = None
     max_compression_ratio: float = 1_000.0
-    max_manifest_bytes: int = 4 * 1024 * 1024
+    # workspace.json may be as large as a saved Project's plan and metadata
+    # (MAX_WORKSPACE_SNAPSHOT_BYTES), so every export can be imported again.
+    max_manifest_bytes: int = 256 * 1024 * 1024
     max_parent_edges: int = 50_000
-    max_central_directory_bytes: int = 16 * 1024 * 1024
+    max_central_directory_bytes: int = 64 * 1024 * 1024
 
     def __post_init__(self) -> None:
         values = (
@@ -161,8 +170,17 @@ class WorkspaceArchiveLimits:
             self.max_parent_edges,
             self.max_central_directory_bytes,
         )
-        if any(value < 1 for value in values) or self.max_compression_ratio <= 0:
+        if (
+            any(value is not None and value < 1 for value in values)
+            or self.max_compression_ratio <= 0
+        ):
             raise ValueError("Project archive limits must be positive")
+
+
+# Disk is reserved in steps while an upload of unknown size arrives.
+_UPLOAD_RESERVATION_STEP_BYTES = 64 * 1024 * 1024
+# Bounded writers need a number; with no export limit set this is never reached.
+_NO_EXPORT_LIMIT = 1 << 62
 
 
 class WorkspaceArchiveService:
@@ -175,7 +193,7 @@ class WorkspaceArchiveService:
         workspace_store: WorkspaceStore,
         response_snapshots: ResponseSnapshotService,
         storage_admission: StorageAdmissionService,
-        max_export_bytes: int,
+        max_export_bytes: int | None,
         limits: WorkspaceArchiveLimits,
         limiter: anyio.CapacityLimiter,
         max_concurrent_imports: int = 2,
@@ -211,9 +229,9 @@ class WorkspaceArchiveService:
         it and owns deletion through a response background task.
         """
 
-        source_reservation = await self._storage_admission.acquire_transient(
-            self._max_export_bytes
-        )
+        # Hard links take no space; the export's own reservation is sized
+        # from the Project once its files are known.
+        source_reservation = await self._storage_admission.acquire_transient(0)
         source_snapshot: Path | None = None
         try:
             try:
@@ -226,7 +244,7 @@ class WorkspaceArchiveService:
                     source_snapshot = await self._run_sync(
                         _snapshot_workspace_tree,
                         lease.path,
-                        self._max_export_bytes,
+                        self._export_limit,
                     )
                 return await self._export_snapshot(
                     source_snapshot, workspace_name, revision
@@ -250,7 +268,7 @@ class WorkspaceArchiveService:
                     source_snapshot = await self._run_sync(
                         _snapshot_workspace_tree,
                         path,
-                        self._max_export_bytes,
+                        self._export_limit,
                     )
                 if incompatible is None:
                     return await self._export_snapshot(source_snapshot, None, None)
@@ -260,8 +278,8 @@ class WorkspaceArchiveService:
                     workspace_name = str(workspace_id)
                 snapshot = await self._response_snapshots.create_generated(
                     suffix=".zip",
-                    max_output_bytes=self._max_export_bytes,
-                    reservation_bytes=self._max_export_bytes * 2,
+                    max_output_bytes=self._export_limit,
+                    reservation_bytes=await self._export_reservation(source_snapshot),
                     producer=partial(
                         _create_raw_workspace_archive,
                         source_snapshot,
@@ -301,8 +319,8 @@ class WorkspaceArchiveService:
             workspace_name = detached.name
         snapshot = await self._response_snapshots.create_generated(
             suffix=".zip",
-            max_output_bytes=self._max_export_bytes,
-            reservation_bytes=self._max_export_bytes * 2,
+            max_output_bytes=self._export_limit,
+            reservation_bytes=await self._export_reservation(source_snapshot),
             producer=partial(
                 _create_workspace_export,
                 detached,
@@ -317,6 +335,24 @@ class WorkspaceArchiveService:
             len(detached.unavailable_analysis_ids),
         )
 
+    @property
+    def _export_limit(self) -> int:
+        return (
+            _NO_EXPORT_LIMIT if self._max_export_bytes is None else self._max_export_bytes
+        )
+
+    async def _export_reservation(self, source_snapshot: Path) -> int:
+        """Disk to set aside for one export: its staging copy and its ZIP.
+
+        With a configured limit this is twice the limit, as before; without
+        one, twice the Project's files (Data Blocks kept as plans can make the
+        export larger, and then the disk itself is the bound).
+        """
+
+        if self._max_export_bytes is not None:
+            return self._max_export_bytes * 2
+        return 2 * await self._run_sync(_tree_bytes, source_snapshot)
+
     async def import_upload(
         self,
         user_id: str,
@@ -326,36 +362,51 @@ class WorkspaceArchiveService:
         """Admit one bounded expansion and serialize it through an import slot."""
 
         async with self._import_slots:
-            reservation = await self._storage_admission.acquire(
-                user_id,
-                self._limits.max_archive_bytes
-                + self._limits.max_expanded_bytes
-                + self._workspace_store.max_snapshot_bytes,
-                requested_entries=self._limits.max_members,
-            )
-            try:
-                return await self._import_upload_admitted(
-                    user_id,
-                    filename,
-                    source,
-                    reservation,
+            return await self._import_upload_admitted(user_id, filename, source)
+
+    async def _receive_upload(
+        self,
+        source: AsyncUploadSource,
+        descriptor: int,
+        upload_reservations: list[StorageReservation],
+    ) -> int:
+        """Write the upload to its temporary file, reserving disk as it grows."""
+
+        total = 0
+        reserved = 0
+        while True:
+            chunk = await source.read(self._upload_chunk_size)
+            if not chunk:
+                return total
+            total += len(chunk)
+            max_archive = self._limits.max_archive_bytes
+            if max_archive is not None and total > max_archive:
+                raise UploadTooLargeError(
+                    f"Project archive exceeds {max_archive} bytes"
                 )
-            finally:
-                with anyio.CancelScope(shield=True):
-                    await reservation.release()
+            while total > reserved:
+                upload_reservations.append(
+                    await self._storage_admission.acquire_transient(
+                        _UPLOAD_RESERVATION_STEP_BYTES
+                    )
+                )
+                reserved += _UPLOAD_RESERVATION_STEP_BYTES
+            await self._run_sync(_write_all, descriptor, chunk)
 
     async def _import_upload_admitted(
         self,
         user_id: str,
         filename: str,
         source: AsyncUploadSource,
-        reservation: StorageReservation,
     ) -> tuple[dict[str, Any], int, int]:
         """Stream, validate, and install one workspace ZIP.
 
-        Validation and extraction happen outside the workspace mutation gate.
-        Only the final same-filesystem install is delegated to WorkspaceService,
-        which serializes it with every other mutation for that user.
+        The upload is reserved on disk as it arrives; the archive's declared
+        expanded size (plus the compiled Project) is reserved against the
+        user's quota and the disk before anything is extracted. Validation and
+        extraction happen outside the workspace mutation gate. Only the final
+        same-filesystem install is delegated to WorkspaceService, which
+        serializes it with every other mutation for that user.
         """
 
         if not filename.lower().endswith(".zip"):
@@ -369,24 +420,24 @@ class WorkspaceArchiveService:
         )
         descriptor_open = True
         prepared: _PreparedArchive | None = None
-        total = 0
+        upload_reservations: list[StorageReservation] = []
+        reservation: StorageReservation | None = None
         try:
-            while True:
-                chunk = await source.read(self._upload_chunk_size)
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > self._limits.max_archive_bytes:
-                    raise UploadTooLargeError(
-                        f"Project archive exceeds {self._limits.max_archive_bytes} bytes"
-                    )
-                await self._run_sync(_write_all, descriptor, chunk)
+            total = await self._receive_upload(source, descriptor, upload_reservations)
             if total == 0:
                 raise InvalidWorkspaceArchiveError("Uploaded file is empty")
 
             await self._run_sync(os.fsync, descriptor)
             await self._run_sync(os.close, descriptor)
             descriptor_open = False
+            expanded_bytes, member_count = await self._run_sync(
+                self._inspect_archive, temporary
+            )
+            reservation = await self._storage_admission.acquire(
+                user_id,
+                expanded_bytes + self._workspace_store.max_snapshot_bytes,
+                requested_entries=member_count,
+            )
             prepared = await self._run_sync(
                 self._prepare_from_path,
                 temporary,
@@ -413,6 +464,27 @@ class WorkspaceArchiveService:
                 await self._run_sync(temporary.unlink, missing_ok=True)
                 if prepared is not None and prepared.staging.exists():
                     await self._run_sync(shutil.rmtree, prepared.staging, True)
+                if reservation is not None:
+                    await reservation.release()
+                for upload_reservation in upload_reservations:
+                    await upload_reservation.release()
+
+    def _inspect_archive(self, archive_path: Path) -> tuple[int, int]:
+        """The declared expanded bytes and member count of a valid archive."""
+
+        try:
+            _preflight_zip_central_directory(
+                archive_path,
+                max_members=self._limits.max_members,
+                max_central_bytes=self._limits.max_central_directory_bytes,
+            )
+            with zipfile.ZipFile(archive_path, "r") as archive:
+                members = self._validated_members(archive)
+        except InvalidWorkspaceArchiveError:
+            raise
+        except (OSError, RuntimeError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+            raise InvalidWorkspaceArchiveError("Invalid project ZIP archive") from exc
+        return sum(member.file_size for member, _path in members), len(members)
 
     def _prepare_from_path(
         self,
@@ -526,16 +598,19 @@ class WorkspaceArchiveService:
                     "Encrypted ZIP members are not supported"
                 )
             _validate_member_type(member)
-            if member.compress_size > self._limits.max_compressed_member_bytes:
+            max_compressed = self._limits.max_compressed_member_bytes
+            if max_compressed is not None and member.compress_size > max_compressed:
                 raise InvalidWorkspaceArchiveError(
                     "ZIP member compressed size exceeds the configured limit"
                 )
-            if member.file_size > self._limits.max_member_bytes:
+            max_member = self._limits.max_member_bytes
+            if max_member is not None and member.file_size > max_member:
                 raise InvalidWorkspaceArchiveError(
                     "ZIP member expanded size exceeds the configured limit"
                 )
             expanded_total += member.file_size
-            if expanded_total > self._limits.max_expanded_bytes:
+            max_expanded = self._limits.max_expanded_bytes
+            if max_expanded is not None and expanded_total > max_expanded:
                 raise InvalidWorkspaceArchiveError(
                     "ZIP expanded size exceeds the configured limit"
                 )
@@ -579,11 +654,11 @@ class WorkspaceArchiveService:
                 continue
             destination.parent.mkdir(parents=True, exist_ok=True)
             descriptor = resolver.open_new_file(destination)
-            member_limit = (
-                self._limits.max_manifest_bytes
-                if relative == "workspace.json"
-                else self._limits.max_member_bytes
-            )
+            # A member never writes more than it declares: the declared sizes
+            # are what was checked and reserved before extraction.
+            member_limit = member.file_size
+            if relative == "workspace.json":
+                member_limit = min(member_limit, self._limits.max_manifest_bytes)
             try:
                 with os.fdopen(descriptor, "wb", closefd=True) as output:
                     with archive.open(member, "r") as source:
@@ -598,7 +673,11 @@ class WorkspaceArchiveService:
                                 raise InvalidWorkspaceArchiveError(
                                     "ZIP member expanded beyond its configured limit"
                                 )
-                            if extracted_total > self._limits.max_expanded_bytes:
+                            max_expanded = self._limits.max_expanded_bytes
+                            if (
+                                max_expanded is not None
+                                and extracted_total > max_expanded
+                            ):
                                 raise InvalidWorkspaceArchiveError(
                                     "ZIP expanded beyond its configured limit"
                                 )
@@ -1091,6 +1170,18 @@ def _compile_materialized_archive(
         len(compatible_children.omitted_tab_ids),
         len(compatible_children.omitted_analysis_ids),
     )
+
+
+def _tree_bytes(root: Path) -> int:
+    """Bytes in the regular files below ``root`` (links not followed)."""
+
+    total = 0
+    for current_root, _directories, file_names in os.walk(root, followlinks=False):
+        for name in file_names:
+            metadata = (Path(current_root) / name).lstat()
+            if stat.S_ISREG(metadata.st_mode):
+                total += metadata.st_size
+    return total
 
 
 def _snapshot_workspace_tree(source: Path, max_bytes: int) -> Path:

@@ -21,6 +21,8 @@ from pydantic import (
 
 from ...shared.json_data import JsonData
 from ..annotation import (
+    TASK_CONTEXT_CODE,
+    TASK_CONTEXT_MAX_CHARS,
     AnnotationClass,
     AnnotationExampleSamplingMethod,
     AnnotationProviderSnapshot,
@@ -288,6 +290,14 @@ class _AnnotationInferenceFields(AnnotationProviderSnapshot):
     classes: list[AnnotationClass] = Field(min_length=1, max_length=200)
     model: NonEmptyText = Field(max_length=500)
     instruction: NonEmptyText = Field(max_length=20_000)
+    # The codebook's optional Task context (issue 408), added to the prompt
+    # after the instruction. Left out of stored records when empty, so 0.7.14
+    # and earlier still read Projects that don't use it.
+    task_context: str = Field(
+        default="",
+        max_length=TASK_CONTEXT_MAX_CHARS,
+        exclude_if=lambda value: value == "",
+    )
     temperature: float = Field(default=0.0, ge=0.0, le=2.0, allow_inf_nan=False)
     max_retries_per_batch: int = Field(default=2, ge=0, le=10)
     reasoning_enabled: bool = False
@@ -298,6 +308,8 @@ class _AnnotationInferenceFields(AnnotationProviderSnapshot):
         normalized = [item.name.casefold() for item in self.classes]
         if len(normalized) != len(set(normalized)):
             raise ValueError("Annotation class names must be unique")
+        if TASK_CONTEXT_CODE in normalized:
+            raise ValueError(f"{TASK_CONTEXT_CODE} is reserved for the Task context")
         if self.correction_column in {self.text_column, self.annotation_column}:
             raise ValueError(
                 "Annotation correction column must differ from text and annotation columns"

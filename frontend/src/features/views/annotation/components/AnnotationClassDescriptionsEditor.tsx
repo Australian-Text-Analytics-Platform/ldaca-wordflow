@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react';
@@ -33,6 +34,12 @@ import {
   resolveCode,
   withoutRepeatedRows,
 } from '../codebookChecks';
+import {
+  isTaskContextCode,
+  TASK_CONTEXT_CODE,
+  TASK_CONTEXT_MAX_CHARS,
+  withTaskContext,
+} from '../taskContext';
 
 // Compact card shows class-name badges; extras collapse into a "+N more" badge
 // so the card stays tight while the full list lives in the Edit dialog.
@@ -85,6 +92,7 @@ export function AnnotationClassDescriptionsEditor({
 }: AnnotationClassDescriptionsEditorProps) {
   const { saveAnnotationClasses } = useWorkspaceActions();
   const [draftRows, setDraftRows] = useState<AnnotationClassDescriptionRow[] | null>(null);
+  const [draftTaskContext, setDraftTaskContext] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const classDescriptions = useAnnotationClassDescriptions({
@@ -96,6 +104,8 @@ export function AnnotationClassDescriptionsEditor({
 
   const savedRows = classDescriptions.rows;
   const editorRows = draftRows ?? savedRows;
+  const savedTaskContext = classDescriptions.taskContext.trim();
+  const editorTaskContext = draftTaskContext ?? classDescriptions.taskContext;
   // Compact card display: non-empty class names paired with their (trimmed)
   // descriptions so each chip can show its description in a hover tooltip; capped
   // with a "+N more" badge. Chips without a description render as plain badges.
@@ -130,6 +140,7 @@ export function AnnotationClassDescriptionsEditor({
   const handleOpenChange = (open: boolean) => {
     setIsEditOpen(open);
     setDraftRows(open ? normalizeClassDescriptionRows(savedRows) : null);
+    setDraftTaskContext(open ? classDescriptions.taskContext : null);
   };
 
   const handleSave = async () => {
@@ -142,6 +153,10 @@ export function AnnotationClassDescriptionsEditor({
       toast.error('Every annotation code needs a name.');
       return;
     }
+    if (normalized.some((row) => isTaskContextCode(row.class))) {
+      toast.error(`“${TASK_CONTEXT_CODE}” is reserved for the Task context. Rename that code.`);
+      return;
+    }
     const uniqueNames = new Set(normalized.map((row) => codeKey(row.class)));
     if (uniqueNames.size !== normalized.length) {
       toast.error('Each code can appear only once. Follow the suggestion below the codes.');
@@ -149,9 +164,15 @@ export function AnnotationClassDescriptionsEditor({
     }
     setIsSaving(true);
     try {
-      await saveAnnotationClasses(nodeId, classColumn, descriptionColumn, normalized);
+      await saveAnnotationClasses(
+        nodeId,
+        classColumn,
+        descriptionColumn,
+        withTaskContext(normalized, editorTaskContext),
+      );
       setIsEditOpen(false);
       setDraftRows(null);
+      setDraftTaskContext(null);
       toast.success('Codebook saved.');
     } catch (error) {
       toastError(error, "Couldn't save the codebook.");
@@ -207,6 +228,25 @@ export function AnnotationClassDescriptionsEditor({
                 Add, rename, or remove annotation codes and their descriptions.
               </DialogDescription>
             </DialogHeader>
+            <div className="space-y-1.5">
+              <Label htmlFor="codebook-task-context">
+                Task context <span className="font-normal text-description">(optional)</span>
+              </Label>
+              <Textarea
+                id="codebook-task-context"
+                value={editorTaskContext}
+                rows={3}
+                maxLength={TASK_CONTEXT_MAX_CHARS}
+                placeholder="What the texts are and what the codes are for, for example: Tweets by Australian politicians during the 2025 election campaign."
+                className="min-h-16 resize-y"
+                onChange={(event) => {
+                  setDraftTaskContext(event.target.value);
+                }}
+              />
+              <p className="text-label-secondary text-description">
+                Saved with this codebook and sent to the AI with every request, after the prompt.
+              </p>
+            </div>
             <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
               {editorRows.length === 0 ? (
                 <p className="rounded-md border border-dashed border-surface-border px-4 py-6 text-center text-body text-description">
@@ -355,6 +395,11 @@ export function AnnotationClassDescriptionsEditor({
         </Dialog>
       </div>
 
+      {savedTaskContext ? (
+        <p className="line-clamp-2 text-label-secondary text-description" title={savedTaskContext}>
+          <span className="font-medium text-foreground">Task context:</span> {savedTaskContext}
+        </p>
+      ) : null}
       {classDescriptions.query.isLoading ? (
         <div className="rounded-md border border-surface-border px-4 py-3 text-body text-description">
           Loading codebook…
