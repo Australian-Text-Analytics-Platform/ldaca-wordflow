@@ -101,12 +101,12 @@ The workflow `.github/workflows/apollo-image.yml` runs on every push to
 
 1. builds the frontend and the backend wheel from the branch;
 2. marks the version as `<upstream version>+apollo.<run number>`, for example
-   `0.7.14+apollo.12` (shown by `/health/ready`);
+   `0.7.15-pre+apollo.12`, which `/health/ready` shows as `0.7.15rc0+apollo.12`;
 3. builds a linux/amd64 image from `deploy/apollo/Dockerfile`: python:3.14-slim,
    tini, the wheel, and the spaCy model (Quotation), the topic embedder and the
    BERT tokenizer already downloaded;
 4. pushes it as `ghcr.io/australian-text-analytics-platform/ldaca-wordflow-apollo`
-   with the tags `0.7.14-apollo.12`, `sha-<commit>` and `latest`.
+   with the tags `0.7.15-pre-apollo.12`, `sha-<commit>` and `latest`.
 
 Keep the GHCR package private, and give the cluster a read-only token to pull
 it. The image holds no secrets.

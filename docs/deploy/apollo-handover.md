@@ -32,7 +32,8 @@ publish it to PyPI or GitHub Releases.
 | **#407** A one-line description under each model, from LiteLLM's `model_info.description` (or `APOLLO_LLM_MODEL_DESCRIPTIONS`), in the configured order | `6229ebae` (merged in `b6f16503`) | `infrastructure/providers/model_descriptions.py`, `services/annotations.py`, `apollo_deploy/{adapter,config}.py`, `frontend/.../ModelNameCombobox.tsx` |
 | **#403** OIDC scopes are configurable and the issuer can have a path (Keycloak realm) | `dc2e98b0` (already on v0.7) | `backend/src/ldaca_wordflow/settings.py`, `api/auth.py` |
 
-The version reported by `/health/ready` is `0.7.14+apollo.<build number>`.
+Both branches are at version **0.7.15-pre**, a prerelease of 0.7.15 (Python
+writes it `0.7.15rc0`). `/health/ready` reports `0.7.15rc0+apollo.<build number>`.
 
 ## Build
 
@@ -40,7 +41,7 @@ The version reported by `/health/ready` is `0.7.14+apollo.<build number>`.
 `Apollo deploy image`, which builds and pushes:
 
 ```
-ghcr.io/australian-text-analytics-platform/ldaca-wordflow-apollo:0.7.14-apollo.<run number>
+ghcr.io/australian-text-analytics-platform/ldaca-wordflow-apollo:0.7.15-pre-apollo.<run number>
 ghcr.io/australian-text-analytics-platform/ldaca-wordflow-apollo:sha-<full commit>
 ghcr.io/australian-text-analytics-platform/ldaca-wordflow-apollo:latest
 ```
@@ -111,7 +112,7 @@ Runtime rules:
 1. Note the image tag that is running now (for rollback).
 2. Deploy the new tag with the configuration above and wait for readiness:
    `curl -fsS https://<public host>/health/ready` must report `status: ready`
-   and version `0.7.14+apollo.<n>`.
+   and version `0.7.15rc0+apollo.<n>`.
 3. If it doesn't become ready, read the container log before changing anything.
    A wrong `APOLLO_LLM_*` or `CILOGON_*` setting stops start-up and the log
    names the setting; the gateway key and client secret are never printed.
