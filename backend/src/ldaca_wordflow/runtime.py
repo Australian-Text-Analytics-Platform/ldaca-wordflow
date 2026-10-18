@@ -889,7 +889,8 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
             max_export_bytes=settings.max_workspace_export_bytes,
             max_concurrent_imports=settings.max_concurrent_workspace_imports,
             limits=WorkspaceArchiveLimits(
-                max_archive_bytes=settings.max_workspace_archive_bytes
+                max_archive_bytes=settings.max_workspace_archive_bytes,
+                max_manifest_bytes=settings.max_workspace_snapshot_bytes,
             ),
             limiter=io_limiter,
         )

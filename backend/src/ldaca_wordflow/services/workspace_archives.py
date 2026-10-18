@@ -146,7 +146,10 @@ class WorkspaceArchiveLimits:
     max_member_bytes: int = 2 * 1024 * 1024 * 1024
     max_expanded_bytes: int = 10 * 1024 * 1024 * 1024
     max_compression_ratio: float = 1_000.0
-    max_manifest_bytes: int = 4 * 1024 * 1024
+    # workspace.json may be as large as a saved Project's plan and metadata
+    # (MAX_WORKSPACE_SNAPSHOT_BYTES), so every export can be imported again
+    # (issue 409; a 4 MiB cap refused ordinary Projects with saved results).
+    max_manifest_bytes: int = 256 * 1024 * 1024
     max_parent_edges: int = 50_000
     max_central_directory_bytes: int = 16 * 1024 * 1024
 

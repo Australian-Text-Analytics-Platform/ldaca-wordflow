@@ -695,6 +695,42 @@ async def test_cancelled_archive_upload_cleans_seekable_temp(tmp_path: Path) -> 
     assert list((tmp_path / ".staging").iterdir()) == []
 
 
+def _archive_with_manifest_bytes(size: int) -> bytes:
+    """A valid archive whose workspace.json is padded to ``size`` bytes."""
+
+    with zipfile.ZipFile(io.BytesIO(_valid_archive())) as source:
+        manifest = source.read("workspace/workspace.json")
+        parquet_name = next(n for n in source.namelist() if n.endswith(".parquet"))
+        parquet = source.read(parquet_name)
+    padded = manifest + b" " * (size - len(manifest))  # JSON allows trailing spaces
+    return _archive([("workspace/workspace.json", padded), (parquet_name, parquet)])
+
+
+async def test_a_manifest_over_4_mib_imports(tmp_path: Path) -> None:
+    # Issue 409: an ordinary Project with saved results wrote a 4.3 MB
+    # manifest, which the old 4 MiB import cap refused.
+    storage = FakeWorkspaceStorage(tmp_path)
+
+    summary, _tabs, _analyses = await _service(storage).import_upload(
+        "alice", "workspace.zip", ByteSource(_archive_with_manifest_bytes(5 * 1024 * 1024))
+    )
+
+    assert summary["name"] == "Imported"
+
+
+async def test_a_manifest_over_the_limit_is_still_refused(tmp_path: Path) -> None:
+    storage = FakeWorkspaceStorage(tmp_path)
+
+    with pytest.raises(InvalidWorkspaceArchiveError, match="manifest exceeds"):
+        await _service(
+            storage, limits=WorkspaceArchiveLimits(max_manifest_bytes=1024 * 1024)
+        ).import_upload(
+            "alice",
+            "workspace.zip",
+            ByteSource(_archive_with_manifest_bytes(1024 * 1024 + 1)),
+        )
+
+
 async def test_archive_upload_enforces_actual_compressed_byte_limit(
     tmp_path: Path,
 ) -> None:
@@ -890,3 +926,15 @@ async def test_archive_rejects_deployment_access_sidecar(
         )
 
     assert list((tmp_path / ".staging").iterdir()) == []
+
+
+async def test_the_runtime_imports_manifests_as_large_as_a_saved_project(
+    tmp_path: Path,
+) -> None:
+    from ldaca_wordflow.runtime import runtime_context
+    from ldaca_wordflow.settings import Settings
+
+    settings = Settings(data_root=tmp_path, max_workspace_snapshot_bytes=64 * 1024 * 1024)
+    async with runtime_context(settings) as runtime:
+        limits = runtime.workspace_archive_service._limits
+        assert limits.max_manifest_bytes == settings.max_workspace_snapshot_bytes
