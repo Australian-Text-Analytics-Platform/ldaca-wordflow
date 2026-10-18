@@ -63,7 +63,7 @@ SESSION_COOKIE_SECURE=true
 
 `CILOGON_CLIENT_SECRET` goes in the secret file as above. Keycloak doesn't
 define `org.cilogon.userinfo`, so leave it out of `CILOGON_SCOPES`. The sign-in
-button still reads "Sign in with CILogon" (issue 403). Use a fresh data folder:
+button reads "Sign in with SSO" for every OIDC provider (issue 405). Use a fresh data folder:
 email addresses are unique across users, so an account made with one issuer
 blocks the same email from signing in with another.
 
