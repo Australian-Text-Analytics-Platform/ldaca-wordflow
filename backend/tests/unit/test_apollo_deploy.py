@@ -10,12 +10,15 @@ from pathlib import Path
 from typing import Any, cast
 
 import anyio
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from ldaca_wordflow import apollo_deploy
 from ldaca_wordflow.apollo_deploy import binding as apollo_binding
+from ldaca_wordflow.apollo_deploy import catalogue as apollo_catalogue
 from ldaca_wordflow.apollo_deploy.adapter import ApolloAnnotationAdapter, redact
+from ldaca_wordflow.apollo_deploy.catalogue import reset_description_cache
 from ldaca_wordflow.apollo_deploy.config import (
     APOLLO_CONFIGURATION_ID,
     APOLLO_PLACEHOLDER_BASE_URL,
@@ -69,6 +72,7 @@ CONFIG = InferenceConfig(temperature=0.0, reasoning_enabled=False, reasoning_eff
 
 def _clear() -> None:
     apollo_settings.cache_clear()
+    reset_description_cache()
     reset_user_gate()
     apollo_deploy._resolver = None
 
@@ -92,6 +96,7 @@ def no_apollo_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         "APOLLO_LLM_MODELS",
         "APOLLO_LLM_DEFAULT_MODEL",
         "APOLLO_LLM_USER_FIELD",
+        "APOLLO_LLM_MODEL_DESCRIPTIONS",
     ):
         monkeypatch.delenv(name, raising=False)
     _clear()
@@ -309,6 +314,135 @@ def test_wrong_settings_stop_start_up_without_showing_secrets(
         apollo_deploy.install(cast(Any, object()))
 
     assert GATEWAY_KEY not in str(error.value)
+
+
+# Model descriptions -----------------------------------------------------------------
+
+_MODEL_INFO = {
+    "data": [
+        {"model_name": "qwen3-32b", "model_info": {"description": "Fastest; good for large runs."}},
+        {"model_name": "qwen3-32b", "model_info": {"description": "A second deployment."}},
+        {"model_name": "llama-3.3-70b", "model_info": {"description": "Careful;  slower."}},
+        {"model_name": "gpt-oss-120b", "model_info": {}},
+    ]
+}
+
+
+def _install_model_info(
+    monkeypatch: pytest.MonkeyPatch, respond: Any
+) -> list[httpx.Request]:
+    """Answer /model/info from ``respond(request)``; returns the requests seen."""
+
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return respond(request)
+
+    monkeypatch.setattr(
+        apollo_catalogue,
+        "_http_client",
+        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    return seen
+
+
+def test_models_come_with_gateway_descriptions_in_the_configured_order(
+    apollo_env: None,
+    multi_user_test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Not alphabetical and not the gateway's order: the configured order wins.
+    monkeypatch.setenv("APOLLO_LLM_MODELS", '["qwen3-32b", "llama-3.3-70b"]')
+    apollo_settings.cache_clear()
+    _install_fake_openai(monkeypatch, [])
+    seen = _install_model_info(monkeypatch, lambda _r: httpx.Response(200, json=_MODEL_INFO))
+    caplog.set_level(logging.DEBUG)
+
+    response = multi_user_test_client.get("/api/apollo/models")
+    again = multi_user_test_client.get("/api/apollo/models")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "models": [
+            {"id": "qwen3-32b", "description": "Fastest; good for large runs."},
+            {"id": "llama-3.3-70b", "description": "Careful; slower."},
+        ]
+    }
+    assert again.json() == response.json()
+    assert len(seen) == 1  # cached
+    assert str(seen[0].url) == f"{GATEWAY_URL}/model/info"
+    assert seen[0].headers["Authorization"] == f"Bearer {GATEWAY_KEY}"
+    assert GATEWAY_KEY not in response.text + caplog.text
+    assert GATEWAY_URL not in response.text  # the browser never learns the URL
+
+
+def test_configured_descriptions_win_over_the_gateway(
+    apollo_env: None, multi_user_test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(
+        "APOLLO_LLM_MODEL_DESCRIPTIONS", '{"qwen3-32b": "Our pick for big runs."}'
+    )
+    apollo_settings.cache_clear()
+    _install_fake_openai(monkeypatch, [])
+    _install_model_info(monkeypatch, lambda _r: httpx.Response(200, json=_MODEL_INFO))
+
+    models = multi_user_test_client.get("/api/apollo/models").json()["models"]
+
+    assert models == [
+        {"id": "llama-3.3-70b", "description": "Careful; slower."},
+        {"id": "qwen3-32b", "description": "Our pick for big runs."},
+    ]
+
+
+@pytest.mark.parametrize(
+    "respond",
+    [
+        lambda _r: httpx.Response(500, text=f"boom {GATEWAY_KEY}"),
+        lambda _r: httpx.Response(200, text="not json"),
+        lambda r: (_ for _ in ()).throw(httpx.ConnectError("refused", request=r)),
+    ],
+)
+def test_a_failing_model_info_still_lists_the_models(
+    apollo_env: None,
+    multi_user_test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    respond: Any,
+) -> None:
+    _install_fake_openai(monkeypatch, [])
+    _install_model_info(monkeypatch, respond)
+    caplog.set_level(logging.DEBUG)
+
+    response = multi_user_test_client.get("/api/apollo/models")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "models": [
+            {"id": "llama-3.3-70b", "description": None},
+            {"id": "qwen3-32b", "description": None},
+        ]
+    }
+    assert GATEWAY_KEY not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "value",
+    ['{"qwen3-32b": ""}', '{"": "text"}', '["qwen3-32b"]', '{"qwen3-32b": "' + "x" * 201 + '"}'],
+)
+def test_wrong_model_descriptions_are_refused(
+    apollo_env: None, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("APOLLO_LLM_MODEL_DESCRIPTIONS", value)
+    with pytest.raises(ValueError):
+        ApolloSettings()
+
+
+def test_models_route_is_refused_without_base_url(
+    no_apollo_env: None, multi_user_test_client: TestClient
+) -> None:
+    assert multi_user_test_client.get("/api/apollo/models").status_code == 409
 
 
 # The user field ------------------------------------------------------------------------

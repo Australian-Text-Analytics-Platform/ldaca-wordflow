@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, renderHook, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import type * as GeneratedClient from '@/api/generated/client.gen';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
 import { useProviderCredentialsStore } from '@/features/provider-credentials/providerCredentialsStore';
 import { listAnnotationModelsWithProviderCredential } from '@/features/provider-credentials/providerCredentialRequests';
+import { ModelNameCombobox } from '@/features/views/annotation/components/ModelNameCombobox';
 import { AnnotationRunAllSettings } from '@/features/views/annotation/components/inference-settings/AnnotationRunAllSettings';
 import { useAnnotationTabSettings } from '@/features/views/annotation/hooks/useAnnotationTabSettings';
 import {
@@ -141,6 +142,44 @@ describe('Apollo LLM provider (deploy/apollo)', () => {
     );
     expect(result.current.aiMaxConcurrency).toBe(1);
     expect(capApolloConcurrency('another-provider', 8)).toBe(8);
+  });
+
+  it('shows each model with its description and selects the model id', async () => {
+    mocks.clientGet.mockResolvedValue({
+      data: {
+        models: [
+          { id: 'qwen3-32b', description: 'Fastest; good for large runs.' },
+          { id: 'llama-3.3-70b', description: null },
+        ],
+      },
+    });
+    const onChange = vi.fn();
+    if (!apollo.configuration) throw new Error('missing configuration');
+    render(
+      <ModelNameCombobox
+        configuration={{ ...apollo.configuration, credentialRevision: 1 }}
+        value=""
+        onChange={onChange}
+      />,
+      { wrapper },
+    );
+
+    fireEvent.focus(screen.getByPlaceholderText('Search or type a model name'));
+
+    const description = await screen.findByText('Fastest; good for large runs.');
+    expect(description).toBeInTheDocument();
+    expect(mocks.clientGet).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/api/apollo/models' }),
+    );
+    expect(mocks.listAnnotationModels).not.toHaveBeenCalled();
+    const rows = screen.getAllByRole('button');
+    expect(rows.map((row) => row.textContent)).toEqual([
+      'qwen3-32bFastest; good for large runs.',
+      'llama-3.3-70b',
+    ]);
+    expect(rows[0]).toHaveAttribute('title', 'Fastest; good for large runs.');
+    fireEvent.click(rows[0] as HTMLElement);
+    expect(onChange).toHaveBeenCalledWith('qwen3-32b');
   });
 
   it('shows the one-at-a-time note and does not allow more', () => {

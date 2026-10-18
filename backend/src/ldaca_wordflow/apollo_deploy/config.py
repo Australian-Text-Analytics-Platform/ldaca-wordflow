@@ -26,6 +26,8 @@ APOLLO_CONFIGURATION_ID = uuid.UUID("3c4d70f7-4c43-5e66-9f39-6a4b478319bc")
 APOLLO_PLACEHOLDER_BASE_URL = "https://apollo-llm.invalid/v1"
 # One in-flight request per user: one Run at a time, one request in a Run.
 APOLLO_MAX_CONCURRENCY = 1
+# The picker shows one line per model.
+MODEL_DESCRIPTION_MAX_CHARS = 200
 
 
 class ApolloSettings(BaseSettings):
@@ -43,6 +45,9 @@ class ApolloSettings(BaseSettings):
     # accepted, in this order.
     models: tuple[str, ...] = ()
     default_model: str | None = None
+    # A JSON object, model id -> one line shown under the model in the picker.
+    # Wins over the gateway's own description (LiteLLM /model/info).
+    model_descriptions: dict[str, str] = Field(default_factory=dict)
     user_field: Literal["email", "subject"] = "email"
 
     @field_validator("base_url")
@@ -68,6 +73,24 @@ class ApolloSettings(BaseSettings):
         if len(set(models)) != len(models):
             raise ValueError("APOLLO_LLM_MODELS cannot repeat a model id")
         return models
+
+    @field_validator("model_descriptions")
+    @classmethod
+    def validate_model_descriptions(cls, value: dict[str, str]) -> dict[str, str]:
+        descriptions: dict[str, str] = {}
+        for model, text in value.items():
+            model, text = model.strip(), text.strip()
+            if not model or not text:
+                raise ValueError(
+                    "APOLLO_LLM_MODEL_DESCRIPTIONS needs non-empty model ids and texts"
+                )
+            if len(text) > MODEL_DESCRIPTION_MAX_CHARS:
+                raise ValueError(
+                    "APOLLO_LLM_MODEL_DESCRIPTIONS texts must be at most "
+                    f"{MODEL_DESCRIPTION_MAX_CHARS} characters"
+                )
+            descriptions[model] = text
+        return descriptions
 
     @model_validator(mode="after")
     def validate_complete(self) -> ApolloSettings:

@@ -25,9 +25,12 @@ import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryKeys';
 import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
 import { canListModels } from '../aiProviders';
+import { fetchApolloModels, isApolloConfiguration } from '@/features/apollo-deploy/apolloProvider';
 
 interface ModelDropdownOption {
   id: string;
+  /** apollo-deploy: one line under the model id (Apollo LLM only). */
+  description?: string | null;
 }
 
 interface ModelNameComboboxProps {
@@ -94,6 +97,8 @@ export function ModelNameCombobox({
   const modelsQuery = useQuery<ModelDropdownOption[]>({
     queryKey: queryKeys.annotationModelList(configurationId, credentialRevision, provider, baseUrl),
     queryFn: async ({ signal }) => {
+      // apollo-deploy: Apollo LLM models come with a description each.
+      if (isApolloConfiguration(configurationId)) return fetchApolloModels(signal);
       const { data } = await listAnnotationModelsWithProviderCredential(
         { id: configurationId, provider, base_url: baseUrl },
         signal,
@@ -187,6 +192,7 @@ export function ModelNameCombobox({
                 <button
                   key={model.id}
                   type="button"
+                  title={model.description ?? undefined}
                   className={cn(
                     'relative flex w-full rounded-sm px-2 py-2 pr-8 text-left text-body',
                     'hover:bg-list-hover hover:text-foreground',
@@ -200,6 +206,11 @@ export function ModelNameCombobox({
                 >
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate">{model.id}</span>
+                    {model.description ? (
+                      <span className="line-clamp-2 text-label-secondary text-description">
+                        {model.description}
+                      </span>
+                    ) : null}
                   </span>
                   {model.id === value ? (
                     <Check className="absolute right-2 top-2 size-4 shrink-0" aria-hidden="true" />
