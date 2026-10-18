@@ -919,9 +919,13 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
         data_block_export_service = DataBlockExportService(
             workspace_service,
             response_snapshot_service,
-            max_export_bytes=min(
-                settings.max_workspace_export_bytes,
-                settings.max_response_snapshot_bytes,
+            max_export_bytes=(
+                settings.max_response_snapshot_bytes
+                if settings.max_workspace_export_bytes is None
+                else min(
+                    settings.max_workspace_export_bytes,
+                    settings.max_response_snapshot_bytes,
+                )
             ),
         )
         workspace_sql_service = WorkspaceSqlService(

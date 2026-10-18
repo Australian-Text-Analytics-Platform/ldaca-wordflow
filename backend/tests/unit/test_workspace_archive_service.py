@@ -248,6 +248,7 @@ def _service(
     storage: FakeWorkspaceStorage,
     *,
     limits: WorkspaceArchiveLimits | None = None,
+    max_export_bytes: int | None = 1024 * 1024 * 1024,
 ) -> WorkspaceArchiveService:
     limiter = anyio.CapacityLimiter(4)
     admission = unlimited_storage_admission(storage.root, limiter=limiter)
@@ -265,7 +266,7 @@ def _service(
             limiter=limiter,
         ),
         storage_admission=admission,
-        max_export_bytes=1024 * 1024 * 1024,
+        max_export_bytes=max_export_bytes,
         limits=limits or WorkspaceArchiveLimits(),
         limiter=limiter,
         upload_chunk_size=16,
@@ -938,3 +939,77 @@ async def test_the_runtime_imports_manifests_as_large_as_a_saved_project(
     async with runtime_context(settings) as runtime:
         limits = runtime.workspace_archive_service._limits
         assert limits.max_manifest_bytes == settings.max_workspace_snapshot_bytes
+
+
+# No size caps by default (issue 409) -------------------------------------------------
+
+
+def test_project_archives_have_no_size_caps_by_default(tmp_path: Path) -> None:
+    from ldaca_wordflow.settings import Settings
+
+    limits = WorkspaceArchiveLimits()
+    assert limits.max_archive_bytes is None
+    assert limits.max_compressed_member_bytes is None
+    assert limits.max_member_bytes is None
+    assert limits.max_expanded_bytes is None
+    settings = Settings(data_root=tmp_path)
+    assert settings.max_workspace_archive_bytes is None
+    assert settings.max_workspace_export_bytes is None
+
+
+async def test_import_reserves_the_archive_s_own_size_not_a_fixed_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    storage = FakeWorkspaceStorage(tmp_path)
+    service = _service(storage)
+    archive = _valid_archive()
+    with zipfile.ZipFile(io.BytesIO(archive)) as opened:
+        declared = sum(member.file_size for member in opened.infolist())
+        members = len(opened.infolist())
+    admission = service._storage_admission
+    requested: list[tuple[int, int]] = []
+    original = admission.acquire
+
+    async def recording_acquire(user_id: str, requested_bytes: int, *, requested_entries: int = 0):
+        requested.append((requested_bytes, requested_entries))
+        return await original(user_id, requested_bytes, requested_entries=requested_entries)
+
+    monkeypatch.setattr(admission, "acquire", recording_acquire)
+
+    await service.import_upload("alice", "workspace.zip", ByteSource(archive))
+
+    # Before: 512 MiB + 10 GiB + the snapshot limit for any archive.
+    assert requested == [(declared + 1024 * 1024 * 1024, members)]
+
+
+async def test_import_still_stops_when_the_disk_is_too_full(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ldaca_wordflow.services import storage_admission
+    from ldaca_wordflow.shared.errors import StorageCapacityExceededError
+
+    storage = FakeWorkspaceStorage(tmp_path)
+    monkeypatch.setattr(storage_admission, "_free_bytes", lambda _root: 1024)
+
+    with pytest.raises(StorageCapacityExceededError):
+        await _service(storage).import_upload(
+            "alice", "workspace.zip", ByteSource(_valid_archive())
+        )
+
+    assert list((tmp_path / ".staging").iterdir()) == []
+
+
+async def test_an_uncapped_export_reserves_twice_the_project_s_files(
+    tmp_path: Path,
+) -> None:
+    tree = tmp_path / "project"
+    (tree / "data").mkdir(parents=True)
+    (tree / "workspace.json").write_bytes(b"x" * 1000)
+    (tree / "data" / "block.parquet").write_bytes(b"y" * 5000)
+    storage = FakeWorkspaceStorage(tmp_path)
+
+    uncapped = await _service(storage, max_export_bytes=None)._export_reservation(tree)
+    capped = await _service(storage, max_export_bytes=4096)._export_reservation(tree)
+
+    assert uncapped == 2 * 6000
+    assert capped == 2 * 4096
