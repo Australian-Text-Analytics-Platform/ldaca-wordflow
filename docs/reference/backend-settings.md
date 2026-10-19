@@ -91,6 +91,7 @@ failed or invalid projections are never retained.
 | `QUOTATION_SERVICE_TIMEOUT` | Remote quotation timeout |
 | `QUOTATION_SERVICE_MAX_BATCH_SIZE` | Remote quotation batch ceiling |
 | `QUOTATION_REMOTE_ENGINES` | Operator-owned quotation engine allowlist |
+| `SERVER_AI_PROVIDERS_FILE` | Optional YAML file of LLM providers the server offers to every signed-in person; keys stay in the environment under the names the file gives. See [Server AI providers](../deploy/server-ai-providers.md) (issue 411) |
 
 Single-user mode requires a loopback server host. Wildcard CORS and Host values
 are invalid. Port zero is accepted only by the desktop launcher before it
@@ -109,9 +110,15 @@ constructs final Settings.
 | `CILOGON_REDIRECT_URI` | Exact registered callback URL |
 | `SESSION_TTL_HOURS` | Hosted Session lifetime |
 | `SESSION_COOKIE_SECURE` | Require HTTPS Session cookie |
+| `AUTH_PROXY` | Trust a sign-in proxy's identity headers instead of Google or CILogon; Wordflow then binds loopback only. See [Sign-in proxy](../deploy/auth-proxy.md) (issue 411) |
+| `AUTH_PROXY_PUBLIC_URL` | The https origin people use; required with `AUTH_PROXY` |
+| `AUTH_PROXY_HEADER_USER` / `_EMAIL` / `_NAME` | Identity header names; default `X-Forwarded-User`, `X-Forwarded-Email`, `X-Forwarded-Preferred-Username` |
+| `AUTH_PROXY_SIGN_OUT_PATH` | The proxy's sign-out path; default `/oauth2/sign_out` |
+| `AUTH_PROXY_ISSUER` | Account namespace for proxy sign-ins; default `auth-proxy:<host>` |
+| `AUTH_PROXY_LABEL` | How the sign-in page names the proxy |
 
-Multi-user mode requires Google or the complete CILogon client, secret, and
-redirect configuration. `CILOGON_ISSUER` is the provider's exact issuer: an
+Multi-user mode requires Google, the complete CILogon client, secret, and
+redirect configuration, or `AUTH_PROXY`. `CILOGON_ISSUER` is the provider's exact issuer: an
 origin such as `https://cilogon.aaf.edu.au`, or an origin with a path such as
 the Keycloak realm `https://gpu.sydney.edu.au/auth/realms/runai`. Discovery is
 derived internally by appending `/.well-known/openid-configuration` to it, and

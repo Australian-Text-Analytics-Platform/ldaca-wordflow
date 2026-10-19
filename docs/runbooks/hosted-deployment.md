@@ -4,6 +4,11 @@ This runbook covers the same-site hosted deployment behind an HTTPS reverse
 proxy. Replace hostnames, paths, and release refs with the deployment's actual
 values.
 
+For a container instead of a checkout, see [Server image](../deploy/docker.md).
+Optional: offer the server's own LLMs to everyone with
+[Server AI providers](../deploy/server-ai-providers.md), and sign people in
+through a [sign-in proxy](../deploy/auth-proxy.md) such as Run:ai's.
+
 ## Prepare The Checkout
 
 ```bash
