@@ -74,6 +74,75 @@ the models are listed without descriptions. `APOLLO_LLM_MODEL_DESCRIPTIONS`
 overrides a model's text where set. This uses the same mechanism as upstream
 Wordflow (#407); Apollo adds the configured order and the override.
 
+## Run:ai sign-in (`APOLLO_AUTH=runai_proxy`)
+
+On Apollo, Run:ai already puts a login sidecar in front of a workload's
+external URL: people sign in with Run:ai (Keycloak, University SSO), and the
+sidecar forwards each request to the app over the pod's loopback interface,
+adding the signed-in person's identity as headers. With
+`APOLLO_AUTH=runai_proxy`, hosted Wordflow uses that identity directly: no
+second sign-in and no OIDC client registration.
+
+| Variable | Required | Meaning |
+|---|---|---|
+| `APOLLO_AUTH` | yes | `runai_proxy` turns the mode on. Unset means upstream sign-in (Google or CILogon/OIDC). |
+| `APOLLO_PUBLIC_URL` | yes | The external URL as an https origin, e.g. `https://wordflow2026-pilot.gpu.sydney.edu.au`. It must also be in `TRUSTED_HOSTS` (its host) and `CORS_ALLOWED_ORIGINS` (the origin). |
+| `APOLLO_HEADER_EMAIL`, `APOLLO_HEADER_USER`, `APOLLO_HEADER_USERNAME` | no | Identity header names. Defaults: `X-Forwarded-Email`, `X-Forwarded-User` (the stable subject), `X-Forwarded-Preferred-Username` (display name). |
+| `APOLLO_SIGN_OUT_PATH` | no | The sidecar's sign-out path, default `/oauth2/sign_out`. |
+
+The mode also needs `MULTI_USER=true` and `SESSION_COOKIE_SECURE=true`, and
+can't be combined with Google or CILogon settings. Start-up stops and names the
+setting if any of this is wrong.
+
+**Run the server on loopback only**, on the port given to `--external-url`:
+`ldaca-wordflow --multi-user --host 127.0.0.1 --port 8080` with
+`--external-url container=8080`. Start-up refuses any other bind (`0.0.0.0`,
+`localhost`, a pod IP), and uvicorn runs without proxy-header rewriting. Don't
+put a relay or any other container in the pod: anything in the pod can reach
+127.0.0.1. The image's default command binds `0.0.0.0:8001`, so override it in
+this mode.
+
+How it works:
+
+- Identity headers are read only when the TCP peer is a loopback address (the
+  sidecar). `X-Forwarded-For` is never used for trust.
+- The subject and the email are required. A request with either missing gets a
+  "Sign in through Run:ai" page (or a 401 `runai_sign_in_required` from the
+  API), and no user is created. A request carrying an identity header twice is
+  refused. Group headers are ignored.
+- Every cookie except Wordflow's own session cookie, and any `Authorization`
+  header, is removed before routing, so the sidecar's credentials never reach
+  Wordflow's code or logs.
+- The identity becomes an ordinary Wordflow session: the user is provisioned
+  under the issuer `runai-proxy:<public host>`, and the presented session is
+  reused while it belongs to the same subject. A different subject (someone
+  switched Run:ai accounts in that browser) revokes the old session and starts
+  a new one. CSRF, Origin checks, streams and the Apollo LLM `user` field work
+  as in any hosted deployment.
+- **Re-created accounts:** a known email arriving with a new subject is
+  re-linked to the existing user if that user has no other sign-in method, and
+  a warning with both subjects is logged. This assumes an email address is
+  never given to a different person. An email already used with another sign-in
+  method is refused.
+- **Sign out:** Wordflow ends its session, then sends the browser to the
+  sidecar's sign-out address (from `GET /api/apollo/session`), so the sidecar's
+  session ends too. The Keycloak/University SSO session may remain, so the
+  person can be signed straight back in.
+- **Who can get in** is decided by the sidecar: people who can sign in to
+  Run:ai, narrowed by the external URL's `authusers`/`authgroups` if set. A
+  request that reaches the sidecar with a valid Run:ai token arrives with that
+  token's identity, and is refused if it has no email.
+
+Re-check after every Run:ai upgrade, because the sidecar's behaviour isn't
+documented by Run:ai:
+
+1. a header echo shows the identity headers above;
+2. forged identity headers are replaced for signed-in users, and requests
+   without a session are redirected to the sign-in;
+3. the app port can't be reached from another pod;
+4. the platform's own checks on the sidecar's session store and secrets still
+   pass (with the cluster admins).
+
 ## How the key and the user are kept safe
 
 - **The key stays on the server.** The browser gets a fixed configuration id
@@ -146,7 +215,10 @@ hooks marked `apollo-deploy:` in these upstream files:
 - `backend/src/ldaca_wordflow/services/fair_queue.py`
 - `backend/src/ldaca_wordflow/runtime.py`
 - `backend/src/ldaca_wordflow/main.py`
+- `backend/src/ldaca_wordflow/settings.py` (Run:ai sign-in counts as the identity provider)
+- `backend/src/ldaca_wordflow/server_launcher.py` (loopback bind, no proxy headers)
 - `backend/tests/unit/test_current_api_surface.py`
+- `frontend/src/stores/authStore.ts` (sign-out through the sidecar)
 - `frontend/src/features/provider-credentials/useProviderCredentials.ts`
 - `frontend/src/features/views/annotation/AnnotationFeature.tsx`
 - `frontend/src/features/views/annotation/aiProviders.ts`

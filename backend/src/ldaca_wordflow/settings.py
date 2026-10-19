@@ -558,7 +558,18 @@ class Settings(BaseSettings):
         engine_ids = [engine.id for engine in self.quotation_remote_engines]
         if len(engine_ids) != len(set(engine_ids)):
             raise ValueError("Remote quotation engine IDs must be unique")
-        if self.multi_user and not (has_google or has_cilogon_id):
+        # apollo-deploy: APOLLO_AUTH=runai_proxy is the identity provider.
+        from .apollo_deploy.auth_config import validate_hosted_settings
+
+        has_runai_proxy = validate_hosted_settings(
+            multi_user=self.multi_user,
+            has_google=has_google,
+            has_cilogon=has_cilogon_id,
+            session_cookie_secure=self.session_cookie_secure,
+            trusted_hosts=self.trusted_hosts,
+            cors_allowed_origins=self.cors_allowed_origins,
+        )
+        if self.multi_user and not (has_google or has_cilogon_id or has_runai_proxy):
             raise ValueError("Hosted multi-user mode requires an identity provider")
         if self.multi_user and not self.session_cookie_secure:
             local_hosts = {"localhost", "127.0.0.1", "::1"}

@@ -32,6 +32,7 @@ publish it to PyPI or GitHub Releases.
 | **#407** A one-line description under each model, from LiteLLM's `model_info.description` (or `APOLLO_LLM_MODEL_DESCRIPTIONS`), in the configured order | `6229ebae` (merged in `b6f16503`) | `infrastructure/providers/model_descriptions.py`, `services/annotations.py`, `apollo_deploy/{adapter,config}.py`, `frontend/.../ModelNameCombobox.tsx` |
 | **#409** Project import and export have no size caps (a 0.7.14 export with a 4.3 MB manifest was refused); only free disk space and quotas limit them | `93c52cc7` (merged in `6a785205`) | `services/workspace_archives.py`, `settings.py`, `runtime.py` |
 | **#408** Optional **Task context** in the codebook, sent to the AI after the prompt | `a24ad20b` (merged in `6a785205`) | `features/views/annotation/` (codebook editor), `infrastructure/providers/annotation_ai.py` |
+| **Run:ai sign-in** (`APOLLO_AUTH=runai_proxy`): the identity from Run:ai's login sidecar becomes a Wordflow session; loopback-only bind; sign-out through the sidecar. See [Run:ai sign-in](apollo.md#runai-sign-in-apollo_authrunai_proxy) | the commit "Apollo: Run:ai sign-in" | `apollo_deploy/{auth_config,runai_proxy,api}.py`, hooks in `settings.py`, `server_launcher.py`, `main.py`, `frontend/src/stores/authStore.ts`, `frontend/src/features/apollo-deploy/runaiSignOut.ts` |
 | **#403** OIDC scopes are configurable and the issuer can have a path (Keycloak realm) | `dc2e98b0` (already on v0.7) | `backend/src/ldaca_wordflow/settings.py`, `api/auth.py` |
 
 Both branches are at version **0.7.15-pre**, a prerelease of 0.7.15 (Python
@@ -95,6 +96,22 @@ APOLLO_LLM_USER_FIELD=email                      # or subject
 
 Secrets: `CILOGON_CLIENT_SECRET` and `APOLLO_LLM_API_KEY`.
 
+**Or Run:ai sign-in** instead of the CILogon lines (no Keycloak client needed;
+see [Run:ai sign-in](apollo.md#runai-sign-in-apollo_authrunai_proxy)):
+
+```ini
+MULTI_USER=true
+APOLLO_AUTH=runai_proxy
+APOLLO_PUBLIC_URL=https://<public host>
+SESSION_COOKIE_SECURE=true
+TRUSTED_HOSTS=["<public host>"]
+CORS_ALLOWED_ORIGINS=["https://<public host>"]
+UPDATE_CHECK_ENABLED=false
+```
+
+with the command `ldaca-wordflow --multi-user --host 127.0.0.1 --port 8080`
+and `--external-url container=8080`. Then the only secret is `APOLLO_LLM_API_KEY`.
+
 Runtime rules:
 
 - **Exactly one replica, one process.** The one-request-per-user limit and the
@@ -122,7 +139,9 @@ Runtime rules:
 ## Check after deploying
 
 1. **Sign-in:** the start page shows "Sign in with SSO"; it goes to the Run:ai
-   Keycloak page and back into Wordflow.
+   Keycloak page and back into Wordflow. Under Run:ai sign-in there is no
+   Wordflow sign-in page: after the Run:ai login you're in, signed in as yourself, and
+   signing out returns you to the Run:ai sign-in.
 2. **Provider:** Settings → AI lists **Apollo LLM** first, marked Read-only. A
    new Annotation tab selects it with the default model, and Advanced settings
    show **Requests at once** fixed at 1. The model list keeps the
