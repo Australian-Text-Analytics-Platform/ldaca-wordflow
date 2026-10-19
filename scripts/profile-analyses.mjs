@@ -1,7 +1,7 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { chmod, copyFile, mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -147,7 +147,18 @@ export async function allocationWorker(executable, directory, signal) {
   const uuid = file => execFileSync('xcrun', ['dwarfdump', '--uuid', file], { encoding: 'utf8' }).match(/^UUID:\s+(\S+)/m)?.[1];
   const macho_uuid = uuid(executable);
   if (!macho_uuid || uuid(path) !== macho_uuid || await checksum(executable) !== original) throw new Error('Allocations worker must preserve the original executable and Mach-O UUID');
-  return { path, sha256: await checksum(path), macho_uuid };
+  const sha256 = await checksum(path);
+  // Launching an executable from Documents can block in dyld on a folder prompt.
+  const temporary = await mkdtemp(join(os.tmpdir(), 'wordflow-profile-launch-'));
+  const launch_path = join(temporary, 'allocation-worker');
+  try {
+    await copyFile(path, launch_path);
+    await chmod(launch_path, 0o700);
+    return { path, launch_path, sha256, macho_uuid };
+  } catch (error) {
+    await rm(temporary, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 async function execute(executable, config, profile, signal) {
@@ -209,7 +220,7 @@ export async function main(args = process.argv.slice(2)) {
     manifest.executable = executable;
     manifest.executable_sha256 = await checksum(executable);
     if (opts.profile === 'allocations') manifest.profile_worker = await allocationWorker(executable, directory, controller.signal);
-    const measurementExecutable = manifest.profile_worker?.path ?? executable;
+    const measurementExecutable = manifest.profile_worker?.launch_path ?? executable;
     for (const analysis of analyses) {
       const provision = await execute(executable, { ...base, output: join(directory, `provision-${analysis}`), embedding_cache: join(directory, 'provision-embeddings.duckdb'), analysis, size: null, provision: true }, undefined, controller.signal);
       if (provision.status !== 'provisioned') throw new Error(`Model provisioning failed for ${analysis}; see private logs`);
@@ -234,6 +245,7 @@ export async function main(args = process.argv.slice(2)) {
     manifest.error = error.message;
     throw error;
   } finally {
+    if (manifest.profile_worker?.launch_path) await rm(dirname(manifest.profile_worker.launch_path), { recursive: true, force: true });
     try { manifest.source_unchanged = manifest.input_sha256 === await checksum(input); }
     catch (error) { manifest.source_unchanged = false; manifest.error ??= `Source verification failed: ${error.message}`; }
     manifest.finished_at = new Date().toISOString();
