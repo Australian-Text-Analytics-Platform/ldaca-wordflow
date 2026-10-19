@@ -27,7 +27,13 @@ describe('Run:ai sign-out (apollo-deploy)', () => {
     vi.clearAllMocks();
     mocks.deleteSession.mockResolvedValue({ data: undefined });
     mocks.getSession.mockResolvedValue({
-      data: { mode: 'multi_user', authenticated: false, user: null, providers: [], csrf_token: null },
+      data: {
+        mode: 'multi_user',
+        authenticated: false,
+        user: null,
+        providers: [],
+        csrf_token: null,
+      },
     });
   });
 
