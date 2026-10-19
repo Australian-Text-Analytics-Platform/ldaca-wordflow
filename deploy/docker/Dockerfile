@@ -1,7 +1,7 @@
 # LDaCA Wordflow server image (issue 411): a hosted, multi-user Wordflow.
 # Built by .github/workflows/server-image.yml (manual dispatch) from the wheel
 # of the chosen ref. Settings and secrets come from the environment at run
-# time (docs/deploy/docker.md); nothing secret is baked into the image.
+# time (docs/runbooks/server-image.md); nothing secret is baked into the image.
 FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

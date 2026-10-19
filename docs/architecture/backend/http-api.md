@@ -65,6 +65,17 @@ identities accept an email when that optional claim is absent, reject an
 explicitly unverified or malformed claim, and use the configured issuer plus
 the provider subject as identity. Email never links identities implicitly.
 
+Under the sign-in proxy (`AUTH_PROXY`), Google and CILogon are off and
+`AuthProxyIdentityMiddleware` replaces their callbacks. It reads the identity
+headers only from loopback peers, which the launcher enforces by binding
+loopback with proxy-header rewriting off, strips every other cookie and any
+`Authorization` header before routing, and turns the identity into an ordinary
+Session under `AUTH_PROXY_ISSUER`. The one deliberate email link is a known
+email arriving with a new proxy user ID for an account with no other identity,
+which is re-linked and logged. The Session bootstrap reports the proxy's
+`sign_out_url`, which the browser follows after logout. See
+[Sign-in proxy](../../runbooks/sign-in-proxy.md).
+
 CORS and trusted Host rules are explicit settings. No Wordflow API route accepts
 bearer authentication or query-string credentials; typed write-only body
 fields carry external-provider credentials where required. Cross-user
@@ -80,6 +91,18 @@ deployment-token availability, while every backend configuration write is
 denied. Personal multi-user secrets enter only through provider-operation
 request bodies and are resolved for that call without backend persistence or
 caching.
+
+Server AI providers are a third, deployment-owned source of Annotation
+Provider Configurations. The `server_ai` package loads them from
+`SERVER_AI_PROVIDERS_FILE` at start-up and serves them, key-free with a
+placeholder base URL, from `GET /api/server-ai-providers` in both modes. When a
+request names one, `ProviderCredentialStore` refuses any request key and
+substitutes an unbound marker; Preview and Analysis submission bind it to an
+HMAC-signed token carrying the provider and the `user` value resolved from the
+Session. Only the `server_ai` adapter turns that token into the real base URL,
+key and OpenAI `user` field. `ServerAiUserGate` and the scheduler enforce the optional
+per-person request limit. See
+[Server AI providers](../../runbooks/server-ai-providers.md).
 
 Annotation model discovery and Analysis submissions carry the selected
 configuration UUID, provider type, and optional normalized Custom base URL.

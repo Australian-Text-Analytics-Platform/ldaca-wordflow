@@ -277,7 +277,7 @@ class Settings(BaseSettings):
     # Sign-in proxy (issue 411): trust the identity headers of a sign-in proxy
     # in front of Wordflow (oauth2-proxy style, such as Run:ai's login sidecar).
     # Wordflow then binds a loopback address only and reads the headers only
-    # from a loopback peer. See docs/deploy/auth-proxy.md.
+    # from a loopback peer. See docs/runbooks/sign-in-proxy.md.
     auth_proxy: bool = Field(
         default=False, description="Trust a sign-in proxy's identity headers"
     )

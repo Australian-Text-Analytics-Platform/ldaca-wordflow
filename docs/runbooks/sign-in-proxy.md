@@ -6,7 +6,10 @@ request with their identity in HTTP headers, in the style of
 [oauth2-proxy](https://oauth2-proxy.github.io/oauth2-proxy/). Run:ai's login
 sidecar on the University of Sydney's Apollo cluster is one such proxy.
 
-Issue #411.
+Issue #411. For how this compares with Google and OIDC sign-in, and when to
+choose it, see [Sign-in](hosted-deployment.md#sign-in) in the hosted runbook.
+The other hosted settings (`TRUSTED_HOSTS`, `DATA_ROOT`, analysis capacity)
+are set as described there.
 
 ## Configuration
 
@@ -74,7 +77,9 @@ CORS_ALLOWED_ORIGINS=["https://wordflow2026-pilot.gpu.sydney.edu.au"]
 ```
 
 Start Wordflow with `--host 127.0.0.1 --port 8080` and expose it with
-`--external-url container=8080`. Don't put a relay or another container in the
+`--external-url container=8080`; the sidecar then signs people in and forwards
+to that port. The full Apollo setup is in
+[Apollo deployment](apollo-deployment.md). Don't put a relay or another container in the
 pod. Re-check after every Run:ai upgrade, because the sidecar's behaviour isn't
 documented by Run:ai:
 

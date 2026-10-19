@@ -1,7 +1,7 @@
 """Server AI providers (issue 411): LLMs the server offers to every signed-in user.
 
 Configured by the YAML file in SERVER_AI_PROVIDERS_FILE (see config.py and
-docs/deploy/server-ai-providers.md). Without it, nothing here changes how
+docs/runbooks/server-ai-providers.md). Without it, nothing here changes how
 Wordflow behaves.
 """
 

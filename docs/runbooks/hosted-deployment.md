@@ -1,13 +1,19 @@
 # Hosted Deployment Runbook
 
-This runbook covers the same-site hosted deployment behind an HTTPS reverse
-proxy. Replace hostnames, paths, and release refs with the deployment's actual
-values.
+This runbook is the entry point for running Wordflow as a hosted, multi-user
+service. It covers a checkout behind an HTTPS reverse proxy; replace
+hostnames, paths, and release refs with the deployment's actual values.
 
-For a container instead of a checkout, see [Server image](../deploy/docker.md).
-Optional: offer the server's own LLMs to everyone with
-[Server AI providers](../deploy/server-ai-providers.md), and sign people in
-through a [sign-in proxy](../deploy/auth-proxy.md) such as Run:ai's.
+Related runbooks:
+
+- [Server image](server-image.md): run the same service from a container image
+  instead of a checkout.
+- [Sign-in proxy](sign-in-proxy.md): let a proxy in front of Wordflow sign
+  people in (see [Sign-in](#sign-in) for when to choose it).
+- [Server AI providers](server-ai-providers.md): offer the server's own LLMs
+  for AI annotation, so people don't need their own keys.
+- [Apollo deployment](apollo-deployment.md): a worked example combining all
+  three on the University of Sydney's Run:ai cluster.
 
 ## Prepare The Checkout
 
@@ -32,8 +38,8 @@ it does not read the sample-data submodule checkout.
 ## Backend Environment
 
 Store non-secret settings in the service definition and provider secrets in a
-mode-`0600` environment file owned by the service account. A hosted CILogon
-profile requires:
+mode-`0600` environment file owned by the service account. Every hosted
+deployment sets:
 
 ```ini
 MULTI_USER=true
@@ -41,36 +47,87 @@ SERVER_HOST=127.0.0.1
 BACKEND_PORT=8001
 TRUSTED_HOSTS=["analytics.ldaca.edu.au"]
 CORS_ALLOWED_ORIGINS=["https://analytics.ldaca.edu.au"]
-CILOGON_CLIENT_ID=<registered-client-id>
-CILOGON_ISSUER=https://cilogon.aaf.edu.au
-CILOGON_REDIRECT_URI=https://analytics.ldaca.edu.au/api/auth/cilogon/callback
 SESSION_COOKIE_SECURE=true
 ```
 
-The secret file supplies only `CILOGON_CLIENT_SECRET`. See
-[CILogon secrets](cilogon-secrets.md).
+plus the settings of exactly one sign-in method below. Start-up stops and
+names the setting when the sign-in configuration is incomplete or mixes the
+proxy with another method. All settings are listed in
+[Backend settings](../reference/backend-settings.md).
 
-#### Other OIDC providers (Keycloak, Run:ai)
+### Sign-in
 
-The same sign-in works with other OIDC providers that support discovery, the
-authorization code flow with PKCE (S256) and the `email` claim. Set the
-provider's exact issuer, including any path, and the scopes it defines. For
-example, the Run:ai Keycloak realm on the University's Apollo cluster:
+Wordflow can sign people in three ways. All three end in the same Wordflow
+session, so CSRF and Origin checks, event streams, Projects and server AI
+providers work the same with each.
+
+| Method | Wordflow's role | Needs | Choose it when |
+|---|---|---|---|
+| Google | Signs people in with Google | A Google OAuth web client | Anyone with a Google account may use the server |
+| OIDC (CILogon, AAF, Keycloak, Run:ai realm) | Runs the OIDC sign-in itself | A client registered with the provider, its secret | The institution has an OIDC provider and can register a client for Wordflow |
+| Sign-in proxy (Run:ai sidecar, oauth2-proxy) | Trusts identity headers from a proxy on the same host or pod | A proxy that signs people in and forwards to Wordflow on loopback | The platform already puts a sign-in proxy in front of the app, or no client can be registered |
+
+Google and OIDC may be offered together; the sign-in page then shows both
+buttons. The sign-in proxy replaces both. Accounts belong to the issuer that
+created them, and an email address belongs to one account, so changing method
+on a server with existing users needs a fresh data folder or a deliberate
+migration.
+
+#### Google
 
 ```ini
-MULTI_USER=true
+GOOGLE_CLIENT_ID=<web client id>.apps.googleusercontent.com
+```
+
+In the Google Cloud console, the web client's authorised JavaScript origins
+include `https://analytics.ldaca.edu.au` and its authorised redirect URIs
+include `https://analytics.ldaca.edu.au/api/auth/google/callback`. No secret
+is needed.
+
+#### OIDC: CILogon and AAF
+
+```ini
+CILOGON_CLIENT_ID=<registered-client-id>
+CILOGON_ISSUER=https://cilogon.aaf.edu.au
+CILOGON_REDIRECT_URI=https://analytics.ldaca.edu.au/api/auth/cilogon/callback
+```
+
+The secret file supplies only `CILOGON_CLIENT_SECRET`. See
+[CILogon secrets](cilogon-secrets.md). The sign-in button reads "Sign in with
+SSO" for every OIDC provider (issue 405).
+
+#### OIDC: other providers (Keycloak, the Run:ai realm)
+
+The same settings work with any OIDC provider that supports discovery, the
+authorization code flow with PKCE (S256) and the `email` claim. Set the
+provider's exact issuer, including any path, and the scopes it defines. For
+example, a client registered in the Run:ai Keycloak realm on the University's
+Apollo cluster:
+
+```ini
 CILOGON_ISSUER=https://gpu.sydney.edu.au/auth/realms/runai
 CILOGON_CLIENT_ID=<client registered in realm "runai">
 CILOGON_REDIRECT_URI=https://<host>/api/auth/cilogon/callback
 CILOGON_SCOPES=["openid","email","profile"]
-SESSION_COOKIE_SECURE=true
 ```
 
 `CILOGON_CLIENT_SECRET` goes in the secret file as above. Keycloak doesn't
-define `org.cilogon.userinfo`, so leave it out of `CILOGON_SCOPES`. The sign-in
-button reads "Sign in with SSO" for every OIDC provider (issue 405). Use a fresh data folder:
-email addresses are unique across users, so an account made with one issuer
-blocks the same email from signing in with another.
+define `org.cilogon.userinfo`, so leave it out of `CILOGON_SCOPES`. This needs
+a client registered by the realm's administrators; a Wordflow running as a
+Run:ai workload can instead use the platform's sign-in sidecar as a
+[sign-in proxy](sign-in-proxy.md), which needs no client.
+
+#### Sign-in proxy
+
+```ini
+AUTH_PROXY=true
+AUTH_PROXY_PUBLIC_URL=https://analytics.ldaca.edu.au
+```
+
+Wordflow then refuses to start unless it listens on loopback
+(`SERVER_HOST=127.0.0.1`), on the port the proxy forwards to, and it takes no
+Google or CILogon settings. The header names, sign-out path, account
+namespace and the Run:ai checks are in [Sign-in proxy](sign-in-proxy.md).
 
 ### Analysis capacity
 
@@ -93,6 +150,11 @@ and later honour the number). A full lane queues new work rather than refusing
 it.
 
 ## Provider Credentials
+
+A deployment can also offer its own LLMs for AI annotation, with keys kept on
+the server; see [Server AI providers](server-ai-providers.md). Those keys go in
+the service secret file, and people use those providers without entering
+anything. Everything below is about people's own credentials.
 
 Do not place users' Annotation or Data Portal credentials in the service
 environment or backend Data Root. In multi-user mode, each user enters personal
@@ -166,7 +228,8 @@ Run one service process. Do not add Uvicorn workers; see
 
 Terminate TLS at the reverse proxy, preserve the original Host and scheme, use
 long read timeouts for SSE, and disable buffering for `/api/events`.
-Forward to `127.0.0.1:8001` and verify:
+Forward to `127.0.0.1:8001` and verify (with a [sign-in proxy](sign-in-proxy.md),
+the sign-in proxy is the hop that forwards to Wordflow):
 
 ```bash
 curl --fail --silent https://analytics.ldaca.edu.au/health/ready

@@ -50,8 +50,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Enable multi-user mode with OAuth/OIDC login. "
-            "Requires GOOGLE_CLIENT_ID, or the complete CILogon client/secret/redirect "
-            "configuration, in the environment."
+            "Requires GOOGLE_CLIENT_ID, the complete CILogon client/secret/redirect "
+            "configuration, or AUTH_PROXY with AUTH_PROXY_PUBLIC_URL, in the environment."
         ),
     )
     parser.add_argument(

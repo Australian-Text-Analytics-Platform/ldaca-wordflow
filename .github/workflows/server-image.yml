@@ -3,7 +3,7 @@ name: Server image
 # Builds the LDaCA Wordflow server image (deploy/docker/Dockerfile) for
 # linux/amd64 from the chosen ref and pushes it to GHCR (issue 411).
 # Manual dispatch only: it never runs on push and is not part of a release.
-# See docs/deploy/docker.md.
+# See docs/runbooks/server-image.md.
 
 on:
   workflow_dispatch:

@@ -60,6 +60,8 @@ this direction and the absence of removed facades.
 - `EventHub` is the single live refresh transport for Workspaces, Tabs,
   Analyses, and User File Imports; it is not durable state.
 - `SessionService` and `OAuthService` own identity state and provider exchange.
+  Under the sign-in proxy, `AuthProxyIdentityMiddleware` replaces the provider
+  exchange and still creates Sessions through `SessionService`.
 - `UserPreferenceStore` owns only per-user non-secret preferences.
   `ProviderCredentialStore` independently owns the single-user root's ordered
   Annotation Provider Configuration collection, Data Portal credential, and
@@ -67,6 +69,10 @@ this direction and the absence of removed facades.
   personal credential files in multi-user mode. Both business stores delegate
   bounded, no-follow, quota-admitted TOML publication to one infrastructure
   storage primitive while retaining independent schemas.
+- `server_ai` owns the deployment's server AI providers: their file, the
+  binding of a request to a provider and Session user, the worker-side adapter
+  that adds the key, and the per-person request gate. Their keys never leave
+  it.
 - `UserFileStore` and `WorkspaceArchiveService` own their respective storage
   boundaries.
 

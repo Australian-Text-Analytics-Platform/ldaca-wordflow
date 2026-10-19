@@ -10,12 +10,18 @@ Issue #411.
 ## Build
 
 The **Server image** workflow (`.github/workflows/server-image.yml`) runs only
-when started by hand, from any branch or tag:
+when started by hand. It builds the branch or tag given as `--ref`, for
+example the `v0.7` branch or a release tag such as `v0.7.15`:
 
 ```bash
 gh workflow run server-image.yml --repo Australian-Text-Analytics-Platform/ldaca-wordflow \
-  --ref v0.7.15 -f local_version=apollo.1
+  --ref v0.7 -f local_version=apollo.1
 ```
+
+GitHub starts a manual workflow only when its file is also on the default
+branch (`main`); otherwise the command fails with "workflow server-image.yml
+not found on the default branch". The run itself uses the workflow file and
+Dockerfile at `--ref`. Until the file is on `main`, build locally as below.
 
 - `local_version` (optional) adds a label to the version, e.g. `apollo.1`
   gives `0.7.15+apollo.1`, shown by `/health/ready`.
@@ -24,10 +30,12 @@ gh workflow run server-image.yml --repo Australian-Text-Analytics-Platform/ldaca
 
 It pushes two tags: the version (with `-` for `+`, e.g. `0.7.15-apollo.1`)
 and `sha-<commit>`. Deploy by one of these, not by `latest`, so a rollback is
-one tag change. New packages on GHCR are private; give the cluster a read-only
-token (`read:packages`) to pull.
+one tag change. After the first push, check the package's visibility under
+the organisation's **Packages** on GitHub: if it is private, give the cluster
+a read-only token (`read:packages`) to pull.
 
-To build it yourself (Node 24 with corepack, uv, Docker):
+To build it yourself (Node 24 with corepack, uv, Docker), from a checkout of
+the ref with its submodules:
 
 ```bash
 corepack enable && pnpm install --frozen-lockfile
@@ -48,7 +56,7 @@ docker run --rm -p 8001:8001 -v wordflow-data:/data \
 ```
 
 The default command runs `ldaca-wordflow --multi-user --host 0.0.0.0 --port 8001`.
-Behind a [sign-in proxy](auth-proxy.md), run it on loopback instead, for example
+Behind a [sign-in proxy](sign-in-proxy.md), run it on loopback instead, for example
 `ldaca-wordflow --multi-user --host 127.0.0.1 --port 8080`.
 
 - Run exactly one container per data folder: the Analysis queue and the
@@ -61,4 +69,4 @@ Behind a [sign-in proxy](auth-proxy.md), run it on loopback instead, for example
 - Set `UPDATE_CHECK_ENABLED=false` if people shouldn't be told about public
   releases this deployment doesn't follow.
 
-The rest of the configuration is as in [Hosted deployment](../runbooks/hosted-deployment.md).
+The rest of the configuration is as in [Hosted deployment](hosted-deployment.md).

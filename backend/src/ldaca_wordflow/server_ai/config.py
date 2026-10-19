@@ -13,7 +13,7 @@ file, Wordflow offers no server providers and behaves as before.
         send_user: email
         max_requests_per_user: 1
 
-See docs/deploy/server-ai-providers.md.
+See docs/runbooks/server-ai-providers.md.
 """
 
 from __future__ import annotations
