@@ -44,6 +44,30 @@ class FairUserQueue[T]:
         self._last_user = user_id
         return selected
 
+    def pop_eligible(self, eligible: Callable[[T], bool]) -> T | None:
+        """Like ``pop``, skipping work that may not start yet.
+
+        ``eligible`` is asked about one item at a time, in fair order, and the
+        first item it accepts is selected, so it may reserve what it accepts.
+        """
+
+        if len(self._user_order) > 1 and self._user_order[0] == self._last_user:
+            self._user_order.rotate(-1)
+        for user_id in list(self._user_order):
+            items = self._items[user_id]
+            for index, item in enumerate(items):
+                if not eligible(item):
+                    continue
+                items.pop(index)
+                self._user_order.remove(user_id)
+                if items:
+                    self._user_order.append(user_id)
+                else:
+                    self._items.pop(user_id)
+                self._last_user = user_id
+                return item
+        return None
+
     def remove(self, user_id: str, predicate: Callable[[T], bool]) -> list[T]:
         items = self._items.get(user_id)
         if items is None:
