@@ -4,7 +4,7 @@ import re
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from ipaddress import ip_address
 from typing import Any, Literal
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from pydantic import (
     AnyHttpUrl,
@@ -273,6 +273,45 @@ class Settings(BaseSettings):
             "email; other providers, such as Keycloak, may not define "
             "org.cilogon.userinfo (issue 403)"
         ),
+    )
+    # Sign-in proxy (issue 411): trust the identity headers of a sign-in proxy
+    # in front of Wordflow (oauth2-proxy style, such as Run:ai's login sidecar).
+    # Wordflow then binds a loopback address only and reads the headers only
+    # from a loopback peer. See docs/deploy/auth-proxy.md.
+    auth_proxy: bool = Field(
+        default=False, description="Trust a sign-in proxy's identity headers"
+    )
+    auth_proxy_public_url: str | None = Field(
+        default=None,
+        max_length=2_000,
+        description="The https origin people use, e.g. https://wordflow.example.edu.au",
+    )
+    auth_proxy_header_user: str = Field(
+        default="X-Forwarded-User", description="Header with the stable user id"
+    )
+    auth_proxy_header_email: str = Field(
+        default="X-Forwarded-Email", description="Header with the email address"
+    )
+    auth_proxy_header_name: str = Field(
+        default="X-Forwarded-Preferred-Username",
+        description="Header with the display name (optional in requests)",
+    )
+    auth_proxy_sign_out_path: str = Field(
+        default="/oauth2/sign_out",
+        description="The proxy's own sign-out path, relative to the public URL",
+    )
+    auth_proxy_issuer: str | None = Field(
+        default=None,
+        max_length=500,
+        description=(
+            "Account namespace for proxy sign-ins; default auth-proxy:<host>. Keep it "
+            "unchanged once people have signed in"
+        ),
+    )
+    auth_proxy_label: str = Field(
+        default="your organisation's sign-in",
+        max_length=80,
+        description="How the sign-in page names the proxy, e.g. Run:ai",
     )
     cilogon_redirect_uri: str = Field(
         default="",
@@ -558,7 +597,9 @@ class Settings(BaseSettings):
         engine_ids = [engine.id for engine in self.quotation_remote_engines]
         if len(engine_ids) != len(set(engine_ids)):
             raise ValueError("Remote quotation engine IDs must be unique")
-        if self.multi_user and not (has_google or has_cilogon_id):
+        if self.auth_proxy:
+            self._validate_auth_proxy(has_google=has_google, has_cilogon=has_cilogon_id)
+        if self.multi_user and not (has_google or has_cilogon_id or self.auth_proxy):
             raise ValueError("Hosted multi-user mode requires an identity provider")
         if self.multi_user and not self.session_cookie_secure:
             local_hosts = {"localhost", "127.0.0.1", "::1"}
@@ -580,6 +621,74 @@ class Settings(BaseSettings):
                     "Insecure hosted cookies are allowed only for local HTTP development"
                 )
         return self
+
+    def _validate_auth_proxy(self, *, has_google: bool, has_cilogon: bool) -> None:
+        if not self.multi_user:
+            raise ValueError("AUTH_PROXY requires MULTI_USER=true")
+        if has_google or has_cilogon:
+            raise ValueError("AUTH_PROXY can't be combined with Google or CILogon sign-in")
+        if not self.session_cookie_secure:
+            raise ValueError("AUTH_PROXY requires SESSION_COOKIE_SECURE=true")
+        for header in (
+            self.auth_proxy_header_user,
+            self.auth_proxy_header_email,
+            self.auth_proxy_header_name,
+        ):
+            name = header.strip()
+            if not name or not all(c.isalnum() or c == "-" for c in name):
+                raise ValueError(
+                    "AUTH_PROXY_HEADER_* names use letters, digits and hyphens only"
+                )
+        parsed = urlsplit(self.auth_proxy_public_url or "")
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(
+                "AUTH_PROXY_PUBLIC_URL must be an https origin, e.g. https://host"
+            )
+        path = self.auth_proxy_sign_out_path
+        if not path.startswith("/") or path.startswith("//"):
+            raise ValueError("AUTH_PROXY_SIGN_OUT_PATH must be an absolute path")
+        host = self.auth_proxy_host()
+        if host not in {item.casefold() for item in self.trusted_hosts}:
+            raise ValueError(f"TRUSTED_HOSTS must include {host} (AUTH_PROXY_PUBLIC_URL)")
+        if self.auth_proxy_origin() not in {
+            origin.rstrip("/").casefold() for origin in self.cors_allowed_origins
+        }:
+            raise ValueError(
+                f"CORS_ALLOWED_ORIGINS must include {self.auth_proxy_origin()} "
+                "(AUTH_PROXY_PUBLIC_URL)"
+            )
+
+    def auth_proxy_origin(self) -> str:
+        """The exact https origin (scheme://host[:port]) of AUTH_PROXY_PUBLIC_URL."""
+
+        parsed = urlsplit(self.auth_proxy_public_url or "")
+        host = (parsed.hostname or "").casefold()
+        port = f":{parsed.port}" if parsed.port not in (None, 443) else ""
+        return f"https://{host}{port}"
+
+    def auth_proxy_host(self) -> str:
+        return urlsplit(self.auth_proxy_origin()).hostname or ""
+
+    def auth_proxy_account_issuer(self) -> str:
+        """Identity namespace for proxy sign-ins, kept apart from OIDC issuers."""
+
+        return self.auth_proxy_issuer or f"auth-proxy:{self.auth_proxy_host()}"
+
+    def auth_proxy_sign_out_url(self) -> str:
+        """The proxy's sign-out address, returning to Wordflow afterwards."""
+
+        return (
+            f"{self.auth_proxy_sign_out_path}"
+            f"?rd={quote(self.auth_proxy_origin() + '/', safe='')}"
+        )
 
     def get_data_root(self) -> Path:
         """Return the canonical data root validated during construction."""

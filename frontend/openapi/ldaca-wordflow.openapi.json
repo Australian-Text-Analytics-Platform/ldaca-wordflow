@@ -9576,6 +9576,17 @@
             "title": "Providers",
             "type": "array"
           },
+          "sign_out_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign Out Url"
+          },
           "user": {
             "anyOf": [
               {

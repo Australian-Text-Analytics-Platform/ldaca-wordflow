@@ -37,6 +37,7 @@ from ._middleware import (
     normalized_scope_path,
 )
 from .api.app_update import router as app_update_router
+from .api.auth_proxy import AuthProxyIdentityMiddleware
 from .server_ai.api import router as server_ai_router
 from .api.auth import router as auth_router
 from .api.annotations import router as annotations_router
@@ -373,6 +374,10 @@ def create_app(
         cast(Any, CsrfOriginMiddleware),
         allowed_origins=settings.get_allowed_origins(),
     )
+    # A sign-in proxy's identity becomes a Wordflow session before the CSRF
+    # check reads the session cookie (issue 411).
+    if settings.auth_proxy:
+        app.add_middleware(cast(Any, AuthProxyIdentityMiddleware), settings=settings)
     app.add_middleware(
         cast(Any, ExactHostMiddleware),
         trusted_hosts=settings.get_trusted_hosts(),

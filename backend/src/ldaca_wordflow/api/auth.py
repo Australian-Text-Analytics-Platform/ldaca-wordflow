@@ -176,6 +176,11 @@ async def get_session(
         user=principal.user if principal is not None else None,
         providers=_providers(request, sessions),
         google_client_id=sessions.settings.google_client_id or None,
+        sign_out_url=(
+            sessions.settings.auth_proxy_sign_out_url()
+            if sessions.settings.auth_proxy
+            else None
+        ),
         csrf_token=(
             sessions.csrf_token_for_session(token)
             if principal is not None and token is not None

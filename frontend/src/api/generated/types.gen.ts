@@ -4953,6 +4953,10 @@ export type SessionResponse = {
      * Providers
      */
     providers: Array<AuthProvider>;
+    /**
+     * Sign Out Url
+     */
+    sign_out_url?: string | null;
     user: SessionUser | null;
 };
 
