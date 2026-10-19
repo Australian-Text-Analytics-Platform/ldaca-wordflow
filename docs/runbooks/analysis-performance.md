@@ -90,6 +90,12 @@ Instruments `recording.trace` packages within the case directory. CPU Profiler
 locates CPU hotspots; Allocations examines allocation stacks and retained memory.
 Both include process setup; correlate analysis intervals with `events.jsonl`.
 Profiler overhead means their times are not comparable with baseline timings.
+Allocations requires a debuggable target on macOS. The launcher ad-hoc signs a
+private copy of the test executable with `get-task-allow`, leaving the Cargo
+executable untouched. It verifies the original checksum and shared Mach-O UUID,
+and records the signed copy's path and checksum in `profile_worker`. Signing and
+copying happen before measurement; no application or system security setting is
+changed. The signed executable remains in the private session directory.
 In Codex on macOS, run resource measurement and Instruments outside the command
 sandbox: its restrictions prevent resource-timer queries and Instruments cache
 initialization. A failed profiler or missing worker result fails the case and

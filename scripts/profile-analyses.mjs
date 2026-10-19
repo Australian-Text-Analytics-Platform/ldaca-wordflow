@@ -1,7 +1,7 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -134,6 +134,22 @@ async function build(directory, signal) {
   return artifact.executable;
 }
 
+// Allocations injects before main and requires a debuggable target.
+export async function allocationWorker(executable, directory, signal) {
+  const original = await checksum(executable);
+  const path = join(directory, 'allocation-worker');
+  const entitlements = join(directory, 'allocation-worker.entitlements');
+  await copyFile(executable, path);
+  await chmod(path, 0o700);
+  await writeFile(entitlements, '<?xml version="1.0"?><plist version="1.0"><dict><key>com.apple.security.get-task-allow</key><true/></dict></plist>', { mode: 0o600 });
+  const signed = await runChild('codesign', ['--force', '--sign', '-', '--entitlements', entitlements, path], { directory, stem: 'codesign', signal });
+  if (signed.code !== 0) throw new Error('Allocations worker signing failed; see private codesign logs');
+  const uuid = file => execFileSync('xcrun', ['dwarfdump', '--uuid', file], { encoding: 'utf8' }).match(/^UUID:\s+(\S+)/m)?.[1];
+  const macho_uuid = uuid(executable);
+  if (!macho_uuid || uuid(path) !== macho_uuid || await checksum(executable) !== original) throw new Error('Allocations worker must preserve the original executable and Mach-O UUID');
+  return { path, sha256: await checksum(path), macho_uuid };
+}
+
 async function execute(executable, config, profile, signal) {
   await mkdir(config.output, { recursive: true, mode: 0o700 });
   const configPath = join(config.output, 'case.json');
@@ -192,6 +208,8 @@ export async function main(args = process.argv.slice(2)) {
     const executable = await build(directory, controller.signal);
     manifest.executable = executable;
     manifest.executable_sha256 = await checksum(executable);
+    if (opts.profile === 'allocations') manifest.profile_worker = await allocationWorker(executable, directory, controller.signal);
+    const measurementExecutable = manifest.profile_worker?.path ?? executable;
     for (const analysis of analyses) {
       const provision = await execute(executable, { ...base, output: join(directory, `provision-${analysis}`), embedding_cache: join(directory, 'provision-embeddings.duckdb'), analysis, size: null, provision: true }, undefined, controller.signal);
       if (provision.status !== 'provisioned') throw new Error(`Model provisioning failed for ${analysis}; see private logs`);
@@ -205,7 +223,7 @@ export async function main(args = process.argv.slice(2)) {
         const item = { id, analysis, size, repetition, cache, profile: opts.profile ?? null, status: 'running' };
         manifest.cases.push(item);
         await save();
-        Object.assign(item, await execute(executable, { ...base, output: join(directory, id), embedding_cache, analysis, size, provision: false }, opts.profile, controller.signal));
+        Object.assign(item, await execute(measurementExecutable, { ...base, output: join(directory, id), embedding_cache, analysis, size, provision: false }, opts.profile, controller.signal));
         await save();
         if (item.status !== 'succeeded') throw new Error(`${id} failed; see private case logs`);
         console.log(`  ${item.result.input.rows} rows, ${item.result.analysis_seconds.toFixed(3)} seconds, ${item.resources ? (item.resources.peak_rss_bytes / 2 ** 30).toFixed(2) + ' GiB peak process RSS' : 'RSS unavailable'}`);

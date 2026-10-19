@@ -1,9 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, symlink } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { options, privateOutput, resources, report, runChild } from './profile-analyses.mjs';
+import { allocationWorker, checksum, options, privateOutput, resources, report, runChild } from './profile-analyses.mjs';
+
+test('Allocations gets a debuggable private copy without changing executable code identity', { skip: process.platform !== 'darwin' }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'wordflow-profile-signing-'));
+  try {
+    const source = join(directory, 'probe.c');
+    const executable = join(directory, 'probe');
+    await writeFile(source, '#include <stdio.h>\nint main(void) { puts("profile probe"); return 0; }\n');
+    execFileSync('clang', ['-g', source, '-o', executable]);
+    const original = await checksum(executable);
+    const prepared = await allocationWorker(executable, directory);
+    assert.notEqual(prepared.path, executable);
+    assert.equal(await checksum(executable), original);
+    assert.equal(await checksum(prepared.path), prepared.sha256);
+    assert.match(prepared.macho_uuid, /^[0-9A-F-]{36}$/i);
+    assert.equal((await stat(prepared.path)).mode & 0o777, 0o700);
+    execFileSync('codesign', ['--verify', '--strict', prepared.path]);
+    const entitlements = execFileSync('codesign', ['-d', '--entitlements', '-', '--xml', prepared.path], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    assert.match(entitlements, /<key>com\.apple\.security\.get-task-allow<\/key>\s*<true\s*\/>/);
+    assert.equal(execFileSync(prepared.path, { encoding: 'utf8' }), 'profile probe\n');
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
 
 test('campaign arguments distinguish all rows, profile repetitions and explicit table columns', () => {
   const value = options(['--input', '/private/data.zip', '--output', '/private/results', '--sizes', '100,all', '--table', 'articles', '--column', 'body']);
