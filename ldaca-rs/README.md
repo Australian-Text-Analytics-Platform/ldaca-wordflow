@@ -55,9 +55,12 @@ not require the data SDK's Arrow/ONI interface.
 Model loading may download missing Hugging Face/Lindera artifacts using their
 existing cache behavior. Quotation never downloads a model. Persistent text caches
 are disposable files and must never point at a Wordflow project database.
-`LDACA_EMBEDDING_THREADS` optionally controls the embedding runtime thread count.
+Embedding and Topic segmentation/clustering use all processors available to the
+process by default. `LDACA_EMBEDDING_THREADS` is an optional explicit cap.
 Curated MiniLM models use fixed-shape CoreML MLProgram sessions on macOS;
-Windows requests a high-performance DirectML GPU. CPU fallback remains available.
+Windows requests a high-performance DirectML GPU. CPU fallback explicitly disables
+automatic accelerator selection. Sessions share one explicitly initialized native
+runtime environment, created only when model loading is requested.
 The [performance runbook](../docs/runbooks/analysis-performance.md#embedding-acceleration-and-small-device-experiments)
 defines compiled-model caches, device verification and the small comparison worker.
 

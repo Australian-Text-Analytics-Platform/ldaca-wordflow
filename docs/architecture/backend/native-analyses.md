@@ -299,8 +299,9 @@ multiple quotes remain nested in their original document. Preview has request
 cancellation and no persistent result or task record. Context clipping and field
 visibility are frontend presentation changes, not extraction requests.
 
-Run uses up to four process-available native workers, each constructing and owning
-its UDPipe extractor from shared read-only model bytes. A single database writer
+Run uses process-available native workers, bounded by the number of remaining
+eight-text batches. Each worker constructs and owns its UDPipe extractor from
+shared read-only model bytes. A single database writer
 commits each completed eight-text batch with its checked-text records and matches
 in one transaction. A Quotation-only version-1 checkpoint artifact records the
 manifest, extraction identity, generation and checked/total counts. It stores no
@@ -430,7 +431,7 @@ adjustments reuse reduced vectors for one fit. Historical contexts retain their
 original cuts, and historical analyses require Rerun before new stage adjustments.
 No automatic clustering retry policy is exposed.
 
-Encoder CPU threads and each HDBSCAN pool use process-available parallelism,
+Encoder CPU threads, ordered document segmentation and each HDBSCAN pool use process-available parallelism,
 bounded by a positive `LDACA_EMBEDDING_THREADS` host cap. This preserves affinity
 and container CPU limits without initializing a global Rayon pool. CoreML and
 DirectML remain preferred on their supported platforms, with CPU fallback.

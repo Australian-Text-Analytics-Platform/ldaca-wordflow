@@ -1,8 +1,7 @@
 //! ONNX Runtime sentence embeddings for text analysis.
 //!
-//! Why this exists: embedding is the dominant cost in native topic modeling, so
-//! the pipeline now uses ONNX Runtime instead of the previous CPU-only Candle
-//! path. Model management stays automatic: callers provide only a Hugging Face
+//! Embedding is the dominant cost in native topic modeling. Model management
+//! stays automatic: callers provide only a Hugging Face
 //! model id, and this module uses `hf-hub`'s default cache/download behavior to
 //! fetch tokenizer/config/ONNX artifacts when they are missing locally.
 //!
@@ -23,7 +22,7 @@ use anyhow::{Context, Result};
 use hf_hub::{HFRepositorySync, RepoTypeModel};
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use ort::ep;
-use ort::session::builder::{GraphOptimizationLevel, SessionBuilder};
+use ort::session::builder::{AutoDevicePolicy, GraphOptimizationLevel, SessionBuilder};
 use ort::session::{Session, SessionInputValue};
 use ort::value::{Tensor, ValueType};
 use serde::de::DeserializeOwned;
@@ -470,10 +469,26 @@ fn normalize_nested_rows(rows: &mut [Vec<f32>]) {
     }
 }
 
-type Registry = RwLock<HashMap<(Option<ModelAssets>, String), Arc<Embedder>>>;
-static REGISTRY: OnceLock<Registry> = OnceLock::new();
-fn registry() -> &'static Registry {
-    REGISTRY.get_or_init(|| RwLock::new(HashMap::new()))
+type LoadedModels = RwLock<HashMap<(Option<ModelAssets>, String), Arc<Embedder>>>;
+struct Registry {
+    environment: ort::environment::Environment,
+    models: LoadedModels,
+}
+static REGISTRY: OnceLock<std::result::Result<Registry, String>> = OnceLock::new();
+fn registry() -> Result<&'static Registry> {
+    REGISTRY
+        .get_or_init(|| {
+            ort::init()
+                .with_name("wordflow-embedding")
+                .build()
+                .map(|environment| Registry {
+                    environment,
+                    models: RwLock::new(HashMap::new()),
+                })
+                .map_err(|error| error.to_string())
+        })
+        .as_ref()
+        .map_err(|error| anyhow::anyhow!("Initialize embedding runtime: {error}"))
 }
 pub(crate) fn ensure_embedder(repo_id: Option<&str>) -> Result<Arc<Embedder>> {
     ensure_embedder_in(repo_id, None)
@@ -487,14 +502,16 @@ pub(crate) fn ensure_embedder_in(
         .unwrap_or(DEFAULT_EMBEDDER_REPO_ID);
     let key = (assets.cloned(), model.to_owned());
     {
-        let map = registry()
+        let map = registry()?
+            .models
             .read()
             .map_err(|_| anyhow::anyhow!("embedder registry lock poisoned"))?;
         if let Some(model) = map.get(&key) {
             return Ok(Arc::clone(model));
         }
     }
-    let mut map = registry()
+    let mut map = registry()?
+        .models
         .write()
         .map_err(|_| anyhow::anyhow!("embedder registry lock poisoned"))?;
     if let Some(model) = map.get(&key) {
@@ -980,8 +997,12 @@ fn coreml_cache_key(path: &Path, policy: &str, runtime: &str) -> String {
 fn configured_session_builder(
     providers: Vec<ort::ep::ExecutionProviderDispatch>,
 ) -> Result<SessionBuilder> {
-    let mut builder = Session::builder()
+    let mut builder = Session::builder(&registry()?.environment)
         .context("create ONNX Runtime session builder")?
+        // Explicit GPU providers below take precedence. Otherwise stay on CPU:
+        // ORT 1.31's default auto policy can silently register dynamic CoreML.
+        .with_auto_device(AutoDevicePolicy::PreferCPU)
+        .map_err(|err| anyhow::anyhow!("configure ONNX device policy: {err:?}"))?
         .with_optimization_level(GraphOptimizationLevel::Level3)
         .map_err(|err| anyhow::anyhow!("configure ONNX graph optimization: {err:?}"))?
         .with_memory_pattern(false)
@@ -1136,6 +1157,25 @@ mod tests {
     }
 
     #[test]
+    fn concurrent_session_preparation_shares_one_explicit_environment() -> Result<()> {
+        let identities = std::thread::scope(|scope| {
+            (0..8)
+                .map(|_| {
+                    scope.spawn(|| -> Result<usize> {
+                        configured_session_builder(Vec::new())?;
+                        Ok(std::ptr::from_ref(&registry()?.environment) as usize)
+                    })
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+                .map(|thread| thread.join().unwrap())
+                .collect::<Result<Vec<_>>>()
+        })?;
+        assert!(identities.iter().all(|identity| *identity == identities[0]));
+        Ok(())
+    }
+
+    #[test]
     #[ignore = "explicit isolated model provisioning and ONNX provider acceptance"]
     fn preferred_provider_and_cpu_fallback_execute_real_embedding_nodes() -> Result<()> {
         let root = PathBuf::from(
@@ -1178,11 +1218,15 @@ mod tests {
                     Some(&preferred_profile),
                 )
             })?;
+            let cpu_profile = profiles.path().join(format!("cpu-{index}"));
             let cpu = load_embedder_with(model, Some(&assets), |path, _| {
                 Ok(LoadedSession {
-                    session: configured_session_builder(vec![ort::ep::CPU::default()
-                        .build()
-                        .error_on_failure()])?
+                    session: profiled_builder(
+                        configured_session_builder(vec![ort::ep::CPU::default()
+                            .build()
+                            .error_on_failure()])?,
+                        Some(&cpu_profile),
+                    )?
                     .commit_from_file(path)?,
                     provider_id: "CPUExecutionProvider".into(),
                     fallback_reason: None,
@@ -1190,21 +1234,16 @@ mod tests {
                 })
             })?;
             let expected = cpu.encode_batches(&texts, 17)?;
+            assert_eq!(
+                executed_providers(&cpu)?,
+                ["CPUExecutionProvider".into()].into()
+            );
             for count in [0, 1, 31, 32, 33, 65, 73] {
                 let actual = preferred.encode(&texts[..count])?;
                 assert_vectors_agree(&expected[..count], &actual);
             }
             assert_vectors_agree(&expected, &preferred.encode_batches(&texts, 17)?);
-            let profile = preferred
-                .session
-                .lock()
-                .map_err(|_| anyhow::anyhow!("Session lock poisoned"))?
-                .end_profiling()?;
-            let events: Vec<serde_json::Value> = serde_json::from_slice(&std::fs::read(profile)?)?;
-            let used = events
-                .iter()
-                .filter_map(|event| event["args"]["provider"].as_str())
-                .collect::<std::collections::BTreeSet<_>>();
+            let used = executed_providers(&preferred)?;
             #[cfg(target_os = "macos")]
             assert!(
                 used.contains("CoreMLExecutionProvider"),
@@ -1227,13 +1266,23 @@ mod tests {
                     ..assets.clone()
                 };
                 let fallback = load_embedder_with(model, Some(&assets), |path, max_length| {
-                    build_session(path, model, max_length, Some(&blocked_assets), None)
+                    build_session(
+                        path,
+                        model,
+                        max_length,
+                        Some(&blocked_assets),
+                        Some(&profiles.path().join(format!("fallback-{index}"))),
+                    )
                 })?;
                 assert_eq!(fallback.provider_id(), "CPUExecutionProvider");
                 assert!(fallback
                     .provider_fallback_reason()
                     .is_some_and(|reason| reason.contains("compiled CoreML cache")));
                 assert_vectors_agree(&expected, &fallback.encode_batches(&texts, 17)?);
+                assert_eq!(
+                    executed_providers(&fallback)?,
+                    ["CPUExecutionProvider".into()].into()
+                );
             }
             eprintln!(
                 "EMBEDDING PROVIDERS {model}: {used:?}; policy={}",
@@ -1241,6 +1290,19 @@ mod tests {
             );
         }
         Ok(())
+    }
+
+    fn executed_providers(encoder: &Embedder) -> Result<std::collections::BTreeSet<String>> {
+        let profile = encoder
+            .session
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Session lock poisoned"))?
+            .end_profiling()?;
+        let events: Vec<serde_json::Value> = serde_json::from_slice(&std::fs::read(profile)?)?;
+        Ok(events
+            .iter()
+            .filter_map(|event| event["args"]["provider"].as_str().map(str::to_owned))
+            .collect())
     }
 
     fn assert_vectors_agree(expected: &[Vec<f32>], actual: &[Vec<f32>]) {

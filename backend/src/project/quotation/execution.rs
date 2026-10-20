@@ -30,6 +30,30 @@ struct Work {
 type Batch = Vec<(String, String)>;
 type Completed = Vec<(String, String, Vec<Quote>)>;
 
+fn worker_count(available: usize, remaining_texts: u64) -> usize {
+    let batches =
+        usize::try_from(remaining_texts.div_ceil(BATCH_SIZE as u64)).unwrap_or(usize::MAX);
+    available.max(1).min(batches)
+}
+
+#[cfg(test)]
+mod worker_tests {
+    use super::worker_count;
+
+    #[test]
+    fn extraction_can_use_every_available_processor() {
+        assert_eq!(worker_count(16, 10_000), 16);
+    }
+
+    #[test]
+    fn extraction_does_not_load_idle_models_for_small_or_completed_workloads() {
+        assert_eq!(worker_count(16, 3), 1);
+        assert_eq!(worker_count(16, 17), 3);
+        assert_eq!(worker_count(16, 0), 0);
+        assert_eq!(worker_count(0, 17), 1);
+    }
+}
+
 fn checkpoint(conn: &Connection, id: Uuid) -> Result<Option<(Uuid, Checkpoint)>> {
     let row: Option<(String, Vec<u8>)> = conn.query_row(
         "SELECT id::VARCHAR,content FROM wordflow.artifacts WHERE analysis_id=? AND name=? AND storage_kind='blob'",
@@ -280,9 +304,10 @@ impl Database {
         mut progress: impl FnMut(&str, Option<f64>),
     ) -> Result<Analysis> {
         let mut work = self.start_quotation(tab, id, &request, resume)?;
-        let workers = std::thread::available_parallelism()
-            .map_or(1, usize::from)
-            .min(4);
+        let workers = worker_count(
+            std::thread::available_parallelism().map_or(1, usize::from),
+            work.checkpoint.progress.total_texts - work.checkpoint.progress.checked_texts,
+        );
         let cancellation = self.cancellation.child_token();
         let _cancel_on_drop = cancellation.clone().drop_guard();
         std::thread::scope(|scope| -> Result<()> {

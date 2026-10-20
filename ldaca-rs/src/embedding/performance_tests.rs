@@ -34,16 +34,9 @@ fn providers(
     }
     #[cfg(target_os = "macos")]
     {
-        if mode == "coreml-legacy" {
-            return Ok(vec![ep::CoreML::default().build().error_on_failure()]);
-        }
         let units = match mode {
-            "coreml-all" | "coreml-all-basic" | "coreml-all-static" => {
-                ep::coreml::ComputeUnits::All
-            }
-            "coreml-gpu" | "coreml-gpu-basic" | "coreml-gpu-unoptimized" | "coreml-gpu-static" => {
-                ep::coreml::ComputeUnits::CPUAndGPU
-            }
+            "coreml-all" | "coreml-all-static" => ep::coreml::ComputeUnits::All,
+            "coreml-gpu" | "coreml-gpu-static" => ep::coreml::ComputeUnits::CPUAndGPU,
             "coreml-ane" => ep::coreml::ComputeUnits::CPUAndNeuralEngine,
             _ => anyhow::bail!("Unknown embedding experiment mode"),
         };
@@ -154,16 +147,6 @@ fn embedding_device_experiment() -> Result<()> {
         )?)?
         .with_intra_threads(case.threads)
         .map_err(|error| anyhow::anyhow!("Experiment threads: {error:?}"))?;
-        if case.mode.ends_with("-basic") || case.mode.ends_with("-unoptimized") {
-            let level = if case.mode.ends_with("-basic") {
-                GraphOptimizationLevel::Level1
-            } else {
-                GraphOptimizationLevel::Disable
-            };
-            builder = builder
-                .with_optimization_level(level)
-                .map_err(|error| anyhow::anyhow!("Experiment graph optimization: {error:?}"))?;
-        }
         if let Some(sequence) = case.fixed_sequence {
             builder = fixed_session_builder(
                 builder,
