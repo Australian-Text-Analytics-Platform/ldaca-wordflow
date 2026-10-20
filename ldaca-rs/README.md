@@ -56,6 +56,10 @@ Model loading may download missing Hugging Face/Lindera artifacts using their
 existing cache behavior. Quotation never downloads a model. Persistent text caches
 are disposable files and must never point at a Wordflow project database.
 `LDACA_EMBEDDING_THREADS` optionally controls the embedding runtime thread count.
+Curated MiniLM models use fixed-shape CoreML MLProgram sessions on macOS;
+Windows requests a high-performance DirectML GPU. CPU fallback remains available.
+The [performance runbook](../docs/runbooks/analysis-performance.md#embedding-acceleration-and-small-device-experiments)
+defines compiled-model caches, device verification and the small comparison worker.
 
 ## Local development
 

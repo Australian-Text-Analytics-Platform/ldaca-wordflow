@@ -116,7 +116,7 @@ async fn provision(case: &Case, runtime: &ProjectRuntime) -> Result<Value> {
         })
         .await??;
         Ok(
-            json!({"model":model.model_id(),"fingerprint":model.cache_fingerprint(),"configured_provider":model.provider_id()}),
+            json!({"model":model.model_id(),"fingerprint":model.cache_fingerprint(),"configured_provider":model.provider_id(),"fallback_reason":model.provider_fallback_reason()}),
         )
     } else {
         quotation::prepare_model(

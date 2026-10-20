@@ -33,7 +33,7 @@ use tokenizers::{PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
 
 /// Canonical Sentence Transformers default with a published ONNX artifact.
 pub const DEFAULT_EMBEDDER_REPO_ID: &str = "sentence-transformers/all-MiniLM-L6-v2";
-const EMBEDDING_PIPELINE_VERSION: &str = "sentence-transformers-v2";
+const EMBEDDING_PIPELINE_VERSION: &str = "sentence-transformers-v3";
 
 const EMBEDDING_THREADS_ENV: &str = "LDACA_EMBEDDING_THREADS";
 
@@ -50,7 +50,22 @@ pub struct Embedder {
     max_length: usize,
     model_id: String,
     provider_id: String,
+    provider_fallback_reason: Option<String>,
+    fixed_shape: Option<BatchShape>,
     cache_fingerprint: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct BatchShape {
+    rows: usize,
+    tokens: usize,
+}
+
+struct LoadedSession {
+    session: Session,
+    provider_id: String,
+    fallback_reason: Option<String>,
+    fixed_shape: Option<BatchShape>,
 }
 
 #[derive(Debug, Clone)]
@@ -139,9 +154,14 @@ impl Embedder {
         &self.model_id
     }
 
-    /// Execution-provider label used for cache keys and diagnostics.
+    /// Configured session backend and policy, not a report of per-operation device use.
     pub fn provider_id(&self) -> &str {
         &self.provider_id
+    }
+
+    /// Why an accelerated session could not be prepared, if CPU fallback was required.
+    pub fn provider_fallback_reason(&self) -> Option<&str> {
+        self.provider_fallback_reason.as_deref()
     }
 
     /// Immutable Hugging Face snapshot used for every model artifact.
@@ -163,13 +183,39 @@ impl Embedder {
 
     /// Encode `texts` using the model's declared pooling and optional normalization.
     pub fn encode(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
+        if let Some(shape) = self.fixed_shape {
+            let mut result = Vec::with_capacity(texts.len());
+            for batch in texts.chunks(shape.rows) {
+                let mut padded;
+                let input = if batch.len() == shape.rows {
+                    batch
+                } else {
+                    padded = batch.to_vec();
+                    padded.resize(shape.rows, String::new());
+                    &padded
+                };
+                let mut vectors =
+                    self.encode_with_padding(input, PaddingStrategy::Fixed(shape.tokens))?;
+                vectors.truncate(batch.len());
+                result.extend(vectors);
+            }
+            return Ok(result);
+        }
+        self.encode_with_padding(texts, PaddingStrategy::BatchLongest)
+    }
+
+    fn encode_with_padding(
+        &self,
+        texts: &[String],
+        padding: PaddingStrategy,
+    ) -> Result<Vec<Vec<f32>>> {
         if texts.is_empty() {
             return Ok(Vec::new());
         }
 
         let mut tokenizer = self.tokenizer.clone();
         tokenizer.with_padding(Some(PaddingParams {
-            strategy: PaddingStrategy::BatchLongest,
+            strategy: padding,
             ..Default::default()
         }));
         let refs: Vec<&str> = texts.iter().map(String::as_str).collect();
@@ -460,6 +506,16 @@ pub(crate) fn ensure_embedder_in(
 }
 
 fn load_embedder(repo_id: &str, assets: Option<&ModelAssets>) -> Result<Embedder> {
+    load_embedder_with(repo_id, assets, |path, max_length| {
+        build_session(path, repo_id, max_length, assets, None)
+    })
+}
+
+fn load_embedder_with(
+    repo_id: &str,
+    assets: Option<&ModelAssets>,
+    session: impl FnOnce(&Path, usize) -> Result<LoadedSession>,
+) -> Result<Embedder> {
     let unpinned = crate::model_assets::huggingface_model(repo_id, assets)
         .context("failed to init hf-hub api for embedder")?;
     let modules_path = crate::model_assets::huggingface_file(&unpinned, "modules.json", "main")
@@ -511,7 +567,12 @@ fn load_embedder(repo_id: &str, assets: Option<&ModelAssets>) -> Result<Embedder
         }))
         .map_err(|e| anyhow::anyhow!("configure truncation: {e}"))?;
 
-    let (session, provider_id) = build_session(&onnx_path)?;
+    let LoadedSession {
+        session,
+        provider_id,
+        fallback_reason,
+        fixed_shape,
+    } = session(&onnx_path, max_length)?;
     let input_names = session
         .inputs()
         .iter()
@@ -542,6 +603,8 @@ fn load_embedder(repo_id: &str, assets: Option<&ModelAssets>) -> Result<Embedder
         max_length,
         model_id: repo_id.to_string(),
         provider_id,
+        provider_fallback_reason: fallback_reason,
+        fixed_shape,
         cache_fingerprint,
     })
 }
@@ -731,6 +794,8 @@ fn embedding_fingerprint(
     provider: &str,
 ) -> String {
     let mut hasher = Sha256::new();
+    hasher.update(ort::info().as_bytes());
+    hasher.update([0]);
     for value in [
         EMBEDDING_PIPELINE_VERSION.to_string(),
         revision.to_string(),
@@ -785,12 +850,131 @@ fn ensure_external_onnx_data(repo: &PinnedRepo, onnx_file: &str) {
     let _ = repo.get(&companion);
 }
 
-fn build_session(onnx_path: &Path) -> Result<(Session, String)> {
-    let provider_id = planned_provider_id();
-    let session = configured_session_builder(execution_providers())?
-        .commit_from_file(onnx_path)
-        .with_context(|| format!("load ONNX model {}", onnx_path.display()))?;
-    Ok((session, provider_id))
+fn build_session(
+    onnx_path: &Path,
+    model_id: &str,
+    max_length: usize,
+    assets: Option<&ModelAssets>,
+    profile: Option<&Path>,
+) -> Result<LoadedSession> {
+    #[cfg(target_os = "macos")]
+    let fixed_shape = coreml_batch_shape(model_id, onnx_path, max_length);
+    #[cfg(not(target_os = "macos"))]
+    let fixed_shape: Option<BatchShape> = None;
+    #[cfg(not(target_os = "macos"))]
+    let _ = (model_id, max_length, assets);
+
+    let preferred = || -> Result<LoadedSession> {
+        #[cfg(target_os = "macos")]
+        anyhow::ensure!(
+            fixed_shape.is_some(),
+            "Static CoreML execution is not validated for this model/artifact"
+        );
+        let provider_id = planned_provider_id(fixed_shape);
+        #[cfg(target_os = "macos")]
+        let cache = assets.map(|assets| {
+            assets.huggingface.join("coreml").join(coreml_cache_key(
+                onnx_path,
+                &provider_id,
+                ort::info(),
+            ))
+        });
+        #[cfg(not(target_os = "macos"))]
+        let cache: Option<PathBuf> = None;
+        if let Some(cache) = &cache {
+            std::fs::create_dir_all(cache).context("Prepare compiled CoreML cache")?;
+        }
+        let mut builder = configured_session_builder(execution_providers(cache.as_deref()))?;
+        if let Some(shape) = fixed_shape {
+            builder = fixed_session_builder(builder, shape)?;
+        }
+        let session = profiled_builder(builder, profile)?.commit_from_file(onnx_path)?;
+        if let Some(shape) = fixed_shape {
+            let expected = [shape.rows as i64, shape.tokens as i64];
+            let compatible = session.inputs().iter().all(|input| {
+                matches!(input.dtype(), ValueType::Tensor {shape,..} if shape.as_ref() == expected)
+            });
+            anyhow::ensure!(
+                compatible,
+                "ONNX inputs do not match the validated CoreML batch shape"
+            );
+        }
+        Ok(LoadedSession {
+            session,
+            provider_id,
+            fallback_reason: None,
+            fixed_shape,
+        })
+    };
+    match preferred() {
+        Ok(session) => Ok(session),
+        Err(error) if !cfg!(any(target_os = "macos", target_os = "windows")) => Err(error),
+        Err(error) => {
+            let session = profiled_builder(
+                configured_session_builder(vec![ort::ep::CPU::default()
+                    .build()
+                    .error_on_failure()])?,
+                profile,
+            )?
+            .commit_from_file(onnx_path)
+            .with_context(|| {
+                format!("Accelerated model preparation failed ({error:#}); CPU fallback failed")
+            })?;
+            Ok(LoadedSession {
+                session,
+                provider_id: "CPUExecutionProvider".into(),
+                fallback_reason: Some(format!("{error:#}")),
+                fixed_shape: None,
+            })
+        }
+    }
+}
+
+fn fixed_session_builder(mut builder: SessionBuilder, shape: BatchShape) -> Result<SessionBuilder> {
+    for (name, value) in [
+        ("batch_size", shape.rows),
+        ("sequence_length", shape.tokens),
+    ] {
+        builder = builder
+            .with_dimension_override(name, value as i64)
+            .map_err(|error| anyhow::anyhow!("Configure fixed embedding dimensions: {error:?}"))?;
+    }
+    Ok(builder)
+}
+
+fn profiled_builder(builder: SessionBuilder, profile: Option<&Path>) -> Result<SessionBuilder> {
+    match profile {
+        Some(path) => builder
+            .with_profiling(path)
+            .map_err(|error| anyhow::anyhow!("Configure ONNX profiling: {error:?}")),
+        None => Ok(builder),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn coreml_batch_shape(model_id: &str, artifact: &Path, max_length: usize) -> Option<BatchShape> {
+    (artifact
+        .file_name()
+        .is_some_and(|name| name == "model.onnx")
+        && matches!(
+            model_id,
+            DEFAULT_EMBEDDER_REPO_ID
+                | "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        ))
+    .then_some(BatchShape {
+        rows: 32,
+        tokens: max_length,
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn coreml_cache_key(path: &Path, policy: &str, runtime: &str) -> String {
+    let mut hash = Sha256::new();
+    for part in ["coreml-cache-v1", &path.to_string_lossy(), policy, runtime] {
+        hash.update(part.as_bytes());
+        hash.update([0]);
+    }
+    hex::encode(hash.finalize())
 }
 
 fn configured_session_builder(
@@ -801,7 +985,10 @@ fn configured_session_builder(
         .with_optimization_level(GraphOptimizationLevel::Level3)
         .map_err(|err| anyhow::anyhow!("configure ONNX graph optimization: {err:?}"))?
         .with_memory_pattern(false)
-        .map_err(|err| anyhow::anyhow!("configure ONNX memory pattern: {err:?}"))?;
+        .map_err(|err| anyhow::anyhow!("configure ONNX memory pattern: {err:?}"))?
+        // DirectML requires sequential execution and one Run caller per session.
+        .with_parallel_execution(false)
+        .map_err(|err| anyhow::anyhow!("configure ONNX execution mode: {err:?}"))?;
 
     builder = builder
         .with_intra_threads(computation_threads())
@@ -818,11 +1005,25 @@ fn configured_session_builder(
     Ok(builder)
 }
 
-fn execution_providers() -> Vec<ort::ep::ExecutionProviderDispatch> {
+fn execution_providers(cache: Option<&Path>) -> Vec<ort::ep::ExecutionProviderDispatch> {
+    #[cfg(not(target_os = "macos"))]
+    let _ = cache;
     #[cfg(target_os = "windows")]
-    let providers = vec![ep::DirectML::default().build()];
+    let providers = vec![ep::DirectML::default()
+        .with_device_filter(ep::directml::DeviceFilter::Gpu)
+        .with_performance_preference(ep::directml::PerformancePreference::HighPerformance)
+        .build()
+        .error_on_failure()];
     #[cfg(target_os = "macos")]
-    let providers = vec![ep::CoreML::default().build()];
+    let providers = {
+        let mut provider = ep::CoreML::default()
+            .with_model_format(ep::coreml::ModelFormat::MLProgram)
+            .with_compute_units(ep::coreml::ComputeUnits::All);
+        if let Some(cache) = cache {
+            provider = provider.with_model_cache_dir(cache.to_string_lossy());
+        }
+        vec![provider.build().error_on_failure()]
+    };
     #[cfg(target_os = "linux")]
     let providers = Vec::new();
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
@@ -830,11 +1031,27 @@ fn execution_providers() -> Vec<ort::ep::ExecutionProviderDispatch> {
     providers
 }
 
-fn planned_provider_id() -> String {
+fn planned_provider_id(shape: Option<BatchShape>) -> String {
+    #[cfg(not(target_os = "macos"))]
+    let _ = shape;
     #[cfg(target_os = "windows")]
-    let providers = ["DmlExecutionProvider", "CPUExecutionProvider"];
+    let providers = [
+        "DmlExecutionProvider:Gpu:HighPerformance",
+        "CPUExecutionProvider",
+    ];
     #[cfg(target_os = "macos")]
-    let providers = ["CoreMLExecutionProvider", "CPUExecutionProvider"];
+    let providers = [
+        shape.map_or_else(
+            || "CPUExecutionProvider".into(),
+            |shape| {
+                format!(
+                    "CoreMLExecutionProvider:MLProgram:ALL:{}x{}",
+                    shape.rows, shape.tokens
+                )
+            },
+        ),
+        "CPUExecutionProvider".into(),
+    ];
     #[cfg(target_os = "linux")]
     let providers = ["CPUExecutionProvider"];
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
@@ -900,6 +1117,10 @@ impl Embedder {
 }
 
 #[cfg(test)]
+#[path = "embedding/performance_tests.rs"]
+mod performance_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::HashMap;
@@ -927,79 +1148,183 @@ mod tests {
             temporary: root.join("tmp"),
         };
         std::fs::create_dir_all(&assets.temporary)?;
-        let mut encoder = load_embedder(DEFAULT_EMBEDDER_REPO_ID, Some(&assets))?;
-        let repo = crate::model_assets::huggingface_model(DEFAULT_EMBEDDER_REPO_ID, Some(&assets))?;
-        let modules = crate::model_assets::huggingface_file(&repo, "modules.json", "main")?;
-        let (snapshot_root, revision) = snapshot_from_path(&modules)?;
-        let pinned = PinnedRepo {
-            repo,
-            snapshot_root,
-            revision,
-        };
-        let (path, _) = resolve_onnx_artifact(&pinned, DEFAULT_EMBEDDER_REPO_ID)?;
         let profiles = tempfile::tempdir_in(&assets.temporary)?;
-        let texts = vec![
-            "Affordable homes and lower rent.".into(),
-            "Doctors treat hospital patients.".into(),
-        ];
-        let mut preferred = None;
-        for (name, providers) in [
-            ("preferred", execution_providers()),
-            ("cpu", vec![ort::ep::CPU::default().build()]),
-        ] {
-            let session = configured_session_builder(providers)?
-                .with_profiling(profiles.path().join(name))
-                .map_err(|error| anyhow::anyhow!("configure ONNX profiling: {error:?}"))?
-                .commit_from_file(&path)?;
-            encoder.session = Mutex::new(session);
-            let vectors = encoder.encode_batches(&texts, 2)?;
-            let profile = encoder
+        let texts = (0..73)
+            .map(|i| match i % 5 {
+                0 => String::new(),
+                1 => "Affordable homes and lower rent.".into(),
+                2 => "医生讨论健康。 Café culture and Unicode text.".into(),
+                3 => format!(
+                    "Record {i}. {}",
+                    "Doctors treat patients in hospitals. ".repeat(50)
+                ),
+                _ => format!("Record {i}. Reliable public transport."),
+            })
+            .collect::<Vec<_>>();
+        for (index, model) in [
+            DEFAULT_EMBEDDER_REPO_ID,
+            "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let preferred_profile = profiles.path().join(format!("preferred-{index}"));
+            let preferred = load_embedder_with(model, Some(&assets), |path, max_length| {
+                build_session(
+                    path,
+                    model,
+                    max_length,
+                    Some(&assets),
+                    Some(&preferred_profile),
+                )
+            })?;
+            let cpu = load_embedder_with(model, Some(&assets), |path, _| {
+                Ok(LoadedSession {
+                    session: configured_session_builder(vec![ort::ep::CPU::default()
+                        .build()
+                        .error_on_failure()])?
+                    .commit_from_file(path)?,
+                    provider_id: "CPUExecutionProvider".into(),
+                    fallback_reason: None,
+                    fixed_shape: None,
+                })
+            })?;
+            let expected = cpu.encode_batches(&texts, 17)?;
+            for count in [0, 1, 31, 32, 33, 65, 73] {
+                let actual = preferred.encode(&texts[..count])?;
+                assert_vectors_agree(&expected[..count], &actual);
+            }
+            assert_vectors_agree(&expected, &preferred.encode_batches(&texts, 17)?);
+            let profile = preferred
                 .session
                 .lock()
                 .map_err(|_| anyhow::anyhow!("Session lock poisoned"))?
                 .end_profiling()?;
-            let events: serde_json::Value = serde_json::from_slice(&std::fs::read(profile)?)?;
+            let events: Vec<serde_json::Value> = serde_json::from_slice(&std::fs::read(profile)?)?;
             let used = events
-                .as_array()
-                .context("Expected ONNX profile events")?
                 .iter()
                 .filter_map(|event| event["args"]["provider"].as_str())
                 .collect::<std::collections::BTreeSet<_>>();
-            anyhow::ensure!(!used.is_empty(), "No real ONNX node execution was recorded");
-            if name == "cpu" {
-                anyhow::ensure!(
-                    used == std::collections::BTreeSet::from(["CPUExecutionProvider"]),
-                    "CPU fallback used unexpected providers"
-                );
-                let expected: Vec<Vec<f32>> =
-                    preferred.take().context("Missing preferred embeddings")?;
-                for (left, right) in expected.iter().zip(&vectors) {
-                    let cosine = left
-                        .iter()
-                        .zip(right)
-                        .map(|(a, b)| f64::from(*a) * f64::from(*b))
-                        .sum::<f64>()
-                        / (left
-                            .iter()
-                            .map(|value| f64::from(*value).powi(2))
-                            .sum::<f64>()
-                            .sqrt()
-                            * right
-                                .iter()
-                                .map(|value| f64::from(*value).powi(2))
-                                .sum::<f64>()
-                                .sqrt());
-                    anyhow::ensure!(cosine > 0.99, "Provider fallback changed embedding meaning");
-                }
-            } else {
-                preferred = Some(vectors);
+            #[cfg(target_os = "macos")]
+            assert!(
+                used.contains("CoreMLExecutionProvider"),
+                "Preferred CoreML nodes did not execute"
+            );
+            #[cfg(target_os = "windows")]
+            assert!(
+                used.contains("DmlExecutionProvider"),
+                "Preferred DirectML nodes did not execute"
+            );
+            if preferred.provider_id() != cpu.provider_id() {
+                assert_ne!(preferred.cache_fingerprint(), cpu.cache_fingerprint());
+            }
+            #[cfg(target_os = "macos")]
+            {
+                let blocked = profiles.path().join(format!("blocked-{index}"));
+                std::fs::write(&blocked, "not a directory")?;
+                let blocked_assets = ModelAssets {
+                    huggingface: blocked,
+                    ..assets.clone()
+                };
+                let fallback = load_embedder_with(model, Some(&assets), |path, max_length| {
+                    build_session(path, model, max_length, Some(&blocked_assets), None)
+                })?;
+                assert_eq!(fallback.provider_id(), "CPUExecutionProvider");
+                assert!(fallback
+                    .provider_fallback_reason()
+                    .is_some_and(|reason| reason.contains("compiled CoreML cache")));
+                assert_vectors_agree(&expected, &fallback.encode_batches(&texts, 17)?);
             }
             eprintln!(
-                "EMBEDDING PROVIDERS {name}: {used:?}; native_threads={}",
-                computation_threads()
+                "EMBEDDING PROVIDERS {model}: {used:?}; policy={}",
+                preferred.provider_id()
             );
         }
         Ok(())
+    }
+
+    fn assert_vectors_agree(expected: &[Vec<f32>], actual: &[Vec<f32>]) {
+        assert_eq!(expected.len(), actual.len());
+        for (left, right) in expected.iter().zip(actual) {
+            assert_eq!(left.len(), right.len());
+            assert!(right.iter().all(|value| value.is_finite()));
+            let dot = left
+                .iter()
+                .zip(right)
+                .map(|(a, b)| f64::from(*a) * f64::from(*b))
+                .sum::<f64>();
+            let norm = |values: &[f32]| {
+                values
+                    .iter()
+                    .map(|x| f64::from(*x).powi(2))
+                    .sum::<f64>()
+                    .sqrt()
+            };
+            assert!(dot / (norm(left) * norm(right)) > 0.9999);
+            assert!(left.iter().zip(right).all(|(a, b)| (a - b).abs() < 1e-3));
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn static_coreml_shape_is_limited_to_validated_models() {
+        let artifact = Path::new("/models/onnx/model.onnx");
+        assert_eq!(
+            coreml_batch_shape(DEFAULT_EMBEDDER_REPO_ID, artifact, 256),
+            Some(BatchShape {
+                rows: 32,
+                tokens: 256
+            })
+        );
+        assert_eq!(
+            coreml_batch_shape(
+                "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+                artifact,
+                128
+            ),
+            Some(BatchShape {
+                rows: 32,
+                tokens: 128
+            })
+        );
+        assert_eq!(
+            coreml_batch_shape("unvalidated/model", artifact, 8192),
+            None
+        );
+        assert_eq!(
+            coreml_batch_shape(
+                DEFAULT_EMBEDDER_REPO_ID,
+                Path::new("/models/onnx/model_quantized.onnx"),
+                256
+            ),
+            None
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn compiled_model_cache_separates_artifacts_policies_and_runtime_builds() {
+        let key = coreml_cache_key(
+            Path::new("/models/snapshots/sha-a/model.onnx"),
+            "all:32x256",
+            "ort-a",
+        );
+        assert_eq!(
+            key,
+            coreml_cache_key(
+                Path::new("/models/snapshots/sha-a/model.onnx"),
+                "all:32x256",
+                "ort-a"
+            )
+        );
+        for (path, policy, runtime) in [
+            ("/models/snapshots/sha-b/model.onnx", "all:32x256", "ort-a"),
+            ("/models/snapshots/sha-a/model.onnx", "gpu:32x256", "ort-a"),
+            ("/models/snapshots/sha-a/model.onnx", "all:16x256", "ort-a"),
+            ("/models/snapshots/sha-a/model.onnx", "all:32x256", "ort-b"),
+        ] {
+            assert_ne!(key, coreml_cache_key(Path::new(path), policy, runtime));
+        }
     }
 
     fn mean_pooling() -> PoolingConfig {
