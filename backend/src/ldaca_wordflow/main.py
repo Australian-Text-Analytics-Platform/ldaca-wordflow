@@ -37,8 +37,6 @@ from ._middleware import (
     normalized_scope_path,
 )
 from .apollo_deploy.api import router as apollo_router  # apollo-deploy:
-from .apollo_deploy.auth_config import apollo_auth_settings  # apollo-deploy:
-from .apollo_deploy.runai_proxy import RunaiProxyIdentityMiddleware  # apollo-deploy:
 from .api.app_update import router as app_update_router
 from .api.auth import router as auth_router
 from .api.annotations import router as annotations_router
@@ -375,10 +373,6 @@ def create_app(
         cast(Any, CsrfOriginMiddleware),
         allowed_origins=settings.get_allowed_origins(),
     )
-    # apollo-deploy: Run:ai sign-in turns the sidecar's identity into a
-    # Wordflow session before the CSRF check reads the session cookie.
-    if apollo_auth_settings().runai_proxy:
-        app.add_middleware(cast(Any, RunaiProxyIdentityMiddleware))
     app.add_middleware(
         cast(Any, ExactHostMiddleware),
         trusted_hosts=settings.get_trusted_hosts(),

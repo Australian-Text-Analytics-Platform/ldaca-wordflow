@@ -5,7 +5,6 @@ import { create } from 'zustand';
 import { deleteSession, getSession } from '@/api';
 import type { SessionResponse } from '@/api';
 import { clearCsrfToken, setCsrfToken } from '@/lib/backend/csrfToken';
-import { fetchRunaiSignOutUrl, runaiNavigation } from '@/features/apollo-deploy/runaiSignOut'; // apollo-deploy:
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 export const REFRESH_FAILURE_THRESHOLD = 3;
@@ -127,14 +126,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   refreshAuth: () => get().runAuthFetch('manual'),
 
   logout: async () => {
-    // apollo-deploy: under Run:ai sign-in, also end the sidecar's session.
-    const runaiSignOutUrl = await fetchRunaiSignOutUrl();
     await deleteSession({ throwOnError: true });
     clearCsrfToken();
-    if (runaiSignOutUrl) {
-      runaiNavigation.leave(runaiSignOutUrl);
-      return;
-    }
     set({ session: null, phase: { status: 'bootstrapping', attempts: 0 } });
     await get().runAuthFetch('bootstrap');
   },

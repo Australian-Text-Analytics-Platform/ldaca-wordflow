@@ -206,14 +206,6 @@ def _prepare_server(
     if requested_port < 0 or requested_port > 65535:
         raise ValueError("Port must be between 0 and 65535")
 
-    # apollo-deploy: Run:ai sign-in trusts identity headers from the loopback
-    # sidecar, so the server must bind a literal loopback address.
-    from .apollo_deploy.auth_config import apollo_auth_settings, is_loopback_bind_host
-
-    runai_proxy = apollo_auth_settings().runai_proxy
-    if runai_proxy and not is_loopback_bind_host(selected_host):
-        raise ValueError("APOLLO_AUTH=runai_proxy requires --host 127.0.0.1 or ::1")
-
     try:
         listener = _bind_socket(selected_host, requested_port, backlog=2048)
     except BaseException:
@@ -237,9 +229,6 @@ def _prepare_server(
             reload=False,
             log_level="info",
             timeout_graceful_shutdown=CONNECTION_DRAIN_SECONDS,
-            # apollo-deploy: keep scope["client"] as the real socket peer; the
-            # sidecar doesn't sanitise X-Forwarded-For.
-            proxy_headers=not runai_proxy,
         )
         server = _stream_closing_server(uvicorn.Server)(config)
         return server, listener, current, startup_path

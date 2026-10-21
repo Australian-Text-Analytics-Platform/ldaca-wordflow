@@ -95,7 +95,6 @@ jobs:
           # broken pipe, which fails the step under pipefail.
           listing=$(python -m zipfile -l "$wheel")
           grep -q "ldaca_wordflow/apollo_deploy/adapter.py" <<<"$listing"
-          grep -q "ldaca_wordflow/apollo_deploy/runai_proxy.py" <<<"$listing"
           grep -q "ldaca_wordflow/resources/frontend/build/index.html" <<<"$listing"
 
       - name: Set up Docker Buildx
