@@ -11634,7 +11634,15 @@
                 }
               }
             },
-            "description": "Success"
+            "description": "Success",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "content": {
@@ -11644,7 +11652,18 @@
                 }
               }
             },
-            "description": "Invalid request or operation failed"
+            "description": "Invalid request or operation failed",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -11654,7 +11673,18 @@
                 }
               }
             },
-            "description": "Origin not allowed"
+            "description": "Origin not allowed",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
           },
           "404": {
             "content": {
@@ -11664,7 +11694,18 @@
                 }
               }
             },
-            "description": "Resource unavailable"
+            "description": "Resource unavailable",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
           },
           "409": {
             "content": {
@@ -11674,7 +11715,18 @@
                 }
               }
             },
-            "description": "Operation conflict"
+            "description": "Operation conflict",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
           },
           "500": {
             "content": {
@@ -11684,7 +11736,18 @@
                 }
               }
             },
-            "description": "Internal operation error"
+            "description": "Internal operation error",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
           },
           "503": {
             "content": {
@@ -11694,7 +11757,18 @@
                 }
               }
             },
-            "description": "Backend stopping"
+            "description": "Backend stopping",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -20309,6 +20383,14 @@
                   "$ref": "#/components/schemas/FileImportPlan"
                 }
               }
+            },
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity",
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
           "400": {
@@ -20316,6 +20398,17 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               }
             }

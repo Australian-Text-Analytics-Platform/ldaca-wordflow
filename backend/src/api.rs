@@ -900,13 +900,18 @@ struct ImportTables {
     post, path = "/api/project/import/inspect", operation_id = "api_inspect_file_import",
     tag = "api",
     request_body = crate::project::imports::FileImportRequest,
-    responses((status = 200, description = "Success", body = crate::project::imports::FileImportPlan), (status = 400, description = "Invalid request or operation failed", body = crate::error::ErrorEnvelope), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
+    responses((status = 200, description = "Success", body = crate::project::imports::FileImportPlan, headers(("x-wordflow-task-id" = String, description = "Accepted task identity"))), (status = 400, description = "Invalid request or operation failed", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))))
 )]
 async fn inspect_file_import(
     State(project): State<ProjectRuntime>,
     InputJson(input): InputJson<crate::project::imports::FileImportRequest>,
 ) -> Result<impl IntoResponse> {
-    Ok(Json(project.inspect_files(input).await?))
+    let runtime = project.clone();
+    let task = project.submit_task("Prepare data import", move |context| async move {
+        context.progress("Inspecting files and archives", None);
+        Ok(Json(runtime.inspect_files(input).await?))
+    })?;
+    task_response(task).await
 }
 #[utoipa::path(
     post, path = "/api/project/import/files", operation_id = "api_import_files",

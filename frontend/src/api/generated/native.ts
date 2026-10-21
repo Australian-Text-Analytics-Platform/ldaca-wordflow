@@ -7140,6 +7140,8 @@ export interface operations {
       /** @description Success */
       200: {
         headers: {
+          /** @description Accepted task identity */
+          'x-wordflow-task-id'?: string;
           [name: string]: unknown;
         };
         content: {
@@ -7149,6 +7151,8 @@ export interface operations {
       /** @description Invalid request or operation failed */
       400: {
         headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
           [name: string]: unknown;
         };
         content: {
@@ -7158,6 +7162,8 @@ export interface operations {
       /** @description Origin not allowed */
       403: {
         headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
           [name: string]: unknown;
         };
         content: {
@@ -7167,6 +7173,8 @@ export interface operations {
       /** @description Resource unavailable */
       404: {
         headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
           [name: string]: unknown;
         };
         content: {
@@ -7176,6 +7184,8 @@ export interface operations {
       /** @description Operation conflict */
       409: {
         headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
           [name: string]: unknown;
         };
         content: {
@@ -7185,6 +7195,8 @@ export interface operations {
       /** @description Internal operation error */
       500: {
         headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
           [name: string]: unknown;
         };
         content: {
@@ -7194,6 +7206,8 @@ export interface operations {
       /** @description Backend stopping */
       503: {
         headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
           [name: string]: unknown;
         };
         content: {
@@ -13271,6 +13285,8 @@ export interface operations {
     responses: {
       200: {
         headers: {
+          /** @description Accepted task identity */
+          'x-wordflow-task-id'?: string;
           [name: string]: unknown;
         };
         content: {
@@ -13279,6 +13295,8 @@ export interface operations {
       };
       400: {
         headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
           [name: string]: unknown;
         };
         content: {

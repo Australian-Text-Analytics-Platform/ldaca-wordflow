@@ -13,6 +13,7 @@ import {
   stubResponse,
   captureResponse,
   testId,
+  press,
 } from './fixtures';
 
 import { tableFromIPC } from 'apache-arrow';
@@ -34,7 +35,11 @@ it('sample picker imports pinned remote views and survives reload', async () => 
   expect(
     response.response.headers.some((header) => header.name.toLowerCase() === 'x-wordflow-task-id'),
   ).toBe(true);
-  await expect(role('button', { name: /Task: Import sample data/ })).toBeDisplayed();
+  await role('button', { name: 'Task history', exact: true }).click();
+  const history = role('dialog', { name: 'Task history', exact: true });
+  await expect(role('button', { name: /Task: Import sample data/ }, history)).toBeDisplayed();
+  await press('Escape');
+  await expect(history).not.toExist();
   await expect(dialog).toBeDisplayed();
   await expect(role('button', { name: 'Import selected' }, dialog)).toBeDisabled();
   await expect(browser.$$('.react-flow__node')).toBeElementsArrayOfSize(7);

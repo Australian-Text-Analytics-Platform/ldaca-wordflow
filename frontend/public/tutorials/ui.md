@@ -38,7 +38,12 @@ does not delete its Data Block.
 
 <h2 id="help-ui-task-centre">Tasks</h2>
 
-Tasks lists active runs first, failed or cancelled runs next, then successful runs.
+Tasks lists active runs first, then failed or cancelled runs. Successful tasks
+leave the sidebar automatically. Click the archive icon in the Tasks header to
+open **Task history**, which includes all task types and statuses retained for
+this project session, including successful tasks. Expand a task to see its status,
+progress, timestamps and available actions. The history retains up to 100 finished
+tasks; **Dismiss** removes a finished task from it.
 One Run has one task. Current tab names and **Open tab** connect tasks to their
 analysis. Closing or deleting an analysis tab cancels its run and removes that
 tab's task history. Import/export history remains independent.

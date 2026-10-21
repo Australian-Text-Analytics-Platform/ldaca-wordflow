@@ -68,6 +68,7 @@ export function SidebarView({
   toolsContent,
   nodesContent,
   tasksContent,
+  tasksHeaderAction,
   nodeCount,
   selectedCount,
   clearSelection,
@@ -81,6 +82,7 @@ export function SidebarView({
   toolsContent: ReactNode;
   nodesContent: ReactNode;
   tasksContent: ReactNode;
+  tasksHeaderAction?: ReactNode;
   nodeCount: number;
   selectedCount: number;
   clearSelection: () => void;
@@ -223,6 +225,7 @@ export function SidebarView({
                             </span>
                           </div>
                         )}
+                        {key === 'tasks' && tasksHeaderAction}
                         <HelpIcon
                           targetKey={SECTION_HELP_KEYS[key]}
                           label={title}

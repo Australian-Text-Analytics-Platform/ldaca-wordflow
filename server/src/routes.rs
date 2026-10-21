@@ -418,12 +418,12 @@ async fn import(
 ) -> Result<Response> {
     tokio::spawn(async move { import_owned(host, input, false).await }).await?
 }
-#[utoipa::path(post,path="/api/server/import/inspect",operation_id="server_inspect_import",request_body=ServerImport,responses((status=200,body=FileImportPlan),(status=400,body=ErrorEnvelope)))]
+#[utoipa::path(post,path="/api/server/import/inspect",operation_id="server_inspect_import",request_body=ServerImport,responses((status=200,body=FileImportPlan,headers(("x-wordflow-task-id"=String,description="Accepted task identity"))),(status=400,body=ErrorEnvelope,headers(("x-wordflow-task-id"=Option<String>,description="Accepted task identity, including task failures")))))]
 async fn inspect_import(
     State(host): State<Host>,
     InputJson(input): InputJson<ServerImport>,
 ) -> Result<Response> {
-    import_owned(host, input, true).await
+    tokio::spawn(async move { import_owned(host, input, true).await }).await?
 }
 async fn import_owned(host: Host, input: ServerImport, inspect: bool) -> Result<Response> {
     let _file = host.0.data_files.lock().await;
