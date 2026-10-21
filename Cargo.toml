@@ -4,5 +4,14 @@ exclude = ["polars-text"]
 default-members = ["backend"]
 resolver = "3"
 
+# Optimize analyses and their generic call sites without disabling development checks.
 [profile.dev.package.ldaca-rs]
+opt-level = 3
 debug = 0
+
+[profile.dev.package.wordflow-backend]
+opt-level = 3
+
+# Numerical kernels live in dependencies as well as the workspace crates above.
+[profile.dev.package."*"]
+opt-level = 3

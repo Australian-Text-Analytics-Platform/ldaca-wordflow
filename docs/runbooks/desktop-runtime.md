@@ -21,6 +21,25 @@ releases keep the production identity. Raw `tauri dev` does not load this
 override automatically. Restart an already-running development app once to
 pick up the new identity.
 
+The root Cargo development profile optimizes `ldaca-rs`, `wordflow-backend` and
+external dependencies at level 3. This covers both numerical libraries and
+generic analysis code instantiated by their callers. The Tauri shell and other
+workspace crates keep their normal development optimization settings. Debug
+assertions, integer overflow checks, incremental compilation, Vite hot reload and
+the webview inspector remain enabled. The existing `ldaca-rs` setting omits its
+debug information; other crates retain their normal development debug settings.
+These profile settings also apply to default `cargo test` builds through Cargo's
+test-profile inheritance, on macOS and Windows.
+The executable still lives in `target/debug`; Cargo's overall build summary can
+still say `unoptimized` because the shell keeps its normal development settings.
+
+After changing these settings, the first `vp run dev:desktop` rebuilds affected
+dependencies and can take substantially longer. Later builds reuse them. Code
+stepping inside optimized analyses and dependencies can be less precise. This
+remains a development build, so measure final performance with the release
+acceptance lane below. Do not substitute `tauri dev --release`: the native
+backend permits the Vite origin only when development assertions are enabled.
+
 Native automation uses **LDaCA Wordflow Test** (`au.edu.ldaca.wordflow.test`).
 Production, Dev and Test have separate single-instance locks, preferences,
 provider credentials and native recent-document histories. Dev and Test disable
