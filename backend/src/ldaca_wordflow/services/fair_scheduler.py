@@ -27,8 +27,6 @@ class FairSchedulerKernel[K: Hashable, WorkT]:
         order_key: Callable[[WorkT], object],
         runner: Callable[[WorkT], Awaitable[None]],
         finished: Callable[[WorkT], Awaitable[None]] | None = None,
-        # Work that may not start yet stays queued (server AI per-person limits).
-        eligible: Callable[[WorkT], bool] | None = None,
     ) -> None:
         if capacity < 1:
             raise ValueError(f"{name} capacity must be positive")
@@ -39,7 +37,6 @@ class FairSchedulerKernel[K: Hashable, WorkT]:
         self._order_key = order_key
         self._runner = runner
         self._finished = finished
-        self._eligible = eligible
         self._pending = FairUserQueue[WorkT]()
         self._active: dict[K, WorkT] = {}
         self._lock = anyio.Lock()
@@ -72,11 +69,6 @@ class FairSchedulerKernel[K: Hashable, WorkT]:
                 order_key=self._order_key,
             )
             self._wake.set()
-
-    def wake(self) -> None:
-        """Look at the queue again (a person's server AI slot was freed)."""
-
-        self._wake.set()
 
     async def cancel(self, key: K, user_id: str) -> CancellationTarget:
         """Remove queued work or identify one active cancellation target."""
@@ -137,14 +129,8 @@ class FairSchedulerKernel[K: Hashable, WorkT]:
             async with self._lock:
                 if self._stopping:
                     return
-                item = None
                 if self._pending and len(self._active) < self._capacity:
-                    item = (
-                        self._pending.pop()
-                        if self._eligible is None
-                        else self._pending.pop_eligible(self._eligible)
-                    )
-                if item is not None:
+                    item = self._pending.pop()
                     if not self._active:
                         self._idle = anyio.Event()
                     self._active[self._key(item)] = item

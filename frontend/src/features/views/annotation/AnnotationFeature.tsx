@@ -1,7 +1,7 @@
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import { tabColumnLayout } from '@/features/views/common/columnOrder';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { Analysis, AnnotationResult, AnnotationRunAllResult } from '@/api';
 import { sqlIdentifier, sqlTable } from '@/api';
@@ -68,12 +68,6 @@ import { useAnnotationAiPreview } from './hooks/useAnnotationAiPreview';
 import { useAnnotationClassDescriptions } from './hooks/useAnnotationClassDescriptions';
 import { useAnnotationTabSettings } from './hooks/useAnnotationTabSettings';
 import { defaultAnnotationConcurrency } from './annotationTabSettings';
-import {
-  capServerAiConcurrency,
-  serverAiConcurrencyLimit,
-  useServerAiProviders,
-  withServerAiDefaultModels,
-} from '@/features/server-ai-providers/serverAiProviders';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
@@ -237,7 +231,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     commitAiBatchSize,
     aiProcessingMode,
     setAiProcessingMode,
-    aiMaxConcurrency: aiMaxConcurrencySetting,
+    aiMaxConcurrency,
     commitAiMaxConcurrency,
     aiReasoningEnabled,
     setAiReasoningEnabled,
@@ -262,43 +256,26 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
       (configuration) => configuration.id === aiProviderConfigurationId,
     ) ?? null;
 
-  // The server's own AI providers (issue 411): their default models, and
-  // their limit on requests at once per person.
-  const serverAiProviders = useServerAiProviders();
-  const providerModels = useMemo(
-    () => withServerAiDefaultModels(serverAiProviders, aiProviderModels),
-    [aiProviderModels, serverAiProviders],
-  );
-  const aiMaxConcurrency = capServerAiConcurrency(
-    serverAiProviders,
-    aiProviderConfigurationId,
-    aiMaxConcurrencySetting,
-  );
-
   useEffect(() => {
     if (selectedAiProvider) return;
-    // Wait for the server's providers, so a saved selection of one is kept
-    // and a new tab selects the first.
-    if (serverAiProviders === undefined) return;
     const fallback = resolveAnnotationProviderConfiguration(
       providerCredentials.annotationProviders,
       aiProviderConfigurationId,
       aiProviderType,
     );
     if (fallback) {
-      selectAiProvider(fallback.id, fallback.provider, providerModels[fallback.id] ?? '');
+      selectAiProvider(fallback.id, fallback.provider, aiProviderModels[fallback.id] ?? '');
     } else if (aiProviderConfigurationId) {
       clearAiProvider();
     }
   }, [
     aiProviderConfigurationId,
+    aiProviderModels,
     aiProviderType,
     clearAiProvider,
     providerCredentials.annotationProviders,
-    providerModels,
     selectAiProvider,
     selectedAiProvider,
-    serverAiProviders,
   ]);
   // Annotation-column choice per example node (plain columns only — no "Start
   // new annotation" option, since examples reference existing labels).
@@ -1206,7 +1183,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                             [configurationId]: model,
                           });
                         }}
-                        providerModels={providerModels}
+                        providerModels={aiProviderModels}
                         model={aiModel}
                         disabled={controlsLocked}
                         onAdvancedOpenChange={(open) => {
@@ -1244,14 +1221,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                               processingMode={aiProcessingMode}
                               onProcessingModeChange={setAiProcessingMode}
                               maxConcurrency={aiMaxConcurrency}
-                              defaultMaxConcurrency={
-                                serverAiConcurrencyLimit(serverAiProviders, selectedAiProvider?.id)
-                                  ?.value ??
-                                defaultAnnotationConcurrency(selectedAiProvider?.provider ?? null)
-                              }
-                              maxConcurrencyLimit={serverAiConcurrencyLimit(
-                                serverAiProviders,
-                                selectedAiProvider?.id,
+                              defaultMaxConcurrency={defaultAnnotationConcurrency(
+                                selectedAiProvider?.provider ?? null,
                               )}
                               onMaxConcurrencyCommit={commitAiMaxConcurrency}
                               reasoningEnabled={aiReasoningEnabled}

@@ -41,9 +41,6 @@ class OpenAIAnnotationAdapter:
     send_labels_schema: bool = False
     # Also look for model descriptions in LiteLLM's /model/info (Custom only).
     describe_from_model_info: bool = False
-    # The OpenAI ``user`` field. Set only by server AI providers, from the
-    # signed-in account (issue 411); never from the client.
-    end_user: str | None = None
 
     async def complete(
         self,
@@ -74,7 +71,6 @@ class OpenAIAnnotationAdapter:
             self.send_thinking_switch
             and self.base_url not in _THINKING_SWITCH_REJECTED
         )
-        end_user: str | Omit = omit if self.end_user is None else self.end_user
         labels_schema = (
             config.labels_schema
             if self.send_labels_schema
@@ -129,7 +125,6 @@ class OpenAIAnnotationAdapter:
                             max_completion_tokens=max_completion_tokens(config),
                             response_format=response_format(with_schema),
                             stream=False,
-                            user=end_user,
                             extra_body=(
                                 {
                                     "chat_template_kwargs": {

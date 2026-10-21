@@ -9,8 +9,6 @@ import uuid
 
 from anyio.abc import TaskGroup
 
-from .. import server_ai
-
 from .analysis_execution_types import (
     AnalysisExecutionControl,
     AnalysisExecutionKey,
@@ -93,14 +91,9 @@ class AnalysisScheduler(AnalysisExecutionControl):
                 order_key=lambda item: (item.created_at, item.key.analysis_id),
                 runner=runner,
                 finished=self._finished,
-                # A person's Runs on a server AI provider with a per-person
-                # limit go one at a time (issue 411).
-                eligible=lambda item: server_ai.scheduler_eligible(item.credential),
             )
             for lane, slots in capacities.items()
         }
-        for kernel in self._kernels.values():
-            server_ai.user_gate().add_waker(kernel.wake)
 
     def _kernel_for(
         self, lane: AnalysisLane
@@ -205,7 +198,6 @@ class AnalysisScheduler(AnalysisExecutionControl):
             await kernel.wait_idle()
 
     async def _finished(self, item: ScheduledAnalysis) -> None:
-        server_ai.scheduler_finished(item.credential)
         await self._work_removed(item.key)
 
 

@@ -4875,59 +4875,6 @@ export type SequentialTabUpdate = {
 };
 
 /**
- * ServerAiProviderConfiguration
- *
- * Shaped like a provider configuration; never holds a key or the real address.
- */
-export type ServerAiProviderConfiguration = {
-    /**
-     * Base Url
-     */
-    base_url: string;
-    /**
-     * Has Api Key
-     */
-    has_api_key: true;
-    /**
-     * Id
-     */
-    id: string;
-    /**
-     * Name
-     */
-    name: string;
-    /**
-     * Provider
-     */
-    provider: 'custom';
-};
-
-/**
- * ServerAiProviderResource
- */
-export type ServerAiProviderResource = {
-    configuration: ServerAiProviderConfiguration;
-    /**
-     * Default Model
-     */
-    default_model: string | null;
-    /**
-     * Max Requests Per User
-     */
-    max_requests_per_user: number | null;
-};
-
-/**
- * ServerAiProviders
- */
-export type ServerAiProviders = {
-    /**
-     * Providers
-     */
-    providers: Array<ServerAiProviderResource>;
-};
-
-/**
  * SessionResponse
  *
  * No-store bootstrap response for both supported deployment profiles.
@@ -8296,35 +8243,6 @@ export type SubmitSampleImportResponses = {
 };
 
 export type SubmitSampleImportResponse = SubmitSampleImportResponses[keyof SubmitSampleImportResponses];
-
-export type ListServerAiProvidersData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/server-ai-providers';
-};
-
-export type ListServerAiProvidersErrors = {
-    /**
-     * Authentication required
-     */
-    401: ApiError;
-    /**
-     * Stored resource is corrupt
-     */
-    500: ApiError;
-};
-
-export type ListServerAiProvidersError = ListServerAiProvidersErrors[keyof ListServerAiProvidersErrors];
-
-export type ListServerAiProvidersResponses = {
-    /**
-     * Successful Response
-     */
-    200: ServerAiProviders;
-};
-
-export type ListServerAiProvidersResponse = ListServerAiProvidersResponses[keyof ListServerAiProvidersResponses];
 
 export type DeleteSessionData = {
     body?: never;

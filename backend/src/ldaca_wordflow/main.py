@@ -37,7 +37,6 @@ from ._middleware import (
     normalized_scope_path,
 )
 from .api.app_update import router as app_update_router
-from .server_ai.api import router as server_ai_router
 from .api.auth import router as auth_router
 from .api.annotations import router as annotations_router
 from .api.data_portal import router as data_portal_router
@@ -315,7 +314,6 @@ def _register_routers(app: FastAPI) -> None:
         events_router,
         files_router,
         sample_data_router,
-        server_ai_router,
         storage_router,
         tool_caches_router,
         tokenizers_router,

@@ -122,10 +122,6 @@ saving, but a built-in provider marked **Needs API key** cannot list models,
 Preview, or Run until you add one. Custom endpoints may be keyless. Editing
 a key updates future requests; a Run already queued or running keeps the key
 captured when it was submitted.
-A server may also provide its own providers, listed first and marked
-**Provided by this server**: they need no key and can't be edited, and one
-may limit **Requests at once**, so your next Run with it waits until your
-current one finishes.
 When the provider describes its models (OpenRouter, Google, or a LiteLLM
 gateway with model descriptions set), the **Model** list shows a one-line
 description under each model to help you choose; the model name is still what

@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import cast
@@ -30,7 +29,6 @@ from .annotation_openai import (
     OpenAIAnnotationAdapter,
 )
 from .model_descriptions import ModelOption
-from ... import server_ai
 
 # Requests open at once when the Run doesn't say: commercial providers take
 # many; a Custom provider is often a local server that runs one or two.
@@ -63,14 +61,9 @@ def default_max_concurrency(provider_id: str) -> int:
 def resolve_provider_adapter(
     provider_id: str,
     base_url: str | None = None,
-    configuration_id: uuid.UUID | str | None = None,
 ) -> AnnotationProviderAdapter:
-    """Resolve one built-in, trusted Custom, or server AI provider adapter."""
+    """Resolve one built-in or trusted Custom concrete adapter."""
 
-    # A server AI provider is known by its configuration id (issue 411).
-    server_adapter = server_ai.annotation_adapter_for(configuration_id)
-    if server_adapter is not None:
-        return server_adapter
     if provider_id == "custom":
         if base_url is None:
             raise ValueError("Custom annotation providers require a base URL")
@@ -312,11 +305,7 @@ async def annotate_preview(
     """Classify one fresh Preview page from its immutable request."""
 
     return await _annotate_batch(
-        resolve_provider_adapter(
-            request.provider,
-            request.provider_base_url,
-            request.provider_configuration_id,
-        ),
+        resolve_provider_adapter(request.provider, request.provider_base_url),
         request.model,
         api_key,
         request.instruction,
@@ -346,18 +335,12 @@ async def annotate_all(
     if not texts:
         return AnnotationAllResult([], [], 0, 0)
     source = request.source
-    adapter = resolve_provider_adapter(
-        source.provider, source.provider_base_url, source.provider_configuration_id
-    )
+    adapter = resolve_provider_adapter(source.provider, source.provider_base_url)
     config = _inference_config(source)
     size = request.batch_size
     chunks = [texts[start : start + size] for start in range(0, len(texts), size)]
     semaphore = asyncio.Semaphore(
-        # Within a server AI provider's per-person limit (issue 411).
-        server_ai.cap_concurrency(
-            adapter,
-            request.max_concurrency or default_max_concurrency(source.provider),
-        )
+        request.max_concurrency or default_max_concurrency(source.provider)
     )
     completed_rows = 0
     failed_batch_count = 0
