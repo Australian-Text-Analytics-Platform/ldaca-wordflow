@@ -9439,6 +9439,98 @@
         "title": "SequentialTabUpdate",
         "type": "object"
       },
+      "ServerAiProviderConfiguration": {
+        "additionalProperties": false,
+        "description": "Shaped like a provider configuration; never holds a key or the real address.",
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "has_api_key": {
+            "const": true,
+            "title": "Has Api Key",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "const": "custom",
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "base_url",
+          "has_api_key"
+        ],
+        "title": "ServerAiProviderConfiguration",
+        "type": "object"
+      },
+      "ServerAiProviderResource": {
+        "additionalProperties": false,
+        "properties": {
+          "configuration": {
+            "$ref": "#/components/schemas/ServerAiProviderConfiguration"
+          },
+          "default_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Model"
+          },
+          "max_requests_per_user": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Requests Per User"
+          }
+        },
+        "required": [
+          "configuration",
+          "default_model",
+          "max_requests_per_user"
+        ],
+        "title": "ServerAiProviderResource",
+        "type": "object"
+      },
+      "ServerAiProviders": {
+        "additionalProperties": false,
+        "properties": {
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ServerAiProviderResource"
+            },
+            "title": "Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "providers"
+        ],
+        "title": "ServerAiProviders",
+        "type": "object"
+      },
       "SessionResponse": {
         "additionalProperties": false,
         "description": "No-store bootstrap response for both supported deployment profiles.",
@@ -15166,6 +15258,52 @@
         "summary": "Submit Sample Import",
         "tags": [
           "sample-data"
+        ]
+      }
+    },
+    "/api/server-ai-providers": {
+      "get": {
+        "operationId": "list_server_ai_providers",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerAiProviders"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "List Server Ai Providers",
+        "tags": [
+          "annotations"
         ]
       }
     },

@@ -40,7 +40,11 @@ class AnnotationService:
         )
         try:
             discovered = await list_model_options(
-                resolve_provider_adapter(request.provider, request.provider_base_url),
+                resolve_provider_adapter(
+                    request.provider,
+                    request.provider_base_url,
+                    request.provider_configuration_id,
+                ),
                 api_key,
             )
         except AnnotationAiError as exc:

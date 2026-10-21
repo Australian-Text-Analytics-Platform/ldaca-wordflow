@@ -8,6 +8,7 @@ import uuid
 import anyio
 from pydantic import SecretStr, ValidationError
 
+from .. import server_ai
 from ..domain.annotation import AnnotationProviderSnapshot
 from ..infrastructure.storage.private_toml import (
     PrivateTomlError,
@@ -178,6 +179,11 @@ class ProviderCredentialStore:
         *,
         supplied: SecretStr | str | None = None,
     ) -> str | None:
+        # A server AI provider uses no stored or supplied key; callers bind
+        # this key-free marker to the signed-in user (issue 411).
+        server_provider = server_ai.claims_annotation_provider(snapshot, supplied)
+        if server_provider is not None:
+            return server_ai.unbound_credential(server_provider)
         if self._settings.multi_user:
             credential = _secret_value(supplied)
             if snapshot.provider != "custom" and credential is None:

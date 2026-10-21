@@ -1,8 +1,15 @@
 # Hosted Deployment Runbook
 
-This runbook covers running Wordflow as a hosted, multi-user service from a
-checkout behind an HTTPS reverse proxy. Replace hostnames, paths, and release
-refs with the deployment's actual values.
+This runbook is the entry point for running Wordflow as a hosted, multi-user
+service. It covers a checkout behind an HTTPS reverse proxy; replace
+hostnames, paths, and release refs with the deployment's actual values.
+
+Related runbooks:
+
+- [Server image](server-image.md): run the same service from a container image
+  instead of a checkout.
+- [Server AI providers](server-ai-providers.md): offer the server's own LLMs
+  for AI annotation, so people don't need their own keys.
 
 ## Prepare The Checkout
 
@@ -39,16 +46,16 @@ CORS_ALLOWED_ORIGINS=["https://analytics.ldaca.edu.au"]
 SESSION_COOKIE_SECURE=true
 ```
 
-plus the settings of at least one sign-in method below. Start-up stops and
-names the problem when the sign-in configuration is missing or incomplete. All
-settings are listed in
+plus the settings of exactly one sign-in method below. Start-up stops and
+names the setting when the sign-in configuration is incomplete or mixes the
+proxy with another method. All settings are listed in
 [Backend settings](../reference/backend-settings.md).
 
 ### Sign-in
 
 Wordflow can sign people in two ways. Both end in the same Wordflow
-session, so CSRF and Origin checks, event streams and Projects work the same
-with each.
+session, so CSRF and Origin checks, event streams, Projects and server AI
+providers work the same with each.
 
 | Method | Wordflow's role | Needs | Choose it when |
 |---|---|---|---|
@@ -125,6 +132,11 @@ and later honour the number). A full lane queues new work rather than refusing
 it.
 
 ## Provider Credentials
+
+A deployment can also offer its own LLMs for AI annotation, with keys kept on
+the server; see [Server AI providers](server-ai-providers.md). Those keys go in
+the service secret file, and people use those providers without entering
+anything. Everything below is about people's own credentials.
 
 Do not place users' Annotation or Data Portal credentials in the service
 environment or backend Data Root. In multi-user mode, each user enters personal

@@ -91,6 +91,7 @@ failed or invalid projections are never retained.
 | `QUOTATION_SERVICE_TIMEOUT` | Remote quotation timeout |
 | `QUOTATION_SERVICE_MAX_BATCH_SIZE` | Remote quotation batch ceiling |
 | `QUOTATION_REMOTE_ENGINES` | Operator-owned quotation engine allowlist |
+| `SERVER_AI_PROVIDERS_FILE` | Optional YAML file of LLM providers the server offers to every signed-in person; keys stay in the environment under the names the file gives. See [Server AI providers](../runbooks/server-ai-providers.md) (issue 411) |
 
 Single-user mode requires a loopback server host. Wildcard CORS and Host values
 are invalid. Port zero is accepted only by the desktop launcher before it

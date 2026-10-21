@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
 import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
 import { providerConfigurationSecondaryText } from '../aiProviders';
+import { isServerAiConfiguration } from '@/features/server-ai-providers/serverAiProviders';
 import { AddAnnotationProviderDialog } from './AddAnnotationProviderDialog';
 import { EditAnnotationProviderDialog } from './EditAnnotationProviderDialog';
 import { toastError } from '@/lib/toastError';
@@ -117,30 +118,39 @@ export function AiProvidersPreferencesPanel() {
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge variant="outline">
-                      {configuration.has_api_key ? 'Key saved' : 'No key'}
+                      {isServerAiConfiguration(configuration)
+                        ? 'Read-only'
+                        : configuration.has_api_key
+                          ? 'Key saved'
+                          : 'No key'}
                     </Badge>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={pending}
-                      onClick={() => {
-                        setEditTarget(configuration);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={pending}
-                      onClick={() => {
-                        setDeleteTarget(configuration);
-                      }}
-                    >
-                      Delete
-                    </Button>
+                    {/* The server's own providers can't be edited or deleted here. */}
+                    {isServerAiConfiguration(configuration) ? null : (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pending}
+                          onClick={() => {
+                            setEditTarget(configuration);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pending}
+                          onClick={() => {
+                            setDeleteTarget(configuration);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -165,7 +175,12 @@ export function AiProvidersPreferencesPanel() {
           onClick={() => {
             setClearOpen(true);
           }}
-          disabled={pending || credentials.annotationProviders.length === 0}
+          disabled={
+            pending ||
+            credentials.annotationProviders.every((configuration) =>
+              isServerAiConfiguration(configuration),
+            )
+          }
         >
           Clear all providers
         </Button>

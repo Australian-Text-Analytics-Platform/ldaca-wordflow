@@ -79,6 +79,12 @@ replacement and deletion across tabs. In single-user mode, the same facade
 projects the backend-owned collection and invokes its write-only CRUD
 operations without creating a browser credential entry.
 
+Server AI providers come from `GET /api/server-ai-providers` through
+`useServerAiProviders` and are merged ahead of the user's own configurations
+in both modes. They are read-only, carry no secret, take their default model
+and any per-person **Requests at once** cap from that response, and are never
+written to the browser entry or the backend credential file.
+
 Annotation inference controls have one component per provider type rather than
 one universal form with hidden fields. The dispatcher passes only thinking
 state to Anthropic, whose component has no temperature contract; Google,

@@ -45,6 +45,7 @@ from .data_root_config import (
     DataRootConfigStore,
     probe_data_root,
 )
+from . import server_ai
 from .services.sessions import SessionService
 from .services.oauth import OAuthService
 from .services.file_preview import FileReadService
@@ -938,6 +939,8 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
             io_limiter=io_limiter,
         )
         await session_service.initialize()
+        # Checks SERVER_AI_PROVIDERS_FILE (a wrong file stops start-up).
+        server_ai.install(session_service)
         private_toml = PrivateTomlPersistence(
             settings.get_users_root_folder(),
             storage_admission,
