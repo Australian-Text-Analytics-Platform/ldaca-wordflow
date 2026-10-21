@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       local_version:
-        description: "Optional label added to the version, e.g. apollo.3 gives 0.7.15+apollo.3"
+        description: "Optional label added to the version, e.g. site.3 gives 0.7.15+site.3"
         required: false
         type: string
         default: ""
@@ -40,7 +40,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           if [ -n "$LOCAL_VERSION" ] && ! [[ "$LOCAL_VERSION" =~ ^[a-z0-9]+(\.[a-z0-9]+)*$ ]]; then
-            echo "::error::local_version uses lower-case letters, digits and dots, e.g. apollo.3"
+            echo "::error::local_version uses lower-case letters, digits and dots, e.g. site.3"
             exit 1
           fi
           if ! [[ "$IMAGE" =~ ^ghcr\.io/[a-z0-9._/-]+$ ]]; then
@@ -116,7 +116,6 @@ jobs:
           # broken pipe, which fails the step under pipefail.
           listing=$(python -m zipfile -l "$wheel")
           grep -q "ldaca_wordflow/server_ai/adapter.py" <<<"$listing"
-          grep -q "ldaca_wordflow/api/auth_proxy.py" <<<"$listing"
           grep -q "ldaca_wordflow/resources/frontend/build/index.html" <<<"$listing"
 
       - name: Set up Docker Buildx

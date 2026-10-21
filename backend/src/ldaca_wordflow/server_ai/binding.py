@@ -76,7 +76,7 @@ def claims_annotation_provider(
     provider = server_ai_providers().by_id(snapshot.provider_configuration_id)
     if provider is None:
         if _is_placeholder(snapshot.provider_base_url):
-            # For example a Project made on another server, such as Apollo.
+            # For example a Project made on another server.
             raise ProviderCredentialMissingError(
                 "This server doesn't offer the AI provider this Analysis used. "
                 "Choose another provider."
@@ -96,8 +96,7 @@ def claims_annotation_provider(
 
 def _is_placeholder(base_url: str | None) -> bool:
     host = (urlsplit(base_url).hostname or "") if base_url else ""
-    # The deploy/apollo build's placeholder came before the general one.
-    return host.endswith(PLACEHOLDER_HOST_SUFFIX) or host == "apollo-llm.invalid"
+    return host.endswith(PLACEHOLDER_HOST_SUFFIX)
 
 
 def unbound_provider(credential: str | None) -> ServerAiProvider | None:

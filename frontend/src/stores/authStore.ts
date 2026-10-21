@@ -6,13 +6,6 @@ import { deleteSession, getSession } from '@/api';
 import type { SessionResponse } from '@/api';
 import { clearCsrfToken, setCsrfToken } from '@/lib/backend/csrfToken';
 
-/** Full-page navigation, separate so tests can replace it. */
-export const authNavigation = {
-  leave: (url: string): void => {
-    window.location.assign(url);
-  },
-};
-
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 export const REFRESH_FAILURE_THRESHOLD = 3;
 
@@ -133,15 +126,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   refreshAuth: () => get().runAuthFetch('manual'),
 
   logout: async () => {
-    // Behind a sign-in proxy (AUTH_PROXY), the proxy's own session must end
-    // too, or it signs the person straight back in (issue 411).
-    const signOutUrl = get().session?.sign_out_url ?? null;
     await deleteSession({ throwOnError: true });
     clearCsrfToken();
-    if (signOutUrl) {
-      authNavigation.leave(signOutUrl);
-      return;
-    }
     set({ session: null, phase: { status: 'bootstrapping', attempts: 0 } });
     await get().runAuthFetch('bootstrap');
   },

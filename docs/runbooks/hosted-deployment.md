@@ -8,12 +8,8 @@ Related runbooks:
 
 - [Server image](server-image.md): run the same service from a container image
   instead of a checkout.
-- [Sign-in proxy](sign-in-proxy.md): let a proxy in front of Wordflow sign
-  people in (see [Sign-in](#sign-in) for when to choose it).
 - [Server AI providers](server-ai-providers.md): offer the server's own LLMs
   for AI annotation, so people don't need their own keys.
-- [Apollo deployment](apollo-deployment.md): a worked example combining all
-  three on the University of Sydney's Run:ai cluster.
 
 ## Prepare The Checkout
 
@@ -57,18 +53,17 @@ proxy with another method. All settings are listed in
 
 ### Sign-in
 
-Wordflow can sign people in three ways. All three end in the same Wordflow
+Wordflow can sign people in two ways. Both end in the same Wordflow
 session, so CSRF and Origin checks, event streams, Projects and server AI
 providers work the same with each.
 
 | Method | Wordflow's role | Needs | Choose it when |
 |---|---|---|---|
 | Google | Signs people in with Google | A Google OAuth web client | Anyone with a Google account may use the server |
-| OIDC (CILogon, AAF, Keycloak, Run:ai realm) | Runs the OIDC sign-in itself | A client registered with the provider, its secret | The institution has an OIDC provider and can register a client for Wordflow |
-| Sign-in proxy (Run:ai sidecar, oauth2-proxy) | Trusts identity headers from a proxy on the same host or pod | A proxy that signs people in and forwards to Wordflow on loopback | The platform already puts a sign-in proxy in front of the app, or no client can be registered |
+| OIDC (CILogon, AAF, Keycloak) | Runs the OIDC sign-in itself | A client registered with the provider, its secret | The institution has an OIDC provider and can register a client for Wordflow |
 
 Google and OIDC may be offered together; the sign-in page then shows both
-buttons. The sign-in proxy replaces both. Accounts belong to the issuer that
+buttons. Accounts belong to the issuer that
 created them, and an email address belongs to one account, so changing method
 on a server with existing users needs a fresh data folder or a deliberate
 migration.
@@ -96,38 +91,25 @@ The secret file supplies only `CILOGON_CLIENT_SECRET`. See
 [CILogon secrets](cilogon-secrets.md). The sign-in button reads "Sign in with
 SSO" for every OIDC provider (issue 405).
 
-#### OIDC: other providers (Keycloak, the Run:ai realm)
+#### OIDC: other providers (Keycloak)
 
 The same settings work with any OIDC provider that supports discovery, the
 authorization code flow with PKCE (S256) and the `email` claim. Set the
 provider's exact issuer, including any path, and the scopes it defines. For
-example, a client registered in the Run:ai Keycloak realm on the University's
-Apollo cluster:
+example, a client registered in a Keycloak realm:
 
 ```ini
-CILOGON_ISSUER=https://gpu.sydney.edu.au/auth/realms/runai
-CILOGON_CLIENT_ID=<client registered in realm "runai">
+CILOGON_ISSUER=https://sso.example.edu.au/auth/realms/<realm>
+CILOGON_CLIENT_ID=<client registered in that realm>
 CILOGON_REDIRECT_URI=https://<host>/api/auth/cilogon/callback
 CILOGON_SCOPES=["openid","email","profile"]
 ```
 
 `CILOGON_CLIENT_SECRET` goes in the secret file as above. Keycloak doesn't
 define `org.cilogon.userinfo`, so leave it out of `CILOGON_SCOPES`. This needs
-a client registered by the realm's administrators; a Wordflow running as a
-Run:ai workload can instead use the platform's sign-in sidecar as a
-[sign-in proxy](sign-in-proxy.md), which needs no client.
-
-#### Sign-in proxy
-
-```ini
-AUTH_PROXY=true
-AUTH_PROXY_PUBLIC_URL=https://analytics.ldaca.edu.au
-```
-
-Wordflow then refuses to start unless it listens on loopback
-(`SERVER_HOST=127.0.0.1`), on the port the proxy forwards to, and it takes no
-Google or CILogon settings. The header names, sign-out path, account
-namespace and the Run:ai checks are in [Sign-in proxy](sign-in-proxy.md).
+a client registered by the realm's administrators: confidential (with a
+secret), the standard (authorization code) flow, and exactly the redirect URI
+above.
 
 ### Analysis capacity
 
@@ -228,8 +210,7 @@ Run one service process. Do not add Uvicorn workers; see
 
 Terminate TLS at the reverse proxy, preserve the original Host and scheme, use
 long read timeouts for SSE, and disable buffering for `/api/events`.
-Forward to `127.0.0.1:8001` and verify (with a [sign-in proxy](sign-in-proxy.md),
-the sign-in proxy is the hop that forwards to Wordflow):
+Forward to `127.0.0.1:8001` and verify:
 
 ```bash
 curl --fail --silent https://analytics.ldaca.edu.au/health/ready

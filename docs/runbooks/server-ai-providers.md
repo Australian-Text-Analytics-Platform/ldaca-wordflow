@@ -5,7 +5,7 @@ need their own API keys. The server holds the key, sends each person's
 requests to an OpenAI-compatible endpoint (for example a LiteLLM gateway in
 front of vLLM), and can tell the gateway who each request is for.
 
-Issue #411. First used on the University of Sydney's Apollo cluster.
+Issue #411.
 
 ## What people see
 
@@ -35,10 +35,10 @@ environment (the secret file), under the name the file gives:
 ```yaml
 # /etc/ldaca-wordflow/ai-providers.yaml
 providers:
-  - slug: apollo                 # letters, digits and hyphens; never change it
-    name: Apollo LLM             # shown to people
+  - slug: research               # letters, digits and hyphens; never change it
+    name: Research LLM           # shown to people
     base_url: https://litellm.example.edu.au/v1
-    api_key_env: APOLLO_LLM_API_KEY
+    api_key_env: RESEARCH_LLM_API_KEY
     models: [qwen3.8-27b, gemma-4-26b-a4b, ornith-1.5-35b-a3b]
     default_model: qwen3.8-27b
     model_descriptions:
@@ -51,7 +51,7 @@ providers:
 |---|---|---|
 | `slug` | yes | Short id. Lower-case letters, digits and hyphens, up to 40. It names the provider inside Wordflow; keep it fixed once in use. |
 | `name` | yes | What people see. |
-| `configuration_id` | no | A fixed id (UUID) for the provider. By default it is made from the slug. Set it only to keep an id that saved Projects already use (Apollo keeps `3c4d70f7-4c43-5e66-9f39-6a4b478319bc`). |
+| `configuration_id` | no | A fixed id (UUID) for the provider. By default it is made from the slug. Set it only to keep an id that saved Projects already use. |
 | `base_url` | yes | The OpenAI-compatible API root. |
 | `api_key_env` | yes | The name of the environment variable that holds the key. Start-up stops if it isn't set. |
 | `models` | no | Offer and accept only these models, in this order. Without it, every model the endpoint lists is offered, in alphabetical order. |

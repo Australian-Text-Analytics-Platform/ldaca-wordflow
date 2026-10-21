@@ -16,7 +16,7 @@ import {
   withServerAiDefaultModels,
 } from '../serverAiProviders';
 
-const APOLLO_ID = '3c4d70f7-4c43-5e66-9f39-6a4b478319bc';
+const RESEARCH_ID = '5b0d6e2a-8f43-4c1e-9a7d-2c3b4e5f6a71';
 
 const mocks = vi.hoisted(() => ({
   auth: { isAuthenticated: true, isMultiUserMode: true, user: { id: 'user-a' } },
@@ -33,12 +33,12 @@ vi.mock('@/api', async (importOriginal) => ({
   listAnnotationModels: mocks.listAnnotationModels,
 }));
 
-const apollo: ServerAiProvider = {
+const research: ServerAiProvider = {
   configuration: {
-    id: APOLLO_ID,
-    name: 'Apollo LLM',
+    id: RESEARCH_ID,
+    name: 'Research LLM',
     provider: 'custom',
-    base_url: 'https://apollo.server-ai.invalid/v1',
+    base_url: 'https://research.server-ai.invalid/v1',
     has_api_key: true,
   },
   default_model: 'qwen3-32b',
@@ -78,7 +78,7 @@ describe('server AI providers (issue 411)', () => {
   });
 
   it('lists the server providers first, in order, read-only and without a key', async () => {
-    mocks.listServerAiProviders.mockResolvedValue({ data: { providers: [apollo, campus] } });
+    mocks.listServerAiProviders.mockResolvedValue({ data: { providers: [research, campus] } });
     useProviderCredentialsStore.getState().addAnnotationProvider('user-a', {
       name: 'My OpenAI',
       provider: 'openai',
@@ -91,7 +91,7 @@ describe('server AI providers (issue 411)', () => {
       expect(result.current.annotationProviders).toHaveLength(3);
     });
     expect(result.current.annotationProviders.map((item) => item.name)).toEqual([
-      'Apollo LLM',
+      'Research LLM',
       'Campus LLM',
       'My OpenAI',
     ]);
@@ -120,33 +120,35 @@ describe('server AI providers (issue 411)', () => {
     } as never);
     mocks.listAnnotationModels.mockResolvedValue({ data: { models: [] } });
 
-    await listAnnotationModelsWithProviderCredential(apollo.configuration);
+    await listAnnotationModelsWithProviderCredential(research.configuration);
 
     const body = mocks.listAnnotationModels.mock.calls[0]?.[0]?.body as Record<string, unknown>;
     expect(body).not.toHaveProperty('api_key');
-    expect(body.provider_configuration_id).toBe(APOLLO_ID);
+    expect(body.provider_configuration_id).toBe(RESEARCH_ID);
   });
 
   it('knows server providers by their placeholder address', () => {
-    expect(isServerAiConfiguration(apollo.configuration)).toBe(true);
+    expect(isServerAiConfiguration(research.configuration)).toBe(true);
     expect(isServerAiConfiguration({ base_url: 'http://localhost:7888/v1' })).toBe(false);
     expect(isServerAiConfiguration({ base_url: null })).toBe(false);
   });
 
   it('caps requests at once to the provider limit and fills its default model', () => {
-    expect(capServerAiConcurrency([apollo, campus], APOLLO_ID, 8)).toBe(1);
-    expect(capServerAiConcurrency([apollo, campus], campus.configuration.id, 8)).toBe(8);
-    expect(serverAiConcurrencyLimit([apollo], APOLLO_ID)?.note).toBe(
-      'Apollo LLM takes one request at a time for each person, so Run sends at most one request at once.',
+    expect(capServerAiConcurrency([research, campus], RESEARCH_ID, 8)).toBe(1);
+    expect(capServerAiConcurrency([research, campus], campus.configuration.id, 8)).toBe(8);
+    expect(serverAiConcurrencyLimit([research], RESEARCH_ID)?.note).toBe(
+      'Research LLM takes one request at a time for each person, so Run sends at most one request at once.',
     );
-    expect(withServerAiDefaultModels([apollo, campus], {})).toEqual({ [APOLLO_ID]: 'qwen3-32b' });
-    expect(withServerAiDefaultModels([apollo], { [APOLLO_ID]: 'llama' })).toEqual({
-      [APOLLO_ID]: 'llama',
+    expect(withServerAiDefaultModels([research, campus], {})).toEqual({
+      [RESEARCH_ID]: 'qwen3-32b',
+    });
+    expect(withServerAiDefaultModels([research], { [RESEARCH_ID]: 'llama' })).toEqual({
+      [RESEARCH_ID]: 'llama',
     });
   });
 
   it('shows the limit note and does not allow more', () => {
-    const limit = serverAiConcurrencyLimit([apollo], APOLLO_ID);
+    const limit = serverAiConcurrencyLimit([research], RESEARCH_ID);
     render(
       <AnnotationRunAllSettings
         maxRetriesPerBatch={2}

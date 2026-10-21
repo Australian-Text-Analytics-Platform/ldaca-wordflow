@@ -34,6 +34,4 @@ EXPOSE 8001
 # tini forwards SIGTERM to the backend only; the backend stops its own
 # Analysis workers and marks them interrupted (as KillMode=mixed in systemd).
 ENTRYPOINT ["/usr/bin/tini", "--"]
-# Behind a sign-in proxy (AUTH_PROXY) bind loopback instead:
-#   ldaca-wordflow --multi-user --host 127.0.0.1 --port <port>
 CMD ["ldaca-wordflow", "--multi-user", "--host", "0.0.0.0", "--port", "8001"]

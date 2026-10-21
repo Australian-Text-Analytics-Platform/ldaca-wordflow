@@ -39,6 +39,3 @@ class SessionResponse(BaseModel):
     providers: list[AuthProvider]
     google_client_id: str | None = None
     csrf_token: str | None = None
-    # With a sign-in proxy (AUTH_PROXY), where to send the browser after
-    # signing out, so the proxy's own session ends too (issue 411).
-    sign_out_url: str | None = None

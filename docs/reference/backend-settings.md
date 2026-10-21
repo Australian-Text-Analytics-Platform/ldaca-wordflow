@@ -110,17 +110,11 @@ constructs final Settings.
 | `CILOGON_REDIRECT_URI` | Exact registered callback URL |
 | `SESSION_TTL_HOURS` | Hosted Session lifetime |
 | `SESSION_COOKIE_SECURE` | Require HTTPS Session cookie |
-| `AUTH_PROXY` | Trust a sign-in proxy's identity headers instead of Google or CILogon; Wordflow then binds loopback only. See [Sign-in proxy](../runbooks/sign-in-proxy.md) (issue 411) |
-| `AUTH_PROXY_PUBLIC_URL` | The https origin people use; required with `AUTH_PROXY` |
-| `AUTH_PROXY_HEADER_USER` / `_EMAIL` / `_NAME` | Identity header names; default `X-Forwarded-User`, `X-Forwarded-Email`, `X-Forwarded-Preferred-Username` |
-| `AUTH_PROXY_SIGN_OUT_PATH` | The proxy's sign-out path; default `/oauth2/sign_out` |
-| `AUTH_PROXY_ISSUER` | Account namespace for proxy sign-ins; default `auth-proxy:<host>` |
-| `AUTH_PROXY_LABEL` | How the sign-in page names the proxy |
 
-Multi-user mode requires Google, the complete CILogon client, secret, and
-redirect configuration, or `AUTH_PROXY`. `CILOGON_ISSUER` is the provider's exact issuer: an
+Multi-user mode requires Google, or the complete CILogon client, secret, and
+redirect configuration. `CILOGON_ISSUER` is the provider's exact issuer: an
 origin such as `https://cilogon.aaf.edu.au`, or an origin with a path such as
-the Keycloak realm `https://gpu.sydney.edu.au/auth/realms/runai`. Discovery is
+a Keycloak realm `https://sso.example.edu.au/auth/realms/<realm>`. Discovery is
 derived internally by appending `/.well-known/openid-configuration` to it, and
 the discovered endpoints must be on the issuer's HTTPS host.
 

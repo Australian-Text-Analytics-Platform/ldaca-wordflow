@@ -60,8 +60,6 @@ this direction and the absence of removed facades.
 - `EventHub` is the single live refresh transport for Workspaces, Tabs,
   Analyses, and User File Imports; it is not durable state.
 - `SessionService` and `OAuthService` own identity state and provider exchange.
-  Under the sign-in proxy, `AuthProxyIdentityMiddleware` replaces the provider
-  exchange and still creates Sessions through `SessionService`.
 - `UserPreferenceStore` owns only per-user non-secret preferences.
   `ProviderCredentialStore` independently owns the single-user root's ordered
   Annotation Provider Configuration collection, Data Portal credential, and

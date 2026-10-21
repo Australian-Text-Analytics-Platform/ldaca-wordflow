@@ -65,16 +65,6 @@ identities accept an email when that optional claim is absent, reject an
 explicitly unverified or malformed claim, and use the configured issuer plus
 the provider subject as identity. Email never links identities implicitly.
 
-Under the sign-in proxy (`AUTH_PROXY`), Google and CILogon are off and
-`AuthProxyIdentityMiddleware` replaces their callbacks. It reads the identity
-headers only from loopback peers, which the launcher enforces by binding
-loopback with proxy-header rewriting off, strips every other cookie and any
-`Authorization` header before routing, and turns the identity into an ordinary
-Session under `AUTH_PROXY_ISSUER`. The one deliberate email link is a known
-email arriving with a new proxy user ID for an account with no other identity,
-which is re-linked and logged. The Session bootstrap reports the proxy's
-`sign_out_url`, which the browser follows after logout. See
-[Sign-in proxy](../../runbooks/sign-in-proxy.md).
 
 CORS and trusted Host rules are explicit settings. No Wordflow API route accepts
 bearer authentication or query-string credentials; typed write-only body

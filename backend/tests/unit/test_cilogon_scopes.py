@@ -1,7 +1,7 @@
 """Configurable OIDC scopes and issuers with a path (issue 403).
 
-The hosted sign-in was built for CILogon; other OIDC providers such as the
-Run:ai Keycloak realm on Apollo need their own scopes and a realm issuer.
+The hosted sign-in was built for CILogon; other OIDC providers such as a
+Keycloak realm need their own scopes and a realm issuer.
 The defaults stay exactly as before.
 """
 
@@ -21,7 +21,7 @@ from ldaca_wordflow.runtime import Runtime, runtime_context
 from ldaca_wordflow.settings import Settings
 
 DEFAULT_SCOPES = ("openid", "email", "profile", "org.cilogon.userinfo")
-RUNAI_ISSUER = "https://gpu.sydney.edu.au/auth/realms/runai"
+KEYCLOAK_ISSUER = "https://sso.example.edu/auth/realms/research"
 
 
 def test_default_scopes_are_unchanged() -> None:
@@ -51,10 +51,10 @@ def test_bad_scopes_are_refused_at_startup(scopes, message) -> None:
 
 
 def test_an_issuer_may_have_a_path_such_as_a_keycloak_realm() -> None:
-    settings = Settings(cilogon_issuer=f"{RUNAI_ISSUER}/")
-    assert settings.get_cilogon_issuer() == RUNAI_ISSUER
+    settings = Settings(cilogon_issuer=f"{KEYCLOAK_ISSUER}/")
+    assert settings.get_cilogon_issuer() == KEYCLOAK_ISSUER
     assert settings.get_cilogon_discovery_url() == (
-        f"{RUNAI_ISSUER}/.well-known/openid-configuration"
+        f"{KEYCLOAK_ISSUER}/.well-known/openid-configuration"
     )
     assert Settings().get_cilogon_issuer() == "https://test.cilogon.aaf.edu.au"
 
@@ -62,14 +62,14 @@ def test_an_issuer_may_have_a_path_such_as_a_keycloak_realm() -> None:
 @pytest.mark.parametrize(
     "issuer",
     [
-        "http://gpu.sydney.edu.au/auth/realms/runai",
-        "https://gpu.sydney.edu.au//realms/runai",
-        "https://gpu.sydney.edu.au/auth/../realms/runai",
-        "https://gpu.sydney.edu.au/auth/realms/runai?x=1",
-        "https://gpu.sydney.edu.au/auth/realms/runai#top",
-        "https://user@gpu.sydney.edu.au/auth/realms/runai",
-        "https://gpu.sydney.edu.au:8443/auth/realms/runai",
-        "https://gpu.sydney.edu.au/auth/realms/run ai",
+        "http://sso.example.edu/auth/realms/research",
+        "https://sso.example.edu//realms/research",
+        "https://sso.example.edu/auth/../realms/research",
+        "https://sso.example.edu/auth/realms/research?x=1",
+        "https://sso.example.edu/auth/realms/research#top",
+        "https://user@sso.example.edu/auth/realms/research",
+        "https://sso.example.edu:8443/auth/realms/research",
+        "https://sso.example.edu/auth/realms/re search",
     ],
 )
 def test_issuer_paths_stay_strict(issuer) -> None:
@@ -97,7 +97,7 @@ def test_sign_in_asks_for_the_configured_scopes(
         multi_user=True,
         cilogon_client_id="wordflow-client",
         cilogon_client_secret=SecretStr("secret"),
-        cilogon_issuer=RUNAI_ISSUER,
+        cilogon_issuer=KEYCLOAK_ISSUER,
         cilogon_redirect_uri="https://wordflow.example/api/auth/cilogon/callback",
         cors_allowed_origins=(),
         trusted_hosts=("wordflow.example",),
@@ -116,8 +116,8 @@ def test_sign_in_asks_for_the_configured_scopes(
 
         async def discovered() -> dict[str, str]:
             return {
-                "issuer": RUNAI_ISSUER,
-                "authorization_endpoint": f"{RUNAI_ISSUER}/protocol/openid-connect/auth",
+                "issuer": KEYCLOAK_ISSUER,
+                "authorization_endpoint": f"{KEYCLOAK_ISSUER}/protocol/openid-connect/auth",
             }
 
         monkeypatch.setattr(captured["runtime"].oauth_service, "cilogon_config", discovered)
@@ -126,7 +126,7 @@ def test_sign_in_asks_for_the_configured_scopes(
     assert response.status_code == 302, response.text
     location = urlsplit(response.headers["location"])
     assert f"{location.scheme}://{location.netloc}{location.path}" == (
-        f"{RUNAI_ISSUER}/protocol/openid-connect/auth"
+        f"{KEYCLOAK_ISSUER}/protocol/openid-connect/auth"
     )
     query = parse_qs(location.query)
     assert query["scope"] == [expected]

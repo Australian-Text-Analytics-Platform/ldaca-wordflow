@@ -66,18 +66,18 @@ from .test_analysis_service import (
     _submit,
 )
 
-GATEWAY_KEY = "sk-apollo-gateway-secret-0123456789"
-GATEWAY_URL = "https://litellm.apollo.example.edu/v1"
-KEY_ENV = "APOLLO_LLM_API_KEY"
+GATEWAY_KEY = "sk-research-gateway-secret-0123456789"
+GATEWAY_URL = "https://litellm.research.example.edu/v1"
+KEY_ENV = "RESEARCH_LLM_API_KEY"
 CONFIG = InferenceConfig(temperature=0.0, reasoning_enabled=False, reasoning_effort="low")
-# Apollo keeps the configuration id of the deploy/apollo build.
-APOLLO_ID = uuid.UUID("3c4d70f7-4c43-5e66-9f39-6a4b478319bc")
-PLACEHOLDER = "https://apollo.server-ai.invalid/v1"
+# A fixed configuration id, as an operator may set to keep saved Projects pointing here.
+RESEARCH_ID = uuid.UUID("5b0d6e2a-8f43-4c1e-9a7d-2c3b4e5f6a71")
+PLACEHOLDER = "https://research.server-ai.invalid/v1"
 
 PROVIDER: dict[str, Any] = {
-    "slug": "apollo",
-    "name": "Apollo LLM",
-    "configuration_id": str(APOLLO_ID),
+    "slug": "research",
+    "name": "Research LLM",
+    "configuration_id": str(RESEARCH_ID),
     "base_url": GATEWAY_URL,
     "api_key_env": KEY_ENV,
     "models": ["llama-3.3-70b", "qwen3-32b"],
@@ -105,7 +105,7 @@ def _write_providers(
 
 
 def _provider() -> ServerAiProvider:
-    provider = server_ai_providers().by_slug("apollo")
+    provider = server_ai_providers().by_slug("research")
     assert provider is not None
     return provider
 
@@ -132,7 +132,7 @@ def _no_network_model_info(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def apollo_env(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+def research_env(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setenv(KEY_ENV, GATEWAY_KEY)
     _write_providers(tmp_path_factory.mktemp("config"), monkeypatch, PROVIDER)
     _clear()
@@ -141,7 +141,7 @@ def apollo_env(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.Mon
 
 
 @pytest.fixture
-def no_apollo_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+def no_research_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.delenv(PROVIDERS_FILE_ENV, raising=False)
     _clear()
     yield
@@ -162,7 +162,7 @@ def _install_resolver(monkeypatch: pytest.MonkeyPatch, end_users: dict[str, str]
 
 def _snapshot(**update: Any) -> AnnotationProviderSnapshot:
     values: dict[str, Any] = {
-        "provider_configuration_id": APOLLO_ID,
+        "provider_configuration_id": RESEARCH_ID,
         "provider": "custom",
         "provider_base_url": PLACEHOLDER,
     }
@@ -221,7 +221,7 @@ class _StatusError(Exception):
 
 def _binding(user_id: str = "user-a", end_user: str = "alice@uni.edu", purpose="run") -> str:
     return server_binding.encode_binding(
-        server_binding.ServerAiBinding("apollo", purpose, user_id, end_user)
+        server_binding.ServerAiBinding("research", purpose, user_id, end_user)
     )
 
 
@@ -229,10 +229,10 @@ def _binding(user_id: str = "user-a", end_user: str = "alice@uni.edu", purpose="
 
 
 def test_the_file_names_the_key_and_a_missing_key_stops_start_up(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    research_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     provider = _provider()
-    assert provider.id == APOLLO_ID
+    assert provider.id == RESEARCH_ID
     assert GATEWAY_KEY not in repr(provider)
     assert GATEWAY_KEY not in str(provider.model_dump())
     monkeypatch.delenv(KEY_ENV)
@@ -253,7 +253,7 @@ def test_the_file_names_the_key_and_a_missing_key_stops_start_up(
     ],
 )
 def test_a_wrong_providers_file_stops_start_up_without_showing_secrets(
-    apollo_env: None,
+    research_env: None,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     change: dict[str, Any],
@@ -269,15 +269,15 @@ def test_a_wrong_providers_file_stops_start_up_without_showing_secrets(
 
 
 def test_providers_need_their_own_slug_and_id(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    research_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     path = _write_providers(tmp_path, monkeypatch, PROVIDER, {**PROVIDER, "slug": "other"})
     with pytest.raises(ValueError, match="own slug and configuration_id"):
         load_providers(path)
 
 
-def test_provider_route_lists_apollo_without_key_or_gateway_url(
-    apollo_env: None, multi_user_test_client: TestClient
+def test_provider_route_lists_research_without_key_or_gateway_url(
+    research_env: None, multi_user_test_client: TestClient
 ) -> None:
     response = multi_user_test_client.get("/api/server-ai-providers")
 
@@ -287,8 +287,8 @@ def test_provider_route_lists_apollo_without_key_or_gateway_url(
         "providers": [
             {
                 "configuration": {
-                    "id": str(APOLLO_ID),
-                    "name": "Apollo LLM",
+                    "id": str(RESEARCH_ID),
+                    "name": "Research LLM",
                     "provider": "custom",
                     "base_url": PLACEHOLDER,
                     "has_api_key": True,
@@ -305,14 +305,14 @@ def test_provider_route_lists_apollo_without_key_or_gateway_url(
 
 
 def test_models_are_listed_on_the_server_with_the_gateway_key(
-    apollo_env: None,
+    research_env: None,
     multi_user_test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     calls = _install_fake_openai(monkeypatch, [])
     body = {
-        "provider_configuration_id": str(APOLLO_ID),
+        "provider_configuration_id": str(RESEARCH_ID),
         "provider": "custom",
         "provider_base_url": PLACEHOLDER,
     }
@@ -335,7 +335,7 @@ def test_models_are_listed_on_the_server_with_the_gateway_key(
 
 
 def test_gateway_errors_never_carry_the_key(
-    apollo_env: None,
+    research_env: None,
     multi_user_test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
@@ -365,7 +365,7 @@ def test_gateway_errors_never_carry_the_key(
     response = multi_user_test_client.post(
         "/api/annotation-providers/models",
         json={
-            "provider_configuration_id": str(APOLLO_ID),
+            "provider_configuration_id": str(RESEARCH_ID),
             "provider": "custom",
             "provider_base_url": PLACEHOLDER,
         },
@@ -374,10 +374,10 @@ def test_gateway_errors_never_carry_the_key(
     assert response.status_code >= 400
     assert GATEWAY_KEY not in response.text
     assert GATEWAY_KEY not in caplog.text
-    assert "sk-apollo" not in response.text + caplog.text
+    assert "sk-research" not in response.text + caplog.text
 
 
-def test_redact_removes_keys_but_keeps_ordinary_words(apollo_env: None) -> None:
+def test_redact_removes_keys_but_keeps_ordinary_words(research_env: None) -> None:
     assert GATEWAY_KEY not in redact(f"bad key {GATEWAY_KEY}")
     assert redact("Authorization: Bearer abcdefghijklmnop") == (
         "Authorization: Bearer [redacted]"
@@ -397,19 +397,19 @@ _MODEL_INFO = {
 }
 
 
-def _list_apollo_models(client: TestClient) -> Any:
+def _list_research_models(client: TestClient) -> Any:
     return client.post(
         "/api/annotation-providers/models",
         json={
-            "provider_configuration_id": str(APOLLO_ID),
+            "provider_configuration_id": str(RESEARCH_ID),
             "provider": "custom",
             "provider_base_url": PLACEHOLDER,
         },
     )
 
 
-def test_apollo_models_keep_the_configured_order_with_gateway_descriptions(
-    apollo_env: None,
+def test_research_models_keep_the_configured_order_with_gateway_descriptions(
+    research_env: None,
     multi_user_test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
@@ -421,7 +421,7 @@ def test_apollo_models_keep_the_configured_order_with_gateway_descriptions(
     monkeypatch.setattr(model_descriptions, "_http_client", _model_info_responder(_MODEL_INFO))
     caplog.set_level(logging.DEBUG)
 
-    response = _list_apollo_models(multi_user_test_client)
+    response = _list_research_models(multi_user_test_client)
 
     assert response.status_code == 200
     body = response.json()
@@ -437,7 +437,7 @@ def test_apollo_models_keep_the_configured_order_with_gateway_descriptions(
 
 
 def test_configured_descriptions_win_over_the_gateway(
-    apollo_env: None,
+    research_env: None,
     multi_user_test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -450,7 +450,7 @@ def test_configured_descriptions_win_over_the_gateway(
     _install_fake_openai(monkeypatch, [])
     monkeypatch.setattr(model_descriptions, "_http_client", _model_info_responder(_MODEL_INFO))
 
-    body = _list_apollo_models(multi_user_test_client).json()
+    body = _list_research_models(multi_user_test_client).json()
 
     assert body["models"] == ["llama-3.3-70b", "qwen3-32b"]
     assert body["model_descriptions"] == {
@@ -459,12 +459,12 @@ def test_configured_descriptions_win_over_the_gateway(
     }
 
 
-def test_a_gateway_without_model_info_still_lists_apollo_models(
-    apollo_env: None, multi_user_test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+def test_a_gateway_without_model_info_still_lists_research_models(
+    research_env: None, multi_user_test_client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _install_fake_openai(monkeypatch, [])
 
-    body = _list_apollo_models(multi_user_test_client).json()
+    body = _list_research_models(multi_user_test_client).json()
 
     assert body["models"] == ["llama-3.3-70b", "qwen3-32b"]
     assert body["model_descriptions"] == {}
@@ -475,7 +475,7 @@ def test_a_gateway_without_model_info_still_lists_apollo_models(
     [{"qwen3-32b": ""}, {"": "text"}, ["qwen3-32b"], {"qwen3-32b": "x" * 201}],
 )
 def test_wrong_model_descriptions_are_refused(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, value: Any
+    research_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, value: Any
 ) -> None:
     path = _write_providers(tmp_path, monkeypatch, {**PROVIDER, "model_descriptions": value})
     with pytest.raises(ValueError, match="model_descriptions"):
@@ -483,8 +483,8 @@ def test_wrong_model_descriptions_are_refused(
 
 
 @pytest.mark.anyio
-async def test_apollo_always_sends_the_labels_schema(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch
+async def test_research_always_sends_the_labels_schema(
+    research_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from ldaca_wordflow.infrastructure.providers.annotation_ai import build_labels_schema
 
@@ -506,8 +506,8 @@ async def test_apollo_always_sends_the_labels_schema(
 
 
 @pytest.mark.anyio
-async def test_user_field_comes_from_the_binding_and_only_for_apollo(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch
+async def test_user_field_comes_from_the_binding_and_only_for_research(
+    research_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls = _install_fake_openai(monkeypatch, ['{"labels": ["Relevant"]}'] * 3)
 
@@ -530,7 +530,7 @@ async def test_user_field_comes_from_the_binding_and_only_for_apollo(
 
 @pytest.mark.anyio
 async def test_forged_or_client_supplied_bindings_are_refused(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch
+    research_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls = _install_fake_openai(monkeypatch, [])
     forged = _binding(end_user="mallory@uni.edu")
@@ -563,7 +563,7 @@ async def test_forged_or_client_supplied_bindings_are_refused(
 
 @pytest.mark.anyio
 async def test_run_submission_binds_the_session_user_and_stores_no_secret(
-    apollo_env: None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    research_env: None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _install_resolver(monkeypatch, {"user": "alice@uni.edu"})
     workspaces, workspace_id, node_id, tab_id = await _opened_workspace_with_tab(
@@ -579,14 +579,14 @@ async def test_run_submission_binds_the_session_user_and_stores_no_secret(
         class_column="text",
         description_column="text",
         classes=[{"name": "Relevant", "description": ""}],
-        provider_configuration_id=APOLLO_ID,
+        provider_configuration_id=RESEARCH_ID,
         provider="custom",
         provider_base_url=PLACEHOLDER,
         model="qwen3-32b",
         instruction="Classify the text",
     )
-    # A previous Apollo Run of this user is still going.
-    assert server_ai.user_gate().try_start_run("apollo", "user")
+    # A previous Research LLM Run of this user is still going.
+    assert server_ai.user_gate().try_start_run("research", "user")
 
     created = await _submit(
         service,
@@ -617,7 +617,7 @@ async def test_run_submission_binds_the_session_user_and_stores_no_secret(
 
 @pytest.mark.anyio
 async def test_end_user_comes_from_the_account_email_or_subject(
-    apollo_env: None, multi_user_test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    research_env: None, multi_user_test_client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     user_id = multi_user_test_client.get("/api/session").json()["user"]["id"]
     resolver = server_ai._resolver
@@ -634,7 +634,7 @@ async def test_end_user_comes_from_the_account_email_or_subject(
 
 
 @pytest.mark.anyio
-async def test_same_user_runs_wait_while_other_users_go_ahead(apollo_env: None) -> None:
+async def test_same_user_runs_wait_while_other_users_go_ahead(research_env: None) -> None:
     started: list[str] = []
     releases = {name: anyio.Event() for name in ("a1", "a2", "b1")}
     workspace_id = uuid.uuid4()
@@ -680,23 +680,23 @@ async def test_same_user_runs_wait_while_other_users_go_ahead(apollo_env: None) 
         releases["b1"].set()
         await scheduler.wait_idle()
         await scheduler.stop_dispatch()
-    assert not server_ai.user_gate().run_active("apollo", "user-a")
+    assert not server_ai.user_gate().run_active("research", "user-a")
 
 
 @pytest.mark.anyio
 async def test_preview_is_refused_during_a_run_and_previews_take_turns(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch
+    research_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     gate = server_ai.user_gate()
     provider = _provider()
-    assert gate.try_start_run("apollo", "user-a")
+    assert gate.try_start_run("research", "user-a")
     with pytest.raises(ServerAiRunActiveError, match="Preview more rows"):
         async with gate.preview(provider, "user-a"):
             pass
     # Another user's Preview is not blocked.
     async with gate.preview(provider, "user-b"):
         pass
-    gate.finish_run("apollo", "user-a")
+    gate.finish_run("research", "user-a")
 
     in_flight = 0
     most = 0
@@ -722,13 +722,13 @@ async def test_preview_is_refused_during_a_run_and_previews_take_turns(
     assert most == 1
     # A Run does not start while the user's Preview request is in flight.
     async with gate.preview(provider, "user-a"):
-        assert not gate.try_start_run("apollo", "user-a")
-    assert gate.try_start_run("apollo", "user-a")
+        assert not gate.try_start_run("research", "user-a")
+    assert gate.try_start_run("research", "user-a")
 
 
 @pytest.mark.anyio
 async def test_a_run_sends_one_request_at_a_time(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch
+    research_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     in_flight = 0
     most = 0
@@ -755,7 +755,7 @@ async def test_a_run_sends_one_request_at_a_time(
 
 @pytest.mark.anyio
 async def test_rate_limits_are_retried_with_backoff_without_failing_the_batch(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch
+    research_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sleeps: list[float] = []
 
@@ -786,7 +786,7 @@ async def test_rate_limits_are_retried_with_backoff_without_failing_the_batch(
 
 @pytest.mark.anyio
 async def test_without_a_providers_file_nothing_changes(
-    no_apollo_env: None, tmp_path: Path
+    no_research_env: None, tmp_path: Path
 ) -> None:
     assert not server_ai_providers()
     other = _snapshot(
@@ -804,7 +804,7 @@ async def test_without_a_providers_file_nothing_changes(
     store = _credential_store(tmp_path, multi_user=True)
     assert await store.resolve_annotation_provider(other, supplied="key") == "key"
     # A Project made on a server with a provider this one doesn't offer.
-    for placeholder in (PLACEHOLDER, "https://apollo-llm.invalid/v1"):
+    for placeholder in (PLACEHOLDER, "https://elsewhere.server-ai.invalid/v1"):
         with pytest.raises(Exception, match="doesn't offer the AI provider"):
             await store.resolve_annotation_provider(
                 _snapshot(provider_base_url=placeholder), supplied=None
@@ -812,7 +812,7 @@ async def test_without_a_providers_file_nothing_changes(
 
 
 def test_the_provider_list_is_empty_without_a_file(
-    no_apollo_env: None, multi_user_test_client: TestClient
+    no_research_env: None, multi_user_test_client: TestClient
 ) -> None:
     assert multi_user_test_client.get("/api/server-ai-providers").json() == {"providers": []}
 
@@ -826,7 +826,7 @@ def _annotation_source():
         class_column="text",
         description_column="text",
         classes=[{"name": "Relevant", "description": ""}],
-        provider_configuration_id=APOLLO_ID,
+        provider_configuration_id=RESEARCH_ID,
         provider="custom",
         provider_base_url=PLACEHOLDER,
         model="qwen3-32b",
@@ -847,13 +847,13 @@ OPEN_PROVIDER: dict[str, Any] = {
 
 @pytest.mark.anyio
 async def test_several_providers_keep_their_own_keys_ids_and_limits(
-    apollo_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    research_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("CAMPUS_LLM_KEY", "sk-campus-secret-987654321")
     _write_providers(tmp_path, monkeypatch, PROVIDER, OPEN_PROVIDER)
     providers = server_ai_providers()
     campus = providers.by_slug("campus")
-    assert campus is not None and campus.id != APOLLO_ID
+    assert campus is not None and campus.id != RESEARCH_ID
     # A stable id from the slug, and a placeholder named after it.
     assert campus.id == ServerAiProvider.model_validate(OPEN_PROVIDER).id
     assert campus.placeholder_base_url == "https://campus.server-ai.invalid/v1"
@@ -880,7 +880,7 @@ async def test_several_providers_keep_their_own_keys_ids_and_limits(
 
 
 def test_the_route_lists_every_provider_in_file_order(
-    apollo_env: None,
+    research_env: None,
     multi_user_test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -891,6 +891,6 @@ def test_the_route_lists_every_provider_in_file_order(
     response = multi_user_test_client.get("/api/server-ai-providers")
 
     providers = response.json()["providers"]
-    assert [item["configuration"]["name"] for item in providers] == ["Campus LLM", "Apollo LLM"]
+    assert [item["configuration"]["name"] for item in providers] == ["Campus LLM", "Research LLM"]
     assert providers[0]["max_requests_per_user"] is None
     assert "sk-campus" not in response.text and "llm.campus.example" not in response.text

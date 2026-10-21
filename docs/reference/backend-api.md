@@ -11,7 +11,7 @@ proof, except provider callbacks with their own one-use validation.
 
 | Method and path | Operation ID | Success | Purpose |
 |---|---|---:|---|
-| `GET /api/session` | `get_session` | 200 | Public optional-cookie bootstrap, identity, providers, CSRF token, and the sign-in proxy's `sign_out_url` |
+| `GET /api/session` | `get_session` | 200 | Public optional-cookie bootstrap, identity, providers, and CSRF token |
 | `DELETE /api/session` | `delete_session` | 204 | Revoke exactly the presented hosted Session |
 | `POST /api/auth/google/callback` | `google_callback` | 303 | Public Google credential callback |
 | `GET /api/auth/cilogon/login` | `cilogon_login` | 302 | Public CILogon authorization redirect |
@@ -85,11 +85,6 @@ placeholder of a provider this server doesn't offer returns
 characters) for the models the provider describes; models without one are
 absent.
 
-`GET /api/session` reports `sign_out_url` only under the sign-in proxy: the
-browser goes there after `DELETE /api/session` so the proxy's session ends
-too. Behind the proxy, a request without the proxy's identity headers returns
-`401 auth_proxy_sign_in_required`. See
-[Sign-in proxy](../runbooks/sign-in-proxy.md).
 
 Model-list and Preview provider failures return HTTP 502 with the deepest
 provider exception type and complete message plus one of `annotation_provider_authentication_failed`,

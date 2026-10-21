@@ -13,7 +13,6 @@ import json
 import logging
 import os
 import socket
-from ipaddress import ip_address
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -180,16 +179,6 @@ async def _serve_bound(
         listener.close()
 
 
-# Hosts the server may bind with AUTH_PROXY: literal loopback addresses only,
-# never a name ("localhost" depends on name resolution) and never a wildcard.
-_LOOPBACK_BIND_HOSTS = frozenset({"127.0.0.1", "::1"})
-
-
-def is_loopback_bind_host(host: str) -> bool:
-    candidate = host.strip().strip("[]")
-    return candidate in _LOOPBACK_BIND_HOSTS and ip_address(candidate).is_loopback
-
-
 def _prepare_server(
     *,
     serve_frontend: bool,
@@ -216,10 +205,6 @@ def _prepare_server(
         raise ValueError("Port zero requires a backend-only launch with a startup file")
     if requested_port < 0 or requested_port > 65535:
         raise ValueError("Port must be between 0 and 65535")
-    # A sign-in proxy's identity headers are trusted only from the loopback
-    # proxy, so the server binds a literal loopback address (issue 411).
-    if configured.auth_proxy and not is_loopback_bind_host(selected_host):
-        raise ValueError("AUTH_PROXY requires --host 127.0.0.1 or ::1")
 
     try:
         listener = _bind_socket(selected_host, requested_port, backlog=2048)
@@ -244,9 +229,6 @@ def _prepare_server(
             reload=False,
             log_level="info",
             timeout_graceful_shutdown=CONNECTION_DRAIN_SECONDS,
-            # With a sign-in proxy, scope["client"] stays the real socket peer;
-            # X-Forwarded-For is never trusted.
-            proxy_headers=not current.auth_proxy,
         )
         server = _stream_closing_server(uvicorn.Server)(config)
         return server, listener, current, startup_path

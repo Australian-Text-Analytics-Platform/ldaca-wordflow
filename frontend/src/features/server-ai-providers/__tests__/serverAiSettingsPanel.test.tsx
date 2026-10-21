@@ -8,10 +8,10 @@ vi.mock('@/features/provider-credentials/useProviderCredentials', () => ({
     error: null,
     annotationProviders: [
       {
-        id: '3c4d70f7-4c43-5e66-9f39-6a4b478319bc',
-        name: 'Apollo LLM',
+        id: '5b0d6e2a-8f43-4c1e-9a7d-2c3b4e5f6a71',
+        name: 'Research LLM',
         provider: 'custom',
-        base_url: 'https://apollo.server-ai.invalid/v1',
+        base_url: 'https://research.server-ai.invalid/v1',
         has_api_key: true,
         credentialRevision: 1,
       },
@@ -29,7 +29,7 @@ describe('a server AI provider in Settings (issue 411)', () => {
   it('is read-only and never shows its placeholder address', () => {
     render(<AiProvidersPreferencesPanel />);
 
-    expect(screen.getByText('Apollo LLM')).toBeInTheDocument();
+    expect(screen.getByText('Research LLM')).toBeInTheDocument();
     expect(screen.getByText('Read-only')).toBeInTheDocument();
     expect(screen.getByText('Provided by this server')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();

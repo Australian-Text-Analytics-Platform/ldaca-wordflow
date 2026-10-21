@@ -5,10 +5,10 @@ environment; the file names the variable that holds each key. Without the
 file, Wordflow offers no server providers and behaves as before.
 
     providers:
-      - slug: apollo
-        name: Apollo LLM
+      - slug: research
+        name: Research LLM
         base_url: https://litellm.example.edu.au/v1
-        api_key_env: APOLLO_LLM_API_KEY
+        api_key_env: RESEARCH_LLM_API_KEY
         models: [qwen3.8-27b]
         send_user: email
         max_requests_per_user: 1
@@ -47,7 +47,7 @@ class ServerAiProvider(BaseModel):
     slug: str
     name: str = Field(min_length=1, max_length=80)
     # Optional fixed id, so Projects saved against an earlier id still point
-    # here (Apollo kept its id from the deploy/apollo build).
+    # here (for example after moving a provider from another build or server).
     configuration_id: uuid.UUID | None = None
     base_url: str = Field(max_length=2_000)
     api_key_env: str
