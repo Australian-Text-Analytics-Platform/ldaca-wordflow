@@ -1049,7 +1049,7 @@ wheels = [
 
 [[package]]
 name = "ldaca-wordflow"
-version = "0.7.15rc0"
+version = "0.7.15"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
