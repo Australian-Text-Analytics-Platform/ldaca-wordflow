@@ -28,6 +28,7 @@ import ProjectGraph from './ProjectGraph';
 import { useProjectViewState } from './projectViewState';
 import { useRenameWorkspace } from './reconcileRenames';
 import { TaskCentre } from './TaskCentre';
+import { TaskHistory } from './TaskHistory';
 import { isTabbedTool, ToolHost } from './ToolHost';
 import { useNativeTasks } from './useNativeTasks';
 import { ViewSqlDialog } from './ViewSqlDialog';
@@ -38,7 +39,7 @@ import {
   usePreferences,
 } from '@/features/preferences/preferences';
 import { usePreprocessingInputs } from '@/features/tools/preprocessing/inputState';
-import { listTabs } from '@/features/tools/common/analysisApi';
+import { listTabs, type Tab } from '@/features/tools/common/analysisApi';
 import { openAnalysisTab } from './openAnalysisTab';
 import { DeleteObjectsDialog } from './DeleteObjectsDialog';
 import { DataEditorPanel } from './data-editor/DataEditorPanel';
@@ -79,6 +80,13 @@ function ProjectViewContent({
     queryFn: ({ signal }) => listTabs(base, signal),
     enabled: taskCentre.tasks.some((task) => Boolean(task.tab_id)),
   });
+  const taskPresentation = {
+    ...taskCentre,
+    tabs: taskTabs.data,
+    openTab: (tab: Tab) => {
+      navigate(() => changeTool(openAnalysisTab(base, tab)));
+    },
+  };
   const preprocessingTool = usePreprocessingInputs((state) => state.activeTool);
   const preferences = usePreferences();
   const hidden = preferences.hiddenTools.filter(isProjectTool);
@@ -335,15 +343,8 @@ function ProjectViewContent({
               )}
             />
           }
-          tasksContent={
-            <TaskCentre
-              {...taskCentre}
-              tabs={taskTabs.data}
-              openTab={(tab) => {
-                navigate(() => changeTool(openAnalysisTab(base, tab)));
-              }}
-            />
-          }
+          tasksHeaderAction={<TaskHistory {...taskPresentation} />}
+          tasksContent={<TaskCentre {...taskPresentation} />}
         />
       }
       rightPanel={(collapsed, toggle) => (

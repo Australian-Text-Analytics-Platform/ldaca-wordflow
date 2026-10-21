@@ -42,8 +42,11 @@ cargo test --manifest-path backend/Cargo.toml --locked topic_model_benchmark -- 
 
 On macOS, process peak RSS can be obtained with Python's
 `resource.getrusage(resource.RUSAGE_CHILDREN)` around the isolated test executable.
-Optimized full-fit throughput, browser memory and larger diverse corpora remain
-unmeasured. These observations do not justify a fixed supported-corpus size.
+These historical debug observations do not establish release throughput,
+browser memory or a fixed supported-corpus size. Use the
+[external-corpus performance runbook](../runbooks/analysis-performance.md) for
+current optimized measurements and device verification; keep private-corpus
+results outside the repository.
 
 ## Curated model acceptance
 

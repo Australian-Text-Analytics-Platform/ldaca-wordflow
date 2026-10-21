@@ -686,14 +686,25 @@ async fn folders_selections_zip_and_mixed_import_share_atomic_native_planning() 
     std::fs::write(root.join("corpus/readme.pdf"), "skip").unwrap();
     let id = create(&host).await;
     let names = json!(["corpus", "corpus/nested", "corpus/b.txt"]);
-    let (status, plan) = call(
-        &host,
-        "POST",
-        "/api/server/import/inspect",
-        json!({"project_id":id,"names":names}),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK, "{plan}");
+    let inspected = host
+        .router()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/server/import/inspect")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({"project_id":id,"names":names}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(inspected.status(), StatusCode::OK);
+    assert!(inspected.headers().contains_key("x-wordflow-task-id"));
+    let plan: Value =
+        serde_json::from_slice(&to_bytes(inspected.into_body(), usize::MAX).await.unwrap())
+            .unwrap();
     assert_eq!(plan["text_name"], "folder_selection");
     assert_eq!(plan["files"].as_array().unwrap().len(), 3);
     let (status, result) = call(

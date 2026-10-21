@@ -71,7 +71,11 @@ pub(crate) struct Tasks {
     entries: Arc<Mutex<Vec<Entry>>>,
     changes: watch::Sender<TaskSnapshot>,
     closed: CancellationToken,
+    #[cfg(test)]
+    observer: Arc<Mutex<Option<ProgressObserver>>>,
 }
+#[cfg(test)]
+type ProgressObserver = Arc<dyn Fn(Uuid, &TaskProgress) + Send + Sync>;
 
 /// A typed result receiver. Dropping it does not cancel accepted execution.
 pub struct TaskHandle<T> {
@@ -116,6 +120,10 @@ impl TaskContext {
             message: message.into(),
             fraction: fraction.filter(|v| v.is_finite() && (0.0..=1.0).contains(v)),
         };
+        #[cfg(test)]
+        if let Some(observer) = self.tasks.observer.lock().unwrap().clone() {
+            observer(self.id, &progress);
+        }
         self.tasks.update(self.id, |task| {
             if !task.state.is_finished() {
                 task.progress = Some(progress);
@@ -155,7 +163,13 @@ impl Tasks {
             entries: Arc::new(Mutex::new(Vec::new())),
             changes: watch::channel(TaskSnapshot::default()).0,
             closed: CancellationToken::new(),
+            #[cfg(test)]
+            observer: Arc::new(Mutex::new(None)),
         }
+    }
+    #[cfg(test)]
+    pub(crate) fn observe_progress(&self, observer: ProgressObserver) {
+        *self.observer.lock().unwrap() = Some(observer);
     }
     pub fn snapshot(&self) -> TaskSnapshot {
         self.changes.borrow().clone()
@@ -432,6 +446,45 @@ mod tests {
         run.wait().await.unwrap();
         assert_eq!(tasks.snapshot().tasks.len(), 1);
         assert_eq!(tasks.snapshot().tasks[0].label, "Import");
+    }
+
+    #[tokio::test]
+    async fn progress_observers_capture_fast_transitions_only_on_their_runtime() {
+        let runtime = ProjectRuntime::new(CancellationToken::new());
+        let tasks = Tasks::new();
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let recorded = seen.clone();
+        tasks.observe_progress(Arc::new(move |_, progress| {
+            recorded.lock().unwrap().push(progress.message.clone());
+        }));
+        tasks
+            .submit(
+                runtime.operation().unwrap(),
+                "Measured".into(),
+                |context| async move {
+                    context.progress("First", None);
+                    context.progress("Second", None);
+                    Ok(())
+                },
+            )
+            .unwrap()
+            .wait()
+            .await
+            .unwrap();
+        Tasks::new()
+            .submit(
+                runtime.operation().unwrap(),
+                "Other".into(),
+                |context| async move {
+                    context.progress("Unrelated", None);
+                    Ok(())
+                },
+            )
+            .unwrap()
+            .wait()
+            .await
+            .unwrap();
+        assert_eq!(*seen.lock().unwrap(), ["First", "Second"]);
     }
 
     #[tokio::test]

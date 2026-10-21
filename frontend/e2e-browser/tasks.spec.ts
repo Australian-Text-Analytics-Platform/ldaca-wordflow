@@ -2,8 +2,62 @@ import { expectAppError } from './diagnostics';
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
 import { role, text, testId, post, get, remove, press, screenshot, stubResponse } from './fixtures';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import JSZip from 'jszip';
 
 import type { NativeTask, TaskSnapshot } from '@/features/project/tasksApi';
+
+it('a ZIP dropped onto the graph records preparation and import in the Task Centre', async () => {
+  const temporary = process.env.WORDFLOW_E2E_TEMP_DIR;
+  if (!temporary) throw new Error('Missing runner-owned temporary directory');
+  const directory = await mkdtemp(join(temporary, 'import-tasks-'));
+  try {
+    const path = join(directory, 'articles.zip');
+    const archive = new JSZip();
+    archive.file('first.txt', 'First complete article.');
+    archive.file('second.txt', 'Second complete article.');
+    await writeFile(path, await archive.generateAsync({ type: 'nodebuffer' }));
+    await browser.url('/');
+    const graph = browser.$('[aria-label="Data Block graph"]');
+    await graph.waitForExist();
+    await graph.execute((element, source) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData('application/x-wordflow-file', String(source));
+      element.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer }));
+    }, path);
+    const rows = () => testId('sidebar-section-tasks');
+    await expect(browser.$('.react-flow__node')).toBeDisplayed();
+    await browser.waitUntil(async () => {
+      const tasks = (await (await get('/api/project/tasks')).json()) as TaskSnapshot;
+      return tasks.tasks.every((task) => task.finished_at !== null);
+    });
+    const snapshot = (await (await get('/api/project/tasks')).json()) as TaskSnapshot;
+    expect(snapshot.tasks.map((task) => task.label).sort()).toEqual([
+      'Import local data',
+      'Prepare data import',
+    ]);
+    expect(snapshot.tasks.every((task) => task.state === 'succeeded')).toBe(true);
+    await expect(text('No tasks', { exact: true }, rows())).toBeDisplayed();
+    await expect(role('button', { name: /Task:/ }, rows())).not.toExist();
+    await screenshot('zip-import-tasks.png');
+    const header = testId('sidebar-section-header-tasks');
+    const toggle = role('button', { name: 'Tasks', exact: true }, header);
+    await toggle.click();
+    const archiveButton = role('button', { name: 'Task history', exact: true }, header);
+    await archiveButton.click();
+    const history = role('dialog', { name: 'Task history', exact: true });
+    await expect(role('button', { name: /Task: Prepare data import/ }, history)).toBeDisplayed();
+    await expect(role('button', { name: /Task: Import local data/ }, history)).toBeDisplayed();
+    await screenshot('zip-import-task-history.png');
+    await press('Escape');
+    await expect(history).not.toExist();
+    await expect(archiveButton).toBeFocused();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 // Test-owned snapshots isolate presentation; the next test uses real production routes.
 it('native task rows show progress, errors, cancellation and dismissal in both themes', async () => {
@@ -26,7 +80,20 @@ it('native task rows show progress, errors, cancellation and dismissal in both t
     finished_at: started + 1000,
     error: { code: 'sql_error', message: 'The source file is unavailable.' },
   };
-  let snapshot: TaskSnapshot = { revision: 1, tasks: [running, failed] };
+  const succeeded: NativeTask = {
+    ...running,
+    id: '00000000-0000-4000-8000-000000000003',
+    label: 'Topic Modelling',
+    state: 'succeeded',
+    finished_at: started + 1000,
+  };
+  const cancelled: NativeTask = {
+    ...succeeded,
+    id: '00000000-0000-4000-8000-000000000004',
+    label: 'Quotation',
+    state: 'cancelled',
+  };
+  let snapshot: TaskSnapshot = { revision: 1, tasks: [running, failed, cancelled, succeeded] };
   await stubResponse('/api/project/tasks', () => JSON.stringify(snapshot));
   await stubResponse(
     '/api/project/events',
@@ -35,6 +102,8 @@ it('native task rows show progress, errors, cancellation and dismissal in both t
   );
   await browser.url('/');
   const rows = () => testId('sidebar-section-tasks');
+  await expect(role('button', { name: /Task: Topic Modelling/ }, rows())).not.toExist();
+  await expect(role('button', { name: /Task: Quotation/ }, rows())).toBeDisplayed();
   await role('button', { name: /Task: Inspect corpus/ }, rows()).click();
   await expect(role('progressbar', {}, rows())).toHaveAttribute('aria-valuenow', '45');
   await expect(text('Reading documents', {}, rows())).toBeDisplayed();
@@ -58,17 +127,27 @@ it('native task rows show progress, errors, cancellation and dismissal in both t
     }, theme);
     await browser.setViewport({ width: 1350, height: 1100 });
     await screenshot(`tasks-${theme}.png`, rows());
+    await role('button', { name: 'Task history', exact: true }, rows()).click();
+    const history = role('dialog', { name: 'Task history', exact: true });
+    for (const label of ['Inspect corpus', 'Unavailable source', 'Topic Modelling', 'Quotation']) {
+      await expect(role('button', { name: new RegExp(`Task: ${label}`) }, history)).toBeDisplayed();
+    }
+    await role('button', { name: /Task: Topic Modelling/ }, history).click();
+    await expect(text(/^Succeeded/, {}, history)).toBeDisplayed();
+    await screenshot(`task-history-${theme}.png`);
+    await press('Escape');
+    await expect(history).not.toExist();
   }
   snapshot = {
     revision: 2,
-    tasks: [{ ...running, state: 'cancelled', finished_at: Date.now() }, failed],
+    tasks: [{ ...running, state: 'cancelled', finished_at: Date.now() }, failed, cancelled, succeeded],
   };
   await stubResponse(`/api/project/tasks/${running.id}/cancel`, () => JSON.stringify(snapshot));
   await role('button', { name: 'Cancel', exact: true }, rows()).click();
   await expect(text(/Cancelled/, {}, rows())).toBeDisplayed();
   snapshot = { revision: 3, tasks: snapshot.tasks.filter((task) => task.id !== failed.id) };
   await stubResponse(`/api/project/tasks/${failed.id}`, () => JSON.stringify(snapshot));
-  await role('button', { name: 'Dismiss', exact: true, index: -1 }, rows()).click();
+  await role('button', { name: 'Dismiss', exact: true, index: 1 }, rows()).click();
   await expect(role('button', { name: /Task: Unavailable source/ }, rows())).not.toExist();
   await expect(role('button', { name: /Task: Inspect corpus/ }, rows())).toBeDisplayed();
 });
@@ -105,8 +184,14 @@ it('real SQL tasks cancel independently, refresh project data and keep failed so
   expect(clone.ok).toBe(true);
   const materialize = await post('/api/project/nodes/Task%20import/materialize', {});
   expect(materialize.ok).toBe(true);
-  await expect(role('button', { name: /Task: Clone Task import/ }, rows())).toBeDisplayed();
-  await expect(role('button', { name: /Task: Materialise Task import/ }, rows())).toBeDisplayed();
+  await expect(role('button', { name: /Task: Clone Task import/ }, rows())).not.toExist();
+  await expect(role('button', { name: /Task: Materialise Task import/ }, rows())).not.toExist();
+  await role('button', { name: 'Task history', exact: true }, rows()).click();
+  let history = role('dialog', { name: 'Task history', exact: true });
+  await expect(role('button', { name: /Task: Clone Task import/ }, history)).toBeDisplayed();
+  await expect(role('button', { name: /Task: Materialise Task import/ }, history)).toBeDisplayed();
+  await press('Escape');
+  await expect(history).not.toExist();
   expectAppError(/missing_task_source/);
   await editor().setValue('SELECT * FROM missing_task_source');
   await press('ControlOrMeta+Enter', editor());
@@ -122,7 +207,12 @@ it('real SQL tasks cancel independently, refresh project data and keep failed so
   }
   await browser.refresh();
   await browser.$('[aria-label="Data Block graph"]').waitForExist();
-  await expect(role('button', { name: /Task: Materialise Task import/ }, rows())).toBeDisplayed();
+  await expect(role('button', { name: /Task: Materialise Task import/ }, rows())).not.toExist();
+  await role('button', { name: 'Task history', exact: true }, rows()).click();
+  history = role('dialog', { name: 'Task history', exact: true });
+  await expect(role('button', { name: /Task: Materialise Task import/ }, history)).toBeDisplayed();
+  await press('Escape');
+  await expect(history).not.toExist();
   await expect(browser.$('[data-sonner-toast]')).not.toExist();
   await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'SQL', exact: true }).click();

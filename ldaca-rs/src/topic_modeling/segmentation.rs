@@ -11,6 +11,7 @@
 //! Called by: `topic_modeling::run` (orchestrator) before embedding.
 
 use anyhow::{bail, Context, Result};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tokenizers::Tokenizer;
 use unicode_segmentation::UnicodeSegmentation;
@@ -127,7 +128,8 @@ pub fn segment_documents(
     segment_documents_with_progress(docs, tokenizer, cfg, &mut |_, _| Ok(()))
 }
 
-/// Segment with a host-owned cancellation/progress boundary between documents.
+/// Segment documents in ordered CPU batches. Progress and cancellation callbacks
+/// stay on the caller thread, with at most one document per worker in flight.
 pub fn segment_documents_with_progress(
     docs: &[&str],
     tokenizer: &Tokenizer,
@@ -137,55 +139,85 @@ pub fn segment_documents_with_progress(
     if cfg.max_tokens == 0 {
         bail!("segmentation max_tokens must be > 0");
     }
-
+    if docs.is_empty() {
+        return Ok(Vec::new());
+    }
+    let workers = crate::embedding::computation_threads().min(docs.len());
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(workers)
+        .build()?;
     let mut segments = Vec::with_capacity(docs.len());
-    for (doc_index, &doc) in docs.iter().enumerate() {
-        progress(doc_index, docs.len())?;
-        let (tokens, special_token_count) = token_spans(doc, tokenizer)?;
-        let content_token_budget = cfg
-            .max_tokens
-            .checked_sub(special_token_count)
-            .filter(|budget| *budget > 0)
-            .with_context(|| {
-                format!(
-                    "segmentation max_tokens {} cannot fit the model's {special_token_count} special tokens",
-                    cfg.max_tokens
-                )
-            })?;
-        match cfg.method {
-            SegmentationMethod::Automatic => {
-                segments.extend(segment_document_automatic(
+    for (batch_index, batch) in docs.chunks(workers).enumerate() {
+        let start = batch_index * workers;
+        progress(start, docs.len())?;
+        let results: Vec<_> = pool.install(|| {
+            batch
+                .par_iter()
+                .enumerate()
+                .map(|(index, doc)| segment_document(start + index, doc, tokenizer, cfg))
+                .collect()
+        });
+        for (index, result) in results.into_iter().enumerate() {
+            if index > 0 {
+                progress(start + index, docs.len())?;
+            }
+            segments.extend(result?);
+        }
+    }
+    Ok(segments)
+}
+
+fn segment_document(
+    doc_index: usize,
+    doc: &str,
+    tokenizer: &Tokenizer,
+    cfg: &SegmentationConfig,
+) -> Result<Vec<TopicSegment>> {
+    let mut segments = Vec::new();
+    let (tokens, special_token_count) = token_spans(doc, tokenizer)?;
+    let content_token_budget = cfg
+        .max_tokens
+        .checked_sub(special_token_count)
+        .filter(|budget| *budget > 0)
+        .with_context(|| {
+            format!(
+                "segmentation max_tokens {} cannot fit the model's {special_token_count} special tokens",
+                cfg.max_tokens
+            )
+        })?;
+    match cfg.method {
+        SegmentationMethod::Automatic => {
+            segments.extend(segment_document_automatic(
+                doc_index,
+                doc,
+                &tokens,
+                content_token_budget,
+            )?);
+        }
+        SegmentationMethod::Line => {
+            for (start, end) in line_ranges(doc) {
+                segment_line(
                     doc_index,
                     doc,
                     &tokens,
+                    start,
+                    end,
                     content_token_budget,
-                )?);
+                    &mut segments,
+                )?;
             }
-            SegmentationMethod::Line => {
-                for (start, end) in line_ranges(doc) {
-                    segment_line(
-                        doc_index,
-                        doc,
-                        &tokens,
-                        start,
-                        end,
-                        content_token_budget,
-                        &mut segments,
-                    )?;
-                }
-            }
-            SegmentationMethod::Sentence => {
-                for (start, sentence) in doc.split_sentence_bound_indices() {
-                    split_range_by_tokens(
-                        doc_index,
-                        doc,
-                        &tokens,
-                        start,
-                        start + sentence.len(),
-                        content_token_budget,
-                        &mut segments,
-                    )?;
-                }
+        }
+        SegmentationMethod::Sentence => {
+            for (start, sentence) in doc.split_sentence_bound_indices() {
+                split_range_by_tokens(
+                    doc_index,
+                    doc,
+                    &tokens,
+                    start,
+                    start + sentence.len(),
+                    content_token_budget,
+                    &mut segments,
+                )?;
             }
         }
     }
@@ -556,6 +588,73 @@ mod tests {
         let mut tokenizer = Tokenizer::new(model);
         tokenizer.with_pre_tokenizer(Some(WhitespaceSplit));
         tokenizer
+    }
+
+    #[test]
+    fn parallel_documents_preserve_spans_order_and_caller_owned_progress() -> Result<()> {
+        let sources = (0..37)
+            .map(|index| match index % 4 {
+                0 => String::new(),
+                1 => "Café culture. 医生讨论健康。\n\nMore words and sentences.".to_owned(),
+                2 => format!("Document {index}. {}", "Repeated long text. ".repeat(25)),
+                _ => "Duplicates stay.\nEvery source row stays.".to_owned(),
+            })
+            .collect::<Vec<_>>();
+        let docs = sources.iter().map(String::as_str).collect::<Vec<_>>();
+        let words = docs
+            .iter()
+            .flat_map(|doc| doc.split_whitespace())
+            .collect::<Vec<_>>();
+        let tokenizer = whitespace_tokenizer(&words);
+        for method in [
+            SegmentationMethod::Automatic,
+            SegmentationMethod::Line,
+            SegmentationMethod::Sentence,
+        ] {
+            let cfg = SegmentationConfig {
+                method,
+                max_tokens: 16,
+            };
+            let expected = docs
+                .iter()
+                .enumerate()
+                .map(|(index, doc)| segment_document(index, doc, &tokenizer, &cfg))
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>();
+            let updates = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+            let caller = std::thread::current().id();
+            let actual =
+                segment_documents_with_progress(&docs, &tokenizer, &cfg, &mut |done, total| {
+                    assert_eq!(std::thread::current().id(), caller);
+                    assert_eq!(total, docs.len());
+                    updates.borrow_mut().push(done);
+                    Ok(())
+                })?;
+            assert_eq!(actual, expected);
+            assert_eq!(*updates.borrow(), (0..docs.len()).collect::<Vec<_>>());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_documents_propagate_cancellation_from_the_caller() {
+        let docs = vec!["one two three four five six"; 37];
+        let tokenizer = whitespace_tokenizer(&["one", "two", "three", "four", "five", "six"]);
+        let mut visited = Vec::new();
+        let result = segment_documents_with_progress(
+            &docs,
+            &tokenizer,
+            &SegmentationConfig::default(),
+            &mut |done, _| {
+                visited.push(done);
+                anyhow::ensure!(done < 3, "cancelled");
+                Ok(())
+            },
+        );
+        assert!(result.unwrap_err().to_string().contains("cancelled"));
+        assert_eq!(visited, vec![0, 1, 2, 3]);
     }
 
     fn word_segments(doc: &str, cfg: SegmentationConfig) -> Vec<String> {

@@ -11,6 +11,7 @@ export function TaskCentre({
   dismissingId,
   tabs = [],
   openTab,
+  showSucceeded = false,
 }: {
   tasks: NativeTask[];
   reconnecting: boolean;
@@ -20,7 +21,9 @@ export function TaskCentre({
   dismissingId?: string;
   tabs?: Tab[];
   openTab?: (tab: Tab) => void;
+  showSucceeded?: boolean;
 }) {
+  const visibleTasks = showSucceeded ? tasks : tasks.filter((task) => task.state !== 'succeeded');
   return (
     <div className="space-y-2">
       {reconnecting && (
@@ -29,7 +32,7 @@ export function TaskCentre({
         </p>
       )}
       <TaskRows
-        tasks={tasks.map((task) => ({
+        tasks={visibleTasks.map((task) => ({
           id: task.id,
           label: tabs.find((tab) => tab.id === task.tab_id)?.name ?? task.label,
           state: task.state,

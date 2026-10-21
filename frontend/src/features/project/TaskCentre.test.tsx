@@ -1,10 +1,12 @@
 import * as tasksApi from '@/features/project/tasksApi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import { reportProjectError } from './projectErrors';
 import { TaskCentre } from './TaskCentre';
+import { TaskHistory } from './TaskHistory';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useNativeTasks } from './useNativeTasks';
 import type { Tab } from '@/features/tools/common/analysisApi';
 import { ServerContext } from '@/features/server/context';
@@ -42,7 +44,12 @@ const task = (state: tasksApi.NativeTask['state'] = 'running'): tasksApi.NativeT
 });
 function ObservedTasks() {
   const controller = useNativeTasks('http://project');
-  return <TaskCentre {...controller} />;
+  return (
+    <TooltipProvider>
+      <TaskCentre {...controller} />
+      <TaskHistory {...controller} />
+    </TooltipProvider>
+  );
 }
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -102,13 +109,84 @@ it('uses current tab names and navigates only to existing associated tabs', asyn
     cancel: vi.fn(),
     dismiss: vi.fn(),
   };
-  const view = render(<TaskCentre {...props} />);
+  const content = (tabs: Tab[]) => (
+    <TooltipProvider>
+      <TaskCentre {...props} tabs={tabs} />
+      <TaskHistory {...props} tabs={tabs} />
+    </TooltipProvider>
+  );
+  const view = render(content([tab]));
+  await user.click(screen.getByRole('button', { name: 'Task history' }));
   await user.click(screen.getByRole('button', { name: /Task: Renamed study/ }));
   expect(screen.getByText('Imported two blocks')).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Open tab' }));
   expect(openTab).toHaveBeenCalledWith(tab);
-  view.rerender(<TaskCentre {...props} tabs={[]} />);
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  view.rerender(content([]));
+  await user.click(screen.getByRole('button', { name: 'Task history' }));
+  await user.click(screen.getByRole('button', { name: /Task: Inspect corpus/ }));
   expect(screen.queryByRole('button', { name: 'Open tab' })).not.toBeInTheDocument();
+});
+
+it('hides successes without dismissing them and shows every status in live task history', async () => {
+  const user = userEvent.setup();
+  const { stream, client } = mount();
+  const tasks = [
+    { ...task('succeeded'), id: 'import', label: 'Import local data' },
+    { ...task('queued'), id: 'topics', label: 'Topic Modelling' },
+    { ...task('running'), id: 'quotation', label: 'Quotation' },
+    { ...task('cancelling'), id: 'export', label: 'Export' },
+    { ...task('failed'), id: 'sql', label: 'SQL cell 1' },
+    { ...task('cancelled'), id: 'sample', label: 'Import sample data' },
+  ];
+  stream.send(1, tasks);
+  await screen.findByRole('button', { name: /Task: Quotation/ });
+  expect(screen.queryByRole('button', { name: /Task: Import local data/ })).not.toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: /Task:/ })).toHaveLength(5);
+  expect(tasksApi.dismissTask).not.toHaveBeenCalled();
+
+  const archive = screen.getByRole('button', { name: 'Task history' });
+  await user.click(archive);
+  const history = within(screen.getByRole('dialog', { name: 'Task history' }));
+  expect(history.getAllByRole('button', { name: /Task:/ })).toHaveLength(6);
+  for (const task of tasks) {
+    expect(
+      history.getByRole('button', { name: new RegExp(`Task: ${task.label}`) }),
+    ).toBeInTheDocument();
+  }
+  const completed = tasks.map((item) =>
+    item.id === 'quotation' ? { ...item, state: 'succeeded' as const, finished_at: 4 } : item,
+  );
+  stream.send(2, completed);
+  expect(history.getByRole('button', { name: /Task: Quotation/ })).toBeInTheDocument();
+  await waitFor(() =>
+    expect(client.getQueryData(['native', 'http://project', 'tasks'])).toEqual({
+      revision: 2,
+      tasks: completed,
+    }),
+  );
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(archive).toHaveFocus();
+  expect(screen.queryByRole('button', { name: /Task: Quotation/ })).not.toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: /Task:/ })).toHaveLength(4);
+});
+
+it('allows successful task details and dismissal in history and handles empty history', async () => {
+  const user = userEvent.setup();
+  const { stream } = mount();
+  stream.send(1, [{ ...task('succeeded'), notice: 'Imported two blocks' }]);
+  expect(screen.getByText('No tasks')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Task history' }));
+  const history = within(screen.getByRole('dialog', { name: 'Task history' }));
+  await user.click(history.getByRole('button', { name: /Task: Inspect corpus/ }));
+  expect(history.getByText('Imported two blocks')).toBeInTheDocument();
+  expect(history.getByText(/^Succeeded/)).toBeInTheDocument();
+  expect(history.getByText('Finished')).toBeInTheDocument();
+  vi.mocked(tasksApi.dismissTask).mockResolvedValue({ revision: 2, tasks: [] });
+  await user.click(history.getByRole('button', { name: 'Dismiss' }));
+  expect(tasksApi.dismissTask).toHaveBeenCalledWith('http://project', 'one');
+  expect(await history.findByText('No tasks')).toBeInTheDocument();
 });
 
 it('keeps a newer stream snapshot when the initial HTTP request finishes late', async () => {

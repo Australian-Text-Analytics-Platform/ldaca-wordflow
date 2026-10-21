@@ -94,7 +94,10 @@ Graph and sidebar add buttons feed the active preprocessing input picker.
 Restored analyses use [native execution and project-owned results](../backend/native-analyses.md).
 The native Task Centre observes project task
 snapshots through TanStack Query and SSE, reusing `TaskRows` presentation. Expansion
-is local; progress, labels, elapsed time, Cancel and dismissal derive from native
+is local. Successful tasks are hidden from the sidebar; its header archive button
+opens a scrollable history dialog with every retained task type and status from
+the same live snapshot. The runtime retains up to 100 finished tasks for the current
+project session. Progress, labels, elapsed time, Cancel and dismissal derive from native
 summaries. Reconnection preserves the current list, and only newly observed failures
 produce a toast. HTTP and SSE snapshots share one observation path and establish
 the notification baseline once. A reconnect preserves that baseline, reports newly
@@ -137,8 +140,11 @@ The header and source tabs remain visible; each source owns one scrolling body
 and, for batch imports, a fixed footer. `ThreeColumnLayout` disables its outer
 main-pane scrolling for this surface to avoid nested page scrolling.
 
-Local selection inspects formats through the native planner, then submits one
-task-owned atomic import. Ordinary files and text-only folders import immediately.
+Local selection starts a visible, cancellable preparation task before the native
+planner reads files or unpacks archives, then submits one task-owned atomic import.
+The Task Centre covers preparation and import for native paths and server-library
+selections. Import progress distinguishes reading files, preparing contents and
+adding Data Blocks. Ordinary files and text-only folders import immediately.
 Mixed folders/ZIPs and multi-sheet workbooks show a selection form, initially
 including all files and sheets. Texts combine into one Data Block while table files
 and workbook sheets remain separate. Native file and folder pickers both support

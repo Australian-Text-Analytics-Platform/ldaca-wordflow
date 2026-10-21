@@ -198,13 +198,20 @@ export function LocalFileImport({
         {chooserError != null && (
           <OperationError title="Could not choose files" error={chooserError} />
         )}
-        {inspected.error && (
-          <OperationError
-            title="Could not inspect files"
-            error={inspected.error}
-            onRetry={() => inspected.mutate(inspected.variables)}
-          />
-        )}
+        <RunError
+          name="Import"
+          title="Could not inspect files"
+          taskLabel="Prepare data import"
+          tasks={tasks}
+          active={active}
+          busy={inspected.isPending}
+          error={inspected.error}
+          onRetry={
+            inspected.error && inspected.variables
+              ? () => inspected.mutate(inspected.variables)
+              : undefined
+          }
+        />
         <RunError
           name="Import"
           title="Could not import files"

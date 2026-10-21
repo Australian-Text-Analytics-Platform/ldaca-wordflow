@@ -66,6 +66,7 @@ function setup() {
   );
   return {
     ...view,
+    client,
     props,
     update: (patch: Partial<typeof props>) => {
       Object.assign(props, patch);
@@ -77,6 +78,39 @@ function setup() {
     },
   };
 }
+it('uses the preparation task diagnostic for accepted inspection failures and allows retry', async () => {
+  const user = userEvent.setup();
+  const view = setup();
+  view.client.setQueryData(['native', 'http://project', 'tasks'], {
+    revision: 1,
+    tasks: [
+      {
+        id: 'prepare-import',
+        label: 'Prepare data import',
+        state: 'failed',
+        created_at: 1,
+        started_at: 1,
+        finished_at: 2,
+        tab_id: null,
+        progress: { message: 'Inspecting files and archives', fraction: null },
+        notice: null,
+        error: { code: 'import_error', message: 'The archive could not be read.' },
+      },
+    ],
+  });
+  vi.mocked(filesApi.inspectFileImport).mockRejectedValueOnce(
+    Object.assign(new Error('Request failed'), { taskId: 'prepare-import' }),
+  );
+  await add(user, '/tmp/corpus.zip');
+  expect(await screen.findByRole('alert', { name: 'Could not inspect files' })).toHaveTextContent(
+    'The archive could not be read.',
+  );
+  expect(document.querySelector('[data-task-label="Prepare data import"]')).toBeInTheDocument();
+  expect(filesApi.importFiles).not.toHaveBeenCalled();
+  await user.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(filesApi.importFiles).toHaveBeenCalledOnce());
+  expect(filesApi.inspectFileImport).toHaveBeenCalledTimes(2);
+});
 async function add(user: ReturnType<typeof userEvent.setup>, path: string) {
   const input = screen.getByRole('textbox', { name: /Data file path/ });
   await user.clear(input);

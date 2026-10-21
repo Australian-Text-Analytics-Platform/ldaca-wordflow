@@ -531,8 +531,10 @@ Local file selection uses `POST /api/project/import/inspect` and then
 `selected` entries (`path` and nullable `sheet`). Inspection returns `files`
 with relative paths, formats and workbook sheets, `text_name`, `collection` and
 `skipped` path/reason entries. Execution revalidates selections and returns
-`table_names` and `skipped`. Inspection creates no task. Execution owns one task
-and one atomic database transaction for the complete selection.
+`table_names` and `skipped`. Inspection owns a cancellable `Prepare data import`
+task, registered before reading files or unpacking archives. Execution owns a
+separate import task and one atomic database transaction for the complete selection.
+Both responses carry `x-wordflow-task-id`, including accepted task failures.
 
 Supported table formats are CSV/TSV, JSON/JSONL/NDJSON, Parquet, Avro,
 Arrow/IPC/Feather, XLSX/XLS/XLSM/XLSB/ODS. Workbook outputs use `file_sheet` names;

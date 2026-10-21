@@ -1657,6 +1657,10 @@ mod workload_tests;
 mod analysis_tests;
 
 #[cfg(test)]
+#[path = "performance_tests.rs"]
+mod performance_tests;
+
+#[cfg(test)]
 mod plots_icu_tests {
     use super::*;
     use serde_json::json;

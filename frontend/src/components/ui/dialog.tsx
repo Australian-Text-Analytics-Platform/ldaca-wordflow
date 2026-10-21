@@ -7,6 +7,9 @@ import { ModalLayerRegistration } from '@/features/guidance/ModalLayerRegistrati
 /** Radix dialog root re-export used by modal wrappers throughout the app. */
 const Dialog = DialogPrimitive.Root;
 
+/** Dialog trigger preserves keyboard access and restores focus after closing. */
+const DialogTrigger = DialogPrimitive.Trigger;
+
 /** Dialog portal primitive used by content wrappers to render outside normal layout flow. */
 const DialogPortal = DialogPrimitive.Portal;
 
@@ -110,4 +113,12 @@ const DialogDescription = ({
   />
 );
 
-export { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription };
+export {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+};

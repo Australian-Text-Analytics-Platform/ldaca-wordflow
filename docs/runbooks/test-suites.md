@@ -235,6 +235,10 @@ runner just to hide an unnecessarily slow fixture.
 
 ## Model and network checks
 
+Private external-corpus timing and Instruments captures use the opt-in
+[analysis performance launcher](analysis-performance.md). They are separate from
+ordinary correctness tests and synthetic regression benchmarks.
+
 The native tokenizer download/cache acceptance check uses a fresh temporary asset
 root and removes it afterward. It downloads the official BERT tokenizer and the
 matching Lindera Jieba dictionary, then reloads both from that root. Run it explicitly:
