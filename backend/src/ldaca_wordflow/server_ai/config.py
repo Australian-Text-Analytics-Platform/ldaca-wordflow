@@ -12,6 +12,22 @@ file, Wordflow offers no server providers and behaves as before.
         models: [qwen3.8-27b]
         send_user: email
         max_requests_per_user: 1
+    embedding_endpoints:
+      - slug: research-gpu
+        name: Research GPU
+        base_url: https://litellm.example.edu.au/v1
+        api_key_env: RESEARCH_LLM_API_KEY
+        models:
+          sentence-transformers/all-MiniLM-L6-v2: minilm-l6
+          sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2: minilm-l12-multilingual
+        send_user: email
+        default: true
+
+Embedding endpoints (issue 412 follow-up) serve Topic Modelling's sentence
+models on a remote GPU; they need not run an LLM. ``models`` maps each
+Topic Modelling model the endpoint serves to its name there; leave a model out
+when the endpoint doesn't serve it. ``default`` ticks Remote GPU in new
+Topic Modelling tabs.
 
 See docs/runbooks/server-ai-providers.md.
 """
@@ -142,10 +158,87 @@ class ServerAiProvider(BaseModel):
         return key
 
 
+_EMBEDDING_ID_NAMESPACE = uuid.UUID("8d3b6c1e-4a72-4f0e-b5d9-2e7f1a6c9b40")
+
+
+class ServerEmbeddingEndpoint(BaseModel):
+    """One server-provided, OpenAI-compatible ``/v1/embeddings`` endpoint."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    slug: str
+    name: str = Field(min_length=1, max_length=80)
+    endpoint_id: uuid.UUID | None = None
+    base_url: str = Field(max_length=2_000)
+    api_key_env: str
+    # Topic Modelling model id -> the name the endpoint serves it under.
+    models: dict[str, str]
+    send_user: Literal["email", "subject", "none"] = "email"
+    batch_size: int | None = Field(default=None, ge=1, le=2048)
+    concurrency: int | None = Field(default=None, ge=1, le=32)
+    # Ticks Remote GPU in new Topic Modelling tabs.
+    default: bool = False
+
+    @field_validator("slug")
+    @classmethod
+    def validate_slug(cls, value: str) -> str:
+        return ServerAiProvider.validate_slug(value)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        return ServerAiProvider.validate_name(value)
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, value: str) -> str:
+        return ServerAiProvider.validate_base_url(value)
+
+    @field_validator("api_key_env")
+    @classmethod
+    def validate_api_key_env(cls, value: str) -> str:
+        return ServerAiProvider.validate_api_key_env(value)
+
+    @field_validator("models")
+    @classmethod
+    def validate_models(cls, value: dict[str, str]) -> dict[str, str]:
+        from ..domain.workspace import TopicEmbeddingModel
+
+        known = {model.value for model in TopicEmbeddingModel}
+        models: dict[str, str] = {}
+        for model, served in value.items():
+            model, served = model.strip(), str(served).strip()
+            if model not in known:
+                raise ValueError(
+                    "models keys must be Topic Modelling models: " + ", ".join(sorted(known))
+                )
+            if not served:
+                raise ValueError("models needs a served name for each model")
+            models[model] = served
+        if not models:
+            raise ValueError("models must name at least one Topic Modelling model")
+        return models
+
+    @property
+    def id(self) -> uuid.UUID:
+        return self.endpoint_id or uuid.uuid5(_EMBEDDING_ID_NAMESPACE, self.slug)
+
+    @property
+    def placeholder_base_url(self) -> str:
+        return f"https://{self.slug}{PLACEHOLDER_HOST_SUFFIX}/v1"
+
+    def api_key(self) -> str:
+        key = os.environ.get(self.api_key_env, "").strip()
+        if not key:
+            raise RuntimeError(f"{self.api_key_env} is not set")
+        return key
+
+
 class _ProvidersFile(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     providers: tuple[ServerAiProvider, ...] = ()
+    embedding_endpoints: tuple[ServerEmbeddingEndpoint, ...] = ()
 
     @model_validator(mode="after")
     def validate_unique(self) -> _ProvidersFile:
@@ -153,19 +246,39 @@ class _ProvidersFile(BaseModel):
         ids = [provider.id for provider in self.providers]
         if len(set(slugs)) != len(slugs) or len(set(ids)) != len(ids):
             raise ValueError("each provider needs its own slug and configuration_id")
+        slugs = [endpoint.slug for endpoint in self.embedding_endpoints]
+        ids = [endpoint.id for endpoint in self.embedding_endpoints]
+        if len(set(slugs)) != len(slugs) or len(set(ids)) != len(ids):
+            raise ValueError("each embedding endpoint needs its own slug and endpoint_id")
         return self
 
 
 class ServerAiProviders:
     """The providers in one file, looked up by slug or configuration id."""
 
-    def __init__(self, providers: tuple[ServerAiProvider, ...] = ()) -> None:
+    def __init__(
+        self,
+        providers: tuple[ServerAiProvider, ...] = (),
+        embedding_endpoints: tuple[ServerEmbeddingEndpoint, ...] = (),
+    ) -> None:
         self.providers = providers
+        self.embedding_endpoints = embedding_endpoints
         self._by_slug = {provider.slug: provider for provider in providers}
         self._by_id = {provider.id: provider for provider in providers}
+        self._endpoints_by_id = {endpoint.id: endpoint for endpoint in embedding_endpoints}
 
     def __bool__(self) -> bool:
         return bool(self.providers)
+
+    def embedding_endpoint(
+        self, endpoint_id: uuid.UUID | str | None
+    ) -> ServerEmbeddingEndpoint | None:
+        if endpoint_id is None:
+            return None
+        try:
+            return self._endpoints_by_id.get(uuid.UUID(str(endpoint_id)))
+        except ValueError:
+            return None
 
     def by_slug(self, slug: str) -> ServerAiProvider | None:
         return self._by_slug.get(slug)
@@ -202,7 +315,13 @@ def load_providers(path: Path) -> ServerAiProviders:
             raise ValueError(
                 f"{PROVIDERS_FILE_ENV}: provider {provider.slug} needs {provider.api_key_env} set"
             )
-    return ServerAiProviders(parsed.providers)
+    for endpoint in parsed.embedding_endpoints:
+        if not os.environ.get(endpoint.api_key_env, "").strip():
+            raise ValueError(
+                f"{PROVIDERS_FILE_ENV}: embedding endpoint {endpoint.slug} needs "
+                f"{endpoint.api_key_env} set"
+            )
+    return ServerAiProviders(parsed.providers, parsed.embedding_endpoints)
 
 
 @functools.cache
@@ -234,6 +353,7 @@ __all__ = [
     "PROVIDERS_FILE_ENV",
     "ServerAiProvider",
     "ServerAiProviders",
+    "ServerEmbeddingEndpoint",
     "clear_server_ai_providers",
     "load_providers",
     "server_ai_providers",

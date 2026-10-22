@@ -31,14 +31,19 @@ from ..shared.errors import (
     ProviderCredentialMissingError,
     ProviderCredentialsCorruptError,
 )
+from .embedding_endpoints import EmbeddingEndpointMethods
 from .sessions import SINGLE_USER
 
 logger = logging.getLogger(__name__)
 _CREDENTIALS_FILENAME = "provider-credentials.toml"
 
 
-class ProviderCredentialStore:
-    """Persist local credentials or resolve hosted credentials per request."""
+class ProviderCredentialStore(EmbeddingEndpointMethods):
+    """Persist local credentials or resolve hosted credentials per request.
+
+    Also holds Topic Modelling's embedding endpoints (EmbeddingEndpointMethods),
+    in their own file.
+    """
 
     def __init__(
         self,

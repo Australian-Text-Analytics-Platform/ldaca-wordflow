@@ -112,3 +112,48 @@ for:
 If the endpoint answers HTTP 400 to either, Wordflow sends the request again
 without it, and stops sending it to that endpoint until the server restarts.
 Each request closes its connection when it ends (#404).
+
+## Embedding endpoints for Topic Modelling
+
+The same file can list `embedding_endpoints`: OpenAI-compatible
+`/v1/embeddings` servers that embed Topic Modelling's text on a remote GPU, for
+example vLLM serving the two Sentence Transformers models, alone or behind the
+same LiteLLM gateway as the LLMs. They are listed apart from `providers`, since
+an embedding server need not run an LLM.
+
+```yaml
+embedding_endpoints:
+  - slug: research-gpu
+    name: Research GPU
+    base_url: https://litellm.example.edu.au/v1
+    api_key_env: RESEARCH_LLM_API_KEY
+    models:
+      sentence-transformers/all-MiniLM-L6-v2: minilm-l6
+      sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2: minilm-l12-multilingual
+    send_user: email
+    default: true
+```
+
+| Key | Meaning |
+| --- | --- |
+| `slug`, `name`, `base_url`, `api_key_env` | As for `providers`. The key must be set at start-up and never leaves the server. |
+| `endpoint_id` | Optional fixed id, so saved Topic Modelling runs keep pointing here. |
+| `models` | Each Topic Modelling model the endpoint serves, with its name there. Leave a model out if it isn't served. |
+| `send_user` | `email`, `subject` or `none`: the OpenAI `user` field, from the signed-in account. |
+| `batch_size`, `concurrency` | Optional: texts per request (default 128) and requests in flight (default 4). |
+| `default` | Ticks **Remote GPU** in new Topic Modelling tabs. |
+
+People see these endpoints read-only in **Settings → Embedding endpoints** and
+choose one with the **Remote GPU** tick beside **Max tokens** in Topic
+Modelling. A run sends segments in batches to `POST {base_url}/embeddings`; a
+failed request is retried, and a run that still fails stops with the endpoint's
+error rather than embedding on the server's CPU, which would mix two embedding
+spaces in one run. Without the tick, or without endpoints, Topic Modelling
+embeds on the server's CPU as before. On a shared server people can't add their
+own endpoints; on a desktop they add them with an API key in Settings.
+
+Serve the models with vLLM, for example:
+
+```bash
+vllm serve sentence-transformers/all-MiniLM-L6-v2 --runner pooling --served-model-name minilm-l6
+```

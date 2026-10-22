@@ -3089,6 +3089,135 @@ export type DuplicateColumnNodeEditRequest = {
 };
 
 /**
+ * EmbeddingEndpointCheck
+ *
+ * What a check of an endpoint found; ``message`` explains a failure.
+ */
+export type EmbeddingEndpointCheck = {
+    /**
+     * Available
+     */
+    available: {
+        [key in TopicEmbeddingModel]?: boolean;
+    };
+    /**
+     * Message
+     */
+    message: string | null;
+    /**
+     * Reachable
+     */
+    reachable: boolean;
+    /**
+     * Served Models
+     */
+    served_models: Array<string>;
+};
+
+/**
+ * EmbeddingEndpointCreate
+ */
+export type EmbeddingEndpointCreate = {
+    /**
+     * Api Key
+     */
+    api_key?: null;
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Models
+     */
+    models?: {
+        [key in TopicEmbeddingModel]?: string;
+    } | null;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * EmbeddingEndpointList
+ */
+export type EmbeddingEndpointList = {
+    /**
+     * Endpoints
+     */
+    endpoints: Array<EmbeddingEndpointResource>;
+    /**
+     * Storage
+     */
+    storage: 'backend' | 'server';
+};
+
+/**
+ * EmbeddingEndpointResource
+ *
+ * An endpoint as the browser sees it: never a key, and for a server's
+ * endpoint a placeholder instead of its real address.
+ */
+export type EmbeddingEndpointResource = {
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Default
+     */
+    default: boolean;
+    /**
+     * Has Api Key
+     */
+    has_api_key: boolean;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Models
+     */
+    models: {
+        [key in TopicEmbeddingModel]?: string;
+    };
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Source
+     */
+    source: 'server' | 'user';
+};
+
+/**
+ * EmbeddingEndpointUpdate
+ *
+ * A partial update; ``api_key: null`` removes the key.
+ */
+export type EmbeddingEndpointUpdate = {
+    /**
+     * Api Key
+     */
+    api_key?: null;
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Models
+     */
+    models?: {
+        [key in TopicEmbeddingModel]?: string;
+    } | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
+/**
  * ExpressionDerivation
  */
 export type ExpressionDerivation = {
@@ -5823,6 +5952,10 @@ export type TopicModelingAnalysisRequest = {
      * Cluster Sample Size
      */
     cluster_sample_size?: number | null;
+    /**
+     * Embedding Endpoint Id
+     */
+    embedding_endpoint_id?: string | null;
     embedding_model?: TopicEmbeddingModel;
     /**
      * Kind
@@ -7491,6 +7624,56 @@ export type DataPortalSearchRequestWritable = {
     query?: string;
 };
 
+/**
+ * EmbeddingEndpointCreate
+ */
+export type EmbeddingEndpointCreateWritable = {
+    /**
+     * Api Key
+     */
+    api_key?: string | null;
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Models
+     */
+    models?: {
+        [key in TopicEmbeddingModel]?: string;
+    } | null;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * EmbeddingEndpointUpdate
+ *
+ * A partial update; ``api_key: null`` removes the key.
+ */
+export type EmbeddingEndpointUpdateWritable = {
+    /**
+     * Api Key
+     */
+    api_key?: string | null;
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Models
+     */
+    models?: {
+        [key in TopicEmbeddingModel]?: string;
+    } | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
 export type FilterValueInputWritable = FilterScalar | Array<FilterScalar> | {
     [key: string]: JsonDataInputWritable;
 };
@@ -7897,6 +8080,222 @@ export type UpdateDataRootResponses = {
 };
 
 export type UpdateDataRootResponse = UpdateDataRootResponses[keyof UpdateDataRootResponses];
+
+export type ListEmbeddingEndpointsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/embedding-endpoints';
+};
+
+export type ListEmbeddingEndpointsErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type ListEmbeddingEndpointsError = ListEmbeddingEndpointsErrors[keyof ListEmbeddingEndpointsErrors];
+
+export type ListEmbeddingEndpointsResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmbeddingEndpointList;
+};
+
+export type ListEmbeddingEndpointsResponse = ListEmbeddingEndpointsResponses[keyof ListEmbeddingEndpointsResponses];
+
+export type CreateEmbeddingEndpointData = {
+    body: EmbeddingEndpointCreateWritable;
+    path?: never;
+    query?: never;
+    url: '/api/embedding-endpoints';
+};
+
+export type CreateEmbeddingEndpointErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type CreateEmbeddingEndpointError = CreateEmbeddingEndpointErrors[keyof CreateEmbeddingEndpointErrors];
+
+export type CreateEmbeddingEndpointResponses = {
+    /**
+     * Successful Response
+     */
+    201: EmbeddingEndpointResource;
+};
+
+export type CreateEmbeddingEndpointResponse = CreateEmbeddingEndpointResponses[keyof CreateEmbeddingEndpointResponses];
+
+export type DeleteEmbeddingEndpointData = {
+    body?: never;
+    path: {
+        /**
+         * Endpoint Id
+         */
+        endpoint_id: string;
+    };
+    query?: never;
+    url: '/api/embedding-endpoints/{endpoint_id}';
+};
+
+export type DeleteEmbeddingEndpointErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type DeleteEmbeddingEndpointError = DeleteEmbeddingEndpointErrors[keyof DeleteEmbeddingEndpointErrors];
+
+export type DeleteEmbeddingEndpointResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteEmbeddingEndpointResponse = DeleteEmbeddingEndpointResponses[keyof DeleteEmbeddingEndpointResponses];
+
+export type UpdateEmbeddingEndpointData = {
+    body: EmbeddingEndpointUpdateWritable;
+    path: {
+        /**
+         * Endpoint Id
+         */
+        endpoint_id: string;
+    };
+    query?: never;
+    url: '/api/embedding-endpoints/{endpoint_id}';
+};
+
+export type UpdateEmbeddingEndpointErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type UpdateEmbeddingEndpointError = UpdateEmbeddingEndpointErrors[keyof UpdateEmbeddingEndpointErrors];
+
+export type UpdateEmbeddingEndpointResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmbeddingEndpointResource;
+};
+
+export type UpdateEmbeddingEndpointResponse = UpdateEmbeddingEndpointResponses[keyof UpdateEmbeddingEndpointResponses];
+
+export type CheckEmbeddingEndpointData = {
+    body?: never;
+    path: {
+        /**
+         * Endpoint Id
+         */
+        endpoint_id: string;
+    };
+    query?: never;
+    url: '/api/embedding-endpoints/{endpoint_id}/check';
+};
+
+export type CheckEmbeddingEndpointErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type CheckEmbeddingEndpointError = CheckEmbeddingEndpointErrors[keyof CheckEmbeddingEndpointErrors];
+
+export type CheckEmbeddingEndpointResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmbeddingEndpointCheck;
+};
+
+export type CheckEmbeddingEndpointResponse = CheckEmbeddingEndpointResponses[keyof CheckEmbeddingEndpointResponses];
 
 export type BackendEventsData = {
     body?: never;

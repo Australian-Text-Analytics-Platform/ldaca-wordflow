@@ -19,7 +19,12 @@ from .binding import (
     unbound_credential,
     unbound_provider,
 )
-from .config import ServerAiProvider, clear_server_ai_providers, server_ai_providers
+from .config import (
+    ServerAiProvider,
+    ServerEmbeddingEndpoint,
+    clear_server_ai_providers,
+    server_ai_providers,
+)
 from .gate import user_gate
 
 if TYPE_CHECKING:
@@ -54,6 +59,17 @@ async def bind_credential(credential: str | None, user_id: str, purpose: Purpose
         raise RuntimeError("Server AI identity resolver is not installed")
     end_user = await _resolver.end_user(provider, user_id)
     return encode_binding(ServerAiBinding(provider.slug, purpose, user_id, end_user))
+
+
+async def embedding_end_user(endpoint: ServerEmbeddingEndpoint, user_id: str) -> str | None:
+    """The OpenAI ``user`` field for a server embedding endpoint, from the
+    signed-in account (never from the client); None when it sends none."""
+
+    if endpoint.send_user == "none":
+        return None
+    if _resolver is None:
+        raise RuntimeError("Server AI identity resolver is not installed")
+    return await _resolver.end_user(endpoint, user_id)
 
 
 def annotation_adapter_for(
@@ -108,7 +124,9 @@ def queued_progress(credential: str | None, user_id: str) -> Progress | None:
 
 __all__ = [
     "ServerAiProvider",
+    "ServerEmbeddingEndpoint",
     "annotation_adapter_for",
+    "embedding_end_user",
     "bind_credential",
     "cap_concurrency",
     "claims_annotation_provider",

@@ -16,7 +16,7 @@ import hashlib
 import hmac
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 from urllib.parse import urlsplit
 
 from pydantic import SecretStr
@@ -166,13 +166,23 @@ def run_binding(credential: str | None) -> tuple[ServerAiProvider, ServerAiBindi
     return (provider, binding) if binding.purpose == "run" else None
 
 
+class SendsUser(Protocol):
+    """A server provider or embedding endpoint: what it sends as ``user``."""
+
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def send_user(self) -> Literal["email", "subject", "none"]: ...
+
+
 class EndUserResolver:
     """The value sent as the OpenAI ``user`` field, from the user's account."""
 
     def __init__(self, sessions: SessionService) -> None:
         self._sessions = sessions
 
-    async def end_user(self, provider: ServerAiProvider, user_id: str) -> str:
+    async def end_user(self, provider: SendsUser, user_id: str) -> str:
         if provider.send_user == "none":
             return ""
         if not self._sessions.settings.multi_user:

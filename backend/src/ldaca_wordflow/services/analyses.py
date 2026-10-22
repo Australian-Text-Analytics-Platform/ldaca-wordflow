@@ -37,6 +37,7 @@ from ..domain.workspace import (
     ConcordanceMatchDataBlockCreationAnalysisRequest,
     ConcordanceRunAllAnalysisRequest,
     AnalysisResource,
+    TopicModelingAnalysisRequest,
     UnavailableAnalysis,
     Failure,
     InvalidAnalysisIntegrity,
@@ -75,6 +76,7 @@ from ..shared.errors import (
     TabNotFoundError,
 )
 from ..shared.json_data import JsonData
+from ..shared.remote_embedding import encode_embedding_run
 from .analysis_execution_types import (
     AnalysisExecutionControl,
     AnalysisExecutionKey,
@@ -296,6 +298,16 @@ class AnalysisService:
             user_id,
             "run" if isinstance(request, AnnotationRunAllAnalysisRequest) else "preview",
         )
+        if (
+            isinstance(request, TopicModelingAnalysisRequest)
+            and request.embedding_endpoint_id is not None
+        ):
+            # Where this run embeds: a server's endpoint (its key stays in the
+            # environment) or one added in Settings. Resolved now, so a missing
+            # endpoint fails the submit rather than the run.
+            credential = encode_embedding_run(
+                await self._credentials.resolve_embedding_endpoint(request, user_id)
+            )
         server_ai_waiting = server_ai.queued_progress(credential, user_id)
         timestamp = self._clock()
         records_to_schedule: list[AnalysisRecord] = []
