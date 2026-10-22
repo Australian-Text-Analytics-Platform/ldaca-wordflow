@@ -46,6 +46,11 @@ one tag change. After the first push, check the package's visibility under
 the organisation's **Packages** on GitHub: if it is private, give the cluster
 a read-only token (`read:packages`) to pull.
 
+The image installs the wheel's dependencies at exactly the versions in
+`backend/uv.lock`, the ones CI tested: `deploy/docker/lock-constraints.sh`
+exports them to `dist/constraints.txt`, and the build fails if anything
+installed differs from it.
+
 To build it yourself (Node 24 with corepack, uv, Docker), from a checkout of
 the ref with its submodules:
 
@@ -53,6 +58,7 @@ the ref with its submodules:
 corepack enable && pnpm install --frozen-lockfile
 pnpm deploy_frontend_to_backend
 (cd backend && uv build --no-sources --wheel --out-dir ../dist)
+deploy/docker/lock-constraints.sh dist/constraints.txt
 docker build --platform linux/amd64 -f deploy/docker/Dockerfile -t ldaca-wordflow-server:local .
 ```
 

@@ -133,6 +133,10 @@ jobs:
         working-directory: backend
         run: uv build --no-sources --wheel --out-dir ../dist
 
+      # The image installs exactly these versions (issue 427).
+      - name: Pin dependencies from the lock
+        run: deploy/docker/lock-constraints.sh dist/constraints.txt
+
       - name: Check the wheel
         shell: bash
         run: |

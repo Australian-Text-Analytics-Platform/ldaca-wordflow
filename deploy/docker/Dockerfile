@@ -22,8 +22,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --no-create-home --uid 10001 --home-dir /tmp wordflow
 
-COPY dist/*.whl /tmp/wheels/
-RUN pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels
+# Dependencies at exactly the versions in backend/uv.lock, which CI tested
+# (deploy/docker/lock-constraints.sh writes dist/constraints.txt; issue 427).
+COPY dist/*.whl dist/constraints.txt deploy/docker/check_pins.py /tmp/wheels/
+RUN pip install -c /tmp/wheels/constraints.txt /tmp/wheels/*.whl \
+    && pip check \
+    && python /tmp/wheels/check_pins.py /tmp/wheels/constraints.txt \
+    && rm -rf /tmp/wheels
 
 COPY deploy/docker/prefetch_models.py /opt/wordflow/prefetch_models.py
 RUN python /opt/wordflow/prefetch_models.py \
