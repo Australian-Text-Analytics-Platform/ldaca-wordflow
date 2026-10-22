@@ -130,9 +130,12 @@ processed the whole Result. The full document stays unsorted.
 
 <h4 id="help-concordance-table-view">Table view</h4>
 
-Table view shows one row per match. Click a row to inspect the full source
-document and its metadata. Use the metadata selector to add source columns to
-the table.
+Table view shows one row per match. Click a row to open **Row Details**: the
+full source document, scrolled to the match, with the match in bold and its
+left and right contexts highlighted, followed by the document's metadata.
+**Previous row** and **Next row** follow the table, whether the next match is in
+the same document or another. Use the metadata selector to add source columns
+to the table.
 
 ![Table view after Run: the matched text is highlighted, and L1 and R1 are in the source colour](tutorials/assets/concordance/table_view.png)
 
@@ -175,6 +178,14 @@ bars use the same width for easier positional comparison.
 Match markers and dispersion series use the colour assigned to their exact,
 case-sensitive matched text. Colours come from the sorted union of term labels
 for the Result and remain stable when terms are hidden.
+
+Click a document to open **Match Details**, which shows the document one match
+at a time: the current match in bold with its contexts highlighted, and the
+document's other matches in a lighter tint. Each match takes its colour from
+the legend, so with **Ignore capitals** on, *what* and *What* share one colour.
+The top of the window shows which match you are on (for example 3 of 9) and its
+L1 and R1. **Previous match** and **Next match** step through the document's
+matches and continue into the previous or next document.
 
 <h4 id="help-concordance-tooltip">Hover details</h4>
 
