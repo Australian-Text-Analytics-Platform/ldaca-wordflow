@@ -38,3 +38,35 @@ def test_an_explicit_thread_setting_is_kept(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.delenv(cpu.EMBEDDING_THREADS_ENV)
     cpu.default_embedding_threads()
     assert os.environ[cpu.EMBEDDING_THREADS_ENV] == str(cpu.available_cpus())
+
+
+@pytest.fixture
+def no_pool_variables(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
+    for variable in cpu.THREAD_POOL_VARIABLES:
+        monkeypatch.delenv(variable, raising=False)
+    return monkeypatch
+
+
+def test_a_quota_below_the_visible_cores_caps_thread_pools(
+    tmp_path: Path, no_pool_variables: pytest.MonkeyPatch
+) -> None:
+    # 8 CPUs of a 224-core node (issue 428).
+    (tmp_path / "cpu.max").write_text("800000 100000\n")
+    no_pool_variables.setattr(os, "process_cpu_count", lambda: 224)
+    no_pool_variables.setenv("MKL_NUM_THREADS", "4")
+
+    assert cpu.cap_thread_pools(tmp_path) == 8
+    assert os.environ["OPENBLAS_NUM_THREADS"] == "8"
+    assert os.environ["RAYON_NUM_THREADS"] == "8"
+    assert os.environ["MKL_NUM_THREADS"] == "4"
+
+
+def test_without_a_smaller_quota_thread_pools_are_left_alone(
+    tmp_path: Path, no_pool_variables: pytest.MonkeyPatch
+) -> None:
+    no_pool_variables.setattr(os, "process_cpu_count", lambda: 8)
+    (tmp_path / "cpu.max").write_text("max 100000\n")
+    assert cpu.cap_thread_pools(tmp_path) is None
+    (tmp_path / "cpu.max").write_text("1600000 100000\n")
+    assert cpu.cap_thread_pools(tmp_path) is None
+    assert not any(variable in os.environ for variable in cpu.THREAD_POOL_VARIABLES)

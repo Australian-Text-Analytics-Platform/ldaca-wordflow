@@ -101,10 +101,46 @@ def quotation_processes(cgroup_root: Path = Path("/sys/fs/cgroup")) -> int:
     return max(1, count)
 
 
+# Thread pools that size themselves from the cores the operating system shows,
+# not from a container's CPU quota (issue 428). Polars and Rust's own pools
+# already follow the quota; these are set too, so workers inherit one rule.
+THREAD_POOL_VARIABLES = (
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "RAYON_NUM_THREADS",
+    "POLARS_MAX_THREADS",
+)
+
+
+def cap_thread_pools(cgroup_root: Path = Path("/sys/fs/cgroup")) -> int | None:
+    """Size thread pools to a CPU quota below the visible cores; returns it.
+
+    On a shared node (for example 8 CPUs of a 224-core GPU node) NumPy's
+    OpenBLAS and MKL would otherwise start a thread per visible core. Runs
+    before NumPy loads; variables the deployment set are kept. Without a
+    quota, or with one at least the visible count (desktops), nothing changes.
+    """
+
+    quota = _cgroup_cpu_quota(cgroup_root)
+    visible = os.process_cpu_count() or os.cpu_count() or 1
+    if quota is None or quota >= visible:
+        return None
+    for variable in THREAD_POOL_VARIABLES:
+        os.environ.setdefault(variable, str(quota))
+    return quota
+
+
 def default_embedding_threads() -> None:
     """Embed on every processor this process may use, unless configured."""
 
     os.environ.setdefault(EMBEDDING_THREADS_ENV, str(available_cpus()))
 
 
-__all__ = ["available_cpus", "default_embedding_threads", "quotation_processes"]
+__all__ = [
+    "THREAD_POOL_VARIABLES",
+    "available_cpus",
+    "cap_thread_pools",
+    "default_embedding_threads",
+    "quotation_processes",
+]

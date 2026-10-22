@@ -68,6 +68,11 @@ def main(argv: list[str] | None = None) -> None:
     """Load process configuration and dispatch the selected server profile."""
     args = _parse_args(argv)
 
+    from .workers.cpu import cap_thread_pools
+
+    # Before NumPy and the model libraries start their thread pools (issue 428).
+    cpu_quota = cap_thread_pools()
+
     from ._logging import setup_logging
     from .infrastructure.process_watchdog import start_parent_watchdog
     from .infrastructure.system_certificates import use_system_certificates
@@ -82,6 +87,10 @@ def main(argv: list[str] | None = None) -> None:
         level=cli_settings.log_level,
     )
     start_parent_watchdog()
+    if cpu_quota is not None:
+        logging.getLogger(__name__).info(
+            "CPU quota of %s processors: thread pools capped to it", cpu_quota
+        )
 
     if cli_settings.data_root is not None:
         from .data_root_config import describe_data_root_failure, probe_data_root

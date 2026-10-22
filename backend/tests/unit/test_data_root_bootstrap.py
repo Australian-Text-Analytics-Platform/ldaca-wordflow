@@ -126,7 +126,7 @@ def test_probe_refuses_wordflow_data_another_uid_created(
     (tmp_path / "users").mkdir()
     assert probe_data_root(tmp_path) == tmp_path.resolve()
 
-    other = os.getuid() + 1
+    other = (os.getuid() if hasattr(os, "getuid") else 0) + 1
     monkeypatch.setattr(os, "getuid", lambda: other)
     with pytest.raises(DataRootOwnerError) as raised:
         probe_data_root(tmp_path)
