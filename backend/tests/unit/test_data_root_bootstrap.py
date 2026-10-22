@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -16,6 +17,7 @@ from pydantic import ValidationError
 from ldaca_wordflow.data_root_config import (
     DataRootConfigError,
     DataRootConfigStore,
+    DataRootOwnerError,
     DataRootPaths,
     platform_cache_root,
     platform_data_root_paths,
@@ -23,7 +25,12 @@ from ldaca_wordflow.data_root_config import (
 )
 from ldaca_wordflow.main import RuntimeContextFactory, create_app
 from ldaca_wordflow.models.data_root import DataRootUpdateRequest
-from ldaca_wordflow.runtime import Runtime, RuntimeManager, runtime_manager_context
+from ldaca_wordflow.runtime import (
+    DataRootStartupError,
+    Runtime,
+    RuntimeManager,
+    runtime_manager_context,
+)
 from ldaca_wordflow.settings import Settings
 from ldaca_wordflow.shared.errors import (
     DataRootBusyError,
@@ -110,6 +117,43 @@ def test_probe_creates_and_canonicalizes_directory_and_rejects_files(
         probe_data_root(regular_file)
     with pytest.raises(ValueError):
         probe_data_root(Path("relative"))
+
+
+@pytest.mark.skipif(not hasattr(os, "getuid"), reason="POSIX owners only")
+def test_probe_refuses_wordflow_data_another_uid_created(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "users").mkdir()
+    assert probe_data_root(tmp_path) == tmp_path.resolve()
+
+    other = os.getuid() + 1
+    monkeypatch.setattr(os, "getuid", lambda: other)
+    with pytest.raises(DataRootOwnerError) as raised:
+        probe_data_root(tmp_path)
+    assert f"running as uid {other}" in str(raised.value)
+    assert (tmp_path / "users").is_dir()
+
+
+@pytest.mark.anyio
+async def test_an_unusable_operator_data_root_stops_start_up(tmp_path: Path) -> None:
+    blocker = tmp_path / "file"
+    blocker.write_text("not a folder", encoding="utf-8")
+    opened: list[Path] = []
+
+    @asynccontextmanager
+    async def factory(settings: Settings) -> AsyncIterator[Runtime]:
+        opened.append(settings.get_data_root())
+        yield cast(Runtime, _FakeRuntime(settings.get_data_root()))
+
+    with pytest.raises(ExceptionGroup) as raised:
+        async with runtime_manager_context(
+            Settings(data_root=blocker / "data"), factory, config_store=_store(tmp_path)
+        ):
+            pytest.fail("the server started with an unusable data folder")
+    assert raised.group_contains(
+        DataRootStartupError, match=re.escape(f"data folder {blocker / 'data'} (running as")
+    )
+    assert opened == []
 
 
 @pytest.mark.parametrize(

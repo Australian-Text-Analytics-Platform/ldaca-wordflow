@@ -13,6 +13,7 @@ snapshot, configures process logging/watchdog behavior, and starts the server.
 from __future__ import annotations
 
 import argparse
+import logging
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -81,6 +82,24 @@ def main(argv: list[str] | None = None) -> None:
         level=cli_settings.log_level,
     )
     start_parent_watchdog()
+
+    if cli_settings.data_root is not None:
+        from .data_root_config import describe_data_root_failure, probe_data_root
+
+        # An operator-set data folder that can't be used stops the server
+        # before it listens, with one line instead of a traceback (issue 425).
+        try:
+            probe_data_root(cli_settings.data_root)
+        except Exception as exc:
+            logging.getLogger(__name__).error(
+                "%s", describe_data_root_failure(cli_settings.data_root, exc)
+            )
+            raise SystemExit(1) from None
+
+    from .runtime_caches import route_unwritable_caches
+
+    # Before any model library reads its cache variable (issue 425).
+    route_unwritable_caches(cli_settings.data_root)
 
     serve_frontend = not args.backend
 

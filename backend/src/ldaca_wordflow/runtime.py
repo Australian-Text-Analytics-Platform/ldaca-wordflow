@@ -42,6 +42,7 @@ from .infrastructure.providers.quotation_client import QuotationProviderClient
 from .settings import Settings
 from .data_root_config import (
     DataRootConfigError,
+    describe_data_root_failure,
     DataRootConfigStore,
     probe_data_root,
 )
@@ -272,6 +273,15 @@ class RuntimeManagerError:
     message: str
 
 
+class DataRootStartupError(RuntimeError):
+    """An operator-set Data Root is unusable, so the server must not start."""
+
+
+class _DataRootUnusableError(OSError):
+    """The folder itself failed: not creatable, writable, readable or ours."""
+
+
+
 @dataclass(frozen=True, slots=True)
 class RuntimeManagerSnapshot:
     """Immutable public projection of one process's Data Root state."""
@@ -314,11 +324,14 @@ class _RuntimeSlot:
     async def open(self, data_root: Path) -> tuple[Runtime, Path]:
         if self._stack is not None:
             raise RuntimeError("A managed Runtime is already open")
-        canonical = await run_sync_in_worker_thread(
-            probe_data_root,
-            data_root,
-            abandon_on_cancel=False,
-        )
+        try:
+            canonical = await run_sync_in_worker_thread(
+                probe_data_root,
+                data_root,
+                abandon_on_cancel=False,
+            )
+        except Exception as exc:
+            raise _DataRootUnusableError(str(exc)) from exc
         effective_settings = Settings.model_validate(
             {**self._base_settings.model_dump(), "data_root": canonical}
         )
@@ -368,6 +381,7 @@ class RuntimeManager:
         self._data_root: Path | None = None
         self._generation = 0
         self._error: RuntimeManagerError | None = None
+        self._startup_failure: str | None = None
         self._change_token = secrets.token_urlsafe(32)
         self._transition_lock = anyio.Lock()
         self._lease_condition = anyio.Condition()
@@ -465,6 +479,15 @@ class RuntimeManager:
             self._state = "unconfigured"
             return
         await self._submit_owner(_RuntimeOwnerRequest("initialize", selected))
+        if self._startup_failure is not None:
+            # Nobody can choose another folder on a server: stop, so the
+            # orchestrator sees a failed start (issue 425).
+            raise DataRootStartupError(self._startup_failure)
+
+    def _operator_managed(self) -> bool:
+        """The Data Root comes from the operator (DATA_ROOT, or a server)."""
+
+        return self._source == "environment" or self._base_settings.multi_user
 
     async def close(self) -> None:
         """Stop admission, drain finite requests, and close the active Runtime."""
@@ -571,8 +594,12 @@ class RuntimeManager:
         try:
             runtime, canonical = await slot.open(selected)
         except Exception as exc:
-            logger.exception("Configured Data Root could not initialize")
             self._state = "configuration_error"
+            if self._operator_managed() and isinstance(exc, _DataRootUnusableError):
+                self._startup_failure = describe_data_root_failure(selected, exc)
+                logger.error("%s", self._startup_failure)
+            else:
+                logger.exception("Configured Data Root could not initialize")
             self._error = RuntimeManagerError(
                 "data_root_unavailable",
                 format_exception_diagnostic(exc),

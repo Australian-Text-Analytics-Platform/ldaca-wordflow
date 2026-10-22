@@ -8,26 +8,33 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    # Models fetched at build time live here; the app reads them at run time.
+    # Models fetched at build time live here, readable by any uid and written
+    # by none: at run time new downloads go under DATA_ROOT (issue 425).
     HF_HOME=/opt/wordflow/models/huggingface \
     XDG_CACHE_HOME=/opt/wordflow/cache \
+    LINDERA_DICT_PATH=/opt/wordflow/cache/lindera \
+    # The container may run as any uid, with no passwd entry or home folder.
+    HOME=/tmp \
     DATA_ROOT=/data
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tini ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --create-home --uid 10001 --home-dir /home/wordflow wordflow
+    && useradd --system --no-create-home --uid 10001 --home-dir /tmp wordflow
 
 COPY dist/*.whl /tmp/wheels/
 RUN pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels
 
 COPY deploy/docker/prefetch_models.py /opt/wordflow/prefetch_models.py
 RUN python /opt/wordflow/prefetch_models.py \
-    && mkdir -p /data \
-    && chown -R wordflow:wordflow /opt/wordflow/cache /opt/wordflow/models /data
+    && mkdir -p /opt/wordflow/cache/lindera /data \
+    && chmod -R a+rX,go-w /opt/wordflow \
+    && chown wordflow:wordflow /data
 
+# The default user; a cluster may run the image as any uid/gid instead
+# (docs/runbooks/server-image.md, "Running as another user").
 USER wordflow
-WORKDIR /home/wordflow
+WORKDIR /tmp
 VOLUME ["/data"]
 EXPOSE 8001
 

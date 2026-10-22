@@ -24,6 +24,22 @@ class DataRootConfigError(ValueError):
     """The platform configuration file is malformed or unsupported."""
 
 
+class DataRootOwnerError(PermissionError):
+    """The Data Root holds Wordflow data created by another user id."""
+
+    def __init__(self, path: Path, owner: int, uid: int) -> None:
+        super().__init__(
+            f"{path} belongs to uid {owner}, but Wordflow is running as uid {uid}. "
+            f"Wordflow's files are private to the uid that created them, so run "
+            f"as uid {owner} (or copy the data and change its owner)."
+        )
+
+
+# What Wordflow creates at the top of a Data Root; their owner is the uid that
+# created the data (issue 425).
+_OWNED_ENTRIES = ("deployment.sqlite3", "users", "workspaces")
+
+
 @dataclass(frozen=True, slots=True)
 class DataRootPaths:
     """Process-local configuration and recommended data locations."""
@@ -114,15 +130,55 @@ def probe_data_root(candidate: Path) -> Path:
     finally:
         probe.unlink(missing_ok=True)
         fsync_directory(canonical)
+    check_data_root_owner(canonical)
     return canonical
+
+
+def describe_data_root_failure(path: Path, exc: BaseException) -> str:
+    """Path, process identity and cause, for an operator's log (issue 425)."""
+
+    from .shared.errors import format_exception_diagnostic
+
+    identity = (
+        f"uid {os.getuid()}, gid {os.getgid()}"
+        if hasattr(os, "getuid")
+        else "this account"
+    )
+    return (
+        f"Wordflow can't use its data folder {path} (running as {identity}): "
+        f"{format_exception_diagnostic(exc)}"
+    )
+
+
+def check_data_root_owner(root: Path) -> None:
+    """Refuse a Data Root whose Wordflow data another uid created.
+
+    Files are 0600 and folders 0700, so data stays private to the uid that wrote
+    it; another uid could neither read it nor safely add to it. Stopping here
+    names both uids instead of failing later on single files.
+    """
+
+    if not hasattr(os, "getuid"):
+        return
+    uid = os.getuid()
+    for name in _OWNED_ENTRIES:
+        try:
+            owner = (root / name).lstat().st_uid
+        except FileNotFoundError:
+            continue
+        if owner != uid:
+            raise DataRootOwnerError(root / name, owner, uid)
 
 
 __all__ = [
     "APP_IDENTIFIER",
     "DataRootConfigError",
+    "DataRootOwnerError",
     "DataRootConfigStore",
     "DataRootPaths",
     "platform_cache_root",
+    "check_data_root_owner",
+    "describe_data_root_failure",
     "platform_data_root_paths",
     "probe_data_root",
 ]

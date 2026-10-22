@@ -82,3 +82,45 @@ Behind a reverse proxy on the same host or pod, run it on loopback instead, for 
   releases this deployment doesn't follow.
 
 The rest of the configuration is as in [Hosted deployment](hosted-deployment.md).
+
+## Running as another user
+
+The image runs as its own user, `wordflow` (uid 10001, gid 999), and the
+image's `/data` belongs to that user. A cluster can run it under any uid and
+gid instead, including one with no entry in `/etc/passwd`
+(`docker run --user 54321:54321`, or the platform's equivalent).
+
+- **Nothing depends on the user.** `HOME` is `/tmp`, and the models fetched at
+  build time under `/opt/wordflow` are readable by every uid and written by
+  none. New downloads, such as Lindera dictionaries or another tokeniser, go
+  to `<DATA_ROOT>/.cache/runtime/`, or to the temp folder when the data folder
+  can't take them. The log says once where they went.
+- **The data folder must stay with one uid.** Wordflow keeps each person's
+  files private (files 0600, folders 0700), readable only by the account that
+  wrote them; its shared database and top-level folders follow the process
+  umask. Run every deployment of the same data as the same uid. If
+  the data folder holds Wordflow data from another uid, Wordflow stops at
+  start-up and names both uids. Nothing is changed or re-created. To move
+  data to another account, copy it and change its owner first.
+- **An unusable data folder stops the server.** If Wordflow can't create,
+  write or read back `DATA_ROOT`, it logs one line with the path, its uid and
+  gid, and the error, then exits with status 1 before it listens, so the
+  orchestrator sees a failed start.
+- **Group access.** A supplementary group can grant access to the data
+  folder, for example a `root:<group>` folder with mode 2770 and
+  `--group-add <group>`. Wordflow's own files stay private to its uid inside
+  it.
+
+### Run:ai and shared cluster storage
+
+- Run:ai doesn't run containers as root: `--run-as-uid 0` is dropped.
+- `--run-as-user` runs the container as the submitting person's cluster
+  account: their uid, their primary group and all their groups.
+- Storage that resolves group membership on the server, such as Lustre, only
+  grants a uid the cluster knows. A uid it doesn't know, such as the image's
+  10001, gets no group access even with supplementary groups. Run the image as
+  a cluster account (a service account for a deployment, or a person's own for
+  a test), and keep that account for the life of the data.
+- Don't rely on group 0 (the OpenShift pattern): on Run:ai the gid is the
+  account's primary group.
+
