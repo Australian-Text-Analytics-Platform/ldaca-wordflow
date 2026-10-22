@@ -1,12 +1,14 @@
-# CILogon Secrets Runbook
+# OIDC Client Secrets Runbook
 
-CILogon client secrets never belong in Git, GitHub Actions variables, service
+OIDC client secrets (CILogon or another provider) never belong in Git, GitHub Actions variables, service
 unit text, shell history, or frontend configuration. Wordflow reads the secret
-only from `CILOGON_CLIENT_SECRET` at backend startup.
+only from `OIDC_CLIENT_SECRET` at backend startup (servers set up before
+0.7.16 may still use the earlier name `CILOGON_CLIENT_SECRET`, which is
+accepted).
 
 ## Secret Manager
 
-The current Google Cloud Secret Manager name is
+The current Google Cloud Secret Manager name for the CILogon secret is
 `LDACA_CILOGON_CLIENT_SECRET` in project `prime-odyssey-387018`. Authenticate
 with an operator identity rather than memorizing a secret:
 
@@ -25,7 +27,7 @@ sudo install -d -m 700 /etc/ldaca-wordflow
 secret="$(gcloud secrets versions access latest \
   --project=prime-odyssey-387018 \
   --secret=LDACA_CILOGON_CLIENT_SECRET)"
-printf 'CILOGON_CLIENT_SECRET=%s\n' "$secret" \
+printf 'OIDC_CLIENT_SECRET=%s\n' "$secret" \
   | sudo tee /etc/ldaca-wordflow/secrets.env >/dev/null
 sudo chmod 600 /etc/ldaca-wordflow/secrets.env
 unset secret
@@ -37,13 +39,13 @@ the file has the expected owner/mode.
 ## Provider Configuration
 
 The service definition contains the non-secret client ID, exact redirect URI,
-and `CILOGON_ISSUER`. Use the provider's exact issuer (an origin, or a Keycloak
+and `OIDC_ISSUER`. Use the provider's exact issuer (an origin, or a Keycloak
 realm URL with its path); Wordflow derives the discovery URL. Test and production issuers are separate registrations and must match the
 configured client and callback.
 
 ## Rotation
 
-1. Create or obtain the replacement credential from the authorized CILogon
+1. Create or obtain the replacement credential from the authorized provider
    operator.
 2. Add a new Secret Manager version without deleting the previous version.
 3. Fetch `latest` into the server environment file and restart Wordflow.
@@ -53,5 +55,5 @@ configured client and callback.
    secret value.
 
 If a secret was committed, removal from the current tree is insufficient:
-revoke it at CILogon, rotate it in Secret Manager, and treat Git history as
+revoke it at the provider, rotate it in Secret Manager, and treat Git history as
 compromised material.

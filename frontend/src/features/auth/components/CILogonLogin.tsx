@@ -10,7 +10,7 @@ interface CILogonLoginProps {
 }
 
 /**
- * The button for the server's OIDC sign-in (CILOGON_* settings). It says
+ * The button for the server's OIDC sign-in (OIDC_* settings, formerly CILOGON_*). It says
  * "SSO", not a provider name, because the same sign-in can be CILogon (AAF),
  * a Keycloak realm, or another OIDC provider (issue 405).
  */

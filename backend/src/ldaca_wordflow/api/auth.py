@@ -135,7 +135,7 @@ def _providers(request: Request, sessions: SessionService) -> list[AuthProvider]
                 entrypoint_url=route_path(request, "google_callback"),
             )
         )
-    if sessions.settings.multi_user and sessions.settings.cilogon_client_id:
+    if sessions.settings.multi_user and sessions.settings.oidc_client_id:
         providers.append(
             AuthProvider(
                 id="cilogon",
@@ -237,10 +237,10 @@ async def google_callback(
     return response
 
 
-def _cilogon_redirect_uri(sessions: SessionService) -> str:
+def _oidc_redirect_uri(sessions: SessionService) -> str:
     """Return the startup-validated provider callback without Host inference."""
 
-    configured = sessions.settings.cilogon_redirect_uri
+    configured = sessions.settings.oidc_redirect_uri
     if not configured:
         raise InvalidInputError("CILogon authentication is not configured")
     return configured
@@ -260,7 +260,7 @@ async def cilogon_login(
     """Start CILogon with an opaque one-use persisted state transaction."""
 
     settings = runtime.settings
-    if not settings.multi_user or not settings.cilogon_client_id:
+    if not settings.multi_user or not settings.oidc_client_id:
         raise InvalidInputError("CILogon authentication is not configured")
     config = await runtime.oauth_service.cilogon_config()
     state_token = secrets.token_urlsafe(32)
@@ -278,10 +278,10 @@ async def cilogon_login(
     params = urlencode(
         {
             "response_type": "code",
-            "client_id": settings.cilogon_client_id,
-            "redirect_uri": _cilogon_redirect_uri(runtime.session_service),
+            "client_id": settings.oidc_client_id,
+            "redirect_uri": _oidc_redirect_uri(runtime.session_service),
             # Configurable for other OIDC providers, such as Keycloak (issue 403).
-            "scope": " ".join(settings.cilogon_scopes),
+            "scope": " ".join(settings.oidc_scopes),
             "state": state_token,
             "code_challenge": _pkce_challenge(code_verifier),
             "code_challenge_method": "S256",
@@ -324,7 +324,7 @@ async def cilogon_callback(
         raise InvalidInputError("CILogon authentication failed")
     user = await runtime.oauth_service.complete_cilogon(
         code=code,
-        redirect_uri=_cilogon_redirect_uri(runtime.session_service),
+        redirect_uri=_oidc_redirect_uri(runtime.session_service),
         code_verifier=code_verifier,
     )
     issued = await runtime.session_service.issue(user)

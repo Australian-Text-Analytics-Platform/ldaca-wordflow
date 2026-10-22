@@ -25,12 +25,12 @@ KEYCLOAK_ISSUER = "https://sso.example.edu/auth/realms/research"
 
 
 def test_default_scopes_are_unchanged() -> None:
-    assert Settings().cilogon_scopes == DEFAULT_SCOPES
+    assert Settings().oidc_scopes == DEFAULT_SCOPES
 
 
 def test_scopes_come_from_json_in_the_environment(monkeypatch) -> None:
     monkeypatch.setenv("CILOGON_SCOPES", '["openid","email","profile"]')
-    assert Settings().cilogon_scopes == ("openid", "email", "profile")
+    assert Settings().oidc_scopes == ("openid", "email", "profile")
 
 
 @pytest.mark.parametrize(
@@ -47,16 +47,16 @@ def test_scopes_come_from_json_in_the_environment(monkeypatch) -> None:
 )
 def test_bad_scopes_are_refused_at_startup(scopes, message) -> None:
     with pytest.raises(ValidationError, match=message):
-        Settings(cilogon_scopes=scopes)
+        Settings(oidc_scopes=scopes)
 
 
 def test_an_issuer_may_have_a_path_such_as_a_keycloak_realm() -> None:
-    settings = Settings(cilogon_issuer=f"{KEYCLOAK_ISSUER}/")
-    assert settings.get_cilogon_issuer() == KEYCLOAK_ISSUER
-    assert settings.get_cilogon_discovery_url() == (
+    settings = Settings(oidc_issuer=f"{KEYCLOAK_ISSUER}/")
+    assert settings.get_oidc_issuer() == KEYCLOAK_ISSUER
+    assert settings.get_oidc_discovery_url() == (
         f"{KEYCLOAK_ISSUER}/.well-known/openid-configuration"
     )
-    assert Settings().get_cilogon_issuer() == "https://test.cilogon.aaf.edu.au"
+    assert Settings().get_oidc_issuer() == "https://test.cilogon.aaf.edu.au"
 
 
 @pytest.mark.parametrize(
@@ -74,7 +74,7 @@ def test_an_issuer_may_have_a_path_such_as_a_keycloak_realm() -> None:
 )
 def test_issuer_paths_stay_strict(issuer) -> None:
     with pytest.raises(ValidationError, match="HTTPS issuer URL"):
-        Settings(cilogon_issuer=issuer)
+        Settings(oidc_issuer=issuer)
 
 
 @pytest.mark.parametrize(
@@ -95,10 +95,10 @@ def test_sign_in_asks_for_the_configured_scopes(
     settings = Settings(
         data_root=tmp_path,
         multi_user=True,
-        cilogon_client_id="wordflow-client",
-        cilogon_client_secret=SecretStr("secret"),
-        cilogon_issuer=KEYCLOAK_ISSUER,
-        cilogon_redirect_uri="https://wordflow.example/api/auth/cilogon/callback",
+        oidc_client_id="wordflow-client",
+        oidc_client_secret=SecretStr("secret"),
+        oidc_issuer=KEYCLOAK_ISSUER,
+        oidc_redirect_uri="https://wordflow.example/api/auth/cilogon/callback",
         cors_allowed_origins=(),
         trusted_hosts=("wordflow.example",),
         **overrides,

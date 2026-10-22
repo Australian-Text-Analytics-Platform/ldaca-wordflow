@@ -7,6 +7,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from pydantic import (
+    AliasChoices,
     AnyHttpUrl,
     BaseModel,
     ConfigDict,
@@ -253,32 +254,43 @@ class Settings(BaseSettings):
     # Google OAuth Configuration (when multi_user=True)
     google_client_id: str = Field(default="", description="Google OAuth client ID")
 
-    # CILogon OIDC Configuration (when multi_user=True)
-    cilogon_client_id: str = Field(default="", description="CILogon OIDC client ID")
-    cilogon_client_secret: SecretStr = Field(
-        default_factory=lambda: SecretStr(""),
-        description="CILogon OIDC client secret",
+    # OpenID Connect sign-in (when multi_user=True): CILogon, a Keycloak realm
+    # or another OIDC provider. Set with OIDC_*; the earlier CILOGON_* names
+    # are still read, and OIDC_* wins when both are set.
+    oidc_client_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("oidc_client_id", "cilogon_client_id"),
+        description="OIDC client ID (OIDC_CLIENT_ID; formerly CILOGON_CLIENT_ID)",
     )
-    cilogon_issuer: str = Field(
+    oidc_client_secret: SecretStr = Field(
+        default_factory=lambda: SecretStr(""),
+        validation_alias=AliasChoices("oidc_client_secret", "cilogon_client_secret"),
+        description="OIDC client secret (OIDC_CLIENT_SECRET; formerly CILOGON_CLIENT_SECRET)",
+    )
+    oidc_issuer: str = Field(
         default="https://test.cilogon.aaf.edu.au",
+        validation_alias=AliasChoices("oidc_issuer", "cilogon_issuer"),
         description=(
             "Exact trusted OIDC issuer: an HTTPS origin, or one with a path such as "
-            "a Keycloak realm (issue 403)"
+            "a Keycloak realm (issue 403). OIDC_ISSUER; formerly CILOGON_ISSUER"
         ),
     )
-    cilogon_scopes: tuple[str, ...] = Field(
+    oidc_scopes: tuple[str, ...] = Field(
         default=("openid", "email", "profile", "org.cilogon.userinfo"),
+        validation_alias=AliasChoices("oidc_scopes", "cilogon_scopes"),
         description=(
             "OIDC scopes requested at sign-in (JSON list). Must include openid and "
             "email; other providers, such as Keycloak, may not define "
-            "org.cilogon.userinfo (issue 403)"
+            "org.cilogon.userinfo (issue 403). OIDC_SCOPES; formerly CILOGON_SCOPES"
         ),
     )
-    cilogon_redirect_uri: str = Field(
+    oidc_redirect_uri: str = Field(
         default="",
+        validation_alias=AliasChoices("oidc_redirect_uri", "cilogon_redirect_uri"),
         description=(
-            "CILogon callback URL registered with the provider. "
-            "Set to the full URL of /api/auth/cilogon/callback on your deployment."
+            "Callback URL registered with the provider: the full URL of "
+            "/api/auth/cilogon/callback on your deployment (the path keeps its "
+            "name). OIDC_REDIRECT_URI; formerly CILOGON_REDIRECT_URI"
         ),
     )
 
@@ -433,9 +445,9 @@ class Settings(BaseSettings):
             raise ValueError("Trusted hosts must be unique")
         return tuple(normalized)
 
-    @field_validator("cilogon_issuer")
+    @field_validator("oidc_issuer")
     @classmethod
-    def validate_cilogon_issuer(cls, value: str) -> str:
+    def validate_oidc_issuer(cls, value: str) -> str:
         """Require one exact HTTPS issuer with no mutable URL components.
 
         The issuer may have a path, as a Keycloak realm does
@@ -468,9 +480,9 @@ class Settings(BaseSettings):
             )
         return candidate
 
-    @field_validator("cilogon_scopes")
+    @field_validator("oidc_scopes")
     @classmethod
-    def validate_cilogon_scopes(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+    def validate_oidc_scopes(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Require unique RFC 6749 scope tokens, including openid and email.
 
         The callback needs the ``email`` claim, and ``openid`` makes it an OIDC
@@ -492,9 +504,9 @@ class Settings(BaseSettings):
             raise ValueError(f"CILogon scopes must include {' and '.join(missing)}")
         return scopes
 
-    @field_validator("cilogon_redirect_uri")
+    @field_validator("oidc_redirect_uri")
     @classmethod
-    def validate_cilogon_redirect_uri(cls, value: str) -> str:
+    def validate_oidc_redirect_uri(cls, value: str) -> str:
         """Require the exact registered callback URL when CILogon is enabled."""
 
         candidate = value.strip()
@@ -547,18 +559,18 @@ class Settings(BaseSettings):
                 raise ValueError("Single-user mode requires a loopback server host")
 
         has_google = bool(self.google_client_id.strip())
-        has_cilogon_id = bool(self.cilogon_client_id.strip())
-        has_cilogon_secret = bool(
-            self.cilogon_client_secret.get_secret_value().strip()
-        )
-        if has_cilogon_id != has_cilogon_secret:
-            raise ValueError("CILogon client ID and secret must be configured together")
-        if has_cilogon_id and not self.cilogon_redirect_uri:
-            raise ValueError("CILogon redirect URI is required when CILogon is enabled")
+        has_oidc_id = bool(self.oidc_client_id.strip())
+        has_oidc_secret = bool(self.oidc_client_secret.get_secret_value().strip())
+        if has_oidc_id != has_oidc_secret:
+            raise ValueError(
+                "OIDC_CLIENT_ID and OIDC_CLIENT_SECRET must be configured together"
+            )
+        if has_oidc_id and not self.oidc_redirect_uri:
+            raise ValueError("OIDC_REDIRECT_URI is required when OIDC sign-in is enabled")
         engine_ids = [engine.id for engine in self.quotation_remote_engines]
         if len(engine_ids) != len(set(engine_ids)):
             raise ValueError("Remote quotation engine IDs must be unique")
-        if self.multi_user and not (has_google or has_cilogon_id):
+        if self.multi_user and not (has_google or has_oidc_id):
             raise ValueError("Hosted multi-user mode requires an identity provider")
         if self.multi_user and not self.session_cookie_secure:
             local_hosts = {"localhost", "127.0.0.1", "::1"}
@@ -612,15 +624,15 @@ class Settings(BaseSettings):
 
         return self.trusted_hosts
 
-    def get_cilogon_issuer(self) -> str:
+    def get_oidc_issuer(self) -> str:
         """Return the canonical issuer used for discovery and identity ownership."""
 
-        return self.cilogon_issuer
+        return self.oidc_issuer
 
-    def get_cilogon_discovery_url(self) -> str:
+    def get_oidc_discovery_url(self) -> str:
         """Derive discovery from the trusted issuer instead of accepting a URL."""
 
-        return f"{self.get_cilogon_issuer()}/.well-known/openid-configuration"
+        return f"{self.get_oidc_issuer()}/.well-known/openid-configuration"
 
 
 def load_settings(**overrides: Any) -> Settings:

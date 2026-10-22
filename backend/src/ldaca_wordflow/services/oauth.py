@@ -110,7 +110,7 @@ class OAuthService:
                 return self._cilogon_config
             try:
                 response = await self._http_client.get(
-                    self.settings.get_cilogon_discovery_url(),
+                    self.settings.get_oidc_discovery_url(),
                     timeout=10,
                 )
                 response.raise_for_status()
@@ -130,7 +130,7 @@ class OAuthService:
             }
             if any(not isinstance(payload.get(field), str) for field in required):
                 raise BadGatewayError("CILogon discovery response is incomplete")
-            expected_issuer = self.settings.get_cilogon_issuer()
+            expected_issuer = self.settings.get_oidc_issuer()
             if str(payload["issuer"]).rstrip("/") != expected_issuer:
                 raise BadGatewayError(
                     "CILogon discovery issuer does not match configuration"
@@ -157,7 +157,7 @@ class OAuthService:
     ) -> SessionUser:
         """Exchange one authorization code and provision its verified identity."""
 
-        if not self.settings.multi_user or not self.settings.cilogon_client_id:
+        if not self.settings.multi_user or not self.settings.oidc_client_id:
             raise InvalidInputError("CILogon authentication is not configured")
         config = await self.cilogon_config()
         try:
@@ -167,9 +167,9 @@ class OAuthService:
                     "grant_type": "authorization_code",
                     "code": code,
                     "redirect_uri": redirect_uri,
-                    "client_id": self.settings.cilogon_client_id,
+                    "client_id": self.settings.oidc_client_id,
                     "client_secret": (
-                        self.settings.cilogon_client_secret.get_secret_value()
+                        self.settings.oidc_client_secret.get_secret_value()
                     ),
                     "code_verifier": code_verifier,
                 },
@@ -230,7 +230,7 @@ class OAuthService:
             )
         picture = userinfo.get("picture")
         return await self.sessions.upsert_oidc_user(
-            issuer=self.settings.get_cilogon_issuer(),
+            issuer=self.settings.get_oidc_issuer(),
             subject=subject,
             email=email,
             name=raw_name,

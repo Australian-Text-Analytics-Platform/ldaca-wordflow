@@ -82,13 +82,15 @@ is needed.
 #### OIDC: CILogon and AAF
 
 ```ini
-CILOGON_CLIENT_ID=<registered-client-id>
-CILOGON_ISSUER=https://cilogon.aaf.edu.au
-CILOGON_REDIRECT_URI=https://analytics.ldaca.edu.au/api/auth/cilogon/callback
+OIDC_CLIENT_ID=<registered-client-id>
+OIDC_ISSUER=https://cilogon.aaf.edu.au
+OIDC_REDIRECT_URI=https://analytics.ldaca.edu.au/api/auth/cilogon/callback
 ```
 
-The secret file supplies only `CILOGON_CLIENT_SECRET`. See
-[CILogon secrets](cilogon-secrets.md). The sign-in button reads "Sign in with
+The secret file supplies only `OIDC_CLIENT_SECRET`. See
+[OIDC client secrets](cilogon-secrets.md). Before 0.7.16 these settings were
+named `CILOGON_*`; existing servers keep working with those names, and the
+`OIDC_*` name wins when both are set. The sign-in button reads "Sign in with
 SSO" for every OIDC provider (issue 405).
 
 #### OIDC: other providers (Keycloak)
@@ -99,14 +101,14 @@ provider's exact issuer, including any path, and the scopes it defines. For
 example, a client registered in a Keycloak realm:
 
 ```ini
-CILOGON_ISSUER=https://sso.example.edu.au/auth/realms/<realm>
-CILOGON_CLIENT_ID=<client registered in that realm>
-CILOGON_REDIRECT_URI=https://<host>/api/auth/cilogon/callback
-CILOGON_SCOPES=["openid","email","profile"]
+OIDC_ISSUER=https://sso.example.edu.au/auth/realms/<realm>
+OIDC_CLIENT_ID=<client registered in that realm>
+OIDC_REDIRECT_URI=https://<host>/api/auth/cilogon/callback
+OIDC_SCOPES=["openid","email","profile"]
 ```
 
-`CILOGON_CLIENT_SECRET` goes in the secret file as above. Keycloak doesn't
-define `org.cilogon.userinfo`, so leave it out of `CILOGON_SCOPES`. This needs
+`OIDC_CLIENT_SECRET` goes in the secret file as above. Keycloak doesn't
+define `org.cilogon.userinfo`, so leave it out of `OIDC_SCOPES`. This needs
 a client registered by the realm's administrators: confidential (with a
 secret), the standard (authorization code) flow, and exactly the redirect URI
 above.
