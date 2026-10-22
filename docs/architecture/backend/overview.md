@@ -67,6 +67,10 @@ this direction and the absence of removed facades.
   personal credential files in multi-user mode. Both business stores delegate
   bounded, no-follow, quota-admitted TOML publication to one infrastructure
   storage primitive while retaining independent schemas.
+- `server_ai` owns the deployment's server AI providers: their file, the
+  binding of a request to a provider and Session user, the worker-side adapter
+  that adds the key, and the per-person request gate. Their keys never leave
+  it.
 - `UserFileStore` and `WorkspaceArchiveService` own their respective storage
   boundaries.
 

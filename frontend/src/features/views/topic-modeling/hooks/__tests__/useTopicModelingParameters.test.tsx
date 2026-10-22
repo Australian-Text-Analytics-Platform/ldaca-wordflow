@@ -118,4 +118,122 @@ describe('useTopicModelingParameters', () => {
       expect(result.current.sampleFractionsForRequest).toEqual([0.2]);
     });
   });
+
+  describe('embedding model (issue 413)', () => {
+    const withTokenizer = (tokenizer: string | null): Record<string, WorkspaceNodeInfo> => ({
+      'node-1': {
+        ...(nodeInfoById(500)['node-1'] as WorkspaceNodeInfo),
+        name: 'People’s Daily',
+        tokenizer_model: tokenizer,
+      },
+    });
+
+    it('defaults to English, with the cap as set', () => {
+      const { result } = renderHook(() =>
+        useTopicModelingParameters({
+          panelNodeIds: nodeIds(500),
+          nodeInfoById: withTokenizer('native:plain_words_en'),
+        }),
+      );
+
+      expect(result.current.embeddingModel).toBe('sentence-transformers/all-MiniLM-L6-v2');
+      expect(result.current.embeddingModelReason).toBeNull();
+      expect(result.current.cjkTokenizer).toBeNull();
+      expect(result.current.maxSegmentTokens).toBe(256);
+    });
+
+    it('picks Multilingual and a 128 cap for a CJK tokeniser; English restores the cap', () => {
+      const { result } = renderHook(() =>
+        useTopicModelingParameters({
+          panelNodeIds: nodeIds(500),
+          nodeInfoById: withTokenizer('lindera:jieba'),
+        }),
+      );
+
+      expect(result.current.embeddingModel).toBe(
+        'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+      );
+      expect(result.current.embeddingModelReason).toEqual({
+        name: 'People’s Daily',
+        tokenizer: 'Jieba',
+      });
+      expect(result.current.maxSegmentTokens).toBe(128);
+
+      act(() => {
+        result.current.setEmbeddingModel('sentence-transformers/all-MiniLM-L6-v2');
+      });
+
+      expect(result.current.embeddingModel).toBe('sentence-transformers/all-MiniLM-L6-v2');
+      expect(result.current.embeddingModelReason).toBeNull();
+      expect(result.current.cjkTokenizer).toEqual({ name: 'People’s Daily', tokenizer: 'Jieba' });
+      expect(result.current.maxSegmentTokens).toBe(256);
+    });
+
+    it('restores the model a saved run used, English when it names none', () => {
+      const { result } = renderHook(() =>
+        useTopicModelingParameters({
+          panelNodeIds: nodeIds(500),
+          nodeInfoById: withTokenizer('lindera:ko-dic'),
+        }),
+      );
+      const saved = {
+        kind: 'topic_modeling' as const,
+        node_ids: ['node-1'],
+        node_columns: { 'node-1': 'text' },
+        max_segment_tokens: 200,
+      };
+
+      act(() => {
+        result.current.hydrateParameters(saved);
+      });
+      expect(result.current.embeddingModel).toBe('sentence-transformers/all-MiniLM-L6-v2');
+      expect(result.current.maxSegmentTokens).toBe(200);
+
+      act(() => {
+        result.current.hydrateParameters({
+          ...saved,
+          max_segment_tokens: 96,
+          embedding_model: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+        });
+      });
+      expect(result.current.embeddingModel).toBe(
+        'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+      );
+      expect(result.current.embeddingModelReason).toBeNull();
+      expect(result.current.maxSegmentTokens).toBe(96);
+    });
+  });
+
+  it('restores Remote GPU from a saved run, and ticking follows the person', () => {
+    const { result } = renderHook(() =>
+      useTopicModelingParameters({ panelNodeIds: nodeIds(10), nodeInfoById: nodeInfoById(10) }),
+    );
+    expect(result.current.remoteEmbedding).toBeNull();
+
+    act(() => {
+      result.current.hydrateParameters({
+        kind: 'topic_modeling',
+        node_ids: ['node-1'],
+        node_columns: { 'node-1': 'text' },
+        embedding_endpoint_id: 'endpoint-1',
+      });
+    });
+    expect(result.current.remoteEmbedding).toBe(true);
+    expect(result.current.embeddingEndpointId).toBe('endpoint-1');
+
+    act(() => {
+      result.current.hydrateParameters({
+        kind: 'topic_modeling',
+        node_ids: ['node-1'],
+        node_columns: { 'node-1': 'text' },
+      });
+    });
+    expect(result.current.remoteEmbedding).toBe(false);
+
+    act(() => {
+      result.current.setEmbeddingEndpointId('endpoint-2');
+    });
+    expect(result.current.remoteEmbedding).toBe(true);
+    expect(result.current.embeddingEndpointId).toBe('endpoint-2');
+  });
 });

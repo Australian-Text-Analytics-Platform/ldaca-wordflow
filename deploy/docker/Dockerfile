@@ -1,7 +1,7 @@
-# Apollo LLM deployment image (branch deploy/apollo only; never released).
-# Built by .github/workflows/apollo-image.yml from the wheel of this branch.
-# Secrets and site settings come from the environment at run time; see
-# docs/deploy/apollo.md. Nothing secret is baked into the image.
+# LDaCA Wordflow server image (issue 411): a hosted, multi-user Wordflow.
+# Built by .github/workflows/server-image.yml (manual dispatch) from the wheel
+# of the chosen ref. Settings and secrets come from the environment at run
+# time (docs/runbooks/server-image.md); nothing secret is baked into the image.
 FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -21,7 +21,7 @@ RUN apt-get update \
 COPY dist/*.whl /tmp/wheels/
 RUN pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels
 
-COPY deploy/apollo/prefetch_models.py /opt/wordflow/prefetch_models.py
+COPY deploy/docker/prefetch_models.py /opt/wordflow/prefetch_models.py
 RUN python /opt/wordflow/prefetch_models.py \
     && mkdir -p /data \
     && chown -R wordflow:wordflow /opt/wordflow/cache /opt/wordflow/models /data
@@ -34,4 +34,4 @@ EXPOSE 8001
 # tini forwards SIGTERM to the backend only; the backend stops its own
 # Analysis workers and marks them interrupted (as KillMode=mixed in systemd).
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["ldaca-wordflow", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["ldaca-wordflow", "--multi-user", "--host", "0.0.0.0", "--port", "8001"]

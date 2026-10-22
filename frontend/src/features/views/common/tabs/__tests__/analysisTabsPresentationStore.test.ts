@@ -5,13 +5,18 @@ import {
   analysisTabSettingsKey,
   analysisTabsPresentationKey,
   migrateAnalysisTabsPresentationV3,
+  projectAiModelsKey,
   useAnalysisTabsPresentationStore,
 } from '../analysisTabsPresentationStore';
 import { ANNOTATION_TAB_SETTINGS_KEY } from '@/features/views/annotation/annotationTabSettings';
 
 describe('analysisTabsPresentationStore', () => {
   beforeEach(() => {
-    useAnalysisTabsPresentationStore.setState({ activeTabIds: {}, tabSettings: {} });
+    useAnalysisTabsPresentationStore.setState({
+      activeTabIds: {},
+      tabSettings: {},
+      projectAiModels: {},
+    });
     localStorage.removeItem(ANALYSIS_TABS_PRESENTATION_STORAGE_KEY);
     localStorage.removeItem('ldaca-analysis-tab-presentation-v3');
   });
@@ -97,6 +102,25 @@ describe('analysisTabsPresentationStore', () => {
     expect(useAnalysisTabsPresentationStore.getState().tabSettings).toEqual({
       [analysisTabSettingsKey('user-1', 'workspace-1', 'tab-1')]: { contextLength: '12' },
       [analysisTabSettingsKey('user-2', 'workspace-1', 'tab-1')]: { contextLength: '24' },
+    });
+  });
+
+  it("remembers each provider's last model per user and Project, and forgets deleted Projects", () => {
+    const { rememberProjectAiModel, pruneWorkspaces } = useAnalysisTabsPresentationStore.getState();
+    rememberProjectAiModel('user-1', 'workspace-1', 'research', 'qwen3-32b');
+    rememberProjectAiModel('user-1', 'workspace-1', 'research', ' gpt-oss-120b ');
+    rememberProjectAiModel('user-1', 'workspace-1', 'openai', '  ');
+    rememberProjectAiModel('user-1', 'workspace-2', 'research', 'llama-4');
+    rememberProjectAiModel('user-1', null, 'research', 'ignored');
+
+    expect(useAnalysisTabsPresentationStore.getState().projectAiModels).toEqual({
+      [projectAiModelsKey('user-1', 'workspace-1')]: { research: 'gpt-oss-120b' },
+      [projectAiModelsKey('user-1', 'workspace-2')]: { research: 'llama-4' },
+    });
+
+    pruneWorkspaces('user-1', ['workspace-2']);
+    expect(useAnalysisTabsPresentationStore.getState().projectAiModels).toEqual({
+      [projectAiModelsKey('user-1', 'workspace-2')]: { research: 'llama-4' },
     });
   });
 });

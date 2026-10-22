@@ -48,15 +48,6 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      # apollo-deploy: never release or publish the Apollo deploy build.
-      - name: Refuse the Apollo deploy build
-        shell: bash
-        run: |
-          if [ -d backend/src/ldaca_wordflow/apollo_deploy ]; then
-            echo "::error::This ref is the Apollo deploy build (deploy/apollo). It is never released."
-            exit 1
-          fi
-
       - name: Check version, lock, and release-tag identity
         env:
           EXPECTED_RELEASE_TAG: ${{ inputs.publish_release && inputs.release_tag || '' }}

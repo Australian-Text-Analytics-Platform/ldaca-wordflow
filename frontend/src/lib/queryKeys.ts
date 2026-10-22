@@ -39,6 +39,8 @@ export const queryKeys = {
 
   /** Account-scoped preferences; the user id prevents cross-account cache reuse. */
   userPreferences: (userId: string | null) => ['user-preferences', userId] as const,
+  /** Each AI provider's default model for the signed-in person (Settings, Servers). */
+  aiDefaultModels: (userId: string | null) => ['ai-default-models', userId] as const,
 
   /** Every cached server resource owned by one Analysis session. */
   analysisSession: (workspaceId: string, analysisId: string) =>

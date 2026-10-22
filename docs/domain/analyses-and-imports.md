@@ -246,8 +246,10 @@ Run-All-scoped Analyses directly. Trends and Topic Modelling Data Block Creation
 remain ordinary Supporting Analyses. Trends creates one filtered original-row
 Data Block; Topic Modelling may create multiple ordered output Data Blocks.
 
-A Topic Modelling Analysis request owns one segmentation method, maximum token
-count, and HDBSCAN minimum cluster size for all selected Data Blocks. Minimum
+A Topic Modelling Analysis request owns one embedding model, segmentation
+method, maximum token count, and HDBSCAN minimum cluster size for all selected
+Data Blocks. The maximum token count cannot exceed the embedding model's limit
+(256 for the English model, 128 for the multilingual one). Minimum
 cluster size defaults to 10 and must be at least 2. The successful Result
 records the total Topic Segment count. Automatic, Line, and Sentence modes
 produce non-overlapping source spans; oversized semantic units are subdivided

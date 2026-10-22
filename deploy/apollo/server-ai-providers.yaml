@@ -1,0 +1,39 @@
+# Apollo's server configuration for the standard Wordflow release (0.7.16 and later).
+# Point SERVER_AI_PROVIDERS_FILE at this file; see README.md beside it.
+# Lives only on the Apollo deployment branch: it names Apollo's gateway and models.
+# Keys are never in this file: api_key_env names the variable that holds the key.
+
+providers:
+  # Slug "apollo" as on the pilot: the placeholder address saved with past runs
+  # (https://apollo.server-ai.invalid/v1) comes from it, so it must not change.
+  - slug: apollo
+    name: Apollo LLM
+    # Kept from the earlier Apollo build, so saved Annotation tabs still find it.
+    configuration_id: 3c4d70f7-4c43-5e66-9f39-6a4b478319bc
+    # The LiteLLM gateway (project genai, workspace "gateway"), reached in-cluster.
+    # From outside the cluster the same gateway is https://llm.gpu.sydney.edu.au/v1.
+    base_url: http://iw-gateway-0-clusterip.runai-genai.svc.cluster.local:4000/v1
+    api_key_env: APOLLO_LLM_API_KEY
+    # Offered in this order. Descriptions come from LiteLLM's model_info.description.
+    models: [ornith-1.5-35b, gemma-4-26b, qwen3.8-27b]
+    # The server's default, as on the pilot. A person's default in Settings, Servers,
+    # or the model last used in a Project, comes first.
+    default_model: ornith-1.5-35b
+    send_user: email
+    # One request at a time per person: one key is shared by everyone, and LiteLLM can
+    # only limit requests per key.
+    max_requests_per_user: 1
+
+embedding_endpoints:
+  - slug: apollo-gpu
+    name: Apollo GPU
+    base_url: http://iw-gateway-0-clusterip.runai-genai.svc.cluster.local:4000/v1
+    api_key_env: APOLLO_LLM_API_KEY
+    models:
+      sentence-transformers/all-MiniLM-L6-v2: minilm-en
+      sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2: minilm-multilingual
+    send_user: email
+    # Remote GPU is ticked in new Topic Modelling tabs.
+    default: true
+    # batch_size and concurrency stay at polars-text's defaults (128, 4) until the
+    # optimisation round; the client, not the GPU, sets the pace today.

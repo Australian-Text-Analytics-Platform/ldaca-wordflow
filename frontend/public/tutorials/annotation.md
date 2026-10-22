@@ -117,15 +117,27 @@ hidden until you reveal that column, and the viewer is read-only; use
 
 Choose a **Provider** (a connection you set up) and a **Model**; both are always shown above **Advanced settings**. Provider
 credentials stay in Settings and are attached only when the request is sent.
-Create or edit connections under **Settings → AI**. API keys are optional when
+Create or edit connections under **Settings → Servers**, in **Generative AI**
+(the **AI** tab before 0.7.16). API keys are optional when
 saving, but a built-in provider marked **Needs API key** cannot list models,
 Preview, or Run until you add one. Custom endpoints may be keyless. Editing
 a key updates future requests; a Run already queued or running keeps the key
 captured when it was submitted.
+A server may also provide its own providers, listed first and marked
+**Provided by this Wordflow server**: they need no key and can't be edited, and one
+may limit **Requests at once**, so your next Run with it waits until your
+current one finishes.
 When the provider describes its models (OpenRouter, Google, or a LiteLLM
 gateway with model descriptions set), the **Model** list shows a one-line
 description under each model to help you choose; the model name is still what
 is used.
+Models the provider marks as another kind, such as embedding or OCR models on
+a LiteLLM gateway, aren't listed: they can't annotate.
+A new tab starts with the model last chosen or run with that provider in the
+same Project, on this computer. If the Project hasn't used the provider yet,
+it starts with the provider's **Default model** from Settings, if you set one,
+or the server's default for its own providers. Choosing a model in a Project
+never changes the default in Settings.
 An **Example Data Block** is optional; if used, choose both its text column and
 an existing annotation column containing reviewed labels. Set **Max examples
 per code**, then choose **Random**, **First N**, or **Last N**. Random sampling

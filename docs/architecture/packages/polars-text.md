@@ -36,6 +36,10 @@ flowchart LR
   reduction, clustering, deterministic cosine average-linkage projection,
   document roll-up, and
   c-TF-IDF topic-label computation. Its internal unit is a Topic Segment.
+  Segmentation runs documents in parallel and returns them in document order.
+  Embedding owns the execution choice: static-shape Core ML length buckets for
+  the curated models on macOS, ONNX Runtime's CPU provider elsewhere, with a
+  recorded CPU fallback.
 
 Topic modelling is one non-elementwise scalar expression. It consumes the full
 document column and returns one run result with independent `documents[]` and

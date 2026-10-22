@@ -12,7 +12,7 @@ interface AnnotationRunAllSettingsProps {
   maxConcurrency: number;
   /** The selected provider's default: 2 for Custom, 10 otherwise. */
   defaultMaxConcurrency: number;
-  /** apollo-deploy: a provider's own limit on requests at once. */
+  /** A server AI provider's limit on requests at once per person. */
   maxConcurrencyLimit?: { value: number; note: string };
   onMaxConcurrencyCommit: (value: number) => void;
   disabled?: boolean;
@@ -124,9 +124,14 @@ export function AnnotationRunAllSettings({
           }}
         />
         <p className="text-label-secondary text-description">
-          {maxConcurrencyLimit
-            ? maxConcurrencyLimit.note
-            : `How many requests Run sends at the same time (default ${String(defaultMaxConcurrency)} for this provider). Match a local server's own limit.`}
+          {maxConcurrencyLimit ? (
+            maxConcurrencyLimit.note
+          ) : (
+            <>
+              How many requests Run sends at the same time (default {defaultMaxConcurrency} for this
+              provider). Match a local server's own limit.
+            </>
+          )}
         </p>
       </div>
 

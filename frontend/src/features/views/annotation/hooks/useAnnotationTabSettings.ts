@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from 'react';
-import { capApolloConcurrency } from '@/features/apollo-deploy/apolloProvider';
 import type { IntercoderReliabilityMetric } from '@/features/views/common/columnComparisonModel';
 import type { AnnotationProviderType } from '../aiProviders';
 import {
@@ -138,13 +137,10 @@ export function useAnnotationTabSettings({
   );
   // Requests at once for the selected provider: its own value, or the
   // provider type's default (2 for Custom, 10 otherwise).
-  // apollo-deploy: never more than Apollo LLM's one request at a time.
-  const aiMaxConcurrency = capApolloConcurrency(
-    settings.aiProviderConfigurationId,
+  const aiMaxConcurrency =
     (settings.aiProviderConfigurationId
       ? settings.aiProviderConcurrency[settings.aiProviderConfigurationId]
-      : undefined) ?? defaultAnnotationConcurrency(settings.aiProviderType),
-  );
+      : undefined) ?? defaultAnnotationConcurrency(settings.aiProviderType);
   const commitAiMaxConcurrency = useCallback(
     (value: number, providerConfigurationId?: string) => {
       commitSettings((current) => {

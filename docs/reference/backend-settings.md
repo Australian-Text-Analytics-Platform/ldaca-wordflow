@@ -91,6 +91,7 @@ failed or invalid projections are never retained.
 | `QUOTATION_SERVICE_TIMEOUT` | Remote quotation timeout |
 | `QUOTATION_SERVICE_MAX_BATCH_SIZE` | Remote quotation batch ceiling |
 | `QUOTATION_REMOTE_ENGINES` | Operator-owned quotation engine allowlist |
+| `SERVER_AI_PROVIDERS_FILE` | Optional YAML file of LLM providers the server offers to every signed-in person; keys stay in the environment under the names the file gives. See [Server AI providers](../runbooks/server-ai-providers.md) (issue 411) |
 
 Single-user mode requires a loopback server host. Wildcard CORS and Host values
 are invalid. Port zero is accepted only by the desktop launcher before it
@@ -102,28 +103,30 @@ constructs final Settings.
 |---|---|
 | `MULTI_USER` | Enable hosted multi-user mode |
 | `GOOGLE_CLIENT_ID` | Optional hosted Google provider client ID |
-| `CILOGON_CLIENT_ID` | CILogon OIDC client ID |
-| `CILOGON_CLIENT_SECRET` | CILogon OIDC client secret |
-| `CILOGON_ISSUER` | Exact trusted HTTPS issuer: an origin, or an origin with a path such as a Keycloak realm |
-| `CILOGON_SCOPES` | OIDC scopes requested at sign-in, as a JSON list; must include `openid` and `email` |
-| `CILOGON_REDIRECT_URI` | Exact registered callback URL |
+| `OIDC_CLIENT_ID` | OIDC client ID |
+| `OIDC_CLIENT_SECRET` | OIDC client secret |
+| `OIDC_ISSUER` | Exact trusted HTTPS issuer: an origin, or an origin with a path such as a Keycloak realm |
+| `OIDC_SCOPES` | OIDC scopes requested at sign-in, as a JSON list; must include `openid` and `email` |
+| `OIDC_REDIRECT_URI` | Exact registered callback URL |
 | `SESSION_TTL_HOURS` | Hosted Session lifetime |
 | `SESSION_COOKIE_SECURE` | Require HTTPS Session cookie |
 
-Multi-user mode requires Google or the complete CILogon client, secret, and
-redirect configuration. `CILOGON_ISSUER` is the provider's exact issuer: an
+Multi-user mode requires Google, or the complete OIDC client, secret, and
+redirect configuration. Before 0.7.16 the OIDC settings were named
+`CILOGON_*` (`CILOGON_CLIENT_ID` and so on). Those names are still accepted;
+when both are set, the `OIDC_*` one is used. `OIDC_ISSUER` is the provider's exact issuer: an
 origin such as `https://cilogon.aaf.edu.au`, or an origin with a path such as
-the Keycloak realm `https://gpu.sydney.edu.au/auth/realms/runai`. Discovery is
+a Keycloak realm `https://sso.example.edu.au/auth/realms/<realm>`. Discovery is
 derived internally by appending `/.well-known/openid-configuration` to it, and
 the discovered endpoints must be on the issuer's HTTPS host.
 
-`CILOGON_SCOPES` defaults to `["openid","email","profile","org.cilogon.userinfo"]`.
+`OIDC_SCOPES` defaults to `["openid","email","profile","org.cilogon.userinfo"]`.
 Providers other than CILogon may not define `org.cilogon.userinfo`, so set, for
-example, `CILOGON_SCOPES=["openid","email","profile"]` for Keycloak. Each entry is
+example, `OIDC_SCOPES=["openid","email","profile"]` for Keycloak. Each entry is
 one scope token, entries are unique, and `openid` and `email` are required
 because sign-in needs the `email` claim.
 
-Identities are kept per issuer: changing `CILOGON_ISSUER` never links a sign-in
+Identities are kept per issuer: changing `OIDC_ISSUER` never links a sign-in
 to an existing identity from another issuer. Email addresses are unique across
 users, so someone who already signed in with one issuer and then signs in with
 another issuer using the same email is refused ("Email belongs to a different

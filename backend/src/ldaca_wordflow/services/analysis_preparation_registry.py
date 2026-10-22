@@ -8,6 +8,7 @@ import uuid
 
 import polars as pl
 
+from ..shared.remote_embedding import decode_embedding_run
 from ..analysis.generated_columns import DOCUMENT_POSITION_COLUMNS
 from ..analysis.token_cache import tokens_cache_path
 from ..domain.workspace import (
@@ -169,6 +170,12 @@ def _prepare_topic_modeling(
         max_segment_tokens=request.max_segment_tokens,
         sample_fractions=request.sample_fractions,
         cluster_sample_size=request.cluster_sample_size,
+        embedding_model=request.embedding_model.value,
+        remote_embedding=(
+            decode_embedding_run(context.credential)
+            if request.embedding_endpoint_id is not None
+            else None
+        ),
     )
 
 

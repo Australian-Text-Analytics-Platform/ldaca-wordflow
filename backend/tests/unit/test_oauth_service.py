@@ -37,10 +37,10 @@ class _RecordingSessions:
 def _settings() -> Settings:
     return Settings(
         multi_user=True,
-        cilogon_client_id="client",
-        cilogon_client_secret="secret",
-        cilogon_redirect_uri="https://wordflow.example/api/auth/cilogon/callback",
-        cilogon_issuer="https://issuer.example",
+        oidc_client_id="client",
+        oidc_client_secret="secret",
+        oidc_redirect_uri="https://wordflow.example/api/auth/cilogon/callback",
+        oidc_issuer="https://issuer.example",
     )
 
 

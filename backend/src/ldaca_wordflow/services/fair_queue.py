@@ -45,7 +45,7 @@ class FairUserQueue[T]:
         return selected
 
     def pop_eligible(self, eligible: Callable[[T], bool]) -> T | None:
-        """Like ``pop``, skipping work that may not start yet (apollo-deploy).
+        """Like ``pop``, skipping work that may not start yet.
 
         ``eligible`` is asked about one item at a time, in fair order, and the
         first item it accepts is selected, so it may reserve what it accepts.

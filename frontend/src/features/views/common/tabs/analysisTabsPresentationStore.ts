@@ -53,6 +53,13 @@ interface AnalysisTabsPresentationState {
   activeTabIds: Record<string, string>;
   /** Client-only presentation settings keyed by user, Workspace, and Tab. */
   tabSettings: Record<string, Record<string, string>>;
+  /**
+   * The Annotation model last chosen or run with each AI provider in a
+   * Project, keyed by user and Workspace, then provider configuration. A new
+   * Annotation tab in that Project starts with it. Kept on this device like
+   * tab settings, not in the Project file, which 0.7.15 reads strictly.
+   */
+  projectAiModels: Record<string, Record<string, string>>;
 }
 
 interface AnalysisTabsPresentationActions {
@@ -74,6 +81,12 @@ interface AnalysisTabsPresentationActions {
     workspaceId: string | null | undefined,
     tabId: string,
   ) => void;
+  rememberProjectAiModel: (
+    userId: string | null | undefined,
+    workspaceId: string | null | undefined,
+    configurationId: string,
+    model: string,
+  ) => void;
   pruneWorkspaces: (userId: string, workspaceIds: readonly string[]) => void;
   pruneTabs: (userId: string, workspaceId: string, tabIds: readonly string[]) => void;
 }
@@ -86,6 +99,12 @@ export const analysisTabsPresentationKey = (
   workspaceId: string | null | undefined,
   analysisType: string,
 ): string => `${userId ?? '__anonymous__'}::${workspaceId ?? '__none__'}::${analysisType}`;
+
+/** Key of a Project's remembered Annotation models. */
+export const projectAiModelsKey = (
+  userId: string | null | undefined,
+  workspaceId: string | null | undefined,
+): string => `${userId ?? '__anonymous__'}::${workspaceId ?? '__none__'}`;
 
 export const analysisTabSettingsKey = (
   userId: string | null | undefined,
@@ -104,6 +123,7 @@ export const useAnalysisTabsPresentationStore = create<AnalysisTabsPresentationS
       immer((set) => ({
         activeTabIds: {},
         tabSettings: {},
+        projectAiModels: {},
 
         rememberActiveTab: (userId, workspaceId, analysisType, tabId) =>
           set((state) => {
@@ -125,6 +145,17 @@ export const useAnalysisTabsPresentationStore = create<AnalysisTabsPresentationS
             state.tabSettings[settingsKey] = {
               ...(state.tabSettings[settingsKey] ?? {}),
               [key]: value,
+            };
+          }),
+
+        rememberProjectAiModel: (userId, workspaceId, configurationId, model) =>
+          set((state) => {
+            const name = model.trim();
+            if (!workspaceId || !name) return;
+            const key = projectAiModelsKey(userId, workspaceId);
+            state.projectAiModels[key] = {
+              ...(state.projectAiModels[key] ?? {}),
+              [configurationId]: name,
             };
           }),
 
@@ -155,6 +186,11 @@ export const useAnalysisTabsPresentationStore = create<AnalysisTabsPresentationS
                 keepWorkspaceKey(storedKey),
               ),
             );
+            state.projectAiModels = Object.fromEntries(
+              Object.entries(state.projectAiModels).filter(([storedKey]) =>
+                keepWorkspaceKey(storedKey),
+              ),
+            );
           }),
 
         pruneTabs: (userId, workspaceId, tabIds) =>
@@ -181,6 +217,7 @@ export const useAnalysisTabsPresentationStore = create<AnalysisTabsPresentationS
         partialize: (state) => ({
           activeTabIds: state.activeTabIds,
           tabSettings: state.tabSettings,
+          projectAiModels: state.projectAiModels,
         }),
       },
     ),

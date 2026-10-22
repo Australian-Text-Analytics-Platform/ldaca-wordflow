@@ -1,8 +1,8 @@
-"""The Apollo LLM Annotation adapter: a LiteLLM gateway behind the server.
+"""The Annotation adapter for server AI providers (issue 411).
 
-It takes a signed binding where other adapters take an API key, sends the
-bound user as the OpenAI ``user`` field (for per-user billing in LiteLLM),
-adds the gateway key and URL from the environment, retries rate limits with
+It takes a signed binding where other adapters take an API key, adds the
+provider's key and address from the server, sends the bound account as the
+OpenAI ``user`` field when the provider asks for it, retries rate limits with
 backoff, and keeps the key out of every error it raises.
 """
 
@@ -19,8 +19,8 @@ from ..infrastructure.providers.annotation_adapter import (
 )
 from ..infrastructure.providers.annotation_openai import OpenAIAnnotationAdapter
 from ..infrastructure.providers.model_descriptions import ModelOption
-from .binding import ApolloBindingError, decode_binding
-from .config import APOLLO_PROVIDER_NAME, apollo_settings
+from .binding import ServerAiBindingError, decode_binding
+from .config import ServerAiProvider, server_ai_providers
 from .gate import user_gate
 
 # Rate limits (HTTP 429) are waited out here, so a busy gateway slows a Run
@@ -42,11 +42,14 @@ _KEY_PATTERNS = (
 
 
 def redact(text: str) -> str:
-    """Remove the gateway key, and anything that looks like a key, from text."""
+    """Remove every server provider key, and anything that looks like a key."""
 
-    key = apollo_settings().api_key
-    if key is not None and key.get_secret_value():
-        text = text.replace(key.get_secret_value(), "[redacted]")
+    for provider in server_ai_providers().providers:
+        try:
+            key = provider.api_key()
+        except RuntimeError:
+            continue
+        text = text.replace(key, "[redacted]")
     for pattern, replacement in _KEY_PATTERNS:
         text = pattern.sub(replacement, text)
     return text
@@ -81,29 +84,22 @@ def _rate_limit_delay(attempt: int, retry_after: float | None) -> float:
 
 
 @dataclass(frozen=True, slots=True)
-class ApolloAnnotationAdapter:
-    """Runs keep to one request at a time (``cap_concurrency``), as does the
-    scheduler (one Run per user) and the gate (Previews)."""
+class ServerAiAnnotationAdapter:
+    provider: ServerAiProvider
 
     def _inner(self, end_user: str | None) -> OpenAIAnnotationAdapter:
-        settings = apollo_settings()
-        if not settings.enabled:
-            raise AnnotationAiError(
-                f"{APOLLO_PROVIDER_NAME} is not configured on this server",
-                code="annotation_provider_failed",
-            )
         return OpenAIAnnotationAdapter(
-            base_url=settings.base_url,
-            # LiteLLM forwards to many model servers: ask for JSON in the
-            # prompt only, and send the thinking switch as Custom providers do.
+            base_url=self.provider.base_url,
+            # Gateways forward to many model servers: ask for JSON in the
+            # prompt, and send the thinking switch as Custom providers do.
             supports_json_response_format=False,
             send_thinking_switch=True,
-            # vLLM behind LiteLLM enforces it: one known label (or null) per
-            # text, so fenced or short answers don't split batches (#406).
+            # One known label (or null) per text, enforced where the server
+            # supports it (#406).
             send_labels_schema=True,
             # Descriptions from LiteLLM's /model/info (#407).
             describe_from_model_info=True,
-            end_user=end_user,
+            end_user=end_user or None,
         )
 
     async def complete(
@@ -115,20 +111,24 @@ class ApolloAnnotationAdapter:
         config: InferenceConfig,
     ) -> str:
         try:
-            binding = decode_binding(api_key)
-        except ApolloBindingError as exc:
+            provider, binding = decode_binding(api_key)
+        except ServerAiBindingError as exc:
             raise AnnotationAiError(
                 str(exc), code="annotation_provider_authentication_failed"
             ) from None
-        settings = apollo_settings()
-        if settings.models and model not in settings.models:
+        if provider.slug != self.provider.slug:
             raise AnnotationAiError(
-                f"This model is not available through {APOLLO_PROVIDER_NAME}",
+                "Server AI credential is for another provider",
+                code="annotation_provider_authentication_failed",
+            )
+        if provider.models and model not in provider.models:
+            raise AnnotationAiError(
+                f"This model is not available through {provider.name}",
                 code="annotation_provider_request_rejected",
             )
         inner = self._inner(binding.end_user)
-        if binding.purpose == "preview":
-            async with user_gate().preview(binding.user_id):
+        if binding.purpose == "preview" and provider.max_requests_per_user is not None:
+            async with user_gate().preview(provider, binding.user_id):
                 return await self._complete(inner, model, system, user, config)
         return await self._complete(inner, model, system, user, config)
 
@@ -140,7 +140,7 @@ class ApolloAnnotationAdapter:
         user: str,
         config: InferenceConfig,
     ) -> str:
-        key = apollo_settings().gateway_key()
+        key = self.provider.api_key()
         for attempt in range(RATE_LIMIT_ATTEMPTS):
             try:
                 return await inner.complete(model, key, system, user, config)
@@ -152,33 +152,32 @@ class ApolloAnnotationAdapter:
                     raise _safe(error) from None
                 delay = _rate_limit_delay(attempt, _retry_after(error))
             await asyncio.sleep(delay)
-        raise AssertionError("Apollo rate-limit retry loop did not return")
+        raise AssertionError("Rate-limit retry loop did not return")
 
     async def list_models(self, api_key: str | None) -> list[str]:
-        """Models from the gateway, with the gateway key; the client's key is ignored."""
+        """Models from the server, with the server's key; the client's key is ignored."""
 
         return [option.id for option in await self.list_model_options(api_key)]
 
     async def list_model_options(self, api_key: str | None) -> list[ModelOption]:
-        """Gateway models in the APOLLO_LLM_MODELS order, with descriptions.
+        """Models in the configured order, with descriptions.
 
-        A description comes from APOLLO_LLM_MODEL_DESCRIPTIONS where set, else
-        from the gateway (its /models list, then LiteLLM's /model/info).
+        A description comes from the file's model_descriptions where set, else
+        from the server (its /models list, then LiteLLM's /model/info).
         """
 
-        settings = apollo_settings()
         try:
-            listed = await self._inner(None).list_model_options(settings.gateway_key())
+            listed = await self._inner(None).list_model_options(self.provider.api_key())
         except AnnotationAiError as error:
             raise _safe(error) from None
-        if settings.models:
+        if self.provider.models:
             by_id = {option.id: option for option in listed}
-            listed = [by_id[model] for model in settings.models if model in by_id]
-        overrides = settings.model_descriptions
+            listed = [by_id[model] for model in self.provider.models if model in by_id]
+        overrides = self.provider.model_descriptions
         return [
             ModelOption(option.id, overrides.get(option.id, option.description))
             for option in listed
         ]
 
 
-__all__ = ["ApolloAnnotationAdapter", "redact"]
+__all__ = ["ServerAiAnnotationAdapter", "redact"]

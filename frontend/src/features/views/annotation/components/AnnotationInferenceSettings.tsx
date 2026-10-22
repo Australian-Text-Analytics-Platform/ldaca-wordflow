@@ -19,7 +19,7 @@ interface AnnotationInferenceSettingsProps {
   onProcessingModeChange: (value: 'reprocess_all' | 'fill_missing') => void;
   maxConcurrency: number;
   defaultMaxConcurrency: number;
-  /** apollo-deploy: a provider's own limit on requests at once. */
+  /** A server AI provider's limit on requests at once per person. */
   maxConcurrencyLimit?: { value: number; note: string };
   onMaxConcurrencyCommit: (value: number) => void;
   reasoningEnabled: boolean;

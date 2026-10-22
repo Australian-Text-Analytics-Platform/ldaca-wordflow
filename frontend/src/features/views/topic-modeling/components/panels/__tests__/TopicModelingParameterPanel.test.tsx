@@ -130,6 +130,11 @@ const baseProps = {
   onSegmentationMethodChange: vi.fn(),
   maxSegmentTokens: 256,
   onMaxSegmentTokensChange: vi.fn(),
+  embeddingModel: 'sentence-transformers/all-MiniLM-L6-v2' as const,
+  onEmbeddingModelChange: vi.fn(),
+  embeddingModelReason: null,
+  cjkTokenizer: null,
+  segmentLengths: null,
   isRunning: false,
   isClearing: false,
   onRun: vi.fn(),
@@ -153,6 +158,7 @@ describe('TopicModelingParameterPanel', () => {
     render(<TopicModelingParameterPanel {...baseProps} />);
 
     for (const [label, anchor] of [
+      ['About Model', 'help-topic-modeling-embedding-model'],
       ['About Segments', 'help-topic-modeling-segmentation-method'],
       ['About Max tokens', 'help-topic-modeling-max-segment-tokens'],
       ['About Topic size', 'help-topic-modeling-min-cluster-size'],
@@ -559,5 +565,222 @@ describe('TopicModelingParameterPanel', () => {
     render(<TopicModelingParameterPanel {...baseProps} estimatedSegmentCount={null} />);
 
     expect(screen.queryByRole('button', { name: 'Learn more' })).not.toBeInTheDocument();
+  });
+
+  describe('embedding model and segment length (issues 413, 414)', () => {
+    const segmentLengths = {
+      column: 'text',
+      segmentation_method: 'sentence' as const,
+      embedding_model: 'sentence-transformers/all-MiniLM-L6-v2' as const,
+      token_limit: 256,
+      sampled_documents: 200,
+      unit: 'sentence' as const,
+      units: 1500,
+      long_document_share: null,
+      p50: 24,
+      p85: 41,
+      p90: 52,
+      p95: 70,
+    };
+
+    it('shows the model, and why Multilingual was picked for a CJK tokeniser', () => {
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          embeddingModel="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+          embeddingModelReason={{ name: 'People’s Daily', tokenizer: 'Jieba' }}
+          maxSegmentTokens={128}
+        />,
+      );
+
+      expect(screen.getByLabelText('Embedding model')).toHaveTextContent('Multilingual');
+      expect(
+        screen.getByText(
+          'Multilingual, because People’s Daily uses the Jieba tokeniser; it reads up to 128 tokens per segment.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText('Maximum tokens per segment')).toHaveAttribute('max', '128');
+    });
+
+    it('keeps Max tokens within the model limit when it is typed', () => {
+      const onMaxSegmentTokensChange = vi.fn();
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          embeddingModel="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+          maxSegmentTokens={128}
+          onMaxSegmentTokensChange={onMaxSegmentTokensChange}
+        />,
+      );
+
+      const input = screen.getByLabelText('Maximum tokens per segment');
+      fireEvent.change(input, { target: { value: '200' } });
+      fireEvent.blur(input);
+
+      expect(onMaxSegmentTokensChange).toHaveBeenCalledWith(128);
+    });
+
+    it('suggests the smallest length holding 9 in 10 units, and applies it', () => {
+      useNudgeStore.setState({ enabled: true });
+      const onMaxSegmentTokensChange = vi.fn();
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          segmentLengths={segmentLengths}
+          onMaxSegmentTokensChange={onMaxSegmentTokensChange}
+        />,
+      );
+
+      expect(
+        screen.getByText('Your sentences are short: 64 tokens per segment is plenty.'),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Use 64 tokens' }));
+
+      expect(onMaxSegmentTokensChange).toHaveBeenCalledWith(64);
+    });
+
+    it('never suggests a larger cap, nor one while the panel is locked', () => {
+      useNudgeStore.setState({ enabled: true });
+      const { rerender } = render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          segmentLengths={segmentLengths}
+          maxSegmentTokens={64}
+        />,
+      );
+      expect(screen.queryByRole('button', { name: /^Use \d+ tokens$/ })).not.toBeInTheDocument();
+
+      rerender(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          segmentLengths={segmentLengths}
+          parametersLocked
+        />,
+      );
+      expect(screen.queryByRole('button', { name: 'Use 64 tokens' })).not.toBeInTheDocument();
+    });
+
+    it('suggests Multilingual when a CJK tokeniser is attached but English is chosen', () => {
+      useNudgeStore.setState({ enabled: true });
+      const onEmbeddingModelChange = vi.fn();
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          cjkTokenizer={{ name: 'People’s Daily', tokenizer: 'CC-CEDICT' }}
+          onEmbeddingModelChange={onEmbeddingModelChange}
+        />,
+      );
+
+      expect(screen.getByText(/People’s Daily uses the CC-CEDICT tokeniser/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Use Multilingual' }));
+
+      expect(onEmbeddingModelChange).toHaveBeenCalledWith(
+        'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+      );
+    });
+  });
+
+  describe('Remote GPU (issue 412 follow-up)', () => {
+    const gpu = (id: string, name: string) => ({
+      id,
+      name,
+      base_url: `https://${id}.example/v1`,
+      source: 'user' as const,
+      has_api_key: true,
+      models: { 'sentence-transformers/all-MiniLM-L6-v2': 'minilm' },
+      default: false,
+    });
+
+    it('is greyed out with the reason when there is no endpoint', () => {
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          remoteEmbedding={{
+            ticked: false,
+            endpointId: null,
+            serving: [],
+            anyEndpoints: false,
+            canAdd: true,
+          }}
+        />,
+      );
+
+      expect(screen.getByLabelText('Use a remote GPU')).toBeDisabled();
+      expect(
+        screen.getByText(
+          'Add a Topic Modelling server in Settings → Servers to read the text on a remote GPU.',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('says when no endpoint serves the selected model', () => {
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          embeddingModel="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+          maxSegmentTokens={128}
+          remoteEmbedding={{
+            ticked: false,
+            endpointId: null,
+            serving: [],
+            anyEndpoints: true,
+            canAdd: true,
+          }}
+        />,
+      );
+
+      expect(screen.getByLabelText('Use a remote GPU')).toBeDisabled();
+      expect(
+        screen.getByText('No Topic Modelling server serves the Multilingual model.'),
+      ).toBeInTheDocument();
+    });
+
+    it('ticks, names the endpoint, and offers a choice between several', () => {
+      const onRemoteEmbeddingChange = vi.fn();
+      const { rerender } = render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          remoteEmbedding={{
+            ticked: false,
+            endpointId: null,
+            serving: [gpu('lab', 'Lab GPU')],
+            anyEndpoints: true,
+            canAdd: true,
+          }}
+          onRemoteEmbeddingChange={onRemoteEmbeddingChange}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText('Use a remote GPU'));
+      expect(onRemoteEmbeddingChange).toHaveBeenCalledWith(true);
+
+      rerender(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          remoteEmbedding={{
+            ticked: true,
+            endpointId: 'lab',
+            serving: [gpu('lab', 'Lab GPU')],
+            anyEndpoints: true,
+            canAdd: true,
+          }}
+        />,
+      );
+      expect(screen.getByLabelText('Use a remote GPU')).toBeChecked();
+      expect(screen.getByText('Lab GPU')).toBeInTheDocument();
+
+      rerender(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          remoteEmbedding={{
+            ticked: true,
+            endpointId: 'lab',
+            serving: [gpu('lab', 'Lab GPU'), gpu('uni', 'University GPU')],
+            anyEndpoints: true,
+            canAdd: true,
+          }}
+        />,
+      );
+      expect(screen.getByLabelText('Topic Modelling server')).toHaveTextContent('Lab GPU');
+    });
   });
 });

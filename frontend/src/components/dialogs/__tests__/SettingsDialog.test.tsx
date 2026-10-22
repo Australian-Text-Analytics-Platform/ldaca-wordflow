@@ -177,13 +177,16 @@ describe('SettingsDialog', () => {
     expect(screen.getByLabelText('Data folder')).toHaveValue('/srv/wordflow');
   });
 
-  it('renders the AI providers panel in the AI tab', async () => {
+  it('lists generative AI and Topic Modelling servers in one Servers tab', async () => {
     const user = userEvent.setup();
     renderSettingsDialog();
 
-    await user.click(screen.getByRole('tab', { name: 'AI' }));
+    expect(screen.queryByRole('tab', { name: 'AI' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Embeddings' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Servers' }));
 
-    expect(await screen.findByText('Annotation providers')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Generative AI' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Topic Modelling' })).toBeInTheDocument();
     expect(screen.getByText('No Annotation providers configured.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add provider' })).toBeInTheDocument();
   });

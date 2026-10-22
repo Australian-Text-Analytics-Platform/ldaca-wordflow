@@ -14,7 +14,10 @@ import type {
   ProviderCredentialSummary,
 } from '@/api';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { useApolloProvider, withApolloProvider } from '@/features/apollo-deploy/apolloProvider';
+import {
+  useServerAiProviders,
+  withServerAiProviders,
+} from '@/features/server-ai-providers/serverAiProviders';
 import {
   normalizeCustomProviderBaseUrl,
   type AnnotationProviderConfigurationInput,
@@ -49,7 +52,7 @@ export const useProviderCredentials = () => {
   const { isAuthenticated, isMultiUserMode, user } = useAuth();
   const queryClient = useQueryClient();
   const localPresence = useBrowserProviderCredentialPresence(user?.id);
-  const apolloProvider = useApolloProvider(); // apollo-deploy:
+  const serverAiProviders = useServerAiProviders();
   const statusQuery = useQuery({
     queryKey: queryKeys.providerCredentials,
     queryFn: async () => (await getProviderCredentials({ throwOnError: true })).data,
@@ -211,9 +214,9 @@ export const useProviderCredentials = () => {
     }
   };
 
-  // apollo-deploy: the server's built-in Apollo LLM provider comes first.
-  const annotationProviders = withApolloProvider(
-    apolloProvider,
+  // The server's own AI providers come first (issue 411).
+  const annotationProviders = withServerAiProviders(
+    serverAiProviders,
     isMultiUserMode
       ? localPresence.annotationProviders
       : (statusQuery.data?.annotation_providers ?? []).map(configurationView),

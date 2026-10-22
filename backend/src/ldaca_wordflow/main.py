@@ -36,13 +36,14 @@ from ._middleware import (
     RequestLoggingMiddleware,
     normalized_scope_path,
 )
-from .apollo_deploy.api import router as apollo_router  # apollo-deploy:
 from .api.app_update import router as app_update_router
+from .server_ai.api import router as server_ai_router
 from .api.auth import router as auth_router
 from .api.annotations import router as annotations_router
 from .api.data_portal import router as data_portal_router
 from .api.data_root import router as data_root_router
 from .api.provider_credentials import router as provider_credentials_router
+from .api.embedding_endpoints import router as embedding_endpoints_router
 from .api.preferences import router as preferences_router
 from .api.error_response import api_error_response
 from .api.events import router as events_router
@@ -305,7 +306,6 @@ def _register_routers(app: FastAPI) -> None:
     """Attach API routers in one deterministic order."""
 
     for router in (
-        apollo_router,  # apollo-deploy:
         app_update_router,
         auth_router,
         annotations_router,
@@ -313,9 +313,11 @@ def _register_routers(app: FastAPI) -> None:
         data_root_router,
         preferences_router,
         provider_credentials_router,
+        embedding_endpoints_router,
         events_router,
         files_router,
         sample_data_router,
+        server_ai_router,
         storage_router,
         tool_caches_router,
         tokenizers_router,

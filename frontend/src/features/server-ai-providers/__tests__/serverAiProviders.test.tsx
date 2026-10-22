@@ -1,55 +1,60 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, renderHook, screen, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
-import type * as GeneratedClient from '@/api/generated/client.gen';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
-import { useProviderCredentialsStore } from '@/features/provider-credentials/providerCredentialsStore';
 import { listAnnotationModelsWithProviderCredential } from '@/features/provider-credentials/providerCredentialRequests';
+import { useProviderCredentialsStore } from '@/features/provider-credentials/providerCredentialsStore';
+import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
 import { AnnotationRunAllSettings } from '@/features/views/annotation/components/inference-settings/AnnotationRunAllSettings';
-import { useAnnotationTabSettings } from '@/features/views/annotation/hooks/useAnnotationTabSettings';
-import {
-  ANNOTATION_TAB_SETTINGS_KEY,
-  DEFAULT_ANNOTATION_TAB_SETTINGS,
-} from '@/features/views/annotation/annotationTabSettings';
 import { useAuthStore } from '@/stores/authStore';
 import {
-  APOLLO_CONCURRENCY_NOTE,
-  APOLLO_CONFIGURATION_ID,
-  type ApolloProvider,
-  capApolloConcurrency,
-} from '../apolloProvider';
+  capServerAiConcurrency,
+  isServerAiConfiguration,
+  type ServerAiProvider,
+  serverAiConcurrencyLimit,
+  serverAiDefaultModels,
+} from '../serverAiProviders';
+
+const RESEARCH_ID = '5b0d6e2a-8f43-4c1e-9a7d-2c3b4e5f6a71';
 
 const mocks = vi.hoisted(() => ({
   auth: { isAuthenticated: true, isMultiUserMode: true, user: { id: 'user-a' } },
-  clientGet: vi.fn(),
+  listServerAiProviders: vi.fn(),
   getProviderCredentials: vi.fn(),
   listAnnotationModels: vi.fn(),
 }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({ useAuth: () => mocks.auth }));
-vi.mock('@/api/generated/client.gen', async (importOriginal) => {
-  const original: typeof GeneratedClient = await importOriginal();
-  return { ...original, client: { ...original.client, get: mocks.clientGet } };
-});
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal()),
+  listServerAiProviders: mocks.listServerAiProviders,
   getProviderCredentials: mocks.getProviderCredentials,
   listAnnotationModels: mocks.listAnnotationModels,
 }));
 
-const apollo: ApolloProvider = {
-  enabled: true,
+const research: ServerAiProvider = {
   configuration: {
-    id: APOLLO_CONFIGURATION_ID,
-    name: 'Apollo LLM',
+    id: RESEARCH_ID,
+    name: 'Research LLM',
     provider: 'custom',
-    base_url: 'https://apollo-llm.invalid/v1',
+    base_url: 'https://research.server-ai.invalid/v1',
     has_api_key: true,
   },
   default_model: 'qwen3-32b',
-  max_concurrency: 1,
+  max_requests_per_user: 1,
+};
+
+const campus: ServerAiProvider = {
+  configuration: {
+    id: '9d1c1f5e-0d6c-5b6e-9a51-7f1f7d2f3a10',
+    name: 'Campus LLM',
+    provider: 'custom',
+    base_url: 'https://campus.server-ai.invalid/v1',
+    has_api_key: true,
+  },
+  default_model: null,
+  max_requests_per_user: null,
 };
 
 const wrapper = ({ children }: PropsWithChildren) => (
@@ -58,7 +63,7 @@ const wrapper = ({ children }: PropsWithChildren) => (
   </QueryClientProvider>
 );
 
-describe('Apollo LLM provider (deploy/apollo)', () => {
+describe('server AI providers (issue 411)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -72,8 +77,8 @@ describe('Apollo LLM provider (deploy/apollo)', () => {
     });
   });
 
-  it('lists Apollo first, read-only and without a key, for every signed-in user', async () => {
-    mocks.clientGet.mockResolvedValue({ data: apollo });
+  it('lists the server providers first, in order, read-only and without a key', async () => {
+    mocks.listServerAiProviders.mockResolvedValue({ data: { providers: [research, campus] } });
     useProviderCredentialsStore.getState().addAnnotationProvider('user-a', {
       name: 'My OpenAI',
       provider: 'openai',
@@ -83,31 +88,29 @@ describe('Apollo LLM provider (deploy/apollo)', () => {
     const { result } = renderHook(() => useProviderCredentials(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.annotationProviders).toHaveLength(2);
+      expect(result.current.annotationProviders).toHaveLength(3);
     });
-    const [first, second] = result.current.annotationProviders;
-    expect(first).toMatchObject({ id: APOLLO_CONFIGURATION_ID, name: 'Apollo LLM' });
+    expect(result.current.annotationProviders.map((item) => item.name)).toEqual([
+      'Research LLM',
+      'Campus LLM',
+      'My OpenAI',
+    ]);
+    const [first] = result.current.annotationProviders;
     expect(Object.keys(first ?? {}).sort()).toEqual(
       ['base_url', 'credentialRevision', 'has_api_key', 'id', 'name', 'provider'].sort(),
     );
-    expect(second?.name).toBe('My OpenAI');
-    expect(mocks.clientGet).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/api/apollo/provider' }),
-    );
   });
 
-  it('lists nothing extra when the server has no Apollo provider', async () => {
-    mocks.clientGet.mockResolvedValue({
-      data: { enabled: false, configuration: null, default_model: null, max_concurrency: 1 },
-    });
+  it('lists nothing extra when the server offers none', async () => {
+    mocks.listServerAiProviders.mockResolvedValue({ data: { providers: [] } });
     const { result } = renderHook(() => useProviderCredentials(), { wrapper });
     await waitFor(() => {
-      expect(mocks.clientGet).toHaveBeenCalled();
+      expect(mocks.listServerAiProviders).toHaveBeenCalled();
     });
     expect(result.current.annotationProviders).toEqual([]);
   });
 
-  it('never sends an API key for Apollo', async () => {
+  it('never sends an API key for a server provider', async () => {
     useAuthStore.setState({
       session: {
         mode: 'multi_user',
@@ -116,34 +119,34 @@ describe('Apollo LLM provider (deploy/apollo)', () => {
       },
     } as never);
     mocks.listAnnotationModels.mockResolvedValue({ data: { models: [] } });
-    if (!apollo.configuration) throw new Error('missing configuration');
 
-    await listAnnotationModelsWithProviderCredential(apollo.configuration);
+    await listAnnotationModelsWithProviderCredential(research.configuration);
 
     const body = mocks.listAnnotationModels.mock.calls[0]?.[0]?.body as Record<string, unknown>;
     expect(body).not.toHaveProperty('api_key');
-    expect(body.provider_configuration_id).toBe(APOLLO_CONFIGURATION_ID);
+    expect(body.provider_configuration_id).toBe(RESEARCH_ID);
   });
 
-  it('defaults and caps Requests at once to 1 for Apollo', () => {
-    const { result } = renderHook(() =>
-      useAnnotationTabSettings({
-        onTabSettingChange: vi.fn(),
-        tabSettings: {
-          [ANNOTATION_TAB_SETTINGS_KEY]: JSON.stringify({
-            ...DEFAULT_ANNOTATION_TAB_SETTINGS,
-            aiProviderConfigurationId: APOLLO_CONFIGURATION_ID,
-            aiProviderType: 'custom',
-            aiProviderConcurrency: { [APOLLO_CONFIGURATION_ID]: 8 },
-          }),
-        },
-      }),
+  it('knows server providers by their placeholder address', () => {
+    expect(isServerAiConfiguration(research.configuration)).toBe(true);
+    expect(isServerAiConfiguration({ base_url: 'http://localhost:7888/v1' })).toBe(false);
+    expect(isServerAiConfiguration({ base_url: null })).toBe(false);
+  });
+
+  it('caps requests at once to the provider limit and fills its default model', () => {
+    expect(capServerAiConcurrency([research, campus], RESEARCH_ID, 8)).toBe(1);
+    expect(capServerAiConcurrency([research, campus], campus.configuration.id, 8)).toBe(8);
+    expect(serverAiConcurrencyLimit([research], RESEARCH_ID)?.note).toBe(
+      'Research LLM takes one request at a time for each person, so Run sends at most one request at once.',
     );
-    expect(result.current.aiMaxConcurrency).toBe(1);
-    expect(capApolloConcurrency('another-provider', 8)).toBe(8);
+    expect(serverAiDefaultModels([research, campus])).toEqual({
+      [RESEARCH_ID]: 'qwen3-32b',
+    });
+    expect(serverAiDefaultModels(undefined)).toEqual({});
   });
 
-  it('shows the one-at-a-time note and does not allow more', () => {
+  it('shows the limit note and does not allow more', () => {
+    const limit = serverAiConcurrencyLimit([research], RESEARCH_ID);
     render(
       <AnnotationRunAllSettings
         maxRetriesPerBatch={2}
@@ -154,13 +157,13 @@ describe('Apollo LLM provider (deploy/apollo)', () => {
         onProcessingModeChange={vi.fn()}
         maxConcurrency={1}
         defaultMaxConcurrency={1}
-        maxConcurrencyLimit={{ value: 1, note: APOLLO_CONCURRENCY_NOTE }}
+        maxConcurrencyLimit={limit}
         onMaxConcurrencyCommit={vi.fn()}
       />,
     );
     const input = screen.getByLabelText('Requests at once');
     expect(input).toBeDisabled();
     expect(input).toHaveAttribute('max', '1');
-    expect(screen.getByText(APOLLO_CONCURRENCY_NOTE)).toBeInTheDocument();
+    expect(screen.getByText(limit?.note ?? 'missing')).toBeInTheDocument();
   });
 });

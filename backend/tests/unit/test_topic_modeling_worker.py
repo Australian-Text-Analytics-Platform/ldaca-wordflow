@@ -700,6 +700,8 @@ def test__compute_topic_modeling_writes_only_projection_context(tmp_path, monkey
     assert seen_run_kwargs["embedding_cache"] == str(embedding_cache_path)
     assert seen_run_kwargs["segmentation_method"] == "line"
     assert seen_run_kwargs["max_segment_tokens"] == 64
+    # A run that names no model (saved before 0.7.16) uses English (issue 413).
+    assert seen_run_kwargs["embedder_model"] == "sentence-transformers/all-MiniLM-L6-v2"
     assert result["segment_count"] == 7
     # Both documents have a real Topic, so none is Ungrouped (issue 362).
     assert result["ungrouped_documents"] == [0]

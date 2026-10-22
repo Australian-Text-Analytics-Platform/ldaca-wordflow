@@ -95,15 +95,6 @@ jobs:
           ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
           submodules: recursive
 
-      # apollo-deploy: never release or publish the Apollo deploy build.
-      - name: Refuse the Apollo deploy build
-        shell: bash
-        run: |
-          if [ -d backend/src/ldaca_wordflow/apollo_deploy ]; then
-            echo "::error::This ref is the Apollo deploy build (deploy/apollo). It is never released."
-            exit 1
-          fi
-
       - name: Set up Node.js
         uses: actions/setup-node@v7.0.0
         with:

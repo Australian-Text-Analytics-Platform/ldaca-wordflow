@@ -1,4 +1,9 @@
-import type { TopicModelingAnalysisRequest, TopicSegmentationMethod } from '@/api';
+import type {
+  TopicEmbeddingModel,
+  TopicModelingAnalysisRequest,
+  TopicSegmentationMethod,
+} from '@/api';
+import { ENGLISH_EMBEDDING_MODEL, isTopicEmbeddingModel } from '../topicEmbeddingModels';
 
 export const DEFAULT_MAX_SEGMENT_TOKENS = 256;
 export const DEFAULT_MIN_CLUSTER_SIZE = 10;
@@ -17,7 +22,20 @@ export interface TopicModelingParameterState {
   randomSeed: number;
   randomSeedUserSet: boolean;
   segmentationMethod: TopicSegmentationMethod;
+  /** As set, up to 256; the model's limit applies on top (useTopicModelingParameters). */
   maxSegmentTokens: number;
+  /**
+   * The model someone chose or a saved run used; `null` follows the selected
+   * Data Blocks' tokeniser (issue 413).
+   */
+  embeddingModel: TopicEmbeddingModel | null;
+  /**
+   * Remote GPU as ticked or unticked by someone or a saved run; `null`
+   * follows the endpoints (ticked when a server endpoint is the default).
+   */
+  remoteEmbedding: boolean | null;
+  /** The endpoint chosen for Remote GPU; `null` takes the first that fits. */
+  embeddingEndpointId: string | null;
   /** Topic sampling; off by default (issue 330). */
   clusterSample: boolean;
   /** Segments to sample; `null` (an empty field) means the grey suggestion. */
@@ -31,6 +49,9 @@ type TopicModelingParameterAction =
   | { type: 'setRandomSeedFromUser'; value: number }
   | { type: 'setSegmentationMethod'; value: TopicSegmentationMethod }
   | { type: 'setMaxSegmentTokens'; value: number }
+  | { type: 'setEmbeddingModel'; value: TopicEmbeddingModel }
+  | { type: 'setRemoteEmbedding'; value: boolean }
+  | { type: 'setEmbeddingEndpointId'; value: string }
   | { type: 'setClusterSample'; value: boolean }
   | { type: 'setClusterSampleSize'; value: number | null }
   | { type: 'hydrateRequest'; request: TopicModelingAnalysisRequest };
@@ -50,14 +71,21 @@ export const createTopicModelingParameterState = (): TopicModelingParameterState
   randomSeedUserSet: false,
   segmentationMethod: 'automatic',
   maxSegmentTokens: DEFAULT_MAX_SEGMENT_TOKENS,
+  embeddingModel: null,
+  remoteEmbedding: null,
+  embeddingEndpointId: null,
   clusterSample: false,
   clusterSampleSize: null,
 });
 
-export const sanitizeMaxSegmentTokens = (value: string | number | undefined): number => {
+/** Clamps Max tokens to 32 up to `limit`: 256, or the embedding model's limit. */
+export const sanitizeMaxSegmentTokens = (
+  value: string | number | undefined,
+  limit = DEFAULT_MAX_SEGMENT_TOKENS,
+): number => {
   const raw = typeof value === 'number' ? value : Number(value);
   const rounded = Number.isFinite(raw) ? Math.round(raw) : DEFAULT_MAX_SEGMENT_TOKENS;
-  return Math.min(256, Math.max(32, rounded));
+  return Math.min(limit, Math.max(32, rounded));
 };
 
 export const sanitizeMinClusterSize = (value: string | number | undefined): number => {
@@ -171,6 +199,12 @@ export const topicModelingParameterReducer = (
       return { ...state, segmentationMethod: action.value };
     case 'setMaxSegmentTokens':
       return { ...state, maxSegmentTokens: sanitizeMaxSegmentTokens(action.value) };
+    case 'setEmbeddingModel':
+      return { ...state, embeddingModel: action.value };
+    case 'setRemoteEmbedding':
+      return { ...state, remoteEmbedding: action.value };
+    case 'setEmbeddingEndpointId':
+      return { ...state, embeddingEndpointId: action.value, remoteEmbedding: true };
     case 'setClusterSample':
       return { ...state, clusterSample: action.value };
     case 'setClusterSampleSize':
@@ -188,6 +222,13 @@ export const topicModelingParameterReducer = (
         randomSeedUserSet: true,
         segmentationMethod: normalizeSegmentationMethod(action.request.segmentation_method),
         maxSegmentTokens: sanitizeMaxSegmentTokens(action.request.max_segment_tokens),
+        // Runs saved before 0.7.16 name no model: they used English.
+        embeddingModel: isTopicEmbeddingModel(action.request.embedding_model)
+          ? action.request.embedding_model
+          : ENGLISH_EMBEDDING_MODEL,
+        // A saved run embedded remotely only when it names an endpoint.
+        remoteEmbedding: action.request.embedding_endpoint_id != null,
+        embeddingEndpointId: action.request.embedding_endpoint_id ?? null,
         clusterSample: action.request.cluster_sample_size != null,
         clusterSampleSize: action.request.cluster_sample_size ?? null,
         corpusSamplesByNodeId: hasSampling

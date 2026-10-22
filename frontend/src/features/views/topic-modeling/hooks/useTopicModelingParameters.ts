@@ -1,9 +1,17 @@
 import { useReducer } from 'react';
 import type {
+  TopicEmbeddingModel,
   TopicModelingAnalysisRequest,
   TopicSegmentationMethod,
   WorkspaceNodeInfo,
 } from '@/api';
+import {
+  cjkTokenizerSource,
+  embeddingModelTokenLimit,
+  ENGLISH_EMBEDDING_MODEL,
+  MULTILINGUAL_EMBEDDING_MODEL,
+  type CjkTokenizerSource,
+} from '../topicEmbeddingModels';
 import {
   DEFAULT_MAX_SEGMENT_TOKENS,
   DEFAULT_MIN_CLUSTER_SIZE,
@@ -50,8 +58,25 @@ export interface UseTopicModelingParametersResult {
   setRandomSeedFromUser: (value: number) => void;
   segmentationMethod: TopicSegmentationMethod;
   setSegmentationMethod: (value: TopicSegmentationMethod) => void;
+  /** Max tokens for the run: as set, but never above the model's limit. */
   maxSegmentTokens: number;
   setMaxSegmentTokens: (value: number) => void;
+  /** The embedding model for the run (issue 413). */
+  embeddingModel: TopicEmbeddingModel;
+  setEmbeddingModel: (value: TopicEmbeddingModel) => void;
+  /**
+   * Why the multilingual model was picked without anyone choosing it: the
+   * Data Block with a Chinese, Japanese or Korean tokeniser. Null otherwise.
+   */
+  embeddingModelReason: CjkTokenizerSource | null;
+  /** A selected Data Block's Chinese, Japanese or Korean tokeniser, chosen or not. */
+  cjkTokenizer: CjkTokenizerSource | null;
+  /** Remote GPU as chosen; `null` until someone or a saved run decides. */
+  remoteEmbedding: boolean | null;
+  setRemoteEmbedding: (value: boolean) => void;
+  /** The chosen embedding endpoint; `null` takes the first that fits. */
+  embeddingEndpointId: string | null;
+  setEmbeddingEndpointId: (value: string) => void;
   /** Topic sampling, off by default. */
   clusterSample: boolean;
   setClusterSample: (value: boolean) => void;
@@ -100,7 +125,10 @@ export function useTopicModelingParameters({
     randomSeed,
     randomSeedUserSet,
     segmentationMethod,
-    maxSegmentTokens,
+    maxSegmentTokens: maxSegmentTokensAsSet,
+    embeddingModel: chosenEmbeddingModel,
+    remoteEmbedding,
+    embeddingEndpointId,
     clusterSample,
     clusterSampleSize,
   } = parameterState;
@@ -111,6 +139,23 @@ export function useTopicModelingParameters({
     (nodeId) => corpusSamplesByNodeId[nodeId] ?? defaultCorpusSample(),
   );
   const corpusSamplesUserSet = activeNodeIds.some((nodeId) => userSetSampleNodeIds[nodeId]);
+  // A Chinese, Japanese or Korean tokeniser on a selected Data Block makes the
+  // multilingual model the default, and with it a 128-token cap; choosing a
+  // model, or reopening a saved run, overrides it (issue 413).
+  const cjkTokenizer = cjkTokenizerSource(
+    activeNodeIds.map((nodeId) => ({
+      name: nodeInfoById[nodeId]?.name,
+      tokenizerModel: nodeInfoById[nodeId]?.tokenizer_model,
+    })),
+  );
+  const embeddingModel =
+    chosenEmbeddingModel ?? (cjkTokenizer ? MULTILINGUAL_EMBEDDING_MODEL : ENGLISH_EMBEDDING_MODEL);
+  const embeddingModelReason = chosenEmbeddingModel === null && cjkTokenizer ? cjkTokenizer : null;
+  // The value as set is kept, so switching back to English restores it.
+  const maxSegmentTokens = Math.min(
+    maxSegmentTokensAsSet,
+    embeddingModelTokenLimit(embeddingModel),
+  );
 
   /** Updates one corpus sampling row and marks sampling as explicitly edited. */
   // Called by: TopicModelingParameterPanel because the sampling controls edit sparse per-corpus percentage patches.
@@ -140,6 +185,18 @@ export function useTopicModelingParameters({
 
   const setMaxSegmentTokens = (value: number) => {
     dispatchParameters({ type: 'setMaxSegmentTokens', value: sanitizeMaxSegmentTokens(value) });
+  };
+
+  const setEmbeddingModel = (value: TopicEmbeddingModel) => {
+    dispatchParameters({ type: 'setEmbeddingModel', value });
+  };
+
+  const setRemoteEmbedding = (value: boolean) => {
+    dispatchParameters({ type: 'setRemoteEmbedding', value });
+  };
+
+  const setEmbeddingEndpointId = (value: string) => {
+    dispatchParameters({ type: 'setEmbeddingEndpointId', value });
   };
 
   const setClusterSample = (value: boolean) => {
@@ -179,6 +236,14 @@ export function useTopicModelingParameters({
     setSegmentationMethod,
     maxSegmentTokens,
     setMaxSegmentTokens,
+    embeddingModel,
+    setEmbeddingModel,
+    embeddingModelReason,
+    cjkTokenizer,
+    remoteEmbedding,
+    setRemoteEmbedding,
+    embeddingEndpointId,
+    setEmbeddingEndpointId,
     clusterSample,
     setClusterSample,
     clusterSampleSize,

@@ -1,5 +1,5 @@
 import type { AnnotationProviderConfigurationResource } from '@/api';
-import { isApolloConfiguration } from '@/features/apollo-deploy/apolloProvider';
+import { isServerAiConfiguration } from '@/features/server-ai-providers/serverAiProviders';
 
 export type AnnotationProviderType = AnnotationProviderConfigurationResource['provider'];
 
@@ -26,8 +26,8 @@ export function getProviderDefinition(type: AnnotationProviderType): AnnotationP
 export function providerConfigurationSecondaryText(
   configuration: AnnotationProviderConfigurationResource,
 ): string {
-  // apollo-deploy: never show the placeholder URL.
-  if (isApolloConfiguration(configuration.id)) return 'Provided by this server';
+  // A server provider's address is a placeholder; never show it.
+  if (isServerAiConfiguration(configuration)) return 'Provided by this Wordflow server';
   if (configuration.provider !== 'custom') {
     return getProviderDefinition(configuration.provider).label;
   }

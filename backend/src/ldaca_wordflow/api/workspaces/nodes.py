@@ -29,7 +29,9 @@ from ...models.node_resources import (
     NodeDerivationRequest,
     NodeEditRequest,
     NodeUpdateRequest,
+    TopicSegmentLengthsResource,
 )
+from ...domain.workspace import TopicEmbeddingModel, TopicSegmentationMethod
 from ...models.workspace import DataBlockResource, WorkspaceNodeInfo
 from ..dependencies import RuntimeDep
 from ..security import CurrentSessionSecurityDep
@@ -518,6 +520,32 @@ async def get_corpus_overview(
         workspace_id,
         node_id,
         column,
+    )
+
+
+@router.get(
+    "/{node_id}/topic-segment-lengths",
+    response_model=TopicSegmentLengthsResource,
+    responses=api_errors(400, 404, 422),
+)
+async def get_topic_segment_lengths(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    column: str = Query(min_length=1),
+    segmentation_method: TopicSegmentationMethod = TopicSegmentationMethod.AUTOMATIC,
+    embedding_model: TopicEmbeddingModel = TopicEmbeddingModel.ENGLISH,
+) -> TopicSegmentLengthsResource:
+    """Token counts of the units a segmentation mode keeps whole, from a sample (issue 414)."""
+
+    return await runtime.node_service.topic_segment_lengths(
+        principal.user.id,
+        workspace_id,
+        node_id,
+        column,
+        segmentation_method,
+        embedding_model,
     )
 
 

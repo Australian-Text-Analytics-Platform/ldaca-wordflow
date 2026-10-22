@@ -8,7 +8,7 @@ import uuid
 import anyio
 from pydantic import SecretStr, ValidationError
 
-from .. import apollo_deploy  # apollo-deploy:
+from .. import server_ai
 from ..domain.annotation import AnnotationProviderSnapshot
 from ..infrastructure.storage.private_toml import (
     PrivateTomlError,
@@ -31,14 +31,19 @@ from ..shared.errors import (
     ProviderCredentialMissingError,
     ProviderCredentialsCorruptError,
 )
+from .embedding_endpoints import EmbeddingEndpointMethods
 from .sessions import SINGLE_USER
 
 logger = logging.getLogger(__name__)
 _CREDENTIALS_FILENAME = "provider-credentials.toml"
 
 
-class ProviderCredentialStore:
-    """Persist local credentials or resolve hosted credentials per request."""
+class ProviderCredentialStore(EmbeddingEndpointMethods):
+    """Persist local credentials or resolve hosted credentials per request.
+
+    Also holds Topic Modelling's embedding endpoints (EmbeddingEndpointMethods),
+    in their own file.
+    """
 
     def __init__(
         self,
@@ -179,10 +184,11 @@ class ProviderCredentialStore:
         *,
         supplied: SecretStr | str | None = None,
     ) -> str | None:
-        # apollo-deploy: the built-in Apollo LLM provider uses no stored or
-        # supplied key; callers bind this marker to the signed-in user.
-        if apollo_deploy.claims_annotation_provider(snapshot, supplied):
-            return apollo_deploy.UNBOUND_CREDENTIAL
+        # A server AI provider uses no stored or supplied key; callers bind
+        # this key-free marker to the signed-in user (issue 411).
+        server_provider = server_ai.claims_annotation_provider(snapshot, supplied)
+        if server_provider is not None:
+            return server_ai.unbound_credential(server_provider)
         if self._settings.multi_user:
             credential = _secret_value(supplied)
             if snapshot.provider != "custom" and credential is None:

@@ -27,7 +27,7 @@ class FairSchedulerKernel[K: Hashable, WorkT]:
         order_key: Callable[[WorkT], object],
         runner: Callable[[WorkT], Awaitable[None]],
         finished: Callable[[WorkT], Awaitable[None]] | None = None,
-        # apollo-deploy: work that may not start yet stays queued.
+        # Work that may not start yet stays queued (server AI per-person limits).
         eligible: Callable[[WorkT], bool] | None = None,
     ) -> None:
         if capacity < 1:
@@ -74,7 +74,7 @@ class FairSchedulerKernel[K: Hashable, WorkT]:
             self._wake.set()
 
     def wake(self) -> None:
-        """Look at the queue again (apollo-deploy: a user's slot was freed)."""
+        """Look at the queue again (a person's server AI slot was freed)."""
 
         self._wake.set()
 
@@ -142,7 +142,7 @@ class FairSchedulerKernel[K: Hashable, WorkT]:
                     item = (
                         self._pending.pop()
                         if self._eligible is None
-                        else self._pending.pop_eligible(self._eligible)  # apollo-deploy:
+                        else self._pending.pop_eligible(self._eligible)
                     )
                 if item is not None:
                     if not self._active:

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import uuid
 
 from ..analysis.topic_projection import TopicNodeInfo
+from ..shared.remote_embedding import RemoteEmbeddingRun
 
 if TYPE_CHECKING:
     from ..models.quotation import ResolvedQuotationEngine
@@ -43,6 +44,9 @@ class TopicModelingInput:
     max_segment_tokens: int
     sample_fractions: list[float | None] | None
     cluster_sample_size: int | None = None
+    embedding_model: str | None = None
+    # Embed on this remote endpoint instead of this computer (never saved).
+    remote_embedding: RemoteEmbeddingRun | None = None
     kind: Literal["topic_modeling"] = field(default="topic_modeling", init=False)
 
 

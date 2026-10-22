@@ -18,7 +18,9 @@ from .annotation_adapter import (
 )
 from .model_descriptions import (
     ModelOption,
-    litellm_model_descriptions,
+    is_chat_model,
+    litellm_model_info,
+    model_mode,
     sanitize_description,
 )
 
@@ -41,8 +43,8 @@ class OpenAIAnnotationAdapter:
     send_labels_schema: bool = False
     # Also look for model descriptions in LiteLLM's /model/info (Custom only).
     describe_from_model_info: bool = False
-    # apollo-deploy: the OpenAI ``user`` field, set only by the Apollo adapter
-    # from the signed-in account (never from the client or for other providers).
+    # The OpenAI ``user`` field. Set only by server AI providers, from the
+    # signed-in account (issue 411); never from the client.
     end_user: str | None = None
 
     async def complete(
@@ -74,7 +76,7 @@ class OpenAIAnnotationAdapter:
             self.send_thinking_switch
             and self.base_url not in _THINKING_SWITCH_REJECTED
         )
-        end_user: str | Omit = omit if self.end_user is None else self.end_user  # apollo-deploy:
+        end_user: str | Omit = omit if self.end_user is None else self.end_user
         labels_schema = (
             config.labels_schema
             if self.send_labels_schema
@@ -129,7 +131,7 @@ class OpenAIAnnotationAdapter:
                             max_completion_tokens=max_completion_tokens(config),
                             response_format=response_format(with_schema),
                             stream=False,
-                            user=end_user,  # apollo-deploy:
+                            user=end_user,
                             extra_body=(
                                 {
                                     "chat_template_kwargs": {
@@ -165,7 +167,11 @@ class OpenAIAnnotationAdapter:
         return choice.message.content or ""
 
     async def _listed_models(self, api_key: str | None) -> list[ModelOption]:
-        """The /models list, sorted, with any description field it carries."""
+        """The /models list, sorted, with any description field it carries.
+
+        Models the list marks as another kind (an embedding or OCR model on a
+        LiteLLM gateway) are left out: they can't answer a chat request.
+        """
 
         from openai import AsyncOpenAI
 
@@ -181,6 +187,8 @@ class OpenAIAnnotationAdapter:
                     if isinstance(model.id, str) and model.id:
                         # OpenRouter-style lists add a description field.
                         extra = getattr(model, "model_extra", None) or {}
+                        if not is_chat_model(model_mode(extra.get("mode"))):
+                            continue
                         options[model.id] = options.get(model.id) or sanitize_description(
                             extra.get("description")
                         )
@@ -203,11 +211,12 @@ class OpenAIAnnotationAdapter:
         # beyond its own cap and never fails the list.
         listed, info = await asyncio.gather(
             self._listed_models(api_key),
-            litellm_model_descriptions(self.base_url, api_key),
+            litellm_model_info(self.base_url, api_key),
         )
         return [
-            ModelOption(option.id, option.description or info.get(option.id))
+            ModelOption(option.id, option.description or info.descriptions.get(option.id))
             for option in listed
+            if is_chat_model(info.modes.get(option.id))
         ]
 
 

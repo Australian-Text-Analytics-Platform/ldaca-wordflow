@@ -69,10 +69,18 @@ import { useAnnotationClassDescriptions } from './hooks/useAnnotationClassDescri
 import { useAnnotationTabSettings } from './hooks/useAnnotationTabSettings';
 import { defaultAnnotationConcurrency } from './annotationTabSettings';
 import {
-  APOLLO_CONCURRENCY_NOTE,
-  apolloConcurrencyLimit,
-  useApolloProvider,
-} from '@/features/apollo-deploy/apolloProvider';
+  capServerAiConcurrency,
+  serverAiConcurrencyLimit,
+  serverAiDefaultModels,
+  useServerAiProviders,
+} from '@/features/server-ai-providers/serverAiProviders';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAiDefaultModels } from '@/features/preferences/useAiDefaultModels';
+import {
+  projectAiModelsKey,
+  useAnalysisTabsPresentationStore,
+} from '@/features/views/common/tabs/analysisTabsPresentationStore';
+import { layerProviderModels } from './providerModels';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
@@ -236,7 +244,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     commitAiBatchSize,
     aiProcessingMode,
     setAiProcessingMode,
-    aiMaxConcurrency,
+    aiMaxConcurrency: aiMaxConcurrencySetting,
     commitAiMaxConcurrency,
     aiReasoningEnabled,
     setAiReasoningEnabled,
@@ -260,22 +268,41 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     providerCredentials.annotationProviders.find(
       (configuration) => configuration.id === aiProviderConfigurationId,
     ) ?? null;
-  // apollo-deploy: Apollo LLM starts on the server's default model.
-  const apolloProvider = useApolloProvider();
-  const providerModels = useMemo(() => {
-    const configuration = apolloProvider?.configuration;
-    const defaultModel = apolloProvider?.default_model;
-    if (!configuration || !defaultModel || aiProviderModels[configuration.id]) {
-      return aiProviderModels;
-    }
-    return { ...aiProviderModels, [configuration.id]: defaultModel };
-  }, [aiProviderModels, apolloProvider]);
+
+  // The model each provider starts with: the server's default, the person's
+  // default (Settings, Servers), the last one used in this Project, then this
+  // tab's own choice. The server's providers also limit requests per person.
+  const { currentWorkspaceId, nodes } = useWorkspaceData();
+  const serverAiProviders = useServerAiProviders();
+  const personAiDefaultModels = useAiDefaultModels();
+  const userId = useAuth().user?.id ?? null;
+  const projectAiModels = useAnalysisTabsPresentationStore(
+    (state) => state.projectAiModels[projectAiModelsKey(userId, currentWorkspaceId)],
+  );
+  const rememberProjectAiModel = useAnalysisTabsPresentationStore(
+    (state) => state.rememberProjectAiModel,
+  );
+  const providerModels = useMemo(
+    () =>
+      layerProviderModels(
+        serverAiDefaultModels(serverAiProviders),
+        personAiDefaultModels,
+        projectAiModels,
+        aiProviderModels,
+      ),
+    [aiProviderModels, personAiDefaultModels, projectAiModels, serverAiProviders],
+  );
+  const aiMaxConcurrency = capServerAiConcurrency(
+    serverAiProviders,
+    aiProviderConfigurationId,
+    aiMaxConcurrencySetting,
+  );
 
   useEffect(() => {
     if (selectedAiProvider) return;
-    // apollo-deploy: wait for the server's provider, so a saved Apollo LLM
-    // selection is not cleared and a new tab selects it.
-    if (apolloProvider === undefined) return;
+    // Wait for the server's providers, so a saved selection of one is kept
+    // and a new tab selects the first, and for the person's default models.
+    if (serverAiProviders === undefined || personAiDefaultModels === undefined) return;
     const fallback = resolveAnnotationProviderConfiguration(
       providerCredentials.annotationProviders,
       aiProviderConfigurationId,
@@ -288,20 +315,20 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     }
   }, [
     aiProviderConfigurationId,
-    apolloProvider,
     aiProviderType,
     clearAiProvider,
     providerCredentials.annotationProviders,
+    personAiDefaultModels,
     providerModels,
     selectAiProvider,
     selectedAiProvider,
+    serverAiProviders,
   ]);
   // Annotation-column choice per example node (plain columns only — no "Start
   // new annotation" option, since examples reference existing labels).
   const [exampleAnnotationColumns, setExampleAnnotationColumns] = useState<Record<string, string>>(
     {},
   );
-  const { currentWorkspaceId, nodes } = useWorkspaceData();
   // Column order dragged by table headers, shared by the tab's tables (issue 373).
   const annotationColumnLayout = tabColumnLayout(
     host.settings,
@@ -844,13 +871,20 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     selectedAiProvider && !canListModels(selectedAiProvider),
   );
   const providerDisabledReason = selectedProviderNeedsKey
-    ? 'Add an API key in Settings → AI before running Annotation'
+    ? 'Add an API key in Settings → Servers before running Annotation'
     : aiActionState.runDisabledReason;
   const controlsLocked =
     analysisActionLifecycle.parametersLocked || isCreatingColumn || isStartingManualReview;
 
   const runFreshAiAnalysis = async () => {
     if (!currentAiRequest || !currentWorkspaceId) return;
+    // The first run with a provider sets this Project's model for it.
+    rememberProjectAiModel(
+      userId,
+      currentWorkspaceId,
+      currentAiRequest.provider_configuration_id,
+      currentAiRequest.model,
+    );
     await runAnalysis<Analysis>({
       action: 'preview',
       prepare: ensureNodeColors,
@@ -1033,7 +1067,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                         runAllDisabledReason:
                           codebookBlockReason ??
                           (selectedProviderNeedsKey
-                            ? 'Add an API key in Settings → AI before running Annotation'
+                            ? 'Add an API key in Settings → Servers before running Annotation'
                             : runAllActionState.runDisabledReason),
                         clearDisabled: aiActionState.clearDisabled,
                         clearDisabledReason: aiActionState.clearDisabledReason,
@@ -1201,6 +1235,12 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                             ...aiProviderModels,
                             [configurationId]: model,
                           });
+                          rememberProjectAiModel(
+                            userId,
+                            currentWorkspaceId,
+                            configurationId,
+                            model,
+                          );
                         }}
                         providerModels={providerModels}
                         model={aiModel}
@@ -1241,14 +1281,14 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                               onProcessingModeChange={setAiProcessingMode}
                               maxConcurrency={aiMaxConcurrency}
                               defaultMaxConcurrency={
-                                apolloConcurrencyLimit(selectedAiProvider?.id) ??
+                                serverAiConcurrencyLimit(serverAiProviders, selectedAiProvider?.id)
+                                  ?.value ??
                                 defaultAnnotationConcurrency(selectedAiProvider?.provider ?? null)
                               }
-                              maxConcurrencyLimit={
-                                apolloConcurrencyLimit(selectedAiProvider?.id) === undefined
-                                  ? undefined
-                                  : { value: 1, note: APOLLO_CONCURRENCY_NOTE }
-                              }
+                              maxConcurrencyLimit={serverAiConcurrencyLimit(
+                                serverAiProviders,
+                                selectedAiProvider?.id,
+                              )}
                               onMaxConcurrencyCommit={commitAiMaxConcurrency}
                               reasoningEnabled={aiReasoningEnabled}
                               onReasoningEnabledChange={setAiReasoningEnabled}

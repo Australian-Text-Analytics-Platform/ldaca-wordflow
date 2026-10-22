@@ -1,6 +1,51 @@
 {
   "components": {
     "schemas": {
+      "AiDefaultModelUpdate": {
+        "additionalProperties": false,
+        "description": "Set one provider's default model, or remove it with null.",
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "AiDefaultModelUpdate",
+        "type": "object"
+      },
+      "AiDefaultModels": {
+        "additionalProperties": false,
+        "description": "Default model per Annotation provider configuration (id to model name).\n\nNot secret. A new Annotation tab starts with a provider's default; a model\nchosen in the tab is kept with the tab.",
+        "properties": {
+          "models": {
+            "additionalProperties": {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxProperties": 200,
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "title": "Models",
+            "type": "object"
+          }
+        },
+        "title": "AiDefaultModels",
+        "type": "object"
+      },
       "Analysis": {
         "additionalProperties": false,
         "description": "Exact valid public Analysis representation.",
@@ -5968,6 +6013,336 @@
         "title": "DuplicateColumnNodeEditRequest",
         "type": "object"
       },
+      "EmbeddingEndpointCheck": {
+        "additionalProperties": false,
+        "description": "What a check of an endpoint found; ``message`` explains a failure.",
+        "properties": {
+          "available": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/TopicEmbeddingModel"
+            },
+            "title": "Available",
+            "type": "object"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "served_models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Served Models",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reachable",
+          "served_models",
+          "available",
+          "message"
+        ],
+        "title": "EmbeddingEndpointCheck",
+        "type": "object"
+      },
+      "EmbeddingEndpointCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "maxLength": 2000,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "models": {
+            "additionalProperties": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "minProperties": 1,
+            "propertyNames": {
+              "$ref": "#/components/schemas/TopicEmbeddingModel"
+            },
+            "title": "Models",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "base_url",
+          "models"
+        ],
+        "title": "EmbeddingEndpointCreate",
+        "type": "object"
+      },
+      "EmbeddingEndpointList": {
+        "additionalProperties": false,
+        "properties": {
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/EmbeddingEndpointResource"
+            },
+            "title": "Endpoints",
+            "type": "array"
+          },
+          "storage": {
+            "enum": [
+              "backend",
+              "server"
+            ],
+            "title": "Storage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "storage",
+          "endpoints"
+        ],
+        "title": "EmbeddingEndpointList",
+        "type": "object"
+      },
+      "EmbeddingEndpointModels": {
+        "additionalProperties": false,
+        "description": "A server's models for Topic Modelling, or why they couldn't be listed.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "suggested": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/TopicEmbeddingModel"
+            },
+            "title": "Suggested",
+            "type": "object"
+          }
+        },
+        "required": [
+          "reachable",
+          "models",
+          "suggested",
+          "message"
+        ],
+        "title": "EmbeddingEndpointModels",
+        "type": "object"
+      },
+      "EmbeddingEndpointModelsRequest": {
+        "additionalProperties": false,
+        "description": "List a server's models before it is saved, which also checks the key.\n\nWhen changing a saved endpoint, ``endpoint_id`` lets the saved key be used\nif none is typed, but only for the address it was saved with.",
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "maxLength": 2000,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "endpoint_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint Id"
+          }
+        },
+        "required": [
+          "base_url"
+        ],
+        "title": "EmbeddingEndpointModelsRequest",
+        "type": "object"
+      },
+      "EmbeddingEndpointResource": {
+        "additionalProperties": false,
+        "description": "An endpoint as the browser sees it: never a key, and for a server's\nendpoint a placeholder instead of its real address.",
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "default": {
+            "title": "Default",
+            "type": "boolean"
+          },
+          "has_api_key": {
+            "title": "Has Api Key",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "models": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/TopicEmbeddingModel"
+            },
+            "title": "Models",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "server",
+              "user"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "base_url",
+          "source",
+          "has_api_key",
+          "models",
+          "default"
+        ],
+        "title": "EmbeddingEndpointResource",
+        "type": "object"
+      },
+      "EmbeddingEndpointUpdate": {
+        "additionalProperties": false,
+        "description": "A partial update; ``api_key: null`` removes the key.",
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "models": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "minProperties": 1,
+                "propertyNames": {
+                  "$ref": "#/components/schemas/TopicEmbeddingModel"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Models"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "EmbeddingEndpointUpdate",
+        "type": "object"
+      },
       "ExpressionDerivation": {
         "additionalProperties": false,
         "properties": {
@@ -9439,6 +9814,98 @@
         "title": "SequentialTabUpdate",
         "type": "object"
       },
+      "ServerAiProviderConfiguration": {
+        "additionalProperties": false,
+        "description": "Shaped like a provider configuration; never holds a key or the real address.",
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "has_api_key": {
+            "const": true,
+            "title": "Has Api Key",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "const": "custom",
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "base_url",
+          "has_api_key"
+        ],
+        "title": "ServerAiProviderConfiguration",
+        "type": "object"
+      },
+      "ServerAiProviderResource": {
+        "additionalProperties": false,
+        "properties": {
+          "configuration": {
+            "$ref": "#/components/schemas/ServerAiProviderConfiguration"
+          },
+          "default_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Model"
+          },
+          "max_requests_per_user": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Requests Per User"
+          }
+        },
+        "required": [
+          "configuration",
+          "default_model",
+          "max_requests_per_user"
+        ],
+        "title": "ServerAiProviderResource",
+        "type": "object"
+      },
+      "ServerAiProviders": {
+        "additionalProperties": false,
+        "properties": {
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ServerAiProviderResource"
+            },
+            "title": "Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "providers"
+        ],
+        "title": "ServerAiProviders",
+        "type": "object"
+      },
       "SessionResponse": {
         "additionalProperties": false,
         "description": "No-store bootstrap response for both supported deployment profiles.",
@@ -10942,6 +11409,15 @@
         "title": "TopicDocumentSpan",
         "type": "object"
       },
+      "TopicEmbeddingModel": {
+        "description": "The sentence models Topic Modelling offers (issue 413).",
+        "enum": [
+          "sentence-transformers/all-MiniLM-L6-v2",
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        ],
+        "title": "TopicEmbeddingModel",
+        "type": "string"
+      },
       "TopicInclusion": {
         "additionalProperties": false,
         "properties": {
@@ -11077,6 +11553,22 @@
               }
             ],
             "title": "Cluster Sample Size"
+          },
+          "embedding_endpoint_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Endpoint Id"
+          },
+          "embedding_model": {
+            "$ref": "#/components/schemas/TopicEmbeddingModel",
+            "default": "sentence-transformers/all-MiniLM-L6-v2"
           },
           "kind": {
             "const": "topic_modeling",
@@ -11819,6 +12311,115 @@
           "metadata"
         ],
         "title": "TopicSegmentItem",
+        "type": "object"
+      },
+      "TopicSegmentLengthsResource": {
+        "additionalProperties": false,
+        "description": "Token counts of the units a segmentation mode keeps whole (issue 414).\n\nMeasured on the first non-empty documents of a text column with the\nembedding model's tokenizer, special tokens included, as Max tokens per\nsegment counts them. ``unit`` is what was measured: sentences, lines, whole\ndocuments, or (Automatic, when nearly every document is longer than the\nmodel reads) paragraphs. Percentiles are nearest-rank, so at least that\nshare of the units have at most that many tokens; null with no units. No\ntext is returned.",
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "embedding_model": {
+            "$ref": "#/components/schemas/TopicEmbeddingModel"
+          },
+          "long_document_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Long Document Share"
+          },
+          "p50": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P50"
+          },
+          "p85": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P85"
+          },
+          "p90": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90"
+          },
+          "p95": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95"
+          },
+          "sampled_documents": {
+            "title": "Sampled Documents",
+            "type": "integer"
+          },
+          "segmentation_method": {
+            "$ref": "#/components/schemas/TopicSegmentationMethod"
+          },
+          "token_limit": {
+            "title": "Token Limit",
+            "type": "integer"
+          },
+          "unit": {
+            "enum": [
+              "document",
+              "paragraph",
+              "line",
+              "sentence"
+            ],
+            "title": "Unit",
+            "type": "string"
+          },
+          "units": {
+            "title": "Units",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "column",
+          "segmentation_method",
+          "embedding_model",
+          "token_limit",
+          "sampled_documents",
+          "unit",
+          "units",
+          "long_document_share",
+          "p50",
+          "p85",
+          "p90",
+          "p95"
+        ],
+        "title": "TopicSegmentLengthsResource",
         "type": "object"
       },
       "TopicSegmentationMethod": {
@@ -13473,7 +14074,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "LDaCA Wordflow API",
-    "version": "0.7.13"
+    "version": "0.7.15"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -14295,6 +14896,509 @@
         ]
       }
     },
+    "/api/embedding-endpoints": {
+      "get": {
+        "operationId": "list_embedding_endpoints",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingEndpointList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "List Embedding Endpoints",
+        "tags": [
+          "embedding-endpoints"
+        ]
+      },
+      "post": {
+        "operationId": "create_embedding_endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingEndpointCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingEndpointResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource state conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Create Embedding Endpoint",
+        "tags": [
+          "embedding-endpoints"
+        ]
+      }
+    },
+    "/api/embedding-endpoints/models": {
+      "post": {
+        "description": "List a server's models before it is saved, with the typed (or saved) key.",
+        "operationId": "list_embedding_endpoint_models",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingEndpointModelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingEndpointModels"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "List Embedding Endpoint Models",
+        "tags": [
+          "embedding-endpoints"
+        ]
+      }
+    },
+    "/api/embedding-endpoints/{endpoint_id}": {
+      "delete": {
+        "operationId": "delete_embedding_endpoint",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "endpoint_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Endpoint Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Delete Embedding Endpoint",
+        "tags": [
+          "embedding-endpoints"
+        ]
+      },
+      "patch": {
+        "operationId": "update_embedding_endpoint",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "endpoint_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Endpoint Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingEndpointUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingEndpointResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource state conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Update Embedding Endpoint",
+        "tags": [
+          "embedding-endpoints"
+        ]
+      }
+    },
+    "/api/embedding-endpoints/{endpoint_id}/check": {
+      "post": {
+        "description": "List the endpoint's models and embed one sentence with each model it is set up for.",
+        "operationId": "check_embedding_endpoint",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "endpoint_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Endpoint Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingEndpointCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Check Embedding Endpoint",
+        "tags": [
+          "embedding-endpoints"
+        ]
+      }
+    },
     "/api/events": {
       "get": {
         "description": "Open one bounded stream and refresh authoritative resources after ready.",
@@ -14452,6 +15556,142 @@
           }
         ],
         "summary": "Update Preferences",
+        "tags": [
+          "preferences"
+        ]
+      }
+    },
+    "/api/preferences/ai-default-models": {
+      "get": {
+        "description": "Each Annotation provider's default model, set in Settings, Servers.",
+        "operationId": "get_ai_default_models",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiDefaultModels"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Ai Default Models",
+        "tags": [
+          "preferences"
+        ]
+      }
+    },
+    "/api/preferences/ai-default-models/{configuration_id}": {
+      "put": {
+        "description": "Set one provider's default model; null removes it.",
+        "operationId": "set_ai_default_model",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "configuration_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Configuration Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiDefaultModelUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiDefaultModels"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Set Ai Default Model",
         "tags": [
           "preferences"
         ]
@@ -15166,6 +16406,52 @@
         "summary": "Submit Sample Import",
         "tags": [
           "sample-data"
+        ]
+      }
+    },
+    "/api/server-ai-providers": {
+      "get": {
+        "operationId": "list_server_ai_providers",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerAiProviders"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "List Server Ai Providers",
+        "tags": [
+          "annotations"
         ]
       }
     },
@@ -22867,6 +24153,123 @@
           }
         ],
         "summary": "Get Node Schema",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/topic-segment-lengths": {
+      "get": {
+        "description": "Token counts of the units a segmentation mode keeps whole, from a sample (issue 414).",
+        "operationId": "get_topic_segment_lengths",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Column",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "segmentation_method",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TopicSegmentationMethod",
+              "default": "automatic"
+            }
+          },
+          {
+            "in": "query",
+            "name": "embedding_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TopicEmbeddingModel",
+              "default": "sentence-transformers/all-MiniLM-L6-v2"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicSegmentLengthsResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Topic Segment Lengths",
         "tags": [
           "nodes"
         ]
