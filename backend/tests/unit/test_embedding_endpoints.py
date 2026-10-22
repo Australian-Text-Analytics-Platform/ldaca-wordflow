@@ -725,3 +725,24 @@ def test_a_shared_server_cannot_list_models_for_new_endpoints(
         "/api/embedding-endpoints/models", json={"base_url": "http://localhost:8000/v1"}
     )
     assert response.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("system", "machine", "provider", "expected"),
+    [
+        ("darwin", "arm64", "", "gpu"),
+        ("darwin", "arm64", "cpu", "cpu"),
+        ("darwin", "x86_64", "", "cpu"),
+        ("linux", "x86_64", "", "cpu"),
+        ("win32", "AMD64", "", "cpu"),
+    ],
+)
+def test_the_list_says_where_this_wordflow_reads_text(
+    monkeypatch: pytest.MonkeyPatch, system: str, machine: str, provider: str, expected: str
+) -> None:
+    from ldaca_wordflow.services import embedding_endpoints as service
+
+    monkeypatch.setattr(service.sys, "platform", system)
+    monkeypatch.setattr(service.platform, "machine", lambda: machine)
+    monkeypatch.setenv("POLARS_TEXT_EMBEDDING_PROVIDER", provider)
+    assert service.local_embedding() == expected

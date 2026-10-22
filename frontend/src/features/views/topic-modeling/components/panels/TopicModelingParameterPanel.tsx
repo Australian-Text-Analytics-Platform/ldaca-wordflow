@@ -437,14 +437,11 @@ export function TopicModelingParameterPanel({
       ? maxSegmentTokensDraft.value
       : String(maxSegmentTokens);
 
-  // Why Remote GPU can't be ticked: no endpoint, or none for this model.
+  // Remote GPU shows only when a Topic Modelling server is set up (Chao): most
+  // people have none. It is greyed out when no server serves this model.
   const remoteUnavailable = remoteEmbedding.serving.length
     ? null
-    : !remoteEmbedding.anyEndpoints
-      ? remoteEmbedding.canAdd
-        ? 'Add a Topic Modelling server in Settings → Servers to read the text on a remote GPU.'
-        : 'This Wordflow server offers no Topic Modelling server, so the text is read here.'
-      : `No Topic Modelling server serves the ${EMBEDDING_MODEL_LABELS[embeddingModel]} model.`;
+    : `No Topic Modelling server serves the ${EMBEDDING_MODEL_LABELS[embeddingModel]} model.`;
   // The cap's maximum follows the model: 256, or 128 for Multilingual.
   const segmentTokenLimit = embeddingModelTokenLimit(embeddingModel);
   const handleMaxSegmentTokensBlur = (event: FocusEvent<HTMLInputElement>) => {
@@ -658,60 +655,62 @@ export function TopicModelingParameterPanel({
             />
           </div>
 
-          <div className="space-y-1">
-            <ParameterLabel
-              helpKey="analysis.topic-modeling.remote-gpu"
-              htmlFor="topic-remote-gpu"
-              help="Read the text on a remote GPU set up in Settings → Servers: much faster on large corpora."
-            >
-              Remote GPU
-            </ParameterLabel>
-            <div className="flex h-8 items-center gap-2" title={remoteUnavailable ?? undefined}>
-              <Checkbox
-                {...nudgeTargetProps(NUDGE_TARGETS.topicRemoteGpu)}
-                id="topic-remote-gpu"
-                aria-label="Use a remote GPU"
-                aria-describedby={remoteUnavailable ? 'topic-remote-gpu-reason' : undefined}
-                checked={remoteEmbedding.ticked}
-                disabled={remoteUnavailable !== null}
-                onCheckedChange={(checked) => {
-                  onRemoteEmbeddingChange?.(checked === true);
-                }}
-              />
-              {remoteEmbedding.ticked && remoteEmbedding.serving.length > 1 ? (
-                <Select
-                  value={remoteEmbedding.endpointId ?? undefined}
-                  onValueChange={(value) => {
-                    onEmbeddingEndpointChange?.(value);
+          {remoteEmbedding.anyEndpoints ? (
+            <div className="space-y-1">
+              <ParameterLabel
+                helpKey="analysis.topic-modeling.remote-gpu"
+                htmlFor="topic-remote-gpu"
+                help="Read the text on a remote GPU set up in Settings → Servers: much faster on large corpora."
+              >
+                Remote GPU
+              </ParameterLabel>
+              <div className="flex h-8 items-center gap-2" title={remoteUnavailable ?? undefined}>
+                <Checkbox
+                  {...nudgeTargetProps(NUDGE_TARGETS.topicRemoteGpu)}
+                  id="topic-remote-gpu"
+                  aria-label="Use a remote GPU"
+                  aria-describedby={remoteUnavailable ? 'topic-remote-gpu-reason' : undefined}
+                  checked={remoteEmbedding.ticked}
+                  disabled={remoteUnavailable !== null}
+                  onCheckedChange={(checked) => {
+                    onRemoteEmbeddingChange?.(checked === true);
                   }}
-                >
-                  <SelectTrigger
-                    id="topic-remote-gpu-endpoint"
-                    aria-label="Topic Modelling server"
-                    className="h-8 w-40"
+                />
+                {remoteEmbedding.ticked && remoteEmbedding.serving.length > 1 ? (
+                  <Select
+                    value={remoteEmbedding.endpointId ?? undefined}
+                    onValueChange={(value) => {
+                      onEmbeddingEndpointChange?.(value);
+                    }}
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {remoteEmbedding.serving.map((endpoint) => (
-                      <SelectItem key={endpoint.id} value={endpoint.id}>
-                        {endpoint.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : remoteEmbedding.ticked ? (
-                <span className="max-w-40 truncate text-label-secondary text-description">
-                  {remoteEmbedding.serving[0]?.name}
-                </span>
-              ) : null}
-              {remoteUnavailable ? (
-                <span id="topic-remote-gpu-reason" className="sr-only">
-                  {remoteUnavailable}
-                </span>
-              ) : null}
+                    <SelectTrigger
+                      id="topic-remote-gpu-endpoint"
+                      aria-label="Topic Modelling server"
+                      className="h-8 w-40"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {remoteEmbedding.serving.map((endpoint) => (
+                        <SelectItem key={endpoint.id} value={endpoint.id}>
+                          {endpoint.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : remoteEmbedding.ticked ? (
+                  <span className="max-w-40 truncate text-label-secondary text-description">
+                    {remoteEmbedding.serving[0]?.name}
+                  </span>
+                ) : null}
+                {remoteUnavailable ? (
+                  <span id="topic-remote-gpu-reason" className="sr-only">
+                    {remoteUnavailable}
+                  </span>
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <fieldset className="space-y-1">
             <ParameterLabel

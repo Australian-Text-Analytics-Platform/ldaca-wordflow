@@ -140,6 +140,12 @@ are split into pieces of about that size. It only ever suggests a smaller cap.
 
 <h4 id="help-topic-modeling-remote-gpu">Remote GPU</h4>
 
+**This needs access to a GPU server for Topic Modelling, which most people
+don't have.** Your university, a research cloud or a shared Wordflow server may
+offer one; you then get its address and an API key. Without one, nothing
+changes: Topic Modelling reads the text on this computer, and **Remote GPU**
+isn't shown at all.
+
 Reading the text into the model takes most of a first run. **Remote GPU**,
 beside **Max tokens**, has a Topic Modelling server do that part on a remote
 graphics processor, which takes seconds where this computer can take many
@@ -156,9 +162,13 @@ still runs here, and the text read is kept for later runs as usual.
   run needs, so there is no default model to set. These servers are listed apart
   from the generative AI ones Annotation uses, although one gateway can
   provide both.
-- **When the tick is available.** Only when a server serves the selected
-  **Model**; otherwise it is greyed out and the text is read on this computer
-  (or the Wordflow server), as without one. With more than one server for the
+- **A suggestion after a slow run.** On the desktop app, when a run took five
+  minutes or more reading the text on this computer's processor and no server
+  is set up, a suggestion asks whether you have access to one, and **Show me
+  in Settings** walks you to where it is added.
+- **When the tick is available.** It appears once a server is set up, and can
+  be ticked when that server serves the selected **Model**; otherwise it is
+  greyed out and the text is read on this computer (or the Wordflow server). With more than one server for the
   model, choose which one beside the tick.
 - **If the server fails.** A run that can't reach the server, or that the
   server refuses, stops with the server's error. It doesn't switch to

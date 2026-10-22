@@ -25,7 +25,7 @@ import type { TopicColorScheme } from '../results/topicModelingGraph';
 import { TopicModelingStopWordsControl } from '../TopicModelingStopWordsControl';
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
-import { TopicResultNudge, TopicSlowStartNudge } from '../TopicModelingNudges';
+import { TopicRemoteGpuNudge, TopicResultNudge, TopicSlowStartNudge } from '../TopicModelingNudges';
 import { isUngrouped } from '../../ungrouped';
 import { TopicResultSummary } from '../results/TopicResultSummary';
 
@@ -48,6 +48,8 @@ interface Props {
   sampleFractions?: (number | null)[] | null;
   /** The run whose example segments the Topic list shows (issue 353). */
   analysisId?: string | null;
+  /** A slow run read its text on the processor: suggest a Topic Modelling server. */
+  suggestRemoteGpu?: boolean;
   /** A message, or a stored failure whose diagnostic shows under Details. */
   error?: unknown;
   topics: TopicModelingTopic[];
@@ -551,6 +553,7 @@ export function TopicModelingResultsPanel({
   result,
   sampleFractions = null,
   analysisId = null,
+  suggestRemoteGpu = false,
   topics,
   exportTopics = topics,
   containerRef,
@@ -658,6 +661,7 @@ export function TopicModelingResultsPanel({
             >
               <div className="space-y-4">
                 <TopicResultNudge result={result} clustering={clustering} analysisId={analysisId} />
+                <TopicRemoteGpuNudge show={suggestRemoteGpu} analysisId={analysisId} />
                 <TopicModelingBubbleChartSection
                   topics={topics}
                   exportTopics={exportTopics}

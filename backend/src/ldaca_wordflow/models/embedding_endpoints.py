@@ -91,6 +91,9 @@ class EmbeddingEndpointList(_StrictModel):
     # server's own endpoints (a shared server keeps no personal keys).
     storage: Literal["backend", "server"]
     endpoints: list[EmbeddingEndpointResource]
+    # How this Wordflow reads text without a Topic Modelling server: on the
+    # Mac's GPU (Apple silicon, Core ML) or on the processor. Suggestions use it.
+    local_embedding: Literal["gpu", "cpu"]
 
 
 class EmbeddingEndpointCheck(_StrictModel):

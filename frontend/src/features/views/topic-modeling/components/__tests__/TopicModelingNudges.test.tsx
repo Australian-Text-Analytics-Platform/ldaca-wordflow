@@ -1,11 +1,14 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { TopicClustering, TopicModelingResponse } from '@/api';
+import { GuidanceContext } from '@/features/guidance/GuidanceContext';
+import { shouldSuggestRemoteGpu } from '@/features/nudges/nudges';
 import { useNudgeStore } from '@/features/nudges/nudgeStore';
 import { ConcordancePreviewNudge } from '@/features/views/concordance/components/ConcordancePreviewNudge';
 import {
   TopicLargeInputNudge,
+  TopicRemoteGpuNudge,
   TopicResultNudge,
   TopicSlowStartNudge,
 } from '../TopicModelingNudges';
@@ -160,6 +163,58 @@ describe('Concordance Preview suggestion (issue 360)', () => {
         occurrence="q"
       />,
     );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});
+
+describe('the Remote GPU suggestion', () => {
+  const run = {
+    state: 'succeeded',
+    startedAt: '2026-10-22T01:00:00Z',
+    finishedAt: '2026-10-22T01:12:00Z',
+    usedEndpoint: false,
+    canAdd: true,
+    anyEndpoints: false,
+    localEmbedding: 'cpu' as const,
+  };
+
+  it('appears only after a slow run on the processor, where a server can be added', () => {
+    expect(shouldSuggestRemoteGpu(run)).toBe(true);
+    // Quick runs, Mac GPUs, remote runs, a shared server, or a server already set up: no.
+    expect(shouldSuggestRemoteGpu({ ...run, finishedAt: '2026-10-22T01:02:00Z' })).toBe(false);
+    expect(shouldSuggestRemoteGpu({ ...run, localEmbedding: 'gpu' })).toBe(false);
+    expect(shouldSuggestRemoteGpu({ ...run, usedEndpoint: true })).toBe(false);
+    expect(shouldSuggestRemoteGpu({ ...run, canAdd: false })).toBe(false);
+    expect(shouldSuggestRemoteGpu({ ...run, anyEndpoints: true })).toBe(false);
+    expect(shouldSuggestRemoteGpu({ ...run, state: 'failed' })).toBe(false);
+    expect(shouldSuggestRemoteGpu({ ...run, localEmbedding: undefined })).toBe(false);
+  });
+
+  it('says most people have no such server and walks to Settings on request', async () => {
+    const startSettingsWalk = vi.fn();
+    render(
+      <GuidanceContext.Provider
+        value={{
+          dispatchContextualHintVisit: vi.fn(),
+          startGuidedTour: vi.fn(),
+          startSettingsWalk,
+        }}
+      >
+        <TopicRemoteGpuNudge show analysisId="run-1" />
+      </GuidanceContext.Provider>,
+    );
+
+    const card = screen.getByRole('status');
+    expect(card).toHaveTextContent('Reading the text took a while');
+    expect(card).toHaveTextContent('Most people don’t have one');
+    fireEvent.click(screen.getByRole('button', { name: 'Show me in Settings' }));
+    await vi.waitFor(() => {
+      expect(startSettingsWalk).toHaveBeenCalledWith('remote-gpu');
+    });
+  });
+
+  it('shows nothing when not asked to', () => {
+    render(<TopicRemoteGpuNudge show={false} analysisId="run-1" />);
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });

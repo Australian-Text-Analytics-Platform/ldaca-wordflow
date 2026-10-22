@@ -6118,6 +6118,14 @@
             "title": "Endpoints",
             "type": "array"
           },
+          "local_embedding": {
+            "enum": [
+              "gpu",
+              "cpu"
+            ],
+            "title": "Local Embedding",
+            "type": "string"
+          },
           "storage": {
             "enum": [
               "backend",
@@ -6129,7 +6137,8 @@
         },
         "required": [
           "storage",
-          "endpoints"
+          "endpoints",
+          "local_embedding"
         ],
         "title": "EmbeddingEndpointList",
         "type": "object"

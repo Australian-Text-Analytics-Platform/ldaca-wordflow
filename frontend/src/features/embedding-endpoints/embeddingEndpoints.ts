@@ -41,6 +41,8 @@ export interface UseEmbeddingEndpointsResult {
   endpoints: EmbeddingEndpoint[] | undefined;
   /** Whether people can add endpoints here (a desktop) or only see the server's. */
   canAdd: boolean;
+  /** How this Wordflow reads text without a server: the Mac's GPU or the processor. */
+  localEmbedding: 'gpu' | 'cpu' | undefined;
   isError: boolean;
   retry: () => void;
 }
@@ -59,6 +61,7 @@ export function useEmbeddingEndpoints(): UseEmbeddingEndpointsResult {
   return {
     endpoints: !isAuthenticated ? [] : query.isPending ? undefined : (query.data?.endpoints ?? []),
     canAdd: query.data?.storage === 'backend',
+    localEmbedding: query.data?.local_embedding,
     isError: query.isError,
     retry: () => {
       void query.refetch();

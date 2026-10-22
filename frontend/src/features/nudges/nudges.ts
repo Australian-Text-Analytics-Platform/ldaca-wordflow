@@ -100,6 +100,14 @@ export const NUDGES = {
       'Reading the text takes most of a first run. For a faster run, Stop, then lower Sampling to read fewer documents.',
     targets: [NUDGE_TARGETS.topicDocumentSampling],
   },
+  'topic-remote-gpu': {
+    title: 'Reading the text took a while',
+    // Most people have no such server (Chao): say so, and never make it sound needed.
+    message:
+      'This computer read the text on its processor. If you have access to a GPU server for Topic Modelling, for example through your university, adding it in Settings → Servers makes first runs much faster. Most people don’t have one; Topic Modelling works without it.',
+    help: 'analysis.topic-modeling.remote-gpu',
+    targets: [],
+  },
   'topic-large-input': {
     title: 'A large input',
     message:
@@ -198,4 +206,32 @@ export function suggestedSegmentTokenCap({
   if (p90 === null) return null;
   const fit = SEGMENT_TOKEN_BUCKETS.find((tokens) => tokens <= limit && tokens >= p90);
   return fit !== undefined && fit < current ? fit : null;
+}
+
+/**
+ * Suggest a Topic Modelling server after a finished run that read its text on
+ * this computer's processor and took at least as long as a slow start, only
+ * where people can add one (a desktop) and none is set up.
+ */
+export function shouldSuggestRemoteGpu({
+  state,
+  startedAt,
+  finishedAt,
+  usedEndpoint,
+  canAdd,
+  anyEndpoints,
+  localEmbedding,
+}: {
+  state: string | null | undefined;
+  startedAt: string | null | undefined;
+  finishedAt: string | null | undefined;
+  usedEndpoint: boolean;
+  canAdd: boolean;
+  anyEndpoints: boolean;
+  localEmbedding: 'gpu' | 'cpu' | undefined;
+}): boolean {
+  if (state !== 'succeeded' || usedEndpoint || !canAdd || anyEndpoints) return false;
+  if (localEmbedding !== 'cpu' || !startedAt || !finishedAt) return false;
+  const took = Date.parse(finishedAt) - Date.parse(startedAt);
+  return Number.isFinite(took) && took >= SLOW_START_MS;
 }

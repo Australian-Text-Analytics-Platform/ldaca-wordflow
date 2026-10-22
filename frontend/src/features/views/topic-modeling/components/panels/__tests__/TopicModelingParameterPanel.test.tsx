@@ -691,7 +691,7 @@ describe('TopicModelingParameterPanel', () => {
       default: false,
     });
 
-    it('is greyed out with the reason when there is no endpoint', () => {
+    it('is not shown when no Topic Modelling server is set up', () => {
       render(
         <TopicModelingParameterPanel
           {...baseProps}
@@ -705,12 +705,8 @@ describe('TopicModelingParameterPanel', () => {
         />,
       );
 
-      expect(screen.getByLabelText('Use a remote GPU')).toBeDisabled();
-      expect(
-        screen.getByText(
-          'Add a Topic Modelling server in Settings → Servers to read the text on a remote GPU.',
-        ),
-      ).toBeInTheDocument();
+      expect(screen.queryByLabelText('Use a remote GPU')).not.toBeInTheDocument();
+      expect(screen.queryByText('Remote GPU')).not.toBeInTheDocument();
     });
 
     it('says when no endpoint serves the selected model', () => {

@@ -8,7 +8,7 @@ import { create } from 'zustand';
 export type SettingsTab = 'general' | 'portal' | 'servers' | 'workspace' | 'views' | 'guidance';
 
 /** A setting the dialog walks people to, step by step (issue 358). */
-export type SettingsGuide = 'contextual-hints' | 'multi-tab' | 'suggestions';
+export type SettingsGuide = 'contextual-hints' | 'multi-tab' | 'suggestions' | 'remote-gpu';
 
 interface SettingsDialogState {
   open: boolean;

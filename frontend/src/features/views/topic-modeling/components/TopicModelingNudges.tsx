@@ -7,6 +7,7 @@ import type {
   TopicModelingResponse,
   TopicSegmentLengthsResource,
 } from '@/api';
+import { useSettingsWalk } from '@/features/guidance/GuidanceContext';
 import { NudgeCard } from '@/features/nudges/NudgeCard';
 import {
   isLargeTopicInput,
@@ -97,6 +98,38 @@ export function TopicSlowStartNudge({
   }, [waiting]);
   if (Number.isNaN(start) || waiting || !detail || detail.step > SLOW_START_STEPS) return null;
   return <NudgeCard id="topic-slow-start" occurrence={taskId ?? ''} className="mt-3" />;
+}
+
+/**
+ * Suggestion after a slow run that read the text on this computer's processor:
+ * a Topic Modelling server, if people have access to one. Show me walks to
+ * Settings → Servers, where they add it themselves.
+ */
+export function TopicRemoteGpuNudge({
+  show,
+  analysisId,
+}: {
+  show: boolean;
+  analysisId: string | null;
+}) {
+  const startSettingsWalk = useSettingsWalk();
+  if (!show) return null;
+  return (
+    <NudgeCard
+      id="topic-remote-gpu"
+      occurrence={analysisId ?? ''}
+      action={
+        startSettingsWalk
+          ? {
+              label: 'Show me in Settings',
+              onApply: () => {
+                startSettingsWalk('remote-gpu');
+              },
+            }
+          : undefined
+      }
+    />
+  );
 }
 
 /** Suggestion before a run on many documents or segments: use a sample first. */

@@ -51,6 +51,15 @@ export const SETTINGS_WALKS: Readonly<Record<SettingsGuide, SettingsWalk>> = {
     settingNote:
       'Untick Show suggestions to turn suggestions off. Come back here to turn them on again.',
   },
+  'remote-gpu': {
+    tab: 'servers',
+    tabLabel: 'Servers',
+    tourTitle: 'Topic Modelling servers are added in Settings',
+    tourContent: 'Click Settings, the gear here. A remote GPU server is added there.',
+    tabNote: 'Open Servers on the left.',
+    settingNote:
+      'Under Topic Modelling, Add server with the address and API key you were given. Only if you have access to such a server.',
+  },
 };
 
 const TOUR_PREFIX = 'settings-walk:';

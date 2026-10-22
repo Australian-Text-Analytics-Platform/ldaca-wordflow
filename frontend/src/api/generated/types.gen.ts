@@ -3176,6 +3176,10 @@ export type EmbeddingEndpointList = {
      */
     endpoints: Array<EmbeddingEndpointResource>;
     /**
+     * Local Embedding
+     */
+    local_embedding: 'gpu' | 'cpu';
+    /**
      * Storage
      */
     storage: 'backend' | 'server';

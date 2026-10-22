@@ -64,6 +64,7 @@ import {
   useEmbeddingEndpoints,
 } from '@/features/embedding-endpoints/embeddingEndpoints';
 import { remoteEmbeddingChoice } from './remoteEmbedding';
+import { shouldSuggestRemoteGpu } from '@/features/nudges/nudges';
 import { TopicNamesContext } from './components/results/topicNamesContext';
 import { topicGroupKey, withTopicName } from './topicNames';
 
@@ -294,6 +295,20 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
   const suggestedSampleSize = suggestedTopicSampleSize(estimatedSegmentCount);
   // Remote GPU (issue 412 follow-up): only while an endpoint serves the model.
   const embeddingEndpoints = useEmbeddingEndpoints();
+  // A slow run that read its text on this computer's processor: suggest a
+  // Topic Modelling server, where people can add one and none is set up.
+  const runRequest = latestRunAll?.request;
+  const suggestRemoteGpu = shouldSuggestRemoteGpu({
+    state: latestRunAll?.state,
+    startedAt: latestRunAll?.started_at,
+    finishedAt: latestRunAll?.finished_at,
+    usedEndpoint: Boolean(
+      runRequest && 'embedding_endpoint_id' in runRequest && runRequest.embedding_endpoint_id,
+    ),
+    canAdd: embeddingEndpoints.canAdd,
+    anyEndpoints: (embeddingEndpoints.endpoints ?? []).length > 0,
+    localEmbedding: embeddingEndpoints.localEmbedding,
+  });
   const remoteChoice = remoteEmbeddingChoice({
     ticked: remoteEmbedding,
     endpointId: embeddingEndpointId,
@@ -658,6 +673,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
             error={error ?? analysisFailure}
             result={result}
             analysisId={tabTaskId}
+            suggestRemoteGpu={suggestRemoteGpu}
             topics={topics}
             exportTopics={exportTopics}
             sampleFractions={serverRequest?.sample_fractions ?? null}

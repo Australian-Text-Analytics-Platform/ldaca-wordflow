@@ -21,8 +21,11 @@ credential string, like an Annotation key; it is never saved.
 from __future__ import annotations
 
 import logging
+import os
+import platform
+import sys
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlsplit
 
 from pydantic import ValidationError
@@ -88,12 +91,15 @@ class EmbeddingEndpointMethods:
 
     async def list_embedding_endpoints(self) -> EmbeddingEndpointList:
         endpoints = [_server_resource(endpoint) for endpoint in _server_endpoints()]
+        local = local_embedding()
         if self._settings.multi_user:
-            return EmbeddingEndpointList(storage="server", endpoints=endpoints)
+            return EmbeddingEndpointList(
+                storage="server", endpoints=endpoints, local_embedding=local
+            )
         async with self._lock:
             stored = await self._load_endpoints()
         endpoints.extend(_user_resource(endpoint) for endpoint in stored.endpoints)
-        return EmbeddingEndpointList(storage="backend", endpoints=endpoints)
+        return EmbeddingEndpointList(storage="backend", endpoints=endpoints, local_embedding=local)
 
     async def create_embedding_endpoint(
         self, command: EmbeddingEndpointCreate
@@ -402,6 +408,17 @@ def _user_resource(endpoint: StoredEmbeddingEndpoint) -> EmbeddingEndpointResour
     )
 
 
+def local_embedding() -> Literal["gpu", "cpu"]:
+    """Where polars-text reads text here: Core ML on an Apple-silicon Mac (unless
+    POLARS_TEXT_EMBEDDING_PROVIDER=cpu keeps it on the processor), else the CPU."""
+
+    if os.environ.get("POLARS_TEXT_EMBEDDING_PROVIDER", "").strip().lower() == "cpu":
+        return "cpu"
+    if sys.platform == "darwin" and platform.machine().lower() in {"arm64", "aarch64"}:
+        return "gpu"
+    return "cpu"
+
+
 def embedding_models(modes: dict[str, str | None]) -> list[str]:
     """The embedding models when any model says its kind, otherwise all, sorted."""
 
@@ -465,4 +482,9 @@ def _describe_failure(error: Exception, name: str) -> str:
     return f"{name} gave an unexpected answer ({type(error).__name__})"
 
 
-__all__ = ["EmbeddingEndpointMethods", "embedding_models", "suggest_served_models"]
+__all__ = [
+    "EmbeddingEndpointMethods",
+    "embedding_models",
+    "local_embedding",
+    "suggest_served_models",
+]

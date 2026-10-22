@@ -16,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toastError } from '@/lib/toastError';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 import { EMBEDDING_MODEL_LABELS } from '@/features/views/topic-modeling/topicEmbeddingModels';
 import { EmbeddingEndpointDialog } from './EmbeddingEndpointDialog';
 import {
@@ -50,6 +51,9 @@ const checkText = (check: EmbeddingEndpointCheckResult): string => {
  */
 export function EmbeddingEndpointsPanel() {
   const { endpoints, canAdd, isError, retry } = useEmbeddingEndpoints();
+  // The Remote GPU suggestion's walk ends on Add server.
+  const walking = useSettingsDialogStore((state) => state.guide === 'remote-gpu');
+  const endGuide = useSettingsDialogStore((state) => state.endGuide);
   const actions = useEmbeddingEndpointActions();
   const [dialog, setDialog] = useState<{ endpoint: EmbeddingEndpoint | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EmbeddingEndpoint | null>(null);
@@ -87,8 +91,12 @@ export function EmbeddingEndpointsPanel() {
           <p className="text-body text-description">
             Servers that read text for Topic Modelling on a remote GPU, which is much faster than
             this computer on large corpora. Tick Remote GPU beside Max tokens in Topic Modelling to
-            use one. Wordflow picks the English or Multilingual model the run needs. Without a
-            server, Topic Modelling reads text on this computer.
+            use one. Wordflow picks the English or Multilingual model the run needs.
+          </p>
+          <p className="mt-1 text-body text-description">
+            Only if you have access to such a server, for example through your university or a
+            research cloud, with its address and an API key. Most people don’t, and Topic Modelling
+            works without one: it reads the text on this computer.
           </p>
           {canAdd ? null : (
             <p className="mt-1 text-label-secondary text-description">
@@ -202,7 +210,10 @@ export function EmbeddingEndpointsPanel() {
       {canAdd ? (
         <Button
           type="button"
+          data-highlighted={walking ? '' : undefined}
+          data-walk-target={walking ? '' : undefined}
           onClick={() => {
+            if (walking) endGuide();
             setDialog({ endpoint: null });
           }}
         >
