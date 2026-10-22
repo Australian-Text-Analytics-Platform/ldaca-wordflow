@@ -14,17 +14,95 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  useAiDefaultModels,
+  useSetAiDefaultModel,
+} from '@/features/preferences/useAiDefaultModels';
 import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
 import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
 import { providerConfigurationSecondaryText } from '../aiProviders';
-import { isServerAiConfiguration } from '@/features/server-ai-providers/serverAiProviders';
+import {
+  isServerAiConfiguration,
+  serverAiDefaultModels,
+  useServerAiProviders,
+} from '@/features/server-ai-providers/serverAiProviders';
 import { AddAnnotationProviderDialog } from './AddAnnotationProviderDialog';
 import { EditAnnotationProviderDialog } from './EditAnnotationProviderDialog';
+import { ModelNameCombobox } from './ModelNameCombobox';
 import { toastError } from '@/lib/toastError';
 
-/** Ordered management UI for named Annotation provider configurations. */
+interface DefaultModelFieldProps {
+  configuration: AnnotationProviderConfigurationView;
+  /** The person's saved default, '' when none. */
+  saved: string;
+  /** The server's default for its own provider, if it sets one. */
+  serverDefault: string | undefined;
+  disabled: boolean;
+}
+
+/**
+ * A provider's default model. It may stay empty: the first model used with
+ * the provider in a Project then becomes that Project's. A model chosen in a
+ * Project never changes this default.
+ */
+function DefaultModelField({
+  configuration,
+  saved,
+  serverDefault,
+  disabled,
+}: DefaultModelFieldProps) {
+  const setDefault = useSetAiDefaultModel();
+  const [draft, setDraft] = useState(saved);
+  const fieldId = `ai-default-model-${configuration.id}`;
+
+  const commit = (value: string) => {
+    const model = value.trim();
+    if (model === saved) return;
+    setDefault.mutate(
+      { configurationId: configuration.id, model },
+      {
+        onSuccess: () => {
+          toast.success(model ? 'Default model saved' : 'Default model removed');
+        },
+        onError: (error) => {
+          setDraft(saved);
+          toastError(error, "Couldn't save the default model");
+        },
+      },
+    );
+  };
+
+  const hint = saved
+    ? 'New Annotation tabs start with this model, unless the Project has used another one.'
+    : serverDefault
+      ? `Empty: Annotation starts with this server's default, ${serverDefault}, until a Project uses another model.`
+      : 'Empty: the first model used in a Project becomes that Project’s model.';
+
+  return (
+    <div className="mt-3 flex flex-col gap-1.5">
+      <Label htmlFor={fieldId} className="text-label-secondary font-medium">
+        Default model
+      </Label>
+      <ModelNameCombobox
+        id={fieldId}
+        configuration={configuration}
+        value={draft}
+        onChange={setDraft}
+        onCommit={commit}
+        disabled={disabled || setDefault.isPending}
+      />
+      <p className="text-label-secondary text-description">{hint}</p>
+    </div>
+  );
+}
+
+/** Generative AI servers for Annotation, each with an optional default model. */
 export function AiProvidersPreferencesPanel() {
   const credentials = useProviderCredentials();
+  const defaultModels = useAiDefaultModels() ?? {};
+  const serverDefaults = serverAiDefaultModels(useServerAiProviders());
+  const setDefault = useSetAiDefaultModel();
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AnnotationProviderConfigurationView | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AnnotationProviderConfigurationView | null>(
@@ -38,6 +116,9 @@ export function AiProvidersPreferencesPanel() {
     setPending(true);
     try {
       await credentials.deleteAnnotationProvider(deleteTarget.id);
+      if (defaultModels[deleteTarget.id]) {
+        setDefault.mutate({ configurationId: deleteTarget.id, model: '' });
+      }
       setDeleteTarget(null);
       toast.success('Provider deleted');
     } catch (error) {
@@ -64,14 +145,18 @@ export function AiProvidersPreferencesPanel() {
     <div className="space-y-5">
       <section className="space-y-3">
         <div>
-          <h3 className="text-body font-semibold">Annotation providers</h3>
+          <h3 className="text-body font-semibold">Generative AI</h3>
           <p className="text-body text-description">
+            Used by Annotation. Without one, Annotation can only be done by hand.
+          </p>
+          <p className="mt-1 text-body text-description">
             {credentials.storage === 'browser'
               ? 'Configurations stay in this browser for the current account. Secrets are sent only with provider requests.'
               : 'Configurations are stored by the local backend. Saved secrets are never returned to the browser.'}
           </p>
           <p className="mt-1 text-label-secondary text-description">
-            Names and saved keys can be edited. Provider type and Custom Base URL stay fixed.
+            Names, saved keys and default models can be edited. Provider type and Custom Base URL
+            stay fixed.
           </p>
         </div>
 
@@ -153,6 +238,13 @@ export function AiProvidersPreferencesPanel() {
                     )}
                   </div>
                 </div>
+                <DefaultModelField
+                  key={defaultModels[configuration.id] ?? ''}
+                  configuration={configuration}
+                  saved={defaultModels[configuration.id] ?? ''}
+                  serverDefault={serverDefaults[configuration.id]}
+                  disabled={pending}
+                />
               </div>
             ))}
           </div>

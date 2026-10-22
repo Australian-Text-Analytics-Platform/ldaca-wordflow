@@ -442,9 +442,9 @@ export function TopicModelingParameterPanel({
     ? null
     : !remoteEmbedding.anyEndpoints
       ? remoteEmbedding.canAdd
-        ? 'Add an embedding endpoint in Settings → Embeddings to read the text on a remote GPU.'
-        : 'This server has no embedding endpoint, so the text is read on the server.'
-      : `No embedding endpoint serves the ${EMBEDDING_MODEL_LABELS[embeddingModel]} model.`;
+        ? 'Add a Topic Modelling server in Settings → Servers to read the text on a remote GPU.'
+        : 'This Wordflow server offers no Topic Modelling server, so the text is read here.'
+      : `No Topic Modelling server serves the ${EMBEDDING_MODEL_LABELS[embeddingModel]} model.`;
   // The cap's maximum follows the model: 256, or 128 for Multilingual.
   const segmentTokenLimit = embeddingModelTokenLimit(embeddingModel);
   const handleMaxSegmentTokensBlur = (event: FocusEvent<HTMLInputElement>) => {
@@ -662,7 +662,7 @@ export function TopicModelingParameterPanel({
             <ParameterLabel
               helpKey="analysis.topic-modeling.remote-gpu"
               htmlFor="topic-remote-gpu"
-              help="Read the text on a remote GPU from Settings → Embeddings: much faster on large corpora."
+              help="Read the text on a remote GPU set up in Settings → Servers: much faster on large corpora."
             >
               Remote GPU
             </ParameterLabel>
@@ -687,7 +687,7 @@ export function TopicModelingParameterPanel({
                 >
                   <SelectTrigger
                     id="topic-remote-gpu-endpoint"
-                    aria-label="Embedding endpoint"
+                    aria-label="Topic Modelling server"
                     className="h-8 w-40"
                   >
                     <SelectValue />

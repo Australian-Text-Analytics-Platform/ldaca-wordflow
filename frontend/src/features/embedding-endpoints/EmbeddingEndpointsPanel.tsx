@@ -45,7 +45,7 @@ const checkText = (check: EmbeddingEndpointCheckResult): string => {
 };
 
 /**
- * Settings → Embeddings: the endpoints Topic Modelling can embed on with
+ * Settings → Servers, Topic Modelling: the endpoints it can embed on with
  * Remote GPU. A server's own are read-only; on a desktop people add their own.
  */
 export function EmbeddingEndpointsPanel() {
@@ -62,7 +62,7 @@ export function EmbeddingEndpointsPanel() {
       const result = await actions.check.mutateAsync(endpoint.id);
       setChecks((current) => ({ ...current, [endpoint.id]: result }));
     } catch (error) {
-      toastError(error, "Couldn't check the endpoint");
+      toastError(error, "Couldn't check the server");
     } finally {
       setChecking(null);
     }
@@ -73,9 +73,9 @@ export function EmbeddingEndpointsPanel() {
     try {
       await actions.remove.mutateAsync(deleteTarget.id);
       setDeleteTarget(null);
-      toast.success('Embedding endpoint deleted');
+      toast.success('Topic Modelling server deleted');
     } catch (error) {
-      toastError(error, "Couldn't delete the endpoint");
+      toastError(error, "Couldn't delete the server");
     }
   };
 
@@ -83,15 +83,16 @@ export function EmbeddingEndpointsPanel() {
     <div className="space-y-5">
       <section className="space-y-3">
         <div>
-          <h3 className="text-body font-semibold">Embedding endpoints</h3>
+          <h3 className="text-body font-semibold">Topic Modelling</h3>
           <p className="text-body text-description">
             Servers that read text for Topic Modelling on a remote GPU, which is much faster than
             this computer on large corpora. Tick Remote GPU beside Max tokens in Topic Modelling to
-            use one. They are separate from the AI providers used by Annotation.
+            use one. Wordflow picks the English or Multilingual model the run needs. Without a
+            server, Topic Modelling reads text on this computer.
           </p>
           {canAdd ? null : (
             <p className="mt-1 text-label-secondary text-description">
-              This server provides its own endpoints; they can't be changed here.
+              This Wordflow server provides these; they can't be changed here.
             </p>
           )}
         </div>
@@ -102,14 +103,14 @@ export function EmbeddingEndpointsPanel() {
             className="flex items-center gap-2 rounded-md border px-3 py-4 text-body text-description"
           >
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            Loading embedding endpoints…
+            Loading Topic Modelling servers…
           </div>
         ) : isError ? (
           <div
             role="alert"
             className="space-y-3 rounded-md border border-error/40 px-3 py-4 text-body"
           >
-            <p>Couldn't load embedding endpoints.</p>
+            <p>Couldn't load Topic Modelling servers.</p>
             <Button type="button" size="sm" variant="outline" onClick={retry}>
               Retry
             </Button>
@@ -117,8 +118,8 @@ export function EmbeddingEndpointsPanel() {
         ) : endpoints.length === 0 ? (
           <p className="rounded-md border border-dashed px-3 py-4 text-body text-description">
             {canAdd
-              ? 'No embedding endpoints. Topic Modelling reads text on this computer.'
-              : 'This server has no embedding endpoints. Topic Modelling reads text on the server.'}
+              ? 'No Topic Modelling servers. Topic Modelling reads text on this computer.'
+              : 'This Wordflow server offers none. Topic Modelling reads text on the Wordflow server.'}
           </p>
         ) : (
           <div className="space-y-2">
@@ -134,7 +135,7 @@ export function EmbeddingEndpointsPanel() {
                       <p className="truncate text-body font-medium">{endpoint.name}</p>
                       <p className="truncate text-label-secondary text-description">
                         {endpoint.source === 'server'
-                          ? `Provided by this server · ${servedModelsText(endpoint)}`
+                          ? `Provided by this Wordflow server · ${servedModelsText(endpoint)}`
                           : `${endpoint.base_url} · ${servedModelsText(endpoint)}`}
                       </p>
                     </div>
@@ -205,7 +206,7 @@ export function EmbeddingEndpointsPanel() {
             setDialog({ endpoint: null });
           }}
         >
-          Add endpoint
+          Add server
         </Button>
       ) : null}
 
@@ -228,10 +229,10 @@ export function EmbeddingEndpointsPanel() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete embedding endpoint?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Topic Modelling server?</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete {deleteTarget?.name ?? 'this endpoint'}? Finished Topic Modelling results stay;
-              a run that used it needs another endpoint, or Remote GPU unticked, to run again.
+              Delete {deleteTarget?.name ?? 'this server'}? Finished Topic Modelling results stay; a
+              run that used it needs another endpoint, or Remote GPU unticked, to run again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -27,7 +27,7 @@ export function providerConfigurationSecondaryText(
   configuration: AnnotationProviderConfigurationResource,
 ): string {
   // A server provider's address is a placeholder; never show it.
-  if (isServerAiConfiguration(configuration)) return 'Provided by this server';
+  if (isServerAiConfiguration(configuration)) return 'Provided by this Wordflow server';
   if (configuration.provider !== 'custom') {
     return getProviderDefinition(configuration.provider).label;
   }

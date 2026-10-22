@@ -23,12 +23,17 @@ check ambiguous or underrepresented codes, and interpret reliability measures
 in the context of the task. Provider calls may incur cost and send the selected
 text, Codebook, prompt, and examples to the configured service.
 
-Provider connections are managed under **Settings → AI**. Their provider type
+Provider connections are managed under **Settings → Servers**, in **Generative
+AI** (the **AI** tab before 0.7.16). Their provider type
 and Custom base URL stay fixed, while the display name and saved API key can be
 edited. Keys are optional: a keyless built-in remains visible but cannot list
 models or run Annotation until a key is added; a Custom endpoint may be
 keyless. Removing a connection does not remove completed Run output, but
-Preview pages and future requests still need it.
+Preview pages and future requests still need it. Each provider may have a **Default
+model**, which new Annotation tabs start with. It can stay empty: the first
+model used with the provider in a Project then becomes that Project's, and a
+new tab in the Project starts with the model last chosen or run there. A
+Project's model never changes the default in Settings.
 
 Provider failures are shown as safe actionable categories without revealing
 provider responses or credentials. A provider-wide Run failure publishes no

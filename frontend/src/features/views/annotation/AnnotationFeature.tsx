@@ -71,9 +71,16 @@ import { defaultAnnotationConcurrency } from './annotationTabSettings';
 import {
   capServerAiConcurrency,
   serverAiConcurrencyLimit,
+  serverAiDefaultModels,
   useServerAiProviders,
-  withServerAiDefaultModels,
 } from '@/features/server-ai-providers/serverAiProviders';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAiDefaultModels } from '@/features/preferences/useAiDefaultModels';
+import {
+  projectAiModelsKey,
+  useAnalysisTabsPresentationStore,
+} from '@/features/views/common/tabs/analysisTabsPresentationStore';
+import { layerProviderModels } from './providerModels';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
@@ -262,12 +269,28 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
       (configuration) => configuration.id === aiProviderConfigurationId,
     ) ?? null;
 
-  // The server's own AI providers (issue 411): their default models, and
-  // their limit on requests at once per person.
+  // The model each provider starts with: the server's default, the person's
+  // default (Settings, Servers), the last one used in this Project, then this
+  // tab's own choice. The server's providers also limit requests per person.
+  const { currentWorkspaceId, nodes } = useWorkspaceData();
   const serverAiProviders = useServerAiProviders();
+  const personAiDefaultModels = useAiDefaultModels();
+  const userId = useAuth().user?.id ?? null;
+  const projectAiModels = useAnalysisTabsPresentationStore(
+    (state) => state.projectAiModels[projectAiModelsKey(userId, currentWorkspaceId)],
+  );
+  const rememberProjectAiModel = useAnalysisTabsPresentationStore(
+    (state) => state.rememberProjectAiModel,
+  );
   const providerModels = useMemo(
-    () => withServerAiDefaultModels(serverAiProviders, aiProviderModels),
-    [aiProviderModels, serverAiProviders],
+    () =>
+      layerProviderModels(
+        serverAiDefaultModels(serverAiProviders),
+        personAiDefaultModels,
+        projectAiModels,
+        aiProviderModels,
+      ),
+    [aiProviderModels, personAiDefaultModels, projectAiModels, serverAiProviders],
   );
   const aiMaxConcurrency = capServerAiConcurrency(
     serverAiProviders,
@@ -278,8 +301,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   useEffect(() => {
     if (selectedAiProvider) return;
     // Wait for the server's providers, so a saved selection of one is kept
-    // and a new tab selects the first.
-    if (serverAiProviders === undefined) return;
+    // and a new tab selects the first, and for the person's default models.
+    if (serverAiProviders === undefined || personAiDefaultModels === undefined) return;
     const fallback = resolveAnnotationProviderConfiguration(
       providerCredentials.annotationProviders,
       aiProviderConfigurationId,
@@ -295,6 +318,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     aiProviderType,
     clearAiProvider,
     providerCredentials.annotationProviders,
+    personAiDefaultModels,
     providerModels,
     selectAiProvider,
     selectedAiProvider,
@@ -305,7 +329,6 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   const [exampleAnnotationColumns, setExampleAnnotationColumns] = useState<Record<string, string>>(
     {},
   );
-  const { currentWorkspaceId, nodes } = useWorkspaceData();
   // Column order dragged by table headers, shared by the tab's tables (issue 373).
   const annotationColumnLayout = tabColumnLayout(
     host.settings,
@@ -848,13 +871,20 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     selectedAiProvider && !canListModels(selectedAiProvider),
   );
   const providerDisabledReason = selectedProviderNeedsKey
-    ? 'Add an API key in Settings → AI before running Annotation'
+    ? 'Add an API key in Settings → Servers before running Annotation'
     : aiActionState.runDisabledReason;
   const controlsLocked =
     analysisActionLifecycle.parametersLocked || isCreatingColumn || isStartingManualReview;
 
   const runFreshAiAnalysis = async () => {
     if (!currentAiRequest || !currentWorkspaceId) return;
+    // The first run with a provider sets this Project's model for it.
+    rememberProjectAiModel(
+      userId,
+      currentWorkspaceId,
+      currentAiRequest.provider_configuration_id,
+      currentAiRequest.model,
+    );
     await runAnalysis<Analysis>({
       action: 'preview',
       prepare: ensureNodeColors,
@@ -1037,7 +1067,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                         runAllDisabledReason:
                           codebookBlockReason ??
                           (selectedProviderNeedsKey
-                            ? 'Add an API key in Settings → AI before running Annotation'
+                            ? 'Add an API key in Settings → Servers before running Annotation'
                             : runAllActionState.runDisabledReason),
                         clearDisabled: aiActionState.clearDisabled,
                         clearDisabledReason: aiActionState.clearDisabledReason,
@@ -1205,6 +1235,12 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                             ...aiProviderModels,
                             [configurationId]: model,
                           });
+                          rememberProjectAiModel(
+                            userId,
+                            currentWorkspaceId,
+                            configurationId,
+                            model,
+                          );
                         }}
                         providerModels={providerModels}
                         model={aiModel}

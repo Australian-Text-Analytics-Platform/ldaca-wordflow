@@ -142,7 +142,7 @@ anything. Everything below is about people's own credentials.
 
 Do not place users' Annotation or Data Portal credentials in the service
 environment or backend Data Root. In multi-user mode, each user enters personal
-credentials under **Settings → AI** or **Settings → Portal**. Wordflow
+credentials under **Settings → Servers** or **Settings → Portal**. Wordflow
 stores the ordered, named Annotation configuration collection and its secrets
 only in that browser's `wordflow-provider-credentials` version 2 localStorage
 entry, partitioned by authenticated user ID, and sends the selected secret

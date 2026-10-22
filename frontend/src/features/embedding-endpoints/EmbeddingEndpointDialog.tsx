@@ -56,7 +56,7 @@ export function EmbeddingEndpointDialog({ open, endpoint, onOpenChange }: Props)
     const problem = !name.trim()
       ? 'Enter a name'
       : !baseUrl.trim()
-        ? 'Enter the endpoint address'
+        ? 'Enter the server’s address'
         : Object.keys(models).length === 0
           ? 'Name at least one model it serves'
           : null;
@@ -86,7 +86,7 @@ export function EmbeddingEndpointDialog({ open, endpoint, onOpenChange }: Props)
       }
       onOpenChange(false);
     } catch (caught) {
-      setError(presentError(caught, "Couldn't save the endpoint").message);
+      setError(presentError(caught, "Couldn't save the server").message);
     }
   };
 
@@ -95,7 +95,7 @@ export function EmbeddingEndpointDialog({ open, endpoint, onOpenChange }: Props)
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {endpoint ? 'Edit embedding endpoint' : 'Add embedding endpoint'}
+            {endpoint ? 'Edit Topic Modelling server' : 'Add Topic Modelling server'}
           </DialogTitle>
           <DialogDescription>
             A server that embeds text for Topic Modelling, such as vLLM or a LiteLLM gateway. The
@@ -164,7 +164,7 @@ export function EmbeddingEndpointDialog({ open, endpoint, onOpenChange }: Props)
             ) : null}
           </div>
           <fieldset className="space-y-2">
-            <legend className="text-body font-medium">Model names on this endpoint</legend>
+            <legend className="text-body font-medium">Model names on this server</legend>
             <p className="text-label-secondary text-description">
               Leave a model empty if the endpoint doesn't serve it.
             </p>
@@ -210,7 +210,7 @@ export function EmbeddingEndpointDialog({ open, endpoint, onOpenChange }: Props)
               void save();
             }}
           >
-            {pending ? 'Saving…' : endpoint ? 'Save' : 'Add endpoint'}
+            {pending ? 'Saving…' : endpoint ? 'Save' : 'Add server'}
           </Button>
         </DialogFooter>
       </DialogContent>

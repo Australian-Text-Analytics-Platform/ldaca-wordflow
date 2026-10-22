@@ -1,6 +1,51 @@
 {
   "components": {
     "schemas": {
+      "AiDefaultModelUpdate": {
+        "additionalProperties": false,
+        "description": "Set one provider's default model, or remove it with null.",
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "AiDefaultModelUpdate",
+        "type": "object"
+      },
+      "AiDefaultModels": {
+        "additionalProperties": false,
+        "description": "Default model per Annotation provider configuration (id to model name).\n\nNot secret. A new Annotation tab starts with a provider's default; a model\nchosen in the tab is kept with the tab.",
+        "properties": {
+          "models": {
+            "additionalProperties": {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxProperties": 200,
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "title": "Models",
+            "type": "object"
+          }
+        },
+        "title": "AiDefaultModels",
+        "type": "object"
+      },
       "Analysis": {
         "additionalProperties": false,
         "description": "Exact valid public Analysis representation.",
@@ -15341,6 +15386,142 @@
           }
         ],
         "summary": "Update Preferences",
+        "tags": [
+          "preferences"
+        ]
+      }
+    },
+    "/api/preferences/ai-default-models": {
+      "get": {
+        "description": "Each Annotation provider's default model, set in Settings, Servers.",
+        "operationId": "get_ai_default_models",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiDefaultModels"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Ai Default Models",
+        "tags": [
+          "preferences"
+        ]
+      }
+    },
+    "/api/preferences/ai-default-models/{configuration_id}": {
+      "put": {
+        "description": "Set one provider's default model; null removes it.",
+        "operationId": "set_ai_default_model",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "configuration_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Configuration Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiDefaultModelUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiDefaultModels"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Set Ai Default Model",
         "tags": [
           "preferences"
         ]

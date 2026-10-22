@@ -9,11 +9,13 @@ Issue #411.
 
 ## What people see
 
-- The server's providers are listed first under **Settings → AI** and in the
+- The server's providers are listed first under **Settings → Servers** (Generative AI) and in the
   Annotation **Provider** list, for every signed-in person. They are
   read-only: no key to enter, no Edit or Delete, and the list says
-  "Provided by this server".
-- A new Annotation tab selects the first one, with its default model.
+  "Provided by this Wordflow server".
+- A new Annotation tab selects the first one, with its default model. A
+  person's own **Default model** in Settings, or the model last used with the
+  provider in the same Project, comes first.
 - The **Model** list keeps the order set in the file and shows a one-line
   description under each model (from the file, or from the gateway; see
   [Model descriptions](#model-descriptions)).

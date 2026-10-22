@@ -5,6 +5,35 @@ export type ClientOptions = {
 };
 
 /**
+ * AiDefaultModelUpdate
+ *
+ * Set one provider's default model, or remove it with null.
+ */
+export type AiDefaultModelUpdate = {
+    /**
+     * Model
+     */
+    model: string | null;
+};
+
+/**
+ * AiDefaultModels
+ *
+ * Default model per Annotation provider configuration (id to model name).
+ *
+ * Not secret. A new Annotation tab starts with a provider's default; a model
+ * chosen in the tab is kept with the tab.
+ */
+export type AiDefaultModels = {
+    /**
+     * Models
+     */
+    models?: {
+        [key: string]: string;
+    };
+};
+
+/**
  * Analysis
  *
  * Exact valid public Analysis representation.
@@ -8381,6 +8410,77 @@ export type UpdatePreferencesResponses = {
 };
 
 export type UpdatePreferencesResponse = UpdatePreferencesResponses[keyof UpdatePreferencesResponses];
+
+export type GetAiDefaultModelsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/preferences/ai-default-models';
+};
+
+export type GetAiDefaultModelsErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type GetAiDefaultModelsError = GetAiDefaultModelsErrors[keyof GetAiDefaultModelsErrors];
+
+export type GetAiDefaultModelsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AiDefaultModels;
+};
+
+export type GetAiDefaultModelsResponse = GetAiDefaultModelsResponses[keyof GetAiDefaultModelsResponses];
+
+export type SetAiDefaultModelData = {
+    body: AiDefaultModelUpdate;
+    path: {
+        /**
+         * Configuration Id
+         */
+        configuration_id: string;
+    };
+    query?: never;
+    url: '/api/preferences/ai-default-models/{configuration_id}';
+};
+
+export type SetAiDefaultModelErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type SetAiDefaultModelError = SetAiDefaultModelErrors[keyof SetAiDefaultModelErrors];
+
+export type SetAiDefaultModelResponses = {
+    /**
+     * Successful Response
+     */
+    200: AiDefaultModels;
+};
+
+export type SetAiDefaultModelResponse = SetAiDefaultModelResponses[keyof SetAiDefaultModelResponses];
 
 export type ClearProviderCredentialsData = {
     body?: never;

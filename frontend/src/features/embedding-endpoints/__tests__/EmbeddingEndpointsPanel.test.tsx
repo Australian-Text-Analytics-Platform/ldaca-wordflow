@@ -60,7 +60,9 @@ describe('EmbeddingEndpointsPanel', () => {
   it("shows the server's endpoint read-only and the person's own with actions", () => {
     render(<EmbeddingEndpointsPanel />);
 
-    expect(screen.getByText('Provided by this server · English (minilm-l6)')).toBeInTheDocument();
+    expect(
+      screen.getByText('Provided by this Wordflow server · English (minilm-l6)'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Read-only')).toBeInTheDocument();
     expect(
       screen.getByText('http://localhost:8000/v1 · English, Multilingual'),
@@ -90,17 +92,17 @@ describe('EmbeddingEndpointsPanel', () => {
     state.add.mockResolvedValue(mine);
     render(<EmbeddingEndpointsPanel />);
     expect(
-      screen.getByText('No embedding endpoints. Topic Modelling reads text on this computer.'),
+      screen.getByText('No Topic Modelling servers. Topic Modelling reads text on this computer.'),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add endpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add server' }));
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Lab GPU' } });
     fireEvent.change(screen.getByLabelText('Address'), {
       target: { value: 'http://localhost:8000/v1' },
     });
     fireEvent.change(screen.getByLabelText(/API key/), { target: { value: 'sk-lab' } });
     fireEvent.change(screen.getByLabelText('Multilingual'), { target: { value: '' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add endpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add server' }));
 
     await waitFor(() => {
       expect(state.add).toHaveBeenCalledWith({
@@ -118,8 +120,8 @@ describe('EmbeddingEndpointsPanel', () => {
     render(<EmbeddingEndpointsPanel />);
 
     expect(
-      screen.getByText("This server provides its own endpoints; they can't be changed here."),
+      screen.getByText("This Wordflow server provides these; they can't be changed here."),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add endpoint' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add server' })).not.toBeInTheDocument();
   });
 });

@@ -13,7 +13,7 @@ import {
   isServerAiConfiguration,
   type ServerAiProvider,
   serverAiConcurrencyLimit,
-  withServerAiDefaultModels,
+  serverAiDefaultModels,
 } from '../serverAiProviders';
 
 const RESEARCH_ID = '5b0d6e2a-8f43-4c1e-9a7d-2c3b4e5f6a71';
@@ -139,12 +139,10 @@ describe('server AI providers (issue 411)', () => {
     expect(serverAiConcurrencyLimit([research], RESEARCH_ID)?.note).toBe(
       'Research LLM takes one request at a time for each person, so Run sends at most one request at once.',
     );
-    expect(withServerAiDefaultModels([research, campus], {})).toEqual({
+    expect(serverAiDefaultModels([research, campus])).toEqual({
       [RESEARCH_ID]: 'qwen3-32b',
     });
-    expect(withServerAiDefaultModels([research], { [RESEARCH_ID]: 'llama' })).toEqual({
-      [RESEARCH_ID]: 'llama',
-    });
+    expect(serverAiDefaultModels(undefined)).toEqual({});
   });
 
   it('shows the limit note and does not allow more', () => {

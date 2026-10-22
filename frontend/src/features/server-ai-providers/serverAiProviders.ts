@@ -92,19 +92,12 @@ export const capServerAiConcurrency = (
   value: number,
 ): number => Math.min(value, serverAiConcurrencyLimit(providers, configurationId)?.value ?? value);
 
-/** Saved models per configuration, with each server provider's default filled in. */
-export const withServerAiDefaultModels = (
+/** Each server provider's default model, from the server's providers file. */
+export const serverAiDefaultModels = (
   providers: ServerAiProvider[] | undefined,
-  models: Record<string, string>,
-): Record<string, string> => {
-  const defaults = (providers ?? []).filter(
-    (provider) => provider.default_model && !models[provider.configuration.id],
-  );
-  if (defaults.length === 0) return models;
-  return {
-    ...models,
-    ...Object.fromEntries(
-      defaults.map((provider) => [provider.configuration.id, provider.default_model ?? '']),
+): Record<string, string> =>
+  Object.fromEntries(
+    (providers ?? []).flatMap((provider) =>
+      provider.default_model ? [[provider.configuration.id, provider.default_model]] : [],
     ),
-  };
-};
+  );

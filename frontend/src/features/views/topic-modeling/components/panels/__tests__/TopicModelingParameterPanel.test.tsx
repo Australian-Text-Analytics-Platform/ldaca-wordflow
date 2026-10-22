@@ -708,7 +708,7 @@ describe('TopicModelingParameterPanel', () => {
       expect(screen.getByLabelText('Use a remote GPU')).toBeDisabled();
       expect(
         screen.getByText(
-          'Add an embedding endpoint in Settings → Embeddings to read the text on a remote GPU.',
+          'Add a Topic Modelling server in Settings → Servers to read the text on a remote GPU.',
         ),
       ).toBeInTheDocument();
     });
@@ -731,7 +731,7 @@ describe('TopicModelingParameterPanel', () => {
 
       expect(screen.getByLabelText('Use a remote GPU')).toBeDisabled();
       expect(
-        screen.getByText('No embedding endpoint serves the Multilingual model.'),
+        screen.getByText('No Topic Modelling server serves the Multilingual model.'),
       ).toBeInTheDocument();
     });
 
@@ -780,7 +780,7 @@ describe('TopicModelingParameterPanel', () => {
           }}
         />,
       );
-      expect(screen.getByLabelText('Embedding endpoint')).toHaveTextContent('Lab GPU');
+      expect(screen.getByLabelText('Topic Modelling server')).toHaveTextContent('Lab GPU');
     });
   });
 });

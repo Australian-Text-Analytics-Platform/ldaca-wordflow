@@ -169,7 +169,7 @@ describe('AnnotationAiSettings', () => {
 
     expect(screen.getAllByText('Needs API key')).not.toHaveLength(0);
     await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
-    expect(screen.getByText(/Settings → AI/)).toBeInTheDocument();
+    expect(screen.getByText(/Settings → Servers/)).toBeInTheDocument();
     expect(screen.getByLabelText('Model')).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: 'Provider' }));
