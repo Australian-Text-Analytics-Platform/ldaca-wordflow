@@ -275,3 +275,51 @@ def test_the_models_endpoint_adds_descriptions_and_keeps_the_id_list(
     assert body["models"] == ["gemma", "qwen"]
     assert body["model_descriptions"] == {"gemma": "Fastest; good for large runs."}
     assert KEY not in response.text
+
+
+# Only chat models (issue 415) -------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_models_the_list_marks_as_embedding_or_ocr_are_not_offered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_models(
+        monkeypatch,
+        [
+            {"id": "ornith"},
+            {"id": "minilm-en", "mode": "embedding"},
+            {"id": "ocr-model", "mode": "OCR"},
+            {"id": "qwen", "mode": "chat"},
+        ],
+    )
+    _install_model_info(monkeypatch, _info())
+
+    options = await list_model_options(CustomOpenAICompatibleAnnotationAdapter(BASE_URL), KEY)
+
+    assert [option.id for option in options] == ["ornith", "qwen"]
+
+
+@pytest.mark.anyio
+async def test_model_info_modes_hide_models_the_list_does_not_mark(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_models(monkeypatch, [{"id": "ornith"}, {"id": "minilm-en"}, {"id": "rerank"}])
+
+    async def respond(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "data": [
+                    {"model_name": "ornith", "model_info": {"mode": "chat"}},
+                    {"model_name": "minilm-en", "model_info": {"mode": "embedding"}},
+                    {"model_name": "rerank", "model_info": {"mode": "rerank"}},
+                ]
+            },
+        )
+
+    _install_model_info(monkeypatch, respond)
+
+    options = await list_model_options(CustomOpenAICompatibleAnnotationAdapter(BASE_URL), KEY)
+
+    assert [option.id for option in options] == ["ornith"]
