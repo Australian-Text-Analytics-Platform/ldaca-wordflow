@@ -43,6 +43,7 @@ class TopicModelingInput:
     max_segment_tokens: int
     sample_fractions: list[float | None] | None
     cluster_sample_size: int | None = None
+    embedding_model: str | None = None
     kind: Literal["topic_modeling"] = field(default="topic_modeling", init=False)
 
 

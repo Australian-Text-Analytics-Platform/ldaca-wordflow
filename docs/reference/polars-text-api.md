@@ -16,6 +16,7 @@ expr.text.concordance(
     case_sensitive=False, ignore_punctuation=False
 )
 expr.text.embedding(*, model=None, cache=None, batch_size=None)
+expr.text.segment_token_counts(unit="automatic", *, model=None)
 expr.text.topic_modeling(
     *, embedding_model=None, embedding_cache=None,
     segmentation="automatic", max_tokens=256, seed=42,
@@ -42,8 +43,30 @@ special tokens added by the embedding model.
 
 The default embedder is `sentence-transformers/all-MiniLM-L6-v2`. Its Sentence
 Transformers metadata declares a 256-token maximum, which both the namespace
-and Wordflow enforce. Cache paths are dedicated disposable storage and may be
-replaced completely when their schema or model-pipeline fingerprint changes.
+and Wordflow enforce. Wordflow also offers
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, whose maximum is
+128. Cache paths are dedicated disposable storage and may be replaced completely
+when their schema or model-pipeline fingerprint changes.
+
+Since 0.6.8 every embedding call sorts its texts by token count and runs
+batches of 32. On macOS the two models above (their plain `model.onnx` export)
+run on Core ML through static-shape sessions, one per length bucket of 32, 64,
+128 and 256 tokens up to the model's maximum, each compiled on first use into
+`coreml/` inside the Hugging Face cache. Other models, Linux and Windows embed
+on ONNX Runtime's CPU provider. The execution policy is part of the embedding
+cache fingerprint, so a Mac and a server cache separately; Core ML vectors agree
+with the CPU's to about 1e-4. When Core ML cannot be prepared the model runs on
+the CPU and the reason is printed once to standard error.
+`POLARS_TEXT_EMBEDDING_PROVIDER=cpu` keeps a Mac on the CPU, and
+`POLARS_TEXT_EMBEDDING_THREADS` caps CPU threads for embedding and topic
+segmentation.
+
+`segment_token_counts` returns `List[UInt32]`: per row, the token counts of the
+units a segmentation mode keeps whole (`automatic`: the whole text;
+`paragraph`: the paragraphs Automatic packs; `line`; `sentence`), counted with
+the embedding model's tokenizer, special tokens included, never split. Units
+without letters or digits are skipped and null rows stay null. It loads only the
+tokenizer.
 
 The scalar topic result is:
 

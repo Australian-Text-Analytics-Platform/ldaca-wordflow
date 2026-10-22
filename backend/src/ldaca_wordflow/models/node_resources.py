@@ -16,6 +16,7 @@ from pydantic import (
 )
 
 from ..domain.annotation import TASK_CONTEXT_CODE
+from ..domain.workspace.analysis import TopicEmbeddingModel, TopicSegmentationMethod
 from ..domain.workspace.provenance import (
     CastDerivation,
     CloneDerivation,
@@ -568,6 +569,34 @@ class ColumnExamplesResource(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     examples: dict[str, str | None]
+
+
+class TopicSegmentLengthsResource(BaseModel):
+    """Token counts of the units a segmentation mode keeps whole (issue 414).
+
+    Measured on the first non-empty documents of a text column with the
+    embedding model's tokenizer, special tokens included, as Max tokens per
+    segment counts them. ``unit`` is what was measured: sentences, lines, whole
+    documents, or (Automatic, when nearly every document is longer than the
+    model reads) paragraphs. Percentiles are nearest-rank, so at least that
+    share of the units have at most that many tokens; null with no units. No
+    text is returned.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    segmentation_method: TopicSegmentationMethod
+    embedding_model: TopicEmbeddingModel
+    token_limit: int
+    sampled_documents: int
+    unit: Literal["document", "paragraph", "line", "sentence"]
+    units: int
+    long_document_share: float | None
+    p50: int | None
+    p85: int | None
+    p90: int | None
+    p95: int | None
 
 
 class CorpusOverviewResource(BaseModel):

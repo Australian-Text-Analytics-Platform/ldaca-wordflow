@@ -131,6 +131,20 @@ class TopicSegmentationMethod(StrEnum):
     SENTENCE = "sentence"
 
 
+class TopicEmbeddingModel(StrEnum):
+    """The sentence models Topic Modelling offers (issue 413)."""
+
+    ENGLISH = "sentence-transformers/all-MiniLM-L6-v2"
+    MULTILINGUAL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+
+# Tokens each model reads per segment; a longer segment would be cut off.
+TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS: dict[TopicEmbeddingModel, int] = {
+    TopicEmbeddingModel.ENGLISH: 256,
+    TopicEmbeddingModel.MULTILINGUAL: 128,
+}
+
+
 class TopicModelingAnalysisRequest(_StrictModel):
     kind: Literal["topic_modeling"] = "topic_modeling"
     node_ids: list[uuid.UUID] = Field(min_length=1, max_length=2)
@@ -143,6 +157,12 @@ class TopicModelingAnalysisRequest(_StrictModel):
     sample_fractions: list[float | None] | None = None
     segmentation_method: TopicSegmentationMethod = TopicSegmentationMethod.AUTOMATIC
     max_segment_tokens: int = Field(default=256, ge=32, le=256)
+    # Left out of saved Projects when English, so they stay readable by 0.7.15,
+    # which refuses keys it does not know; a record without it means English.
+    embedding_model: TopicEmbeddingModel = Field(
+        default=TopicEmbeddingModel.ENGLISH,
+        exclude_if=lambda value: value == TopicEmbeddingModel.ENGLISH,
+    )
     # Topic sampling (#330): cluster this many segments, picked with the run's
     # seed, and give every other segment its nearest sampled segment's topic.
     # None clusters every segment. Clustering time grows with the square of the
@@ -157,6 +177,12 @@ class TopicModelingAnalysisRequest(_StrictModel):
             and self.max_cluster_size <= self.min_cluster_size
         ):
             raise ValueError("Max topic size must be larger than Min topic size")
+        token_limit = TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS[self.embedding_model]
+        if self.max_segment_tokens > token_limit:
+            raise ValueError(
+                f"Max tokens per segment must be at most {token_limit} "
+                "for this embedding model"
+            )
         if self.sample_fractions is not None:
             if len(self.sample_fractions) != len(self.node_ids):
                 raise ValueError("Sample fractions must align with Data Block IDs")
@@ -1065,6 +1091,8 @@ __all__ = [
     "TokenFrequencyAnalysisRequest",
     "TopicModelingAnalysisRequest",
     "TopicSegmentationMethod",
+    "TopicEmbeddingModel",
+    "TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS",
     "TopicModelingDataBlockCreationAnalysisRequest",
     "TopicMeaningOverride",
     "ValidAnalysisIntegrity",

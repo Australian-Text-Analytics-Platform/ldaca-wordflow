@@ -227,6 +227,7 @@ below require the Workspace to be open.
 | `POST /api/workspaces/{workspace_id}/nodes/{node_id}/redo` | `redo_node` | 200 | Restore the next plan from this open Workspace session |
 | `DELETE /api/workspaces/{workspace_id}/nodes/{node_id}` | `delete_node` | 204 | Delete while preserving graph integrity |
 | `GET /api/workspaces/{workspace_id}/nodes/{node_id}/schema` | `get_node_schema` | 200 Arrow | Authoritative zero-row Data Block schema stream |
+| `GET /api/workspaces/{workspace_id}/nodes/{node_id}/topic-segment-lengths` | `get_topic_segment_lengths` | 200 | Token-count percentiles of the units a Topic segmentation mode keeps whole, from the first 200 non-empty documents; no text |
 
 `DataBlockExportRequest` requires one or more unique Data Block UUIDs in export
 order and accepts `csv`, `json`, `ndjson`, `parquet`, or `ipc`. There is no
@@ -300,6 +301,21 @@ The list is empty until a publishing Analysis succeeds. Existing single-output
 operations return one ID; Topic Modelling Data Block Creation returns topic-data then
 topic-meanings IDs for each source in request order. The removed singular field
 is not accepted.
+
+`TopicModelingAnalysisRequest.embedding_model` is
+`sentence-transformers/all-MiniLM-L6-v2` (default) or
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`;
+`max_segment_tokens` (32 upward) must not exceed the model's limit, 256 or
+128. A saved request names the model only when it is the multilingual one, and
+a request without it means the English model.
+
+`get_topic_segment_lengths` takes `column`, `segmentation_method` and
+`embedding_model`. It counts tokens with that model's tokenizer, special tokens
+included, per sentence, line, or (Automatic) whole document; when at least 90%
+of the sampled documents exceed the model's limit, Automatic measures
+paragraphs instead. It returns the measured `unit`, counts, the model's
+`token_limit`, Automatic's `long_document_share`, and nearest-rank
+`p50`/`p85`/`p90`/`p95`.
 
 `TopicModelingAnalysisRequest.min_cluster_size` controls the initial HDBSCAN
 fit, defaults to 10, and accepts integers from 2 upward. Changing it submits a
