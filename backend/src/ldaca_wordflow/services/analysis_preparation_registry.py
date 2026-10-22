@@ -169,6 +169,7 @@ def _prepare_topic_modeling(
         max_segment_tokens=request.max_segment_tokens,
         sample_fractions=request.sample_fractions,
         cluster_sample_size=request.cluster_sample_size,
+        embedding_model=request.embedding_model.value,
     )
 
 

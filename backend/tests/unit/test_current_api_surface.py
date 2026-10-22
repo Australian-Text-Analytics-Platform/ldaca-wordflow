@@ -247,6 +247,11 @@ EXPECTED_OPERATIONS = {
     ),
     (
         "GET",
+        "/api/workspaces/{workspace_id}/nodes/{node_id}/topic-segment-lengths",
+        "get_topic_segment_lengths",
+    ),
+    (
+        "GET",
         "/api/workspaces/{workspace_id}/nodes/{node_id}/datetime-formats",
         "get_datetime_formats",
     ),

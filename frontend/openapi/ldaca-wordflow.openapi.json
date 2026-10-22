@@ -11034,6 +11034,15 @@
         "title": "TopicDocumentSpan",
         "type": "object"
       },
+      "TopicEmbeddingModel": {
+        "description": "The sentence models Topic Modelling offers (issue 413).",
+        "enum": [
+          "sentence-transformers/all-MiniLM-L6-v2",
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        ],
+        "title": "TopicEmbeddingModel",
+        "type": "string"
+      },
       "TopicInclusion": {
         "additionalProperties": false,
         "properties": {
@@ -11169,6 +11178,10 @@
               }
             ],
             "title": "Cluster Sample Size"
+          },
+          "embedding_model": {
+            "$ref": "#/components/schemas/TopicEmbeddingModel",
+            "default": "sentence-transformers/all-MiniLM-L6-v2"
           },
           "kind": {
             "const": "topic_modeling",
@@ -11911,6 +11924,115 @@
           "metadata"
         ],
         "title": "TopicSegmentItem",
+        "type": "object"
+      },
+      "TopicSegmentLengthsResource": {
+        "additionalProperties": false,
+        "description": "Token counts of the units a segmentation mode keeps whole (issue 414).\n\nMeasured on the first non-empty documents of a text column with the\nembedding model's tokenizer, special tokens included, as Max tokens per\nsegment counts them. ``unit`` is what was measured: sentences, lines, whole\ndocuments, or (Automatic, when nearly every document is longer than the\nmodel reads) paragraphs. Percentiles are nearest-rank, so at least that\nshare of the units have at most that many tokens; null with no units. No\ntext is returned.",
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "embedding_model": {
+            "$ref": "#/components/schemas/TopicEmbeddingModel"
+          },
+          "long_document_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Long Document Share"
+          },
+          "p50": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P50"
+          },
+          "p85": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P85"
+          },
+          "p90": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90"
+          },
+          "p95": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95"
+          },
+          "sampled_documents": {
+            "title": "Sampled Documents",
+            "type": "integer"
+          },
+          "segmentation_method": {
+            "$ref": "#/components/schemas/TopicSegmentationMethod"
+          },
+          "token_limit": {
+            "title": "Token Limit",
+            "type": "integer"
+          },
+          "unit": {
+            "enum": [
+              "document",
+              "paragraph",
+              "line",
+              "sentence"
+            ],
+            "title": "Unit",
+            "type": "string"
+          },
+          "units": {
+            "title": "Units",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "column",
+          "segmentation_method",
+          "embedding_model",
+          "token_limit",
+          "sampled_documents",
+          "unit",
+          "units",
+          "long_document_share",
+          "p50",
+          "p85",
+          "p90",
+          "p95"
+        ],
+        "title": "TopicSegmentLengthsResource",
         "type": "object"
       },
       "TopicSegmentationMethod": {
@@ -13565,7 +13687,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "LDaCA Wordflow API",
-    "version": "0.7.15-pre"
+    "version": "0.7.15"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -23005,6 +23127,123 @@
           }
         ],
         "summary": "Get Node Schema",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/topic-segment-lengths": {
+      "get": {
+        "description": "Token counts of the units a segmentation mode keeps whole, from a sample (issue 414).",
+        "operationId": "get_topic_segment_lengths",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Column",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "segmentation_method",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TopicSegmentationMethod",
+              "default": "automatic"
+            }
+          },
+          {
+            "in": "query",
+            "name": "embedding_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TopicEmbeddingModel",
+              "default": "sentence-transformers/all-MiniLM-L6-v2"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicSegmentLengthsResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Topic Segment Lengths",
         "tags": [
           "nodes"
         ]

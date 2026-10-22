@@ -4,6 +4,7 @@ import uuid
 
 import pytest
 from ldaca_wordflow.domain.workspace import (
+    TopicEmbeddingModel,
     TopicModelingAnalysisRequest,
     TopicSegmentationMethod,
 )
@@ -77,3 +78,36 @@ def test_topic_modeling_request_rejects_segment_caps_outside_model_window(
 def test_topic_modeling_request_rejects_unknown_segmentation_method() -> None:
     with pytest.raises(ValidationError):
         _request(segmentation_method="fixed_length")
+
+
+def test_topic_modeling_request_defaults_to_the_english_model() -> None:
+    assert _request().embedding_model is TopicEmbeddingModel.ENGLISH
+
+
+def test_multilingual_model_caps_segments_at_its_128_token_limit() -> None:
+    multilingual = TopicEmbeddingModel.MULTILINGUAL.value
+    assert (
+        _request(embedding_model=multilingual, max_segment_tokens=128).max_segment_tokens
+        == 128
+    )
+    with pytest.raises(ValidationError, match="at most 128"):
+        _request(embedding_model=multilingual)
+    with pytest.raises(ValidationError, match="at most 128"):
+        _request(embedding_model=multilingual, max_segment_tokens=129)
+
+
+def test_topic_modeling_request_rejects_an_unknown_embedding_model() -> None:
+    with pytest.raises(ValidationError):
+        _request(embedding_model="sentence-transformers/all-mpnet-base-v2")
+
+
+def test_saved_requests_name_the_model_only_when_it_is_not_english() -> None:
+    # 0.7.15 refuses keys it does not know, so English runs save as before.
+    assert "embedding_model" not in _request().model_dump(mode="json")
+    saved = _request(
+        embedding_model=TopicEmbeddingModel.MULTILINGUAL.value, max_segment_tokens=128
+    ).model_dump(mode="json")
+    assert saved["embedding_model"] == TopicEmbeddingModel.MULTILINGUAL.value
+    assert TopicModelingAnalysisRequest.model_validate(saved).embedding_model is (
+        TopicEmbeddingModel.MULTILINGUAL
+    )

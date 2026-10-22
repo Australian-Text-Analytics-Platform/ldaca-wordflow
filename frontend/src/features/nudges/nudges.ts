@@ -15,6 +15,8 @@ export const NUDGE_TARGETS = {
   topicMaxClusterSize: 'topic-max-cluster-size',
   topicDocumentSampling: 'topic-document-sampling',
   topicClusterSample: 'topic-cluster-sample',
+  topicEmbeddingModel: 'topic-embedding-model',
+  topicMaxSegmentTokens: 'topic-max-segment-tokens',
   tokenizer: 'tokenizer-model',
   exportFormat: 'export-format',
 } as const;
@@ -35,6 +37,11 @@ const FEW_TOPICS = 5;
  * Topics instead of 782; at 20 everything joined one Topic.
  */
 const MANY_UNGROUPED_SHARE = 0.3;
+/**
+ * Max tokens values the segment-length suggestion offers (issue 414): the
+ * lengths Topic Modelling runs on the Mac's GPU, so a smaller cap is one of them.
+ */
+const SEGMENT_TOKEN_BUCKETS = [32, 64, 128, 256] as const;
 /** A run still in its first steps (segments and embeddings) after this long. */
 export const SLOW_START_MS = 5 * 60_000;
 /** Steps that count as the first steps of a Topic Modelling run. */
@@ -99,6 +106,25 @@ export const NUDGES = {
     help: 'analysis.topic-modeling.topic-sampling',
     targets: [NUDGE_TARGETS.topicDocumentSampling, NUDGE_TARGETS.topicClusterSample],
   },
+  'topic-segment-length': {
+    // The card's title gives the numbers ("Your sentences are short: 64
+    // tokens per segment is plenty"); Apply sets Max tokens (issue 414).
+    title: 'Shorter segments are enough',
+    message:
+      'Apply lowers Max tokens: most stay whole, and the few longer ones are split into pieces of about that size.',
+    help: 'analysis.topic-modeling.max-segment-tokens',
+    targets: [NUDGE_TARGETS.topicMaxSegmentTokens],
+  },
+  'topic-embedding-model': {
+    title: 'Chinese, Japanese or Korean text',
+    // English MiniLM scored two unrelated Chinese sentences 0.51 alike and a
+    // Chinese sentence and its English translation 0.21; the multilingual
+    // model -0.07 and 0.90 (issue 413).
+    message:
+      'The English model mostly matches shared characters in these languages. The Multilingual model understands them, reading up to 128 tokens per segment.',
+    help: 'analysis.topic-modeling.embedding-model',
+    targets: [NUDGE_TARGETS.topicEmbeddingModel],
+  },
   'excel-cell-limit': {
     title: 'Too long for Excel',
     // Shown after an Excel download or export is refused (issue 397); the
@@ -149,4 +175,26 @@ export function isLargeTopicInput({
 }): boolean {
   if (documents >= LARGE_INPUT_DOCUMENTS) return true;
   return !topicSampling && segments !== null && segments >= LARGE_INPUT_SEGMENTS;
+}
+
+/**
+ * The Max tokens the segment-length suggestion offers, if any (issue 414):
+ * the smallest of the GPU lengths that holds the sampled units' 90th
+ * percentile, so at least 9 in 10 units stay whole and at most 1 in 10 is
+ * split (Chao: 85 to 90%), within the model's limit, and only when it is
+ * below the current setting. It never suggests a larger cap.
+ */
+export function suggestedSegmentTokenCap({
+  p90,
+  current,
+  limit,
+}: {
+  /** Tokens that at least 90% of the sampled units fit in; null with no units. */
+  p90: number | null;
+  current: number;
+  limit: number;
+}): number | null {
+  if (p90 === null) return null;
+  const fit = SEGMENT_TOKEN_BUCKETS.find((tokens) => tokens <= limit && tokens >= p90);
+  return fit !== undefined && fit < current ? fit : null;
 }

@@ -401,6 +401,11 @@ const tutorial = {
     anchor: 'help-topic-modeling-options',
     label: 'Topic parameters',
   },
+  'analysis.topic-modeling.embedding-model': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-embedding-model',
+    label: 'Embedding model',
+  },
   'analysis.topic-modeling.segmentation-method': {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-segmentation-method',

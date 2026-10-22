@@ -5735,6 +5735,13 @@ export type TopicDocumentSpan = {
 };
 
 /**
+ * TopicEmbeddingModel
+ *
+ * The sentence models Topic Modelling offers (issue 413).
+ */
+export type TopicEmbeddingModel = 'sentence-transformers/all-MiniLM-L6-v2' | 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2';
+
+/**
  * TopicInclusion
  */
 export type TopicInclusion = {
@@ -5816,6 +5823,7 @@ export type TopicModelingAnalysisRequest = {
      * Cluster Sample Size
      */
     cluster_sample_size?: number | null;
+    embedding_model?: TopicEmbeddingModel;
     /**
      * Kind
      */
@@ -6185,6 +6193,64 @@ export type TopicSegmentItem = {
      * Typicality
      */
     typicality?: number | null;
+};
+
+/**
+ * TopicSegmentLengthsResource
+ *
+ * Token counts of the units a segmentation mode keeps whole (issue 414).
+ *
+ * Measured on the first non-empty documents of a text column with the
+ * embedding model's tokenizer, special tokens included, as Max tokens per
+ * segment counts them. ``unit`` is what was measured: sentences, lines, whole
+ * documents, or (Automatic, when nearly every document is longer than the
+ * model reads) paragraphs. Percentiles are nearest-rank, so at least that
+ * share of the units have at most that many tokens; null with no units. No
+ * text is returned.
+ */
+export type TopicSegmentLengthsResource = {
+    /**
+     * Column
+     */
+    column: string;
+    embedding_model: TopicEmbeddingModel;
+    /**
+     * Long Document Share
+     */
+    long_document_share: number | null;
+    /**
+     * P50
+     */
+    p50: number | null;
+    /**
+     * P85
+     */
+    p85: number | null;
+    /**
+     * P90
+     */
+    p90: number | null;
+    /**
+     * P95
+     */
+    p95: number | null;
+    /**
+     * Sampled Documents
+     */
+    sampled_documents: number;
+    segmentation_method: TopicSegmentationMethod;
+    /**
+     * Token Limit
+     */
+    token_limit: number;
+    /**
+     * Unit
+     */
+    unit: 'document' | 'paragraph' | 'line' | 'sentence';
+    /**
+     * Units
+     */
+    units: number;
 };
 
 /**
@@ -12007,6 +12073,59 @@ export type GetNodeSchemaResponses = {
 };
 
 export type GetNodeSchemaResponse = GetNodeSchemaResponses[keyof GetNodeSchemaResponses];
+
+export type GetTopicSegmentLengthsData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query: {
+        /**
+         * Column
+         */
+        column: string;
+        segmentation_method?: TopicSegmentationMethod;
+        embedding_model?: TopicEmbeddingModel;
+    };
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/topic-segment-lengths';
+};
+
+export type GetTopicSegmentLengthsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type GetTopicSegmentLengthsError = GetTopicSegmentLengthsErrors[keyof GetTopicSegmentLengthsErrors];
+
+export type GetTopicSegmentLengthsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopicSegmentLengthsResource;
+};
+
+export type GetTopicSegmentLengthsResponse = GetTopicSegmentLengthsResponses[keyof GetTopicSegmentLengthsResponses];
 
 export type UndoNodeData = {
     body?: never;

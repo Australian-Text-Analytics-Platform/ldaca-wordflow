@@ -13,7 +13,12 @@ from typing import Any, TypeVar
 import anyio
 import polars as pl
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
-from ..domain.workspace import Node, Workspace
+from ..domain.workspace import (
+    Node,
+    TopicEmbeddingModel,
+    TopicSegmentationMethod,
+    Workspace,
+)
 
 from ..infrastructure.storage.data_loading import (
     DataFileLoadError,
@@ -48,6 +53,7 @@ from .node_casting import check_cast
 from .node_operations import conversion_options
 from .column_examples import column_examples
 from .corpus_overview import corpus_overview
+from .topic_segment_lengths import topic_segment_lengths
 from .annotation_progress import apply_annotation_progress, is_annotation_progress_node
 from .category_order import (
     MAX_CATEGORY_VALUES,
@@ -63,6 +69,7 @@ from ..models.node_resources import (
     ColumnValueCountsResource,
     MAP_VALUES_LIMIT,
     CorpusOverviewResource,
+    TopicSegmentLengthsResource,
     ConversionCheckResource,
     DatetimeFormatCandidate,
     DatetimeFormatExample,
@@ -790,6 +797,43 @@ class NodeService:
             median=overview.median,
             mean=overview.mean,
             maximum=overview.maximum,
+        )
+
+    async def topic_segment_lengths(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        column: str,
+        segmentation_method: TopicSegmentationMethod,
+        embedding_model: TopicEmbeddingModel,
+    ) -> TopicSegmentLengthsResource:
+        """Token counts of a sample's segmentation units, computed on demand (issue 414)."""
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = lease.workspace.nodes.get(node_id)
+            if node is None:
+                raise NodeNotFoundError("Data Block not found")
+            lengths = await self._run_io(
+                topic_segment_lengths,
+                node.data,
+                column,
+                segmentation_method,
+                embedding_model,
+            )
+        return TopicSegmentLengthsResource(
+            column=column,
+            segmentation_method=segmentation_method,
+            embedding_model=embedding_model,
+            token_limit=lengths.token_limit,
+            sampled_documents=lengths.sampled_documents,
+            unit=lengths.unit,
+            units=lengths.units,
+            long_document_share=lengths.long_document_share,
+            p50=lengths.p50,
+            p85=lengths.p85,
+            p90=lengths.p90,
+            p95=lengths.p95,
         )
 
     async def datetime_formats(

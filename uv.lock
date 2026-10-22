@@ -803,7 +803,7 @@ dev = [
 
 [[package]]
 name = "polars-text"
-version = "0.6.7"
+version = "0.6.9"
 source = { editable = "polars-text" }
 dependencies = [
     { name = "polars" },

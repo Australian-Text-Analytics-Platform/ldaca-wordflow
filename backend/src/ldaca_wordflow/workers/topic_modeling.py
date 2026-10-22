@@ -48,7 +48,7 @@ from .cpu import default_embedding_threads
 from .progress import ProgressCallback, Step, StepReporter, polars_text_progress
 from .utils import process_entrypoint
 
-# Default ONNX embedder used by the Rust ORT pipeline when no override is given.
+# Embedding model when a run names none: runs saved before 0.7.16 (issue 413).
 _DEFAULT_EMBEDDER_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 logger = logging.getLogger(__name__)
@@ -640,6 +640,7 @@ def _compute_topic_payload(
     segmentation_method: str,
     max_segment_tokens: int,
     cluster_sample_size: int | None = None,
+    embedding_model: str | None = None,
 ) -> dict[str, Any]:
     """Run the full topic-modeling pipeline: sample, run Rust, build the payload.
 
@@ -668,6 +669,7 @@ def _compute_topic_payload(
 
     random_state = int(random_seed)
     vectorizer_model = _resolve_vectorizer_model(sampled.all_docs)
+    embedder_model = embedding_model or _DEFAULT_EMBEDDER_MODEL
 
     logger.info(
         "[Worker %d] Running Rust topic-modeling pipeline (%d docs, min_cluster_size=%d)",
@@ -682,7 +684,7 @@ def _compute_topic_payload(
             min_cluster_size=min_cluster_size,
             max_cluster_size=max_cluster_size,
             vectorizer_model=vectorizer_model,
-            embedder_model=_DEFAULT_EMBEDDER_MODEL,
+            embedder_model=embedder_model,
             embedding_cache=embedding_cache_path,
             segmentation_method=segmentation_method,
             max_segment_tokens=max_segment_tokens,
@@ -750,7 +752,7 @@ def _compute_topic_payload(
     logger.info(
         "Topic modeling diagnostics engine=rust backend=ort model=%s vectorizer=%s "
         "random_seed=%d corpus_sizes_before=%s corpus_sizes_after=%s",
-        _DEFAULT_EMBEDDER_MODEL,
+        embedder_model,
         vectorizer_model,
         random_state,
         sampled.corpus_sizes_before_sample,
@@ -773,6 +775,7 @@ def _compute_topic_modeling(
     progress_callback: ProgressCallback | None = None,
     sample_fractions: list[float | None] | None = None,
     cluster_sample_size: int | None = None,
+    embedding_model: str | None = None,
 ) -> dict[str, Any]:
     """Execute topic modeling in a worker process.
 
@@ -824,6 +827,7 @@ def _compute_topic_modeling(
             segmentation_method=segmentation_method,
             max_segment_tokens=max_segment_tokens,
             cluster_sample_size=cluster_sample_size,
+            embedding_model=embedding_model,
         )
 
         if progress_callback:
@@ -863,6 +867,7 @@ def run_topic_modeling_analysis(
     progress_callback: ProgressCallback | None = None,
     max_cluster_size: int | None = None,
     cluster_sample_size: int | None = None,
+    embedding_model: str | None = None,
 ) -> dict[str, Any]:
     """Run the canonical snapshot-only topic-modeling process contract."""
 
@@ -886,4 +891,5 @@ def run_topic_modeling_analysis(
         sample_fractions=sample_fractions,
         cluster_sample_size=cluster_sample_size,
         embedding_cache_path=embedding_cache_path,
+        embedding_model=embedding_model,
     )
