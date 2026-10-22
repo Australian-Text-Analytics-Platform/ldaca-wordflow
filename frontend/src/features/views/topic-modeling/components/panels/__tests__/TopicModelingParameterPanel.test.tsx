@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render as renderUi, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Field, Utf8 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -133,13 +134,21 @@ const baseProps = {
   embeddingModel: 'sentence-transformers/all-MiniLM-L6-v2' as const,
   onEmbeddingModelChange: vi.fn(),
   embeddingModelReason: null,
-  cjkTokenizer: null,
+  multilingualReason: null,
   segmentLengths: null,
   isRunning: false,
   isClearing: false,
   onRun: vi.fn(),
   onClear: vi.fn(),
   hasMissingColumns: false,
+};
+
+/** Radix Select needs pointer capture and scrolling, which jsdom lacks. */
+const allowSelectMenus = () => {
+  window.HTMLElement.prototype.hasPointerCapture = vi.fn();
+  window.HTMLElement.prototype.setPointerCapture = vi.fn();
+  window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+  window.HTMLElement.prototype.scrollIntoView = vi.fn();
 };
 
 describe('TopicModelingParameterPanel', () => {
@@ -149,7 +158,7 @@ describe('TopicModelingParameterPanel', () => {
     expect(screen.getByLabelText('Random seed')).toBeInTheDocument();
     expect(screen.queryByLabelText('Words per topic')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Segmentation method')).toBeInTheDocument();
-    expect(screen.getByLabelText('Maximum tokens per segment')).toHaveValue(256);
+    expect(screen.getByLabelText('Maximum tokens per segment')).toHaveTextContent('256');
     expect(screen.getByLabelText('Min topic size')).toHaveValue(10);
     expect(screen.queryByText('Topic Modelling Options')).not.toBeInTheDocument();
   });
@@ -192,7 +201,9 @@ describe('TopicModelingParameterPanel', () => {
     });
   });
 
-  it('commits maximum tokens per segment within the supported model window', () => {
+  it('offers Max tokens as the four fixed lengths', async () => {
+    allowSelectMenus();
+    const user = userEvent.setup();
     const onMaxSegmentTokensChange = vi.fn();
     render(
       <TopicModelingParameterPanel
@@ -201,14 +212,16 @@ describe('TopicModelingParameterPanel', () => {
       />,
     );
 
-    const input = screen.getByLabelText<HTMLInputElement>('Maximum tokens per segment');
-    fireEvent.change(input, { target: { value: '12' } });
-    fireEvent.blur(input);
-    expect(onMaxSegmentTokensChange).toHaveBeenLastCalledWith(32);
-
-    fireEvent.change(input, { target: { value: '999' } });
-    fireEvent.blur(input);
-    expect(onMaxSegmentTokensChange).toHaveBeenLastCalledWith(256);
+    // A dropdown of the four lengths the embedder pads to (32, 64, 128, 256).
+    await user.click(screen.getByLabelText('Maximum tokens per segment'));
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      '32',
+      '64',
+      '128',
+      '256',
+    ]);
+    await user.click(screen.getByRole('option', { name: '64' }));
+    expect(onMaxSegmentTokensChange).toHaveBeenLastCalledWith(64);
   });
 
   it('renders percentage sampling inside the selected node card', () => {
@@ -599,10 +612,12 @@ describe('TopicModelingParameterPanel', () => {
           'Multilingual, because People’s Daily uses the Jieba tokeniser; it reads up to 128 tokens per segment.',
         ),
       ).toBeInTheDocument();
-      expect(screen.getByLabelText('Maximum tokens per segment')).toHaveAttribute('max', '128');
+      expect(screen.getByLabelText('Maximum tokens per segment')).toHaveTextContent('128');
     });
 
-    it('keeps Max tokens within the model limit when it is typed', () => {
+    it('offers Max tokens up to the model limit', async () => {
+      allowSelectMenus();
+      const user = userEvent.setup();
       const onMaxSegmentTokensChange = vi.fn();
       render(
         <TopicModelingParameterPanel
@@ -613,11 +628,14 @@ describe('TopicModelingParameterPanel', () => {
         />,
       );
 
-      const input = screen.getByLabelText('Maximum tokens per segment');
-      fireEvent.change(input, { target: { value: '200' } });
-      fireEvent.blur(input);
-
-      expect(onMaxSegmentTokensChange).toHaveBeenCalledWith(128);
+      await user.click(screen.getByLabelText('Maximum tokens per segment'));
+      expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+        '32',
+        '64',
+        '128',
+      ]);
+      await user.click(screen.getByRole('option', { name: '32' }));
+      expect(onMaxSegmentTokensChange).toHaveBeenCalledWith(32);
     });
 
     it('suggests the smallest length holding 9 in 10 units, and applies it', () => {
@@ -666,7 +684,7 @@ describe('TopicModelingParameterPanel', () => {
       render(
         <TopicModelingParameterPanel
           {...baseProps}
-          cjkTokenizer={{ name: 'People’s Daily', tokenizer: 'CC-CEDICT' }}
+          multilingualReason={{ name: 'People’s Daily', tokenizer: 'CC-CEDICT' }}
           onEmbeddingModelChange={onEmbeddingModelChange}
         />,
       );
@@ -674,6 +692,46 @@ describe('TopicModelingParameterPanel', () => {
       expect(screen.getByText(/People’s Daily uses the CC-CEDICT tokeniser/)).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Use Multilingual' }));
 
+      expect(onEmbeddingModelChange).toHaveBeenCalledWith(
+        'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+      );
+    });
+  });
+
+  describe('Multilingual for text in another language', () => {
+    it('says why Multilingual was picked for French text', () => {
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          embeddingModel="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+          embeddingModelReason={{ name: 'Le Monde', language: 'French' }}
+          maxSegmentTokens={128}
+        />,
+      );
+
+      expect(
+        screen.getByText(
+          'Multilingual, because Le Monde looks like French text; it reads up to 128 tokens per segment.',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('suggests Multilingual when English is chosen for French text', () => {
+      useNudgeStore.setState({ enabled: true });
+      const onEmbeddingModelChange = vi.fn();
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          multilingualReason={{ name: 'Le Monde', language: 'French' }}
+          onEmbeddingModelChange={onEmbeddingModelChange}
+        />,
+      );
+
+      const card = screen.getByRole('status');
+      expect(card).toHaveTextContent('French text');
+      expect(card).toHaveTextContent('Le Monde looks like French text.');
+      expect(card).toHaveTextContent('trained on English text');
+      fireEvent.click(screen.getByRole('button', { name: 'Use Multilingual' }));
       expect(onEmbeddingModelChange).toHaveBeenCalledWith(
         'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
       );

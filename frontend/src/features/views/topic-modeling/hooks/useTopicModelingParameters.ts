@@ -11,6 +11,8 @@ import {
   ENGLISH_EMBEDDING_MODEL,
   MULTILINGUAL_EMBEDDING_MODEL,
   type CjkTokenizerSource,
+  type MultilingualReason,
+  nonEnglishLanguageSource,
 } from '../topicEmbeddingModels';
 import {
   DEFAULT_MAX_SEGMENT_TOKENS,
@@ -22,6 +24,7 @@ import {
   sanitizeMaxClusterSize,
   sanitizeMinClusterSize,
   sanitizeMaxSegmentTokens,
+  SEGMENT_TOKEN_SIZES,
   sampleToFraction,
   sanitizeSamplePercent,
   topicModelingParameterReducer,
@@ -37,12 +40,15 @@ export {
   sanitizeMaxClusterSize,
   sanitizeMinClusterSize,
   sanitizeMaxSegmentTokens,
+  SEGMENT_TOKEN_SIZES,
 };
 export type { CorpusSample };
 
 interface UseTopicModelingParametersArgs {
   panelNodeIds: string[];
   nodeInfoById: Record<string, WorkspaceNodeInfo>;
+  /** Each selected Data Block's detected text language (ISO 639-1), when known. */
+  detectedLanguages?: Record<string, string | null>;
 }
 
 export interface UseTopicModelingParametersResult {
@@ -68,9 +74,11 @@ export interface UseTopicModelingParametersResult {
    * Why the multilingual model was picked without anyone choosing it: the
    * Data Block with a Chinese, Japanese or Korean tokeniser. Null otherwise.
    */
-  embeddingModelReason: CjkTokenizerSource | null;
+  embeddingModelReason: MultilingualReason | null;
   /** A selected Data Block's Chinese, Japanese or Korean tokeniser, chosen or not. */
   cjkTokenizer: CjkTokenizerSource | null;
+  /** Why Multilingual suits this text, chosen or not: for the suggestion. */
+  multilingualReason: MultilingualReason | null;
   /** Remote GPU as chosen; `null` until someone or a saved run decides. */
   remoteEmbedding: boolean | null;
   setRemoteEmbedding: (value: boolean) => void;
@@ -112,6 +120,7 @@ const nodeDocumentCount = (nodeInfo: WorkspaceNodeInfo | undefined): number => {
 export function useTopicModelingParameters({
   panelNodeIds,
   nodeInfoById,
+  detectedLanguages = {},
 }: UseTopicModelingParametersArgs): UseTopicModelingParametersResult {
   const [parameterState, dispatchParameters] = useReducer(
     topicModelingParameterReducer,
@@ -148,9 +157,21 @@ export function useTopicModelingParameters({
       tokenizerModel: nodeInfoById[nodeId]?.tokenizer_model,
     })),
   );
+  // Multilingual by default for a Chinese, Japanese or Korean tokeniser, else
+  // for text detected as another language than English (Chao, 2026-10-22).
+  const languageSource = cjkTokenizer
+    ? null
+    : nonEnglishLanguageSource(
+        activeNodeIds.map((nodeId) => ({
+          name: nodeInfoById[nodeId]?.name,
+          language: detectedLanguages[nodeId] ?? null,
+        })),
+      );
+  const multilingualReason: MultilingualReason | null = cjkTokenizer ?? languageSource;
   const embeddingModel =
-    chosenEmbeddingModel ?? (cjkTokenizer ? MULTILINGUAL_EMBEDDING_MODEL : ENGLISH_EMBEDDING_MODEL);
-  const embeddingModelReason = chosenEmbeddingModel === null && cjkTokenizer ? cjkTokenizer : null;
+    chosenEmbeddingModel ??
+    (multilingualReason ? MULTILINGUAL_EMBEDDING_MODEL : ENGLISH_EMBEDDING_MODEL);
+  const embeddingModelReason = chosenEmbeddingModel === null ? multilingualReason : null;
   // The value as set is kept, so switching back to English restores it.
   const maxSegmentTokens = Math.min(
     maxSegmentTokensAsSet,
@@ -240,6 +261,7 @@ export function useTopicModelingParameters({
     setEmbeddingModel,
     embeddingModelReason,
     cjkTokenizer,
+    multilingualReason,
     remoteEmbedding,
     setRemoteEmbedding,
     embeddingEndpointId,

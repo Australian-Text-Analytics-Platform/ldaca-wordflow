@@ -169,6 +169,48 @@ describe('useTopicModelingParameters', () => {
       expect(result.current.maxSegmentTokens).toBe(256);
     });
 
+    it('picks Multilingual for text detected as another language, not for English', () => {
+      const { result, rerender } = renderHook(
+        ({ language }: { language: string | null }) =>
+          useTopicModelingParameters({
+            panelNodeIds: nodeIds(500),
+            nodeInfoById: withTokenizer('native:plain_words_en'),
+            detectedLanguages: { 'node-1': language },
+          }),
+        { initialProps: { language: 'fr' as string | null } },
+      );
+
+      expect(result.current.embeddingModel).toBe(
+        'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+      );
+      expect(result.current.embeddingModelReason).toEqual({
+        name: 'People’s Daily',
+        language: 'French',
+      });
+      expect(result.current.maxSegmentTokens).toBe(128);
+
+      rerender({ language: 'en' });
+      expect(result.current.embeddingModel).toBe('sentence-transformers/all-MiniLM-L6-v2');
+      expect(result.current.embeddingModelReason).toBeNull();
+
+      rerender({ language: null });
+      expect(result.current.embeddingModel).toBe('sentence-transformers/all-MiniLM-L6-v2');
+    });
+
+    it('names the tokeniser before the detected language', () => {
+      const { result } = renderHook(() =>
+        useTopicModelingParameters({
+          panelNodeIds: nodeIds(500),
+          nodeInfoById: withTokenizer('lindera:jieba'),
+          detectedLanguages: { 'node-1': 'zh' },
+        }),
+      );
+      expect(result.current.embeddingModelReason).toEqual({
+        name: 'People’s Daily',
+        tokenizer: 'Jieba',
+      });
+    });
+
     it('restores the model a saved run used, English when it names none', () => {
       const { result } = renderHook(() =>
         useTopicModelingParameters({
@@ -187,7 +229,8 @@ describe('useTopicModelingParameters', () => {
         result.current.hydrateParameters(saved);
       });
       expect(result.current.embeddingModel).toBe('sentence-transformers/all-MiniLM-L6-v2');
-      expect(result.current.maxSegmentTokens).toBe(200);
+      // Saved before Max tokens became a dropdown: the size below it (32/64/128/256).
+      expect(result.current.maxSegmentTokens).toBe(128);
 
       act(() => {
         result.current.hydrateParameters({
@@ -200,7 +243,7 @@ describe('useTopicModelingParameters', () => {
         'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
       );
       expect(result.current.embeddingModelReason).toBeNull();
-      expect(result.current.maxSegmentTokens).toBe(96);
+      expect(result.current.maxSegmentTokens).toBe(64);
     });
   });
 

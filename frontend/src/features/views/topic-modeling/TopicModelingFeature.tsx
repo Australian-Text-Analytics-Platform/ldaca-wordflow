@@ -65,6 +65,7 @@ import {
 } from '@/features/embedding-endpoints/embeddingEndpoints';
 import { remoteEmbeddingChoice } from './remoteEmbedding';
 import { shouldSuggestRemoteGpu } from '@/features/nudges/nudges';
+import { useDetectedColumnLanguage } from '@/features/views/common/hooks/useDetectedColumnLanguage';
 import { TopicNamesContext } from './components/results/topicNamesContext';
 import { topicGroupKey, withTopicName } from './topicNames';
 
@@ -106,6 +107,22 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     .slice(0, 2)
     .map((node) => node.id)
     .filter((id): id is string => Boolean(id));
+  // The text's language, for the Multilingual default (two Data Blocks at most).
+  const columnOf = (nodeId: string | undefined) =>
+    nodeColumnSelections.find((selection) => selection.nodeId === nodeId)?.column ?? null;
+  const firstLanguage = useDetectedColumnLanguage({
+    workspaceId: currentWorkspaceId ?? null,
+    nodeId: panelNodeIds[0] ?? null,
+    column: columnOf(panelNodeIds[0]),
+  });
+  const secondLanguage = useDetectedColumnLanguage({
+    workspaceId: currentWorkspaceId ?? null,
+    nodeId: panelNodeIds[1] ?? null,
+    column: columnOf(panelNodeIds[1]),
+  });
+  const detectedLanguages: Record<string, string | null> = {};
+  if (panelNodeIds[0]) detectedLanguages[panelNodeIds[0]] = firstLanguage.detectedLanguage;
+  if (panelNodeIds[1]) detectedLanguages[panelNodeIds[1]] = secondLanguage.detectedLanguage;
   const persistDocumentColumn = usePersistNodeDocumentColumn({
     workspaceId: currentWorkspaceId,
   });
@@ -128,7 +145,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     embeddingModel,
     setEmbeddingModel,
     embeddingModelReason,
-    cjkTokenizer,
+    multilingualReason,
     remoteEmbedding,
     setRemoteEmbedding,
     embeddingEndpointId,
@@ -144,6 +161,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
   } = useTopicModelingParameters({
     panelNodeIds,
     nodeInfoById: nodeInputs.nodeInfoById,
+    detectedLanguages,
   });
   const restoredProjectionSelection =
     host.topicModelingProjectionSelection?.analysis_id === tabTaskId
@@ -635,7 +653,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           embeddingModel={embeddingModel}
           onEmbeddingModelChange={setEmbeddingModel}
           embeddingModelReason={embeddingModelReason}
-          cjkTokenizer={cjkTokenizer}
+          multilingualReason={multilingualReason}
           segmentLengths={segmentLengths}
           remoteEmbedding={{
             ...remoteChoice,

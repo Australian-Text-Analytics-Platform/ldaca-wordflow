@@ -78,14 +78,26 @@ export const createTopicModelingParameterState = (): TopicModelingParameterState
   clusterSampleSize: null,
 });
 
-/** Clamps Max tokens to 32 up to `limit`: 256, or the embedding model's limit. */
+/**
+ * The Max tokens people can choose (Chao, 2026-10-22): the fixed lengths the
+ * embedder pads to and compiles for (Core ML length buckets, issue 412), so
+ * every segment fits a bucket exactly.
+ */
+export const SEGMENT_TOKEN_SIZES = [32, 64, 128, 256] as const;
+
+/**
+ * The largest allowed size not above `value`, at least 32 and at most
+ * `limit` (256, or the embedding model's limit). Runs saved with another
+ * value (200, say) open at the size below it.
+ */
 export const sanitizeMaxSegmentTokens = (
   value: string | number | undefined,
   limit = DEFAULT_MAX_SEGMENT_TOKENS,
 ): number => {
   const raw = typeof value === 'number' ? value : Number(value);
-  const rounded = Number.isFinite(raw) ? Math.round(raw) : DEFAULT_MAX_SEGMENT_TOKENS;
-  return Math.min(limit, Math.max(32, rounded));
+  const wanted = Number.isFinite(raw) ? Math.min(raw, limit) : DEFAULT_MAX_SEGMENT_TOKENS;
+  const fitting = SEGMENT_TOKEN_SIZES.filter((size) => size <= wanted && size <= limit);
+  return fitting.length ? Math.max(...fitting) : SEGMENT_TOKEN_SIZES[0];
 };
 
 export const sanitizeMinClusterSize = (value: string | number | undefined): number => {

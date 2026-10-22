@@ -56,12 +56,18 @@ Multilingual model understands these languages, and also places a Chinese
 sentence close to its English translation. It reads at most 128 tokens per
 segment and is slower than the English model.
 
-When a selected Data Block's tokeniser (set in Frequency Analysis) is a
-Chinese, Japanese or Korean one, such as Jieba or IPADIC, **Multilingual** is
-chosen for you and **Max tokens** drops to 128; a note under the settings says
-why. You can switch back to **English**, which restores your Max tokens. With
-**Suggestions** on, choosing English for such a Data Block shows a suggestion
-with a **Use Multilingual** button. A saved run keeps the model it used.
+**Multilingual** is chosen for you, and **Max tokens** drops to 128, when:
+
+- a selected Data Block's tokeniser (set in Frequency Analysis) is a Chinese,
+  Japanese or Korean one, such as Jieba or IPADIC; or
+- otherwise, its text column looks like a language other than English. Wordflow
+  guesses the language from the first 100 rows, as it does for the stop word
+  lists.
+
+A note under the settings says why. You can switch back to **English**, which
+restores your Max tokens. With **Suggestions** on, choosing English for such a
+Data Block shows a suggestion with a **Use Multilingual** button. A saved run
+keeps the model it used.
 
 On a Mac with Apple silicon, Wordflow reads the text on the graphics processor,
 which is several times faster than on the processor. The first run after
@@ -116,9 +122,11 @@ algorithm, so abbreviations may occasionally form a short segment.
 
 <h4 id="help-topic-modeling-max-segment-tokens">Max tokens (maximum tokens per segment)</h4>
 
-Sets the maximum size of a Topic Segment in model tokens. The default is 256
-and the allowed range is 32–256, or 32–128 with the **Multilingual** model. Tokens may be complete words or parts of
-words, and the cap includes special tokens added by the embedding model. A
+Sets the maximum size of a Topic Segment in model tokens: **32**, **64**,
+**128** or **256** (the default), or up to 128 with the **Multilingual** model.
+These are the fixed lengths the model is prepared for, so every segment fits
+one exactly. A run saved with another value opens at the size below it.
+Tokens may be complete words or parts of words, and the cap includes special tokens added by the embedding model. A
 smaller cap gives more local observations; a larger cap gives each observation
 more context. With **Automatic**, the cap is also how far short paragraphs are
 packed together, so a larger cap gives fewer, fuller segments.

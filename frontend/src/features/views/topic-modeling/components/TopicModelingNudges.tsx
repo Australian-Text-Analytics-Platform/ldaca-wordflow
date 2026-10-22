@@ -19,7 +19,8 @@ import {
 import {
   ENGLISH_EMBEDDING_MODEL,
   embeddingModelTokenLimit,
-  type CjkTokenizerSource,
+  isLanguageSource,
+  type MultilingualReason,
 } from '../topicEmbeddingModels';
 
 /**
@@ -200,27 +201,34 @@ export function TopicSegmentLengthNudge({
 }
 
 /**
- * Suggestion before a run when a selected Data Block has a Chinese, Japanese
- * or Korean tokeniser but the English model is chosen (issue 413). Use
- * Multilingual switches to it.
+ * Suggestion before a run when English is chosen but Multilingual suits the
+ * text: a selected Data Block has a Chinese, Japanese or Korean tokeniser
+ * (issue 413), or its text looks like another language. Use Multilingual
+ * switches to it.
  */
 export function TopicEmbeddingModelNudge({
-  cjkTokenizer,
+  reason,
   embeddingModel,
   onUseMultilingual,
   className = 'mx-3 mt-2',
 }: {
   className?: string;
-  cjkTokenizer: CjkTokenizerSource | null;
+  reason: MultilingualReason | null;
   embeddingModel: TopicEmbeddingModel;
   onUseMultilingual: () => void;
 }) {
-  if (!cjkTokenizer || embeddingModel !== ENGLISH_EMBEDDING_MODEL) return null;
+  if (!reason || embeddingModel !== ENGLISH_EMBEDDING_MODEL) return null;
+  const language = isLanguageSource(reason);
   return (
     <NudgeCard
-      id="topic-embedding-model"
-      occurrence={`${cjkTokenizer.name}\0${cjkTokenizer.tokenizer}`}
-      detail={`${cjkTokenizer.name} uses the ${cjkTokenizer.tokenizer} tokeniser.`}
+      id={language ? 'topic-embedding-language' : 'topic-embedding-model'}
+      occurrence={`${reason.name}\0${language ? reason.language : reason.tokenizer}`}
+      title={language ? `${reason.language} text` : undefined}
+      detail={
+        language
+          ? `${reason.name} looks like ${reason.language} text.`
+          : `${reason.name} uses the ${reason.tokenizer} tokeniser.`
+      }
       action={{
         label: 'Use Multilingual',
         onApply: onUseMultilingual,

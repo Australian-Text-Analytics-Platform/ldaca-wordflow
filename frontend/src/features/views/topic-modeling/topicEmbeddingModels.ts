@@ -65,3 +65,40 @@ export function cjkTokenizerSource(
   }
   return null;
 }
+
+/** A selected Data Block whose text was detected as a language other than English. */
+export interface LanguageSource {
+  /** The Data Block's name. */
+  name: string;
+  /** The language's English name, such as French. */
+  language: string;
+}
+
+/** Why Multilingual is the default: a CJK tokeniser, or text in another language. */
+export type MultilingualReason = CjkTokenizerSource | LanguageSource;
+
+export const isLanguageSource = (reason: MultilingualReason): reason is LanguageSource =>
+  'language' in reason;
+
+const languageName = (code: string): string => {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+};
+
+/**
+ * The first selected Data Block whose text column was detected as a language
+ * other than English: the English model is trained on English only.
+ */
+export function nonEnglishLanguageSource(
+  nodes: readonly { name?: string | null; language?: string | null }[],
+): LanguageSource | null {
+  for (const node of nodes) {
+    if (node.language && node.language !== 'en') {
+      return { name: node.name ?? 'This Data Block', language: languageName(node.language) };
+    }
+  }
+  return null;
+}

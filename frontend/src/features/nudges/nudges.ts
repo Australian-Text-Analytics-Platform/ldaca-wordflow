@@ -124,6 +124,13 @@ export const NUDGES = {
     help: 'analysis.topic-modeling.max-segment-tokens',
     targets: [NUDGE_TARGETS.topicMaxSegmentTokens],
   },
+  'topic-embedding-language': {
+    title: 'Text in another language',
+    message:
+      'The English model is trained on English text. The Multilingual model understands about 50 languages, reading up to 128 tokens per segment.',
+    help: 'analysis.topic-modeling.embedding-model',
+    targets: [NUDGE_TARGETS.topicEmbeddingModel],
+  },
   'topic-embedding-model': {
     title: 'Chinese, Japanese or Korean text',
     // English MiniLM scored two unrelated Chinese sentences 0.51 alike and a
