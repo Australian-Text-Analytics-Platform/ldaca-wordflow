@@ -29,6 +29,12 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/events", "backend_events"),
     ("GET", "/api/preferences", "get_preferences"),
     ("PATCH", "/api/preferences", "update_preferences"),
+    ("GET", "/api/preferences/ai-default-models", "get_ai_default_models"),
+    (
+        "PUT",
+        "/api/preferences/ai-default-models/{configuration_id}",
+        "set_ai_default_model",
+    ),
     ("GET", "/api/embedding-endpoints", "list_embedding_endpoints"),
     ("POST", "/api/embedding-endpoints", "create_embedding_endpoint"),
     ("PATCH", "/api/embedding-endpoints/{endpoint_id}", "update_embedding_endpoint"),
