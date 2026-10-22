@@ -6081,23 +6081,17 @@
             "type": "string"
           },
           "models": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "maxLength": 200,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "propertyNames": {
-                  "$ref": "#/components/schemas/TopicEmbeddingModel"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Models"
+            "additionalProperties": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "minProperties": 1,
+            "propertyNames": {
+              "$ref": "#/components/schemas/TopicEmbeddingModel"
+            },
+            "title": "Models",
+            "type": "object"
           },
           "name": {
             "maxLength": 80,
@@ -6108,7 +6102,8 @@
         },
         "required": [
           "name",
-          "base_url"
+          "base_url",
+          "models"
         ],
         "title": "EmbeddingEndpointCreate",
         "type": "object"
@@ -6137,6 +6132,93 @@
           "endpoints"
         ],
         "title": "EmbeddingEndpointList",
+        "type": "object"
+      },
+      "EmbeddingEndpointModels": {
+        "additionalProperties": false,
+        "description": "A server's models for Topic Modelling, or why they couldn't be listed.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "suggested": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/TopicEmbeddingModel"
+            },
+            "title": "Suggested",
+            "type": "object"
+          }
+        },
+        "required": [
+          "reachable",
+          "models",
+          "suggested",
+          "message"
+        ],
+        "title": "EmbeddingEndpointModels",
+        "type": "object"
+      },
+      "EmbeddingEndpointModelsRequest": {
+        "additionalProperties": false,
+        "description": "List a server's models before it is saved, which also checks the key.\n\nWhen changing a saved endpoint, ``endpoint_id`` lets the saved key be used\nif none is typed, but only for the address it was saved with.",
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "maxLength": 2000,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "endpoint_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint Id"
+          }
+        },
+        "required": [
+          "base_url"
+        ],
+        "title": "EmbeddingEndpointModelsRequest",
         "type": "object"
       },
       "EmbeddingEndpointResource": {
@@ -6232,6 +6314,7 @@
                   "minLength": 1,
                   "type": "string"
                 },
+                "minProperties": 1,
                 "propertyNames": {
                   "$ref": "#/components/schemas/TopicEmbeddingModel"
                 },
@@ -14948,6 +15031,93 @@
           }
         ],
         "summary": "Create Embedding Endpoint",
+        "tags": [
+          "embedding-endpoints"
+        ]
+      }
+    },
+    "/api/embedding-endpoints/models": {
+      "post": {
+        "description": "List a server's models before it is saved, with the typed (or saved) key.",
+        "operationId": "list_embedding_endpoint_models",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingEndpointModelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingEndpointModels"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "List Embedding Endpoint Models",
         "tags": [
           "embedding-endpoints"
         ]

@@ -23,21 +23,28 @@ from __future__ import annotations
 import logging
 import uuid
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 from pydantic import ValidationError
 
 from .. import server_ai
 from ..domain.workspace import TopicEmbeddingModel
+from ..infrastructure.providers.model_descriptions import (
+    EMBEDDING_MODE,
+    litellm_model_info,
+    model_mode,
+)
 from ..infrastructure.storage.private_toml import PrivateTomlError
 from ..models.embedding_endpoints import (
     EmbeddingEndpointCheck,
     EmbeddingEndpointCreate,
     EmbeddingEndpointList,
+    EmbeddingEndpointModels,
+    EmbeddingEndpointModelsRequest,
     EmbeddingEndpointResource,
     EmbeddingEndpointUpdate,
     StoredEmbeddingEndpoint,
     StoredEmbeddingEndpoints,
-    default_served_models,
 )
 from ..shared.remote_embedding import RemoteEmbeddingRun
 from ..shared.errors import (
@@ -97,7 +104,7 @@ class EmbeddingEndpointMethods:
             name=command.name,
             base_url=command.base_url,
             api_key=command.api_key,
-            models=command.models if command.models is not None else default_served_models(),
+            models=command.models,
         )
         async with self._lock:
             stored = await self._load_endpoints()
@@ -249,6 +256,59 @@ class EmbeddingEndpointMethods:
             message="; ".join(failures) or None,
         )
 
+    async def list_embedding_endpoint_models(
+        self, request: EmbeddingEndpointModelsRequest
+    ) -> EmbeddingEndpointModels:
+        """A server's models, asked with the typed (or saved) key, before saving.
+
+        Desktop only. Embedding models when the server marks them (LiteLLM's
+        ``mode``), else every listed model. Messages never contain the key.
+        """
+
+        self._require_endpoint_storage()
+        api_key = request.api_key.get_secret_value() if request.api_key else None
+        if api_key is None and request.endpoint_id is not None:
+            async with self._lock:
+                stored = await self._load_endpoints()
+            saved = next((e for e in stored.endpoints if e.id == request.endpoint_id), None)
+            if saved is None:
+                raise NotFoundError("Embedding endpoint not found")
+            # A saved key only ever goes to the address it was saved for.
+            if saved.api_key is not None and saved.base_url == request.base_url:
+                api_key = saved.api_key.get_secret_value()
+        name = urlsplit(request.base_url).hostname or "the server"
+        from openai import AsyncOpenAI, DefaultAsyncHttpxClient
+
+        listed: dict[str, str | None] = {}
+        async with DefaultAsyncHttpxClient(follow_redirects=False) as http_client, AsyncOpenAI(
+            base_url=request.base_url,
+            api_key=api_key or "no-key-required",
+            timeout=CHECK_TIMEOUT_SECONDS,
+            max_retries=0,
+            http_client=http_client,
+        ) as client:
+            try:
+                async for model in client.models.list():
+                    if isinstance(model.id, str) and model.id:
+                        extra = getattr(model, "model_extra", None) or {}
+                        listed.setdefault(model.id, model_mode(extra.get("mode")))
+            except Exception as exc:  # noqa: BLE001 (reported, never raised)
+                return EmbeddingEndpointModels(
+                    reachable=False,
+                    models=[],
+                    suggested={},
+                    message=_describe_failure(exc, name),
+                )
+        info = await litellm_model_info(request.base_url, api_key)
+        modes = {model: mode or info.modes.get(model) for model, mode in listed.items()}
+        models = embedding_models(modes)
+        return EmbeddingEndpointModels(
+            reachable=True,
+            models=models,
+            suggested=suggest_served_models(models),
+            message=None if models else f"{name} lists no models",
+        )
+
     async def _embedding_target(
         self, endpoint_id: uuid.UUID
     ) -> tuple[str, str | None, dict[TopicEmbeddingModel, str], str]:
@@ -342,6 +402,36 @@ def _user_resource(endpoint: StoredEmbeddingEndpoint) -> EmbeddingEndpointResour
     )
 
 
+def embedding_models(modes: dict[str, str | None]) -> list[str]:
+    """The embedding models when any model says its kind, otherwise all, sorted."""
+
+    if any(mode is not None for mode in modes.values()):
+        chosen = [model for model, mode in modes.items() if mode == EMBEDDING_MODE]
+    else:
+        chosen = list(modes)
+    return sorted(chosen, key=str.lower)
+
+
+def suggest_served_models(models: list[str]) -> dict[TopicEmbeddingModel, str]:
+    """A likely served name for each Topic Modelling model, only when unambiguous.
+
+    The model's own id wins; otherwise one MiniLM name with "multilingual" for
+    Multilingual, and one other MiniLM name for English (e.g. minilm-en).
+    """
+
+    suggested: dict[TopicEmbeddingModel, str] = {
+        model: model.value for model in TopicEmbeddingModel if model.value in models
+    }
+    minilm = [name for name in models if "minilm" in name.lower()]
+    multilingual = [name for name in minilm if "multilingual" in name.lower()]
+    english = [name for name in minilm if "multilingual" not in name.lower()]
+    if TopicEmbeddingModel.MULTILINGUAL not in suggested and len(multilingual) == 1:
+        suggested[TopicEmbeddingModel.MULTILINGUAL] = multilingual[0]
+    if TopicEmbeddingModel.ENGLISH not in suggested and len(english) == 1:
+        suggested[TopicEmbeddingModel.ENGLISH] = english[0]
+    return suggested
+
+
 def _describe_failure(error: Exception, name: str) -> str:
     """A plain account of a failed request, without the key or the server's text."""
 
@@ -375,4 +465,4 @@ def _describe_failure(error: Exception, name: str) -> str:
     return f"{name} gave an unexpected answer ({type(error).__name__})"
 
 
-__all__ = ["EmbeddingEndpointMethods"]
+__all__ = ["EmbeddingEndpointMethods", "embedding_models", "suggest_served_models"]

@@ -149,10 +149,11 @@ still runs here, and the text read is kept for later runs as usual.
 - **Where the servers come from.** On a shared Wordflow server, it provides
   them and you can see them under **Settings → Servers**, in **Topic
   Modelling**. On the desktop app, add your own there: a name, the address
-  (ending in `/v1`), an API key if the server needs one, and the names the
-  server uses for the **English** and **Multilingual** models. **Check** lists
-  the server's models and tries each one. Wordflow picks the model a run
-  needs, so there is no default model to set. These servers are listed apart
+  (ending in `/v1`) and an API key if the server needs one, then **Check**.
+  Check lists the server's embedding models, which also confirms the key;
+  choose which of them is **English** and which is **Multilingual** (likely
+  names are chosen for you) before you can save. Wordflow picks the model a
+  run needs, so there is no default model to set. These servers are listed apart
   from the generative AI ones Annotation uses, although one gateway can
   provide both.
 - **When the tick is available.** Only when a server serves the selected

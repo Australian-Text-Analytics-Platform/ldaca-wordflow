@@ -3158,9 +3158,9 @@ export type EmbeddingEndpointCreate = {
     /**
      * Models
      */
-    models?: {
+    models: {
         [key in TopicEmbeddingModel]?: string;
-    } | null;
+    };
     /**
      * Name
      */
@@ -3179,6 +3179,55 @@ export type EmbeddingEndpointList = {
      * Storage
      */
     storage: 'backend' | 'server';
+};
+
+/**
+ * EmbeddingEndpointModels
+ *
+ * A server's models for Topic Modelling, or why they couldn't be listed.
+ */
+export type EmbeddingEndpointModels = {
+    /**
+     * Message
+     */
+    message: string | null;
+    /**
+     * Models
+     */
+    models: Array<string>;
+    /**
+     * Reachable
+     */
+    reachable: boolean;
+    /**
+     * Suggested
+     */
+    suggested: {
+        [key in TopicEmbeddingModel]?: string;
+    };
+};
+
+/**
+ * EmbeddingEndpointModelsRequest
+ *
+ * List a server's models before it is saved, which also checks the key.
+ *
+ * When changing a saved endpoint, ``endpoint_id`` lets the saved key be used
+ * if none is typed, but only for the address it was saved with.
+ */
+export type EmbeddingEndpointModelsRequest = {
+    /**
+     * Api Key
+     */
+    api_key?: null;
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Endpoint Id
+     */
+    endpoint_id?: string | null;
 };
 
 /**
@@ -7668,13 +7717,36 @@ export type EmbeddingEndpointCreateWritable = {
     /**
      * Models
      */
-    models?: {
+    models: {
         [key in TopicEmbeddingModel]?: string;
-    } | null;
+    };
     /**
      * Name
      */
     name: string;
+};
+
+/**
+ * EmbeddingEndpointModelsRequest
+ *
+ * List a server's models before it is saved, which also checks the key.
+ *
+ * When changing a saved endpoint, ``endpoint_id`` lets the saved key be used
+ * if none is typed, but only for the address it was saved with.
+ */
+export type EmbeddingEndpointModelsRequestWritable = {
+    /**
+     * Api Key
+     */
+    api_key?: string | null;
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Endpoint Id
+     */
+    endpoint_id?: string | null;
 };
 
 /**
@@ -8183,6 +8255,47 @@ export type CreateEmbeddingEndpointResponses = {
 };
 
 export type CreateEmbeddingEndpointResponse = CreateEmbeddingEndpointResponses[keyof CreateEmbeddingEndpointResponses];
+
+export type ListEmbeddingEndpointModelsData = {
+    body: EmbeddingEndpointModelsRequestWritable;
+    path?: never;
+    query?: never;
+    url: '/api/embedding-endpoints/models';
+};
+
+export type ListEmbeddingEndpointModelsErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type ListEmbeddingEndpointModelsError = ListEmbeddingEndpointModelsErrors[keyof ListEmbeddingEndpointModelsErrors];
+
+export type ListEmbeddingEndpointModelsResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmbeddingEndpointModels;
+};
+
+export type ListEmbeddingEndpointModelsResponse = ListEmbeddingEndpointModelsResponses[keyof ListEmbeddingEndpointModelsResponses];
 
 export type DeleteEmbeddingEndpointData = {
     body?: never;

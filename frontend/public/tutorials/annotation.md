@@ -131,6 +131,8 @@ When the provider describes its models (OpenRouter, Google, or a LiteLLM
 gateway with model descriptions set), the **Model** list shows a one-line
 description under each model to help you choose; the model name is still what
 is used.
+Models the provider marks as another kind, such as embedding or OCR models on
+a LiteLLM gateway, aren't listed: they can't annotate.
 A new tab starts with the model last chosen or run with that provider in the
 same Project, on this computer. If the Project hasn't used the provider yet,
 it starts with the provider's **Default model** from Settings, if you set one,

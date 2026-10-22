@@ -16,11 +16,14 @@ import {
   checkEmbeddingEndpoint,
   createEmbeddingEndpoint,
   deleteEmbeddingEndpoint,
+  listEmbeddingEndpointModels,
   listEmbeddingEndpoints,
   updateEmbeddingEndpoint,
   type EmbeddingEndpointCheck,
   type EmbeddingEndpointCreateWritable,
   type EmbeddingEndpointList,
+  type EmbeddingEndpointModels,
+  type EmbeddingEndpointModelsRequestWritable,
   type EmbeddingEndpointResource,
   type EmbeddingEndpointUpdateWritable,
   type TopicEmbeddingModel,
@@ -29,6 +32,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 
 export type EmbeddingEndpoint = EmbeddingEndpointResource;
 export type EmbeddingEndpointCheckResult = EmbeddingEndpointCheck;
+export type EmbeddingEndpointModelList = EmbeddingEndpointModels;
 
 const embeddingEndpointsQueryKey = ['embedding-endpoints'] as const;
 
@@ -86,7 +90,12 @@ export function useEmbeddingEndpointActions() {
     mutationFn: async (id: string) =>
       (await checkEmbeddingEndpoint({ path: { endpoint_id: id }, throwOnError: true })).data,
   });
-  return { add, update, remove, check };
+  // A server's models before it is saved: checks the key too (desktop only).
+  const listModels = useMutation({
+    mutationFn: async (body: EmbeddingEndpointModelsRequestWritable) =>
+      (await listEmbeddingEndpointModels({ body, throwOnError: true })).data,
+  });
+  return { add, update, remove, check, listModels };
 }
 
 /** Endpoints that embed with `model`, in the backend's order (the server's first). */

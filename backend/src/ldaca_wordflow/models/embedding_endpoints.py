@@ -32,12 +32,6 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-def default_served_models() -> dict[TopicEmbeddingModel, str]:
-    """Each Topic Modelling model served under its own id (vLLM's default)."""
-
-    return {model: model.value for model in TopicEmbeddingModel}
-
-
 def _check_base_url(value: str) -> str:
     try:
         return normalize_annotation_provider_base_url(value)
@@ -53,9 +47,10 @@ class EmbeddingEndpointCreate(_StrictModel):
     name: EndpointName
     base_url: str = Field(max_length=2_000)
     api_key: SecretStr | None = None
-    # Topic Modelling model -> its name on this endpoint; models it doesn't
-    # serve are left out. Omitted: both, under their own ids.
-    models: dict[TopicEmbeddingModel, ServedModelName] | None = None
+    # Topic Modelling model -> its name on this endpoint, chosen from the
+    # endpoint's own list (EmbeddingEndpointModels); models it doesn't serve
+    # are left out, and at least one is needed.
+    models: dict[TopicEmbeddingModel, ServedModelName] = Field(min_length=1)
 
     @field_validator("base_url")
     @classmethod
@@ -69,7 +64,7 @@ class EmbeddingEndpointUpdate(_StrictModel):
     name: EndpointName | None = None
     base_url: str | None = Field(default=None, max_length=2_000)
     api_key: SecretStr | None = None
-    models: dict[TopicEmbeddingModel, ServedModelName] | None = None
+    models: dict[TopicEmbeddingModel, ServedModelName] | None = Field(default=None, min_length=1)
 
     @field_validator("base_url")
     @classmethod
@@ -108,14 +103,41 @@ class EmbeddingEndpointCheck(_StrictModel):
     message: str | None
 
 
+class EmbeddingEndpointModelsRequest(_StrictModel):
+    """List a server's models before it is saved, which also checks the key.
+
+    When changing a saved endpoint, ``endpoint_id`` lets the saved key be used
+    if none is typed, but only for the address it was saved with.
+    """
+
+    base_url: str = Field(max_length=2_000)
+    api_key: SecretStr | None = None
+    endpoint_id: uuid.UUID | None = None
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, value: str) -> str:
+        return _check_base_url(value)
+
+
+class EmbeddingEndpointModels(_StrictModel):
+    """A server's models for Topic Modelling, or why they couldn't be listed."""
+
+    reachable: bool
+    # The server's embedding models when it says which those are (LiteLLM),
+    # otherwise every model it lists.
+    models: list[str]
+    # A likely name for each Topic Modelling model, only when unambiguous.
+    suggested: dict[TopicEmbeddingModel, str]
+    message: str | None
+
+
 class StoredEmbeddingEndpoint(_StrictModel):
     id: uuid.UUID
     name: EndpointName
     base_url: str
     api_key: SecretStr | None = None
-    models: dict[TopicEmbeddingModel, ServedModelName] = Field(
-        default_factory=default_served_models
-    )
+    models: dict[TopicEmbeddingModel, ServedModelName] = Field(min_length=1)
 
 
 class StoredEmbeddingEndpoints(_StrictModel):
@@ -128,10 +150,11 @@ class StoredEmbeddingEndpoints(_StrictModel):
 __all__ = [
     "EmbeddingEndpointCheck",
     "EmbeddingEndpointCreate",
+    "EmbeddingEndpointModels",
+    "EmbeddingEndpointModelsRequest",
     "EmbeddingEndpointList",
     "EmbeddingEndpointResource",
     "EmbeddingEndpointUpdate",
     "StoredEmbeddingEndpoint",
     "StoredEmbeddingEndpoints",
-    "default_served_models",
 ]
