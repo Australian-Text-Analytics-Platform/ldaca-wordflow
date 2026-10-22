@@ -41,7 +41,8 @@ Settings, Servers lists Apollo LLM and Apollo GPU read-only; an Annotation run
 records the person in LiteLLM; Topic Modelling with Remote GPU on and off; the key
 and client secret appear nowhere (browser, log, `/data`).
 
-Checked locally on 2026-10-22 against the real gateway (single-user, this file,
+The gateway address is the in-cluster one the pilot uses; both embedding models
+answered there from the pilot pod on 2026-10-22. Checked locally the same day against the real gateway (single-user, this file,
 key from the environment): the Topic Modelling check reached both `minilm-en` and
 `minilm-multilingual`, Apollo LLM listed its three models in the configured order,
 and the key was not in the log. Sign-in and hosted mode need the deployment.

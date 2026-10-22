@@ -4,25 +4,30 @@
 # Keys are never in this file: api_key_env names the variable that holds the key.
 
 providers:
-  - slug: apollo-llm
+  # Slug "apollo" as on the pilot: the placeholder address saved with past runs
+  # (https://apollo.server-ai.invalid/v1) comes from it, so it must not change.
+  - slug: apollo
     name: Apollo LLM
     # Kept from the earlier Apollo build, so saved Annotation tabs still find it.
     configuration_id: 3c4d70f7-4c43-5e66-9f39-6a4b478319bc
-    base_url: https://llm.gpu.sydney.edu.au/v1
+    # The LiteLLM gateway (project genai, workspace "gateway"), reached in-cluster.
+    # From outside the cluster the same gateway is https://llm.gpu.sydney.edu.au/v1.
+    base_url: http://iw-gateway-0-clusterip.runai-genai.svc.cluster.local:4000/v1
     api_key_env: APOLLO_LLM_API_KEY
     # Offered in this order. Descriptions come from LiteLLM's model_info.description.
     models: [ornith-1.5-35b, gemma-4-26b, qwen3.8-27b]
-    # Left unset: people pick a default in Settings, Servers, or the first model a
-    # Project uses becomes its own. Set one here to preselect it for everyone.
-    # default_model: qwen3.8-27b
+    # The server's default, as on the pilot. A person's default in Settings, Servers,
+    # or the model last used in a Project, comes first.
+    default_model: ornith-1.5-35b
     send_user: email
-    # One request at a time for each person, as on the pilot so far.
+    # One request at a time per person: one key is shared by everyone, and LiteLLM can
+    # only limit requests per key.
     max_requests_per_user: 1
 
 embedding_endpoints:
   - slug: apollo-gpu
     name: Apollo GPU
-    base_url: https://llm.gpu.sydney.edu.au/v1
+    base_url: http://iw-gateway-0-clusterip.runai-genai.svc.cluster.local:4000/v1
     api_key_env: APOLLO_LLM_API_KEY
     models:
       sentence-transformers/all-MiniLM-L6-v2: minilm-en
