@@ -23,6 +23,8 @@ interface TopicModelingState {
   segmentationMethod: TopicSegmentationMethod;
   maxSegmentTokens: number;
   embeddingModel: TopicEmbeddingModel;
+  /** The remote embedding endpoint, or `null` to embed on this computer. */
+  embeddingEndpointId: string | null;
   /** Segments to sample for Topic sampling, or `null` to cluster every segment. */
   clusterSampleSize: number | null;
 }
@@ -53,6 +55,7 @@ export function useTopicModelingTaskFlow({
     segmentationMethod,
     maxSegmentTokens,
     embeddingModel,
+    embeddingEndpointId,
     clusterSampleSize,
   },
   actions: { runAnalysis, setError, prepareBeforeRun },
@@ -81,6 +84,7 @@ export function useTopicModelingTaskFlow({
       segmentation_method: segmentationMethod,
       max_segment_tokens: maxSegmentTokens,
       embedding_model: embeddingModel,
+      ...(embeddingEndpointId ? { embedding_endpoint_id: embeddingEndpointId } : {}),
       cluster_sample_size: clusterSampleSize,
       ...(sampleFractions != null ? { sample_fractions: sampleFractions } : {}),
     };

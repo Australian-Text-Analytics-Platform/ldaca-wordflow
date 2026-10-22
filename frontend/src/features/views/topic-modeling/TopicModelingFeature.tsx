@@ -59,6 +59,11 @@ import { toastError } from '@/lib/toastError';
 import { isUngrouped, ungroupedTopic } from './ungrouped';
 import { ENGLISH_EMBEDDING_MODEL } from './topicEmbeddingModels';
 import { useTopicSegmentLengths } from './hooks/useTopicSegmentLengths';
+import {
+  endpointsServing,
+  useEmbeddingEndpoints,
+} from '@/features/embedding-endpoints/embeddingEndpoints';
+import { remoteEmbeddingChoice } from './remoteEmbedding';
 import { TopicNamesContext } from './components/results/topicNamesContext';
 import { topicGroupKey, withTopicName } from './topicNames';
 
@@ -123,6 +128,10 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     setEmbeddingModel,
     embeddingModelReason,
     cjkTokenizer,
+    remoteEmbedding,
+    setRemoteEmbedding,
+    embeddingEndpointId,
+    setEmbeddingEndpointId,
     clusterSample,
     setClusterSample,
     clusterSampleSize,
@@ -283,6 +292,13 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           ) / CHARACTERS_PER_TOKEN,
         );
   const suggestedSampleSize = suggestedTopicSampleSize(estimatedSegmentCount);
+  // Remote GPU (issue 412 follow-up): only while an endpoint serves the model.
+  const embeddingEndpoints = useEmbeddingEndpoints();
+  const remoteChoice = remoteEmbeddingChoice({
+    ticked: remoteEmbedding,
+    endpointId: embeddingEndpointId,
+    serving: endpointsServing(embeddingEndpoints.endpoints, embeddingModel),
+  });
   // The segment-length suggestion samples the first selected Data Block (issue 414).
   const segmentLengths = useTopicSegmentLengths({
     workspaceId: currentWorkspaceId,
@@ -311,6 +327,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     segmentation_method: segmentationMethod,
     max_segment_tokens: maxSegmentTokens,
     embedding_model: embeddingModel,
+    embedding_endpoint_id: remoteChoice.endpointId,
     cluster_sample_size: clusterSampleSizeForRequest,
   };
   const serverTopicParams = (request: AnalysisRequestOfKind<'topic_modeling'>) => ({
@@ -330,6 +347,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     max_segment_tokens: request.max_segment_tokens ?? DEFAULT_MAX_SEGMENT_TOKENS,
     // Runs saved before 0.7.16 name no model: they used English (issue 413).
     embedding_model: request.embedding_model ?? ENGLISH_EMBEDDING_MODEL,
+    embedding_endpoint_id: request.embedding_endpoint_id ?? null,
     cluster_sample_size: request.cluster_sample_size ?? null,
   });
   const hasTopicChanges = !serverRequest
@@ -475,6 +493,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       segmentationMethod,
       maxSegmentTokens,
       embeddingModel,
+      embeddingEndpointId: remoteChoice.endpointId,
       clusterSampleSize: clusterSampleSizeForRequest,
     },
     actions: {
@@ -603,6 +622,13 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           embeddingModelReason={embeddingModelReason}
           cjkTokenizer={cjkTokenizer}
           segmentLengths={segmentLengths}
+          remoteEmbedding={{
+            ...remoteChoice,
+            anyEndpoints: (embeddingEndpoints.endpoints ?? []).length > 0,
+            canAdd: embeddingEndpoints.canAdd,
+          }}
+          onRemoteEmbeddingChange={setRemoteEmbedding}
+          onEmbeddingEndpointChange={setEmbeddingEndpointId}
           isRunning={isRunning}
           isStopping={isStopping}
           isClearing={isClearing}

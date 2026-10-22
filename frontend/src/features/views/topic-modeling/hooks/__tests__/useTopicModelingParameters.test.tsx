@@ -203,4 +203,37 @@ describe('useTopicModelingParameters', () => {
       expect(result.current.maxSegmentTokens).toBe(96);
     });
   });
+
+  it('restores Remote GPU from a saved run, and ticking follows the person', () => {
+    const { result } = renderHook(() =>
+      useTopicModelingParameters({ panelNodeIds: nodeIds(10), nodeInfoById: nodeInfoById(10) }),
+    );
+    expect(result.current.remoteEmbedding).toBeNull();
+
+    act(() => {
+      result.current.hydrateParameters({
+        kind: 'topic_modeling',
+        node_ids: ['node-1'],
+        node_columns: { 'node-1': 'text' },
+        embedding_endpoint_id: 'endpoint-1',
+      });
+    });
+    expect(result.current.remoteEmbedding).toBe(true);
+    expect(result.current.embeddingEndpointId).toBe('endpoint-1');
+
+    act(() => {
+      result.current.hydrateParameters({
+        kind: 'topic_modeling',
+        node_ids: ['node-1'],
+        node_columns: { 'node-1': 'text' },
+      });
+    });
+    expect(result.current.remoteEmbedding).toBe(false);
+
+    act(() => {
+      result.current.setEmbeddingEndpointId('endpoint-2');
+    });
+    expect(result.current.remoteEmbedding).toBe(true);
+    expect(result.current.embeddingEndpointId).toBe('endpoint-2');
+  });
 });

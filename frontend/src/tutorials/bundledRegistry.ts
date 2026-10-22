@@ -416,6 +416,11 @@ const tutorial = {
     anchor: 'help-topic-modeling-max-segment-tokens',
     label: 'Maximum tokens per segment',
   },
+  'analysis.topic-modeling.remote-gpu': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-remote-gpu',
+    label: 'Remote GPU',
+  },
   'analysis.topic-modeling.topic-size': {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-min-cluster-size',

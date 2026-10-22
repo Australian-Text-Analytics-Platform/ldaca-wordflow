@@ -421,6 +421,41 @@ async def test_an_unreachable_endpoint_is_reported_without_its_key(
     assert DESKTOP_KEY not in check.model_dump_json()
 
 
+@pytest.mark.anyio
+async def test_a_sign_in_redirect_is_reported_not_followed(
+    tmp_path: Path, no_server_endpoints: None
+) -> None:
+    class _SignIn(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802
+            self.send_response(302)
+            self.send_header("Location", "https://sso.example/auth")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _SignIn)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        store, _ = _store(tmp_path)
+        created = await store.create_embedding_endpoint(
+            EmbeddingEndpointCreate(
+                name="Pilot",
+                base_url=f"http://127.0.0.1:{server.server_port}/v1",
+                api_key=SecretStr(DESKTOP_KEY),
+            )
+        )
+        check = await store.check_embedding_endpoint(created.id)
+    finally:
+        server.shutdown()
+
+    assert check.reachable is False
+    assert check.message == (
+        "Pilot redirected to a sign-in page (HTTP 302): it needs single sign-on, not an API key"
+    )
+
+
 def test_topic_modelling_embeds_on_the_endpoint_with_the_key_and_user(
     embeddings_server: str, tmp_path: Path
 ) -> None:

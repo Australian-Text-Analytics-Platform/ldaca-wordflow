@@ -202,14 +202,17 @@ class EmbeddingEndpointMethods:
         Modelling model it is set up for. Messages never contain the key."""
 
         base_url, api_key, models, name = await self._embedding_target(endpoint_id)
-        from openai import AsyncOpenAI
+        from openai import AsyncOpenAI, DefaultAsyncHttpxClient
 
         available = {model: False for model in TopicEmbeddingModel}
-        async with AsyncOpenAI(
+        # Redirects are reported, not followed: behind single sign-on they
+        # lead to a login page.
+        async with DefaultAsyncHttpxClient(follow_redirects=False) as http_client, AsyncOpenAI(
             base_url=base_url,
             api_key=api_key or "no-key-required",
             timeout=CHECK_TIMEOUT_SECONDS,
             max_retries=0,
+            http_client=http_client,
         ) as client:
             try:
                 served = sorted({model.id async for model in client.models.list()})
@@ -356,9 +359,17 @@ def _describe_failure(error: Exception, name: str) -> str:
     if isinstance(error, APIConnectionError):
         return f"Couldn't reach {name}; check the address and your network"
     if isinstance(error, AuthenticationError | PermissionDeniedError):
-        return f"{name} refused the API key"
+        return (
+            f"{name} refused the API key; check it. An endpoint behind single "
+            "sign-on doesn't accept API keys"
+        )
     if isinstance(error, OpenAINotFoundError):
         return f"{name} doesn't have this model (HTTP 404)"
+    if isinstance(error, APIStatusError) and 300 <= error.status_code < 400:
+        return (
+            f"{name} redirected to a sign-in page (HTTP {error.status_code}): "
+            "it needs single sign-on, not an API key"
+        )
     if isinstance(error, APIStatusError):
         return f"{name} answered HTTP {error.status_code}"
     return f"{name} gave an unexpected answer ({type(error).__name__})"

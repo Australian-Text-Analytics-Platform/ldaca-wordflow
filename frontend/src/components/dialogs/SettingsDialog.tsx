@@ -1,5 +1,16 @@
 import { useState } from 'react';
-import { Bot, Eye, FolderOpen, Hash, KeyRound, Moon, RotateCcw, Sparkles, Sun } from 'lucide-react';
+import {
+  Bot,
+  Cpu,
+  Eye,
+  FolderOpen,
+  Hash,
+  KeyRound,
+  Moon,
+  RotateCcw,
+  Sparkles,
+  Sun,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { DataFolderSettingsPanel } from '@/components/dialogs/DataFolderSettingsPanel';
 import { ToolCacheSettingsPanel } from '@/components/dialogs/ToolCacheSettingsPanel';
@@ -33,6 +44,7 @@ import {
 } from '@/features/theme/themeRuntime';
 import { DesktopUpdateSettings } from '@/features/updater/DesktopUpdateSettings';
 import { AiProvidersPreferencesPanel } from '@/features/views/annotation/components/AiProvidersPreferencesPanel';
+import { EmbeddingEndpointsPanel } from '@/features/embedding-endpoints/EmbeddingEndpointsPanel';
 import { useVisibleViews } from '@/features/views/useVisibleViews';
 import { VIEW_DEFINITIONS } from '@/features/views/viewRegistry';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
@@ -50,6 +62,7 @@ const SETTINGS_TABS = [
   { value: 'general', label: 'General', icon: Sparkles },
   { value: 'portal', label: 'Portal', icon: KeyRound },
   { value: 'ai', label: 'AI', icon: Bot },
+  { value: 'embeddings', label: 'Embeddings', icon: Cpu },
   { value: 'workspace', label: 'Project', icon: FolderOpen },
   { value: 'views', label: 'Views', icon: Eye },
   { value: 'guidance', label: 'Guidance', icon: Hash },
@@ -266,6 +279,10 @@ export function SettingsDialog({
 
               <TabsContent value="ai" className="mt-0">
                 <AiProvidersPreferencesPanel />
+              </TabsContent>
+
+              <TabsContent value="embeddings" className="mt-0">
+                <EmbeddingEndpointsPanel />
               </TabsContent>
 
               <TabsContent value="workspace" className="mt-0 space-y-5">

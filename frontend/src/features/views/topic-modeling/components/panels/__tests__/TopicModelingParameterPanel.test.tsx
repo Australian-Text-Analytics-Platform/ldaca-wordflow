@@ -679,4 +679,108 @@ describe('TopicModelingParameterPanel', () => {
       );
     });
   });
+
+  describe('Remote GPU (issue 412 follow-up)', () => {
+    const gpu = (id: string, name: string) => ({
+      id,
+      name,
+      base_url: `https://${id}.example/v1`,
+      source: 'user' as const,
+      has_api_key: true,
+      models: { 'sentence-transformers/all-MiniLM-L6-v2': 'minilm' },
+      default: false,
+    });
+
+    it('is greyed out with the reason when there is no endpoint', () => {
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          remoteEmbedding={{
+            ticked: false,
+            endpointId: null,
+            serving: [],
+            anyEndpoints: false,
+            canAdd: true,
+          }}
+        />,
+      );
+
+      expect(screen.getByLabelText('Use a remote GPU')).toBeDisabled();
+      expect(
+        screen.getByText(
+          'Add an embedding endpoint in Settings → Embeddings to read the text on a remote GPU.',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('says when no endpoint serves the selected model', () => {
+      render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          embeddingModel="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+          maxSegmentTokens={128}
+          remoteEmbedding={{
+            ticked: false,
+            endpointId: null,
+            serving: [],
+            anyEndpoints: true,
+            canAdd: true,
+          }}
+        />,
+      );
+
+      expect(screen.getByLabelText('Use a remote GPU')).toBeDisabled();
+      expect(
+        screen.getByText('No embedding endpoint serves the Multilingual model.'),
+      ).toBeInTheDocument();
+    });
+
+    it('ticks, names the endpoint, and offers a choice between several', () => {
+      const onRemoteEmbeddingChange = vi.fn();
+      const { rerender } = render(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          remoteEmbedding={{
+            ticked: false,
+            endpointId: null,
+            serving: [gpu('lab', 'Lab GPU')],
+            anyEndpoints: true,
+            canAdd: true,
+          }}
+          onRemoteEmbeddingChange={onRemoteEmbeddingChange}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText('Use a remote GPU'));
+      expect(onRemoteEmbeddingChange).toHaveBeenCalledWith(true);
+
+      rerender(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          remoteEmbedding={{
+            ticked: true,
+            endpointId: 'lab',
+            serving: [gpu('lab', 'Lab GPU')],
+            anyEndpoints: true,
+            canAdd: true,
+          }}
+        />,
+      );
+      expect(screen.getByLabelText('Use a remote GPU')).toBeChecked();
+      expect(screen.getByText('Lab GPU')).toBeInTheDocument();
+
+      rerender(
+        <TopicModelingParameterPanel
+          {...baseProps}
+          remoteEmbedding={{
+            ticked: true,
+            endpointId: 'lab',
+            serving: [gpu('lab', 'Lab GPU'), gpu('uni', 'University GPU')],
+            anyEndpoints: true,
+            canAdd: true,
+          }}
+        />,
+      );
+      expect(screen.getByLabelText('Embedding endpoint')).toHaveTextContent('Lab GPU');
+    });
+  });
 });
