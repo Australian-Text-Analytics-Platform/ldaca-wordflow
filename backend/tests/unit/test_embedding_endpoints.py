@@ -188,7 +188,8 @@ async def test_desktop_endpoints_are_stored_privately_and_never_returned(
     assert created.models == {ENGLISH: "minilm-en"}
     assert DESKTOP_KEY not in created.model_dump_json()
     path = settings.get_users_root_folder() / SINGLE_USER.id / "embedding-endpoints.toml"
-    assert os.stat(path).st_mode & 0o077 == 0
+    # Windows has no POSIX modes: the file sits in the person's own profile.
+    assert os.name == "nt" or os.stat(path).st_mode & 0o077 == 0
     saved = rtoml.loads(path.read_text())
     assert saved["endpoints"][0]["api_key"] == DESKTOP_KEY
     listed = await store.list_embedding_endpoints()
@@ -313,7 +314,7 @@ def test_a_desktop_key_reaches_polars_text_only_through_a_private_file() -> None
     with remote_embedding_options(run) as options:
         path = Path(options.pop("embedding_api_key_file"))
         assert path.read_text() == DESKTOP_KEY
-        assert os.stat(path).st_mode & 0o077 == 0
+        assert os.name == "nt" or os.stat(path).st_mode & 0o077 == 0
         assert options == {
             "embedding_endpoint": "http://h/v1",
             "embedding_remote_model": "m",
@@ -585,7 +586,8 @@ async def test_a_desktop_run_resolves_its_endpoint_on_submit_and_saves_no_key(
         DESKTOP_KEY,
     )
     for path in (tmp_path / "workspaces").rglob("*"):
-        if path.is_file():
+        # Lock files are empty, and Windows can't read one the open Project holds.
+        if path.is_file() and path.suffix != ".lock":
             assert DESKTOP_KEY.encode() not in path.read_bytes()
 
 
