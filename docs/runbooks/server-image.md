@@ -9,19 +9,31 @@ Issue #411.
 
 ## Build
 
-The **Server image** workflow (`.github/workflows/server-image.yml`) runs only
-when started by hand. It builds the branch or tag given as `--ref`, for
-example the `v0.7` branch or a release tag such as `v0.7.15`:
+The **Server image** workflow (`.github/workflows/server-image.yml`) never
+runs on a branch push and is not part of a release. Start it in one of two ways.
+
+**Push a tag** `server-image/v<version>-<label>` on the commit to build. The
+version must match the code (a `-pre` version counts), and the label is added
+to it. For example, on `v0.7` at 0.7.16-pre:
+
+```bash
+git tag server-image/v0.7.16-rc.1 v0.7
+git push origin server-image/v0.7.16-rc.1
+```
+
+builds `0.7.16-pre+rc.1` and pushes the image tag `0.7.16-pre-rc.1`.
+
+**Or start it by hand**, with `--ref` naming the branch or tag to build:
 
 ```bash
 gh workflow run server-image.yml --repo Australian-Text-Analytics-Platform/ldaca-wordflow \
   --ref v0.7 -f local_version=site.1
 ```
 
-GitHub starts a manual workflow only when its file is also on the default
-branch (`main`); otherwise the command fails with "workflow server-image.yml
-not found on the default branch". The run itself uses the workflow file and
-Dockerfile at `--ref`. Until the file is on `main`, build locally as below.
+GitHub starts a workflow by hand only once it is known, that is on the
+default branch (`main`) or after it has run from a tag. Until then the command
+fails with "workflow server-image.yml not found on the default branch"; push a
+tag instead.
 
 - `local_version` (optional) adds a label to the version, e.g. `site.1`
   gives `0.7.15+site.1`, shown by `/health/ready`.

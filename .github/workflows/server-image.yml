@@ -2,10 +2,16 @@ name: Server image
 
 # Builds the LDaCA Wordflow server image (deploy/docker/Dockerfile) for
 # linux/amd64 from the chosen ref and pushes it to GHCR (issue 411).
-# Manual dispatch only: it never runs on push and is not part of a release.
-# See docs/runbooks/server-image.md.
+# Never runs on a branch push and is not part of a release. Start it by hand,
+# or push a tag server-image/v<version>-<label> (for example
+# server-image/v0.7.16-rc.1 builds 0.7.16-pre+rc.1 from the tagged commit):
+# GitHub runs a hand-started workflow only once it is on the default branch,
+# which the v0.7 line is not. See docs/runbooks/server-image.md.
 
 on:
+  push:
+    tags:
+      - "server-image/v*"
   workflow_dispatch:
     inputs:
       local_version:
@@ -33,12 +39,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check the inputs
+        id: inputs
         shell: bash
         env:
           LOCAL_VERSION: ${{ inputs.local_version }}
-          IMAGE: ${{ inputs.image }}
+          IMAGE: ${{ inputs.image || 'ghcr.io/australian-text-analytics-platform/ldaca-wordflow-server' }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -Eeuo pipefail
+          if [ "$REF_TYPE" = "tag" ]; then
+            # server-image/v<version>-<label>: the label is everything after the first "-".
+            spec="${REF_NAME#server-image/v}"
+            TAG_VERSION="${spec%%-*}"
+            LOCAL_VERSION="${spec#*-}"
+            if [ "$LOCAL_VERSION" = "$spec" ] || [ -z "$LOCAL_VERSION" ]; then
+              echo "::error::tag must look like server-image/v0.7.16-rc.1"
+              exit 1
+            fi
+            echo "tag_version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+          fi
+          echo "local_version=$LOCAL_VERSION" >> "$GITHUB_OUTPUT"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
           if [ -n "$LOCAL_VERSION" ] && ! [[ "$LOCAL_VERSION" =~ ^[a-z0-9]+(\.[a-z0-9]+)*$ ]]; then
             echo "::error::local_version uses lower-case letters, digits and dots, e.g. site.3"
             exit 1
@@ -81,7 +103,8 @@ jobs:
         id: version
         shell: bash
         env:
-          LOCAL_VERSION: ${{ inputs.local_version }}
+          LOCAL_VERSION: ${{ steps.inputs.outputs.local_version }}
+          TAG_VERSION: ${{ steps.inputs.outputs.tag_version }}
         run: |
           set -Eeuo pipefail
           python - <<'PY' >> "$GITHUB_OUTPUT"
@@ -95,6 +118,9 @@ jobs:
           if match is None:
               raise SystemExit("backend/pyproject.toml has no plain version")
           version = match.group(1)
+          tag_version = os.environ.get("TAG_VERSION", "")
+          if tag_version and version.split("-")[0] != tag_version:
+              raise SystemExit(f"the tag names {tag_version} but the code is {version}")
           label = os.environ.get("LOCAL_VERSION", "")
           if label:
               version = f"{version}+{label}"
@@ -132,7 +158,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ inputs.image }}
+          images: ${{ steps.inputs.outputs.image }}
           tags: |
             type=raw,value=${{ steps.version.outputs.image }}
             type=sha,format=long
@@ -153,7 +179,7 @@ jobs:
       - name: Summary
         shell: bash
         env:
-          IMAGE: ${{ inputs.image }}
+          IMAGE: ${{ steps.inputs.outputs.image }}
           PYTHON_VERSION: ${{ steps.version.outputs.python }}
           IMAGE_TAG: ${{ steps.version.outputs.image }}
         run: |
