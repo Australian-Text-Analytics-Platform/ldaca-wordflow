@@ -112,6 +112,7 @@
   --vscode-editor-selectionBackground: #004CB540;
   --vscode-editor-inactiveSelectionBackground: #004CB51A;
   --vscode-editor-lineHighlightBackground: #D9D9D940;
+  --vscode-editor-findMatchHighlightBackground: #004CB51A;
   --vscode-editorWidget-background: #ECECF0;
   --vscode-editorWidget-border: #D1D3D4FF;
   --vscode-editorWidget-foreground: #101010;
@@ -214,6 +215,7 @@
   --vscode-editor-selectionBackground: #276782dd;
   --vscode-editor-inactiveSelectionBackground: #27678260;
   --vscode-editor-lineHighlightBackground: #242526;
+  --vscode-editor-findMatchHighlightBackground: #27678280;
   --vscode-editorWidget-background: #202122;
   --vscode-editorWidget-border: #2A2B2CFF;
   --vscode-editorWidget-foreground: #bfbfbf;

@@ -31,6 +31,10 @@ import {
 import { buildConcordanceTableModel, type ConcordanceRow } from './concordanceTableModel';
 import { SortableHeader } from './SortableHeader';
 import { ConcordanceRowDetailController } from './ConcordanceRowDetailController';
+import type { ConcordanceRowDetailView } from '../concordanceRowDetail';
+
+/** One match per row, in one colour (issue 429). */
+const TABLE_DETAIL_VIEW: ConcordanceRowDetailView = { kind: 'table' };
 import { NUDGE_TARGETS } from '@/features/nudges/nudges';
 import { ConcordancePreviewNudge } from './ConcordancePreviewNudge';
 
@@ -223,7 +227,7 @@ function CombinedConcordanceTable({
       loading={combinedLoading}
       onPageChange={setCombinedPage}
       searchWord={searchWord}
-      caseSensitive={caseSensitive}
+      view={TABLE_DETAIL_VIEW}
     >
       {(openDetailAt) => (
         <Card data-testid="concordance-table-combined-card" className="mb-6 overflow-hidden">
@@ -423,7 +427,7 @@ function PerNodeConcordanceTable({
         handlePageChange(nextPage, paginationKey, requestNodeId);
       }}
       searchWord={searchWord}
-      caseSensitive={caseSensitive}
+      view={TABLE_DETAIL_VIEW}
     >
       {(openDetailAt) => (
         <Card data-testid="concordance-table-source-card" className="mb-6 overflow-hidden">

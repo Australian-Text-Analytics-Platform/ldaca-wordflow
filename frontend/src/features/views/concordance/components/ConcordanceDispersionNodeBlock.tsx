@@ -104,7 +104,6 @@ export function ConcordanceDispersionNodeBlock({
   nodeData,
   context,
   searchWord,
-  caseSensitive,
   showMetadata,
   selectedMetadataColumns,
   resultsViewportWidth,
@@ -262,7 +261,7 @@ export function ConcordanceDispersionNodeBlock({
         loading={combinedLoading}
         onPageChange={setCombinedPage}
         searchWord={searchWord}
-        caseSensitive={caseSensitive}
+        view={{ kind: 'dispersion', termColors }}
       >
         {(openDetailAt) => (
           <Card
@@ -421,7 +420,7 @@ export function ConcordanceDispersionNodeBlock({
         handlePageChange(nextPage, paginationKey, requestNodeId);
       }}
       searchWord={searchWord}
-      caseSensitive={caseSensitive}
+      view={{ kind: 'dispersion', termColors }}
     >
       {(openDetailAt) => (
         <Card

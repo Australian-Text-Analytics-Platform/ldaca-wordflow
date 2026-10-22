@@ -34,7 +34,7 @@ describe('concordanceRowDetail', () => {
       ],
     };
     const payload = buildConcordanceRowDetailPayload(item);
-    const customization = buildConcordanceRowDetailCustomization(item, 'alpha', false);
+    const customization = buildConcordanceRowDetailCustomization(item, 'alpha');
 
     expect(payload.record).toMatchObject(hit);
     expect(payload.textColumn).toBe('text');
@@ -56,7 +56,7 @@ describe('concordanceRowDetail', () => {
 
   it('uses one row as the default hit group', () => {
     const item = { row: hit, nodeId: 'node-1', column: 'text' };
-    const customization = buildConcordanceRowDetailCustomization(item, 'alpha', false);
+    const customization = buildConcordanceRowDetailCustomization(item, 'alpha');
     expect(customization.summaryFields?.find((field) => field.label === 'Matches')?.value).toBe(
       '1',
     );
