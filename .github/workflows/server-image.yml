@@ -2,9 +2,10 @@ name: Server image
 
 # Builds the LDaCA Wordflow server image (deploy/docker/Dockerfile) for
 # linux/amd64 from the chosen ref and pushes it to GHCR (issue 411).
-# Never runs on a branch push and is not part of a release. Start it by hand,
-# or push a tag server-image/v<version>-<label> (for example
-# server-image/v0.7.16-rc.1 builds 0.7.16-pre+rc.1 from the tagged commit):
+# Never runs on a branch push. Start it by hand, or push a tag
+# server-image/v<version> for a release (server-image/v0.7.16 builds 0.7.16) or
+# server-image/v<version>-<label> for a test build (server-image/v0.7.16-rc.1
+# builds 0.7.16-pre+rc.1 from the tagged commit):
 # GitHub runs a hand-started workflow only once it is on the default branch,
 # which the v0.7 line is not. See docs/runbooks/server-image.md.
 
@@ -49,13 +50,17 @@ jobs:
         run: |
           set -Eeuo pipefail
           if [ "$REF_TYPE" = "tag" ]; then
-            # server-image/v<version>-<label>: the label is everything after the first "-".
+            # server-image/v<version>[-<label>]: the label is everything after
+            # the first "-"; without one the image carries the plain release version.
             spec="${REF_NAME#server-image/v}"
             TAG_VERSION="${spec%%-*}"
-            LOCAL_VERSION="${spec#*-}"
-            if [ "$LOCAL_VERSION" = "$spec" ] || [ -z "$LOCAL_VERSION" ]; then
-              echo "::error::tag must look like server-image/v0.7.16-rc.1"
-              exit 1
+            LOCAL_VERSION=""
+            if [ "$spec" != "$TAG_VERSION" ]; then
+              LOCAL_VERSION="${spec#*-}"
+              if [ -z "$LOCAL_VERSION" ]; then
+                echo "::error::tag must look like server-image/v0.7.16 or server-image/v0.7.16-rc.1"
+                exit 1
+              fi
             fi
             echo "tag_version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
           fi

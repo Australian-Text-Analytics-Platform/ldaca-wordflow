@@ -12,9 +12,11 @@ Issue #411.
 The **Server image** workflow (`.github/workflows/server-image.yml`) never
 runs on a branch push and is not part of a release. Start it in one of two ways.
 
-**Push a tag** `server-image/v<version>-<label>` on the commit to build. The
-version must match the code (a `-pre` version counts), and the label is added
-to it. For example, on `v0.7` at 0.7.16-pre:
+**Push a tag** on the commit to build: `server-image/v<version>` for a release
+(`server-image/v0.7.16` on the `v0.7.16` commit builds the image tag `0.7.16`),
+or `server-image/v<version>-<label>` for a test build. The version must match
+the code (a `-pre` version counts), and the label is added to it. For example,
+on `v0.7` at 0.7.16-pre:
 
 ```bash
 git tag server-image/v0.7.16-rc.1 v0.7

@@ -2005,7 +2005,7 @@ dependencies = [
 
 [[package]]
 name = "ldaca-wordflow"
-version = "0.7.16-pre"
+version = "0.7.16"
 dependencies = [
  "block2",
  "futures-util",
