@@ -11,7 +11,9 @@ Apollo with Apollo's configuration, before 0.7.16 is tagged.
   only Apollo's configuration (`deploy/apollo/`).
 - Image: `ghcr.io/australian-text-analytics-platform/ldaca-wordflow-server:0.7.16-pre-rc.1`
   (commit da645395; also tagged `sha-da645395c9f396e444b5c914c17085b1ba3319dd`).
-  It holds no keys and no Apollo settings.
+  It holds no keys and no Apollo settings. It is **private**: Run:ai pulls it with
+  Chao's Run:ai user credential `ghcr-read` (Docker registry `ghcr.io`, a GitHub
+  token with read:packages only).
 - Settings use `OIDC_*` names (the `CILOGON_*` names still work). Apollo LLM and
   Apollo GPU (Topic Modelling's remote embeddings) come from
   `server-ai-providers.yaml`.
@@ -24,6 +26,29 @@ Apollo with Apollo's configuration, before 0.7.16 is tagged.
   from Chao's Run:ai credentials only.
 - Ask Chao before deleting anything, and before replacing the pilot.
 
+## Where Apollo's configuration comes from
+
+- **Source:** repository `Australian-Text-Analytics-Platform/ldaca-wordflow`, branch
+  `deploy/apollo`, folder `deploy/apollo/` (locally `~/Workspace/wordflow-apollo`):
+  - `server-ai-providers.yaml`: Apollo LLM (in-cluster gateway, slug `apollo`, its
+    old configuration id, default `ornith-1.5-35b`, one request per person) and
+    Apollo GPU (`minilm-en`, `minilm-multilingual`, ticked by default). The
+    container reads it from the volume through `SERVER_AI_PROVIDERS_FILE`.
+  - `app.env.example`: the non-secret settings. For rc1 they are passed as the
+    `-e` flags in the submit command below (`OIDC_*`, hosts, `MULTI_USER`).
+  - Secrets: Run:ai user credentials `wordflow-oidc` (key `CILOGON_CLIENT_SECRET`,
+    passed in as `OIDC_CLIENT_SECRET`) and `wordflow-apollo-llm` (key
+    `APOLLO_LLM_API_KEY`). Never in a file.
+- **On the volume:** a copy of the providers file is at
+  `/scratch/wordflow2026/pilot/release-rc1/server-ai-providers.yaml`. If the file
+  on the branch changes, copy it again before submitting, through the pilot pod
+  (which mounts the volume), from the repository folder:
+
+  ```bash
+  Y=$(base64 < ~/Workspace/wordflow-apollo/deploy/apollo/server-ai-providers.yaml | tr -d '\n')
+  runai workspace exec pilot -p wordflow2026 -- python3 -c "import base64; open('/scratch/wordflow2026/pilot/release-rc1/server-ai-providers.yaml','wb').write(base64.b64decode('$Y'))"
+  ```
+
 ## Already prepared on the volume (2026-10-22)
 
 - `/scratch/wordflow2026/pilot/hosted-data-rc1`: a copy of the pilot's data
@@ -33,13 +58,9 @@ Apollo with Apollo's configuration, before 0.7.16 is tagged.
 
 ## Steps
 
-1. **Image is public.** This must print 200 (Chao makes the package public):
-
-   ```bash
-   curl -s -o /dev/null -w '%{http_code}\n' "https://ghcr.io/token?scope=repository:australian-text-analytics-platform/ldaca-wordflow-server:pull"
-   ```
-
-   If it prints 401, stop and tell Chao.
+1. **Pull credential.** Check Chao's Run:ai user credential `ghcr-read` exists
+   (Docker registry, `https://ghcr.io`). If it doesn't, stop and ask Chao: the
+   image is private and can't be pulled without it.
 
 2. **Submit** (project `wordflow2026`). Wordflow listens on 127.0.0.1:8080
    behind Run:ai's sign-in, like the pilot:
@@ -48,6 +69,7 @@ Apollo with Apollo's configuration, before 0.7.16 is tagged.
    IMAGE=ghcr.io/australian-text-analytics-platform/ldaca-wordflow-server:0.7.16-pre-rc.1
    HOST=wordflow2026-rc1.gpu.sydney.edu.au
    runai workspace submit rc1 -p wordflow2026 -i "$IMAGE" --image-pull-policy Always \
+     --image-pull-my-credentials type=dockerRegistry,name=ghcr-read \
      --existing-pvc claimname=exa-pvc-wordflow2026,path=/scratch/wordflow2026 \
      --external-url container=8080 \
      --cpu-core-request 8 --cpu-core-limit 8 --cpu-memory-request 32G --cpu-memory-limit 32G \
