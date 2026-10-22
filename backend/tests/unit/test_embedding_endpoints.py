@@ -22,8 +22,10 @@ from ldaca_wordflow import server_ai
 from ldaca_wordflow.domain.workspace import TopicEmbeddingModel, TopicModelingAnalysisRequest
 from ldaca_wordflow.models.embedding_endpoints import (
     EmbeddingEndpointCreate,
+    EmbeddingEndpointModelsRequest,
     EmbeddingEndpointUpdate,
 )
+from ldaca_wordflow.services.embedding_endpoints import embedding_models, suggest_served_models
 from ldaca_wordflow.server_ai.config import (
     PROVIDERS_FILE_ENV,
     clear_server_ai_providers,
@@ -159,7 +161,9 @@ async def test_a_shared_server_lists_only_its_own_endpoints(
     assert SERVER_KEY not in endpoint.model_dump_json()
     with pytest.raises(AccessDeniedError):
         await store.create_embedding_endpoint(
-            EmbeddingEndpointCreate(name="Mine", base_url="http://localhost:8000/v1")
+            EmbeddingEndpointCreate(
+                name="Mine", base_url="http://localhost:8000/v1", models={ENGLISH: "minilm"}
+            )
         )
 
 
@@ -174,13 +178,14 @@ async def test_desktop_endpoints_are_stored_privately_and_never_returned(
             name=" Lab GPU ",
             base_url="https://gpu.lab.example/v1/",
             api_key=SecretStr(DESKTOP_KEY),
+            models={ENGLISH: "minilm-en"},
         )
     )
 
     assert created.name == "Lab GPU"
     assert created.base_url == "https://gpu.lab.example/v1"
     assert created.has_api_key is True
-    assert created.models == {model: model.value for model in TopicEmbeddingModel}
+    assert created.models == {ENGLISH: "minilm-en"}
     assert DESKTOP_KEY not in created.model_dump_json()
     path = settings.get_users_root_folder() / SINGLE_USER.id / "embedding-endpoints.toml"
     assert os.stat(path).st_mode & 0o077 == 0
@@ -209,7 +214,7 @@ async def test_desktop_endpoints_are_stored_privately_and_never_returned(
 def test_an_endpoint_address_must_be_plain_http(no_server_endpoints: None) -> None:
     for address in ("ftp://gpu/v1", "https://me:secret@gpu/v1", "https://gpu/v1?key=secret"):
         with pytest.raises(ValidationError) as error:
-            EmbeddingEndpointCreate(name="GPU", base_url=address)
+            EmbeddingEndpointCreate(name="GPU", base_url=address, models={ENGLISH: "minilm"})
         # The API returns only each error's message (main.py strips inputs).
         messages = [item["msg"] for item in error.value.errors(include_input=False)]
         assert messages and not any("secret" in message for message in messages)
@@ -410,7 +415,10 @@ async def test_an_unreachable_endpoint_is_reported_without_its_key(
     store, _ = _store(tmp_path)
     created = await store.create_embedding_endpoint(
         EmbeddingEndpointCreate(
-            name="Lab GPU", base_url="http://127.0.0.1:9/v1", api_key=SecretStr(DESKTOP_KEY)
+            name="Lab GPU",
+            base_url="http://127.0.0.1:9/v1",
+            api_key=SecretStr(DESKTOP_KEY),
+            models={ENGLISH: "minilm"},
         )
     )
 
@@ -444,6 +452,7 @@ async def test_a_sign_in_redirect_is_reported_not_followed(
                 name="Pilot",
                 base_url=f"http://127.0.0.1:{server.server_port}/v1",
                 api_key=SecretStr(DESKTOP_KEY),
+                models={ENGLISH: "minilm"},
             )
         )
         check = await store.check_embedding_endpoint(created.id)
@@ -515,7 +524,11 @@ def test_the_route_lists_server_endpoints_without_key_or_address(
     assert "gateway.research.example.edu" not in response.text
     refused = multi_user_test_client.post(
         "/api/embedding-endpoints",
-        json={"name": "Mine", "base_url": "http://localhost:8000/v1"},
+        json={
+            "name": "Mine",
+            "base_url": "http://localhost:8000/v1",
+            "models": {ENGLISH.value: "minilm"},
+        },
     )
     assert refused.status_code == 403
 
@@ -544,6 +557,7 @@ async def test_a_desktop_run_resolves_its_endpoint_on_submit_and_saves_no_key(
             name="Lab GPU",
             base_url="http://localhost:8000/v1",
             api_key=SecretStr(DESKTOP_KEY),
+            models={ENGLISH: "minilm"},
         )
     )
     request = TopicModelingAnalysisRequest.model_validate(
@@ -567,7 +581,7 @@ async def test_a_desktop_run_resolves_its_endpoint_on_submit_and_saves_no_key(
     assert run is not None
     assert (run.endpoint, run.served_model, run.api_key) == (
         "http://localhost:8000/v1",
-        ENGLISH.value,
+        "minilm",
         DESKTOP_KEY,
     )
     for path in (tmp_path / "workspaces").rglob("*"):
@@ -611,3 +625,103 @@ async def test_a_run_with_a_missing_endpoint_is_refused_on_submit(
             execution_scope=AnalysisExecutionScope.RUN_ALL,
         )
     assert execution.enqueued == []
+
+
+class _Gateway(_Embeddings):
+    """A LiteLLM-style gateway: /v1/models marks embedding models by mode."""
+
+    listed: list[dict[str, Any]] = []
+    keys: list[str | None] = []
+
+    def do_GET(self) -> None:  # noqa: N802
+        type(self).keys.append(self.headers.get("Authorization"))
+        if self.headers.get("Authorization") != f"Bearer {DESKTOP_KEY}":
+            self._send({"error": {"message": "invalid key"}}, status=401)
+            return
+        self._send({"object": "list", "data": self.listed})
+
+
+@pytest.fixture
+def gateway() -> Iterator[str]:
+    _Gateway.keys = []
+    _Gateway.listed = [
+        {"id": "ornith-1.5-35b", "object": "model"},
+        {"id": "minilm-en", "object": "model", "mode": "embedding"},
+        {"id": "minilm-multilingual", "object": "model", "mode": "embedding"},
+        {"id": "ocr-model", "object": "model", "mode": "ocr"},
+    ]
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _Gateway)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_port}/v1"
+    server.shutdown()
+
+
+@pytest.mark.anyio
+async def test_a_servers_embedding_models_are_listed_with_the_typed_key(
+    tmp_path: Path, no_server_endpoints: None, gateway: str
+) -> None:
+    store, _ = _store(tmp_path)
+
+    found = await store.list_embedding_endpoint_models(
+        EmbeddingEndpointModelsRequest(base_url=gateway, api_key=SecretStr(DESKTOP_KEY))
+    )
+
+    assert found.reachable is True
+    assert found.models == ["minilm-en", "minilm-multilingual"]
+    assert found.suggested == {ENGLISH: "minilm-en", MULTILINGUAL: "minilm-multilingual"}
+    assert _Gateway.keys[0] == f"Bearer {DESKTOP_KEY}"
+
+    refused = await store.list_embedding_endpoint_models(
+        EmbeddingEndpointModelsRequest(base_url=gateway, api_key=SecretStr("sk-wrong-key"))
+    )
+    assert refused.reachable is False
+    assert refused.models == []
+    assert refused.message is not None and "refused the API key" in refused.message
+    assert "sk-wrong-key" not in refused.model_dump_json()
+
+
+@pytest.mark.anyio
+async def test_a_saved_key_is_used_only_for_its_own_address(
+    tmp_path: Path, no_server_endpoints: None, gateway: str
+) -> None:
+    store, _ = _store(tmp_path)
+    created = await store.create_embedding_endpoint(
+        EmbeddingEndpointCreate(
+            name="Gateway",
+            base_url=gateway,
+            api_key=SecretStr(DESKTOP_KEY),
+            models={ENGLISH: "minilm-en"},
+        )
+    )
+
+    same = await store.list_embedding_endpoint_models(
+        EmbeddingEndpointModelsRequest(base_url=gateway, endpoint_id=created.id)
+    )
+    assert same.reachable is True
+
+    other = gateway.replace("127.0.0.1", "localhost")
+    moved = await store.list_embedding_endpoint_models(
+        EmbeddingEndpointModelsRequest(base_url=other, endpoint_id=created.id)
+    )
+    assert moved.reachable is False
+    assert _Gateway.keys[-1] != f"Bearer {DESKTOP_KEY}"
+
+
+def test_without_kinds_every_model_is_offered_and_suggestions_need_one_match() -> None:
+    assert embedding_models({"b-model": None, "A-model": None}) == ["A-model", "b-model"]
+    assert embedding_models({"chat": None, "minilm": "embedding", "ocr": "ocr"}) == ["minilm"]
+    assert suggest_served_models([ENGLISH.value, "minilm-multilingual"]) == {
+        ENGLISH: ENGLISH.value,
+        MULTILINGUAL: "minilm-multilingual",
+    }
+    # Two English-looking names: no guess.
+    assert suggest_served_models(["minilm-a", "minilm-b"]) == {}
+
+
+def test_a_shared_server_cannot_list_models_for_new_endpoints(
+    multi_user_test_client: TestClient,
+) -> None:
+    response = multi_user_test_client.post(
+        "/api/embedding-endpoints/models", json={"base_url": "http://localhost:8000/v1"}
+    )
+    assert response.status_code == 403

@@ -7,6 +7,11 @@ Descriptions are optional and found on the server, in this order:
    (``data[].model_name`` -> ``model_info.description``), asked with the same
    key, at most 5 s, cached per base URL and key. Anything else (404, 401, a
    timeout, another shape) means no descriptions; it never fails the list.
+
+The same two sources say what kind of model each is (``mode``): LiteLLM marks
+embedding, OCR, rerank and other models that can't answer a chat request.
+Annotation lists only chat models; Topic Modelling servers offer embedding
+models (issues 415, 417).
 """
 
 from __future__ import annotations
@@ -33,10 +38,33 @@ _MARKDOWN_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 _MARKDOWN_MARKS = re.compile(r"[*_`#>]+")
 
 
+# Modes that answer a chat request; a model without a mode counts as chat.
+CHAT_MODES = frozenset({"chat", "completion", "responses"})
+EMBEDDING_MODE = "embedding"
+
+
 @dataclass(frozen=True, slots=True)
 class ModelOption:
     id: str
     description: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ModelInfo:
+    """What LiteLLM's /model/info says: descriptions and each model's mode."""
+
+    descriptions: dict[str, str]
+    modes: dict[str, str]
+
+
+def model_mode(value: object) -> str | None:
+    """A model's mode in lower case, or None when it has none."""
+
+    return value.strip().lower() or None if isinstance(value, str) else None
+
+
+def is_chat_model(mode: str | None) -> bool:
+    return mode is None or mode in CHAT_MODES
 
 
 def sanitize_description(value: object) -> str | None:
@@ -53,24 +81,32 @@ def sanitize_description(value: object) -> str | None:
     return text
 
 
-def _parse_model_info(payload: object) -> dict[str, str]:
+def _parse_model_info(payload: object) -> ModelInfo:
     descriptions: dict[str, str] = {}
+    modes: dict[str, str] = {}
     data = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(data, list):
-        return descriptions
+        return ModelInfo(descriptions, modes)
     for item in data:
         if not isinstance(item, dict):
             continue
         name = item.get("model_name")
         info = item.get("model_info")
-        text = sanitize_description(info.get("description") if isinstance(info, dict) else None)
-        # One model name can have several deployments; the first text wins.
-        if isinstance(name, str) and name.strip() and text and name not in descriptions:
-            descriptions[name.strip()] = text
-    return descriptions
+        if not isinstance(name, str) or not name.strip():
+            continue
+        name = name.strip()
+        info = info if isinstance(info, dict) else {}
+        text = sanitize_description(info.get("description"))
+        # One model name can have several deployments; the first value wins.
+        if text and name not in descriptions:
+            descriptions[name] = text
+        mode = model_mode(info.get("mode"))
+        if mode and name not in modes:
+            modes[name] = mode
+    return ModelInfo(descriptions, modes)
 
 
-_cache: dict[tuple[str, str], tuple[float, dict[str, str]]] = {}
+_cache: dict[tuple[str, str], tuple[float, ModelInfo]] = {}
 
 
 def clear_model_info_cache() -> None:
@@ -88,6 +124,12 @@ def _http_client() -> httpx.AsyncClient:
 async def litellm_model_descriptions(base_url: str, api_key: str | None) -> dict[str, str]:
     """Descriptions from a LiteLLM gateway's /model/info; {} on any failure."""
 
+    return (await litellm_model_info(base_url, api_key)).descriptions
+
+
+async def litellm_model_info(base_url: str, api_key: str | None) -> ModelInfo:
+    """A LiteLLM gateway's /model/info; empty on any failure."""
+
     cache_key = (base_url, _key_fingerprint(api_key))
     cached = _cache.get(cache_key)
     now = time.monotonic()
@@ -101,22 +143,31 @@ async def litellm_model_descriptions(base_url: str, api_key: str | None) -> dict
                 response = await client.get(
                     f"{base_url.rstrip('/')}/model/info", headers=headers
                 )
-        descriptions = (
-            _parse_model_info(response.json()) if response.status_code == 200 else {}
+        info = (
+            _parse_model_info(response.json())
+            if response.status_code == 200
+            else ModelInfo({}, {})
         )
-    except Exception as exc:  # noqa: BLE001 - descriptions are optional
+    except Exception as exc:  # noqa: BLE001 - model info is optional
         # The type only: a message could carry the URL or a key.
         logger.info("Model descriptions unavailable (%s)", type(exc).__name__)
-        descriptions = {}
-    ttl = MODEL_INFO_CACHE_SECONDS if descriptions else MODEL_INFO_RETRY_SECONDS
-    _cache[cache_key] = (now + ttl, descriptions)
-    return descriptions
+        info = ModelInfo({}, {})
+    found = info.descriptions or info.modes
+    ttl = MODEL_INFO_CACHE_SECONDS if found else MODEL_INFO_RETRY_SECONDS
+    _cache[cache_key] = (now + ttl, info)
+    return info
 
 
 __all__ = [
+    "CHAT_MODES",
     "DESCRIPTION_MAX_CHARS",
+    "EMBEDDING_MODE",
+    "ModelInfo",
     "ModelOption",
     "clear_model_info_cache",
+    "is_chat_model",
     "litellm_model_descriptions",
+    "litellm_model_info",
+    "model_mode",
     "sanitize_description",
 ]

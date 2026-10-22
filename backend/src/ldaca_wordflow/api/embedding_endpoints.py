@@ -14,6 +14,8 @@ from ..models.embedding_endpoints import (
     EmbeddingEndpointCheck,
     EmbeddingEndpointCreate,
     EmbeddingEndpointList,
+    EmbeddingEndpointModels,
+    EmbeddingEndpointModelsRequest,
     EmbeddingEndpointResource,
     EmbeddingEndpointUpdate,
 )
@@ -76,6 +78,21 @@ async def delete_embedding_endpoint(
 ) -> Response:
     await runtime.provider_credential_store.delete_embedding_endpoint(endpoint_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/models",
+    response_model=EmbeddingEndpointModels,
+    responses=api_errors(403, 404, 422, 500),
+)
+async def list_embedding_endpoint_models(
+    request: EmbeddingEndpointModelsRequest,
+    _principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> EmbeddingEndpointModels:
+    """List a server's models before it is saved, with the typed (or saved) key."""
+
+    return await runtime.provider_credential_store.list_embedding_endpoint_models(request)
 
 
 @router.post(

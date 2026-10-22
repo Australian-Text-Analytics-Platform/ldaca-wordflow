@@ -18,7 +18,9 @@ from .annotation_adapter import (
 )
 from .model_descriptions import (
     ModelOption,
-    litellm_model_descriptions,
+    is_chat_model,
+    litellm_model_info,
+    model_mode,
     sanitize_description,
 )
 
@@ -165,7 +167,11 @@ class OpenAIAnnotationAdapter:
         return choice.message.content or ""
 
     async def _listed_models(self, api_key: str | None) -> list[ModelOption]:
-        """The /models list, sorted, with any description field it carries."""
+        """The /models list, sorted, with any description field it carries.
+
+        Models the list marks as another kind (an embedding or OCR model on a
+        LiteLLM gateway) are left out: they can't answer a chat request.
+        """
 
         from openai import AsyncOpenAI
 
@@ -181,6 +187,8 @@ class OpenAIAnnotationAdapter:
                     if isinstance(model.id, str) and model.id:
                         # OpenRouter-style lists add a description field.
                         extra = getattr(model, "model_extra", None) or {}
+                        if not is_chat_model(model_mode(extra.get("mode"))):
+                            continue
                         options[model.id] = options.get(model.id) or sanitize_description(
                             extra.get("description")
                         )
@@ -203,11 +211,12 @@ class OpenAIAnnotationAdapter:
         # beyond its own cap and never fails the list.
         listed, info = await asyncio.gather(
             self._listed_models(api_key),
-            litellm_model_descriptions(self.base_url, api_key),
+            litellm_model_info(self.base_url, api_key),
         )
         return [
-            ModelOption(option.id, option.description or info.get(option.id))
+            ModelOption(option.id, option.description or info.descriptions.get(option.id))
             for option in listed
+            if is_chat_model(info.modes.get(option.id))
         ]
 
 

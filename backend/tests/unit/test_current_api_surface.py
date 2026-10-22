@@ -40,6 +40,7 @@ EXPECTED_OPERATIONS = {
     ("PATCH", "/api/embedding-endpoints/{endpoint_id}", "update_embedding_endpoint"),
     ("DELETE", "/api/embedding-endpoints/{endpoint_id}", "delete_embedding_endpoint"),
     ("POST", "/api/embedding-endpoints/{endpoint_id}/check", "check_embedding_endpoint"),
+    ("POST", "/api/embedding-endpoints/models", "list_embedding_endpoint_models"),
     ("GET", "/api/provider-credentials", "get_provider_credentials"),
     ("PATCH", "/api/provider-credentials", "update_data_portal_credential"),
     ("DELETE", "/api/provider-credentials", "clear_provider_credentials"),
