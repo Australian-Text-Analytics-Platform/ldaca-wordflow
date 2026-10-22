@@ -1,8 +1,15 @@
 # Hosted Deployment Runbook
 
-This runbook covers running Wordflow as a hosted, multi-user service from a
-checkout behind an HTTPS reverse proxy. Replace hostnames, paths, and release
-refs with the deployment's actual values.
+This runbook is the entry point for running Wordflow as a hosted, multi-user
+service. It covers a checkout behind an HTTPS reverse proxy; replace
+hostnames, paths, and release refs with the deployment's actual values.
+
+Related runbooks:
+
+- [Server image](server-image.md): run the same service from a container image
+  instead of a checkout.
+- [Server AI providers](server-ai-providers.md): offer the server's own LLMs
+  for AI annotation, so people don't need their own keys.
 
 ## Prepare The Checkout
 
@@ -39,16 +46,16 @@ CORS_ALLOWED_ORIGINS=["https://analytics.ldaca.edu.au"]
 SESSION_COOKIE_SECURE=true
 ```
 
-plus the settings of at least one sign-in method below. Start-up stops and
-names the problem when the sign-in configuration is missing or incomplete. All
-settings are listed in
+plus the settings of exactly one sign-in method below. Start-up stops and
+names the setting when the sign-in configuration is incomplete or mixes the
+proxy with another method. All settings are listed in
 [Backend settings](../reference/backend-settings.md).
 
 ### Sign-in
 
 Wordflow can sign people in two ways. Both end in the same Wordflow
-session, so CSRF and Origin checks, event streams and Projects work the same
-with each.
+session, so CSRF and Origin checks, event streams, Projects and server AI
+providers work the same with each.
 
 | Method | Wordflow's role | Needs | Choose it when |
 |---|---|---|---|
@@ -75,13 +82,15 @@ is needed.
 #### OIDC: CILogon and AAF
 
 ```ini
-CILOGON_CLIENT_ID=<registered-client-id>
-CILOGON_ISSUER=https://cilogon.aaf.edu.au
-CILOGON_REDIRECT_URI=https://analytics.ldaca.edu.au/api/auth/cilogon/callback
+OIDC_CLIENT_ID=<registered-client-id>
+OIDC_ISSUER=https://cilogon.aaf.edu.au
+OIDC_REDIRECT_URI=https://analytics.ldaca.edu.au/api/auth/cilogon/callback
 ```
 
-The secret file supplies only `CILOGON_CLIENT_SECRET`. See
-[CILogon secrets](cilogon-secrets.md). The sign-in button reads "Sign in with
+The secret file supplies only `OIDC_CLIENT_SECRET`. See
+[OIDC client secrets](cilogon-secrets.md). Before 0.7.16 these settings were
+named `CILOGON_*`; existing servers keep working with those names, and the
+`OIDC_*` name wins when both are set. The sign-in button reads "Sign in with
 SSO" for every OIDC provider (issue 405).
 
 #### OIDC: other providers (Keycloak)
@@ -92,14 +101,14 @@ provider's exact issuer, including any path, and the scopes it defines. For
 example, a client registered in a Keycloak realm:
 
 ```ini
-CILOGON_ISSUER=https://sso.example.edu.au/auth/realms/<realm>
-CILOGON_CLIENT_ID=<client registered in that realm>
-CILOGON_REDIRECT_URI=https://<host>/api/auth/cilogon/callback
-CILOGON_SCOPES=["openid","email","profile"]
+OIDC_ISSUER=https://sso.example.edu.au/auth/realms/<realm>
+OIDC_CLIENT_ID=<client registered in that realm>
+OIDC_REDIRECT_URI=https://<host>/api/auth/cilogon/callback
+OIDC_SCOPES=["openid","email","profile"]
 ```
 
-`CILOGON_CLIENT_SECRET` goes in the secret file as above. Keycloak doesn't
-define `org.cilogon.userinfo`, so leave it out of `CILOGON_SCOPES`. This needs
+`OIDC_CLIENT_SECRET` goes in the secret file as above. Keycloak doesn't
+define `org.cilogon.userinfo`, so leave it out of `OIDC_SCOPES`. This needs
 a client registered by the realm's administrators: confidential (with a
 secret), the standard (authorization code) flow, and exactly the redirect URI
 above.
@@ -126,9 +135,14 @@ it.
 
 ## Provider Credentials
 
+A deployment can also offer its own LLMs for AI annotation, with keys kept on
+the server; see [Server AI providers](server-ai-providers.md). Those keys go in
+the service secret file, and people use those providers without entering
+anything. Everything below is about people's own credentials.
+
 Do not place users' Annotation or Data Portal credentials in the service
 environment or backend Data Root. In multi-user mode, each user enters personal
-credentials under **Settings → AI** or **Settings → Portal**. Wordflow
+credentials under **Settings → Servers** or **Settings → Portal**. Wordflow
 stores the ordered, named Annotation configuration collection and its secrets
 only in that browser's `wordflow-provider-credentials` version 2 localStorage
 entry, partitioned by authenticated user ID, and sends the selected secret

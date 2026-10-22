@@ -16,6 +16,7 @@ import anyio
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from pydantic import ValidationError
 
+from .. import server_ai
 from ..analysis.result_integrity import validate_analysis_result_integrity
 from ..domain.workspace.tab import MAX_ANNOTATION_PREVIEW_LABELS
 from ..domain.workspace import (
@@ -36,6 +37,7 @@ from ..domain.workspace import (
     ConcordanceMatchDataBlockCreationAnalysisRequest,
     ConcordanceRunAllAnalysisRequest,
     AnalysisResource,
+    TopicModelingAnalysisRequest,
     UnavailableAnalysis,
     Failure,
     InvalidAnalysisIntegrity,
@@ -74,6 +76,7 @@ from ..shared.errors import (
     TabNotFoundError,
 )
 from ..shared.json_data import JsonData
+from ..shared.remote_embedding import encode_embedding_run
 from .analysis_execution_types import (
     AnalysisExecutionControl,
     AnalysisExecutionKey,
@@ -288,6 +291,24 @@ class AnalysisService:
             if annotation_request is not None
             else None
         )
+        # A server AI provider's credential is bound to this signed-in user;
+        # a Run that waits for the person's previous one says so in Tasks.
+        credential = await server_ai.bind_credential(
+            credential,
+            user_id,
+            "run" if isinstance(request, AnnotationRunAllAnalysisRequest) else "preview",
+        )
+        if (
+            isinstance(request, TopicModelingAnalysisRequest)
+            and request.embedding_endpoint_id is not None
+        ):
+            # Where this run embeds: a server's endpoint (its key stays in the
+            # environment) or one added in Settings. Resolved now, so a missing
+            # endpoint fails the submit rather than the run.
+            credential = encode_embedding_run(
+                await self._credentials.resolve_embedding_endpoint(request, user_id)
+            )
+        server_ai_waiting = server_ai.queued_progress(credential, user_id)
         timestamp = self._clock()
         records_to_schedule: list[AnalysisRecord] = []
         is_concordance_group = (
@@ -451,6 +472,8 @@ class AnalysisService:
                 records_to_schedule.append(record)
             tab.modified_at = timestamp
             tab.revision += 1
+            if server_ai_waiting is not None:
+                self._live_progress[(workspace_id, record.id)] = server_ai_waiting
             resource = self._project(lease, record)
 
         try:
@@ -921,6 +944,8 @@ class AnalysisService:
                     await reserve_launch(key)
                     reserved = True
                     lease.workspace.replace_analysis(record.start(self._clock()))
+                    # Drops a server AI provider's "Waiting for your previous … run".
+                    self._live_progress.pop((key.workspace_id, key.analysis_id), None)
                 except Exception as exc:
                     failure = failure_from_exception(exc, code="analysis_start_failed")
                     if not isinstance(exc, AppError):

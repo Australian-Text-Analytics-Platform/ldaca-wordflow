@@ -17,11 +17,15 @@ from __future__ import annotations
 import logging
 import math
 import os
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from typing import Any, cast
 
 import polars as pl
 
 from ..analysis.topic_projection import normalize_projected_topics
+from ..shared.remote_embedding import RemoteEmbeddingRun
 from .topic_types import _SampledTopicCorpora
 
 logger = logging.getLogger(__name__)
@@ -179,6 +183,47 @@ def _resolve_vectorizer_model(docs: list[str], *, sample_limit: int = 200) -> st
     return _LINDERA_ZH_VECTORIZER
 
 
+@contextmanager
+def remote_embedding_options(
+    remote: RemoteEmbeddingRun | None,
+) -> Iterator[dict[str, Any]]:
+    """polars-text options for a remote embedding endpoint; empty embeds locally.
+
+    A desktop endpoint's key is written to a private (0600) temporary file for
+    the length of the run and removed after: polars-text reads keys only from
+    a file or an environment variable, so the key never enters the Polars plan.
+    A server endpoint's key stays in the environment this worker inherited.
+    """
+
+    if remote is None:
+        yield {}
+        return
+    options: dict[str, Any] = {
+        "embedding_endpoint": remote.endpoint,
+        "embedding_remote_model": remote.served_model,
+    }
+    if remote.user:
+        options["embedding_user"] = remote.user
+    if remote.batch_size is not None:
+        options["embedding_batch_size"] = remote.batch_size
+    if remote.concurrency is not None:
+        options["embedding_concurrency"] = remote.concurrency
+    if remote.api_key_env is not None:
+        options["embedding_api_key_env"] = remote.api_key_env
+    if remote.api_key is None:
+        yield options
+        return
+    descriptor, path = tempfile.mkstemp(prefix="wordflow-embedding-key-", suffix=".txt")
+    try:
+        # mkstemp creates the file readable and writable by this user only.
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(remote.api_key)
+        yield {**options, "embedding_api_key_file": path}
+    finally:
+        with suppress(OSError):
+            os.remove(path)
+
+
 def _run_rust_topic_modeling(
     *,
     all_docs: list[str],
@@ -192,6 +237,7 @@ def _run_rust_topic_modeling(
     embedding_cache: str | os.PathLike[str] | None = None,
     cluster_sample_size: int | None = None,
     progress_path: str | None = None,
+    remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict:
     """Run the scalar Rust topic-modeling expression and validate its payload.
 
@@ -216,21 +262,23 @@ def _run_rust_topic_modeling(
         optional_kwargs["max_topic_size"] = int(max_cluster_size)
     if cluster_sample_size is not None:
         optional_kwargs["cluster_sample_size"] = int(cluster_sample_size)
-    result_frame = pl.DataFrame({"__doc__": all_docs}).select(
-        cast(Any, pl.col("__doc__"))
-        .text.topic_modeling(
-            embedding_model=embedder_model,
-            embedding_cache=embedding_cache,
-            segmentation=segmentation_method,
-            max_tokens=max_segment_tokens,
-            seed=int(seed),
-            min_topic_size=int(min_cluster_size),
-            tokenizer_model=vectorizer_model,
-            lowercase=True,
-            **optional_kwargs,
+    with remote_embedding_options(remote_embedding) as remote_kwargs:
+        result_frame = pl.DataFrame({"__doc__": all_docs}).select(
+            cast(Any, pl.col("__doc__"))
+            .text.topic_modeling(
+                embedding_model=embedder_model,
+                embedding_cache=embedding_cache,
+                segmentation=segmentation_method,
+                max_tokens=max_segment_tokens,
+                seed=int(seed),
+                min_topic_size=int(min_cluster_size),
+                tokenizer_model=vectorizer_model,
+                lowercase=True,
+                **optional_kwargs,
+                **remote_kwargs,
+            )
+            .alias("__topic__")
         )
-        .alias("__topic__")
-    )
     if result_frame.height != 1:
         raise ValueError("Topic modeling native result must contain exactly one run")
     raw_result = result_frame["__topic__"][0]

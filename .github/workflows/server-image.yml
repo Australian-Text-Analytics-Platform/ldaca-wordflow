@@ -1,0 +1,165 @@
+name: Server image
+
+# Builds the LDaCA Wordflow server image (deploy/docker/Dockerfile) for
+# linux/amd64 from the chosen ref and pushes it to GHCR (issue 411).
+# Manual dispatch only: it never runs on push and is not part of a release.
+# See docs/runbooks/server-image.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      local_version:
+        description: "Optional label added to the version, e.g. site.3 gives 0.7.15+site.3"
+        required: false
+        type: string
+        default: ""
+      image:
+        description: "Image name"
+        required: false
+        type: string
+        default: ghcr.io/australian-text-analytics-platform/ldaca-wordflow-server
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: server-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  image:
+    name: Build and push the server image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the inputs
+        shell: bash
+        env:
+          LOCAL_VERSION: ${{ inputs.local_version }}
+          IMAGE: ${{ inputs.image }}
+        run: |
+          set -Eeuo pipefail
+          if [ -n "$LOCAL_VERSION" ] && ! [[ "$LOCAL_VERSION" =~ ^[a-z0-9]+(\.[a-z0-9]+)*$ ]]; then
+            echo "::error::local_version uses lower-case letters, digits and dots, e.g. site.3"
+            exit 1
+          fi
+          if ! [[ "$IMAGE" =~ ^ghcr\.io/[a-z0-9._/-]+$ ]]; then
+            echo "::error::image must be a lower-case ghcr.io name"
+            exit 1
+          fi
+
+      - name: Check out repository with source dependencies
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Build and stage frontend
+        run: pnpm deploy_frontend_to_backend
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version: "3.14"
+          enable-cache: true
+          cache-python: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Mark the version
+        id: version
+        shell: bash
+        env:
+          LOCAL_VERSION: ${{ inputs.local_version }}
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          import pathlib
+          import re
+
+          path = pathlib.Path("backend/pyproject.toml")
+          text = path.read_text()
+          match = re.search(r'^version = "([^"+]+)"$', text, flags=re.MULTILINE)
+          if match is None:
+              raise SystemExit("backend/pyproject.toml has no plain version")
+          version = match.group(1)
+          label = os.environ.get("LOCAL_VERSION", "")
+          if label:
+              version = f"{version}+{label}"
+              path.write_text(text.replace(match.group(0), f'version = "{version}"', 1))
+          print(f"python={version}")
+          print(f"image={version.replace('+', '-')}")
+          PY
+
+      - name: Build the wheel
+        working-directory: backend
+        run: uv build --no-sources --wheel --out-dir ../dist
+
+      - name: Check the wheel
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          wheel=$(ls dist/*.whl)
+          # List once, then search: grep -q on a pipe makes zipfile hit a
+          # broken pipe, which fails the step under pipefail.
+          listing=$(python -m zipfile -l "$wheel")
+          grep -q "ldaca_wordflow/server_ai/adapter.py" <<<"$listing"
+          grep -q "ldaca_wordflow/resources/frontend/build/index.html" <<<"$listing"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ inputs.image }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.image }}
+            type=sha,format=long
+          labels: |
+            org.opencontainers.image.title=LDaCA Wordflow server
+            org.opencontainers.image.version=${{ steps.version.outputs.python }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Summary
+        shell: bash
+        env:
+          IMAGE: ${{ inputs.image }}
+          PYTHON_VERSION: ${{ steps.version.outputs.python }}
+          IMAGE_TAG: ${{ steps.version.outputs.image }}
+        run: |
+          {
+            echo "### Server image"
+            echo ""
+            echo "- Version: \`$PYTHON_VERSION\`"
+            echo "- Image: \`$IMAGE:$IMAGE_TAG\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -15,6 +15,10 @@ import type {
 } from '@/api';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import {
+  useServerAiProviders,
+  withServerAiProviders,
+} from '@/features/server-ai-providers/serverAiProviders';
+import {
   normalizeCustomProviderBaseUrl,
   type AnnotationProviderConfigurationInput,
   type AnnotationProviderConfigurationUpdateInput,
@@ -48,6 +52,7 @@ export const useProviderCredentials = () => {
   const { isAuthenticated, isMultiUserMode, user } = useAuth();
   const queryClient = useQueryClient();
   const localPresence = useBrowserProviderCredentialPresence(user?.id);
+  const serverAiProviders = useServerAiProviders();
   const statusQuery = useQuery({
     queryKey: queryKeys.providerCredentials,
     queryFn: async () => (await getProviderCredentials({ throwOnError: true })).data,
@@ -209,9 +214,14 @@ export const useProviderCredentials = () => {
     }
   };
 
-  const annotationProviders = isMultiUserMode
-    ? localPresence.annotationProviders
-    : (statusQuery.data?.annotation_providers ?? []).map(configurationView);
+  // The server's own AI providers come first (issue 411).
+  const annotationProviders = withServerAiProviders(
+    serverAiProviders,
+    isMultiUserMode
+      ? localPresence.annotationProviders
+      : (statusQuery.data?.annotation_providers ?? []).map(configurationView),
+    configurationView,
+  );
   const dataPortalUserConfigured = isMultiUserMode
     ? localPresence.dataPortal
     : (statusQuery.data?.data_portal.user_configured ?? false);

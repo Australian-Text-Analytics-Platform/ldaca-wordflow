@@ -314,6 +314,10 @@ vi.mock('../hooks/useAnnotationAiPreview', () => ({
 }));
 
 import AnnotationFeature from '../AnnotationFeature';
+import {
+  projectAiModelsKey,
+  useAnalysisTabsPresentationStore,
+} from '@/features/views/common/tabs/analysisTabsPresentationStore';
 
 const runAllAnalysis = (state: 'succeeded' | 'failed', message?: string): Analysis =>
   ({
@@ -488,6 +492,55 @@ describe('AnnotationFeature', () => {
     await user.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
     expect(mocks.submitRunAll.mock.calls[0]?.[0].source).toEqual(previewRequest);
+  });
+
+  it("starts a new tab with the Project's last model for the provider, and a run records it", async () => {
+    const user = userEvent.setup();
+    mocks.classSelected = true;
+    mocks.classRows = [{ class: 'support', description: 'Supports the claim' }];
+    mocks.providerConfigurations = [
+      { id: 'provider-1', name: 'OpenAI', provider: 'openai', base_url: null, has_api_key: true },
+    ];
+    mocks.sourceColumnNames = ['text', 'annotation'];
+    const projectKey = projectAiModelsKey(null, 'workspace-1');
+    useAnalysisTabsPresentationStore.setState({
+      projectAiModels: { [projectKey]: { 'provider-1': 'model-used-before' } },
+    });
+
+    render(
+      <AnnotationFeature
+        host={{
+          tabId: 'tab-2',
+          analyses: [],
+          latestPreview: null,
+          latestRunAll: null,
+          activeAnalysis: null,
+          inputSets: {},
+          // A new tab: no provider or model chosen yet.
+          settings: annotationSettings({
+            annotationMode: 'ai',
+            annotationTargets: { 'source-1': 'annotation' },
+          }),
+          correctionColumns: {},
+          setInputSet: mocks.setInputSet,
+          setSetting: mocks.setSetting,
+          setCorrectionColumn: vi.fn(),
+          clearCorrectionColumns: vi.fn(),
+          refreshAnalyses: vi.fn(),
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await waitFor(() => expect(mocks.submitPreview).toHaveBeenCalledOnce());
+    expect(mocks.submitPreview.mock.calls[0]?.[0].request).toMatchObject({
+      provider_configuration_id: 'provider-1',
+      model: 'model-used-before',
+    });
+    expect(useAnalysisTabsPresentationStore.getState().projectAiModels[projectKey]).toEqual({
+      'provider-1': 'model-used-before',
+    });
+    useAnalysisTabsPresentationStore.setState({ projectAiModels: {} });
   });
 
   it('persists manual text-column choices for source and example Data Blocks', async () => {

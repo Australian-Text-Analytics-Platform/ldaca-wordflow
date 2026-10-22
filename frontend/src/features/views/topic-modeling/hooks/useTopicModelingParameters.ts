@@ -71,6 +71,12 @@ export interface UseTopicModelingParametersResult {
   embeddingModelReason: CjkTokenizerSource | null;
   /** A selected Data Block's Chinese, Japanese or Korean tokeniser, chosen or not. */
   cjkTokenizer: CjkTokenizerSource | null;
+  /** Remote GPU as chosen; `null` until someone or a saved run decides. */
+  remoteEmbedding: boolean | null;
+  setRemoteEmbedding: (value: boolean) => void;
+  /** The chosen embedding endpoint; `null` takes the first that fits. */
+  embeddingEndpointId: string | null;
+  setEmbeddingEndpointId: (value: string) => void;
   /** Topic sampling, off by default. */
   clusterSample: boolean;
   setClusterSample: (value: boolean) => void;
@@ -121,6 +127,8 @@ export function useTopicModelingParameters({
     segmentationMethod,
     maxSegmentTokens: maxSegmentTokensAsSet,
     embeddingModel: chosenEmbeddingModel,
+    remoteEmbedding,
+    embeddingEndpointId,
     clusterSample,
     clusterSampleSize,
   } = parameterState;
@@ -183,6 +191,14 @@ export function useTopicModelingParameters({
     dispatchParameters({ type: 'setEmbeddingModel', value });
   };
 
+  const setRemoteEmbedding = (value: boolean) => {
+    dispatchParameters({ type: 'setRemoteEmbedding', value });
+  };
+
+  const setEmbeddingEndpointId = (value: string) => {
+    dispatchParameters({ type: 'setEmbeddingEndpointId', value });
+  };
+
   const setClusterSample = (value: boolean) => {
     dispatchParameters({ type: 'setClusterSample', value });
   };
@@ -224,6 +240,10 @@ export function useTopicModelingParameters({
     setEmbeddingModel,
     embeddingModelReason,
     cjkTokenizer,
+    remoteEmbedding,
+    setRemoteEmbedding,
+    embeddingEndpointId,
+    setEmbeddingEndpointId,
     clusterSample,
     setClusterSample,
     clusterSampleSize,

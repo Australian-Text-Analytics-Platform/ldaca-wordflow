@@ -17,6 +17,7 @@ export const NUDGE_TARGETS = {
   topicClusterSample: 'topic-cluster-sample',
   topicEmbeddingModel: 'topic-embedding-model',
   topicMaxSegmentTokens: 'topic-max-segment-tokens',
+  topicRemoteGpu: 'topic-remote-gpu',
   tokenizer: 'tokenizer-model',
   exportFormat: 'export-format',
 } as const;

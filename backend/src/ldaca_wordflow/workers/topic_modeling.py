@@ -26,6 +26,7 @@ import uuid
 from pathlib import Path
 from typing import Any, cast
 
+from ..shared.remote_embedding import RemoteEmbeddingRun
 from ..analysis.topic_inclusion import topic_inclusion_descriptor
 from ..analysis.topic_projection import (
     TopicNodeInfo,
@@ -641,6 +642,7 @@ def _compute_topic_payload(
     max_segment_tokens: int,
     cluster_sample_size: int | None = None,
     embedding_model: str | None = None,
+    remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict[str, Any]:
     """Run the full topic-modeling pipeline: sample, run Rust, build the payload.
 
@@ -686,6 +688,7 @@ def _compute_topic_payload(
             vectorizer_model=vectorizer_model,
             embedder_model=embedder_model,
             embedding_cache=embedding_cache_path,
+            remote_embedding=remote_embedding,
             segmentation_method=segmentation_method,
             max_segment_tokens=max_segment_tokens,
             cluster_sample_size=cluster_sample_size,
@@ -776,6 +779,7 @@ def _compute_topic_modeling(
     sample_fractions: list[float | None] | None = None,
     cluster_sample_size: int | None = None,
     embedding_model: str | None = None,
+    remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict[str, Any]:
     """Execute topic modeling in a worker process.
 
@@ -828,6 +832,7 @@ def _compute_topic_modeling(
             max_segment_tokens=max_segment_tokens,
             cluster_sample_size=cluster_sample_size,
             embedding_model=embedding_model,
+            remote_embedding=remote_embedding,
         )
 
         if progress_callback:
@@ -868,6 +873,7 @@ def run_topic_modeling_analysis(
     max_cluster_size: int | None = None,
     cluster_sample_size: int | None = None,
     embedding_model: str | None = None,
+    remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict[str, Any]:
     """Run the canonical snapshot-only topic-modeling process contract."""
 
@@ -892,4 +898,5 @@ def run_topic_modeling_analysis(
         cluster_sample_size=cluster_sample_size,
         embedding_cache_path=embedding_cache_path,
         embedding_model=embedding_model,
+        remote_embedding=remote_embedding,
     )

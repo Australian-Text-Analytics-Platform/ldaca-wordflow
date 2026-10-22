@@ -17,6 +17,12 @@ proof, except provider callbacks with their own one-use validation.
 | `GET /api/auth/cilogon/login` | `cilogon_login` | 302 | Public CILogon authorization redirect |
 | `GET /api/auth/cilogon/callback` | `cilogon_callback` | 303 | Public CILogon OIDC callback |
 | `POST /api/annotation-providers/models` | `list_annotation_models` | 200 | Attempt model discovery for one safe provider-configuration snapshot and optional write-only request key; returns `models` and `model_descriptions` |
+| `GET /api/server-ai-providers` | `list_server_ai_providers` | 200 | List the deployment's server AI providers as safe, key-free configurations |
+| `GET /api/embedding-endpoints` | `list_embedding_endpoints` | 200 | List the server's embedding endpoints and, on a desktop, the ones added in Settings; never a key |
+| `POST /api/embedding-endpoints` | `create_embedding_endpoint` | 201 | Desktop only: add an endpoint (name, base URL, optional write-only key, served model names) |
+| `PATCH /api/embedding-endpoints/{endpoint_id}` | `update_embedding_endpoint` | 200 | Desktop only: change an endpoint; `api_key: null` removes its key |
+| `DELETE /api/embedding-endpoints/{endpoint_id}` | `delete_embedding_endpoint` | 204 | Desktop only: remove an endpoint |
+| `POST /api/embedding-endpoints/{endpoint_id}/check` | `check_embedding_endpoint` | 200 | List the endpoint's models and embed one sentence with each Topic Modelling model it is set up for |
 | `GET /api/preferences` | `get_preferences` | 200 | Read synchronized non-secret current-principal preferences |
 | `PATCH /api/preferences` | `update_preferences` | 200 | Partially update synchronized current-principal preferences |
 | `GET /api/provider-credentials` | `get_provider_credentials` | 200 | Read safe provider-configuration metadata and Data Portal status without returning secrets |
@@ -50,7 +56,9 @@ write is single-user-only; multi-user attempts return `403 access_denied`.
 Annotation model discovery and root Analysis submission bodies accept an
 immutable safe snapshot: `provider_configuration_id`, provider type, and an
 optional normalized Custom base URL. They also accept an optional write-only
-`api_key`. Single-user mode rejects request keys, verifies the snapshot against
+`api_key`. A snapshot whose ID is a server AI provider's is resolved on the
+server in both modes, and any request key for it returns
+`400 invalid_input`. Single-user mode rejects request keys, verifies the snapshot against
 the root credential file, and resolves the stored key. Multi-user mode requires
 a request key for built-ins; Custom configurations may be keyless. A missing
 required credential returns `409 provider_credential_missing`. The key is
@@ -66,9 +74,34 @@ Custom bases must be absolute HTTP(S) URLs with a host and no user information,
 query, or fragment. Public, private, loopback, `localhost`, and `127.0.0.1`
 destinations are deliberately accepted for trusted authenticated users.
 
+`GET /api/server-ai-providers` returns `providers`, in the configured order.
+Each has a `configuration` (`id`, `name`, `provider: custom`, the placeholder
+`base_url` `https://<slug>.server-ai.invalid/v1`, and `has_api_key: true`),
+`default_model`, and `max_requests_per_user` (null when the Run's own
+**Requests at once** applies). The list is empty without
+`SERVER_AI_PROVIDERS_FILE`. A Run or Preview on such a provider while the same
+person's previous Run on it is still active returns `409 server_ai_run_active`
+when the provider limits requests per person. A snapshot carrying the
+placeholder of a provider this server doesn't offer returns
+`409 provider_credential_missing`. See
+[Server AI providers](../runbooks/server-ai-providers.md).
+
+`GET /api/embedding-endpoints` returns `storage` (`backend` on a desktop, where
+people add endpoints; `server` on a shared server, which lists only its own)
+and `endpoints`: `id`, `name`, `base_url` (a placeholder for a server's
+endpoint), `source` (`server` or `user`), `has_api_key`, `models` (Topic
+Modelling model to served name) and `default`. Desktop endpoints are kept in
+the single user's private `embedding-endpoints.toml`, apart from Annotation's
+credentials. `TopicModelingAnalysisRequest.embedding_endpoint_id` names the
+endpoint a run embeds on (left out of saved Projects when local); on submit the
+backend resolves it and refuses a missing endpoint or a model it doesn't serve
+(`409 provider_credential_missing`, `400`). See
+[Server AI providers](../runbooks/server-ai-providers.md#embedding-endpoints-for-topic-modelling).
+
 `model_descriptions` maps a model ID to one plain-text line (at most 200
 characters) for the models the provider describes; models without one are
 absent.
+
 
 Model-list and Preview provider failures return HTTP 502 with the deepest
 provider exception type and complete message plus one of `annotation_provider_authentication_failed`,

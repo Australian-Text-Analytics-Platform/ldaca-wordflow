@@ -139,7 +139,7 @@ export function AnnotationAiSettings({
             />
             {selectedNeedsKey ? (
               <p className="text-label-secondary text-error">
-                Add an API key in Settings → AI before listing models or running Annotation.
+                Add an API key in Settings → Servers before listing models or running Annotation.
               </p>
             ) : null}
           </div>

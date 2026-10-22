@@ -5,6 +5,35 @@ export type ClientOptions = {
 };
 
 /**
+ * AiDefaultModelUpdate
+ *
+ * Set one provider's default model, or remove it with null.
+ */
+export type AiDefaultModelUpdate = {
+    /**
+     * Model
+     */
+    model: string | null;
+};
+
+/**
+ * AiDefaultModels
+ *
+ * Default model per Annotation provider configuration (id to model name).
+ *
+ * Not secret. A new Annotation tab starts with a provider's default; a model
+ * chosen in the tab is kept with the tab.
+ */
+export type AiDefaultModels = {
+    /**
+     * Models
+     */
+    models?: {
+        [key: string]: string;
+    };
+};
+
+/**
  * Analysis
  *
  * Exact valid public Analysis representation.
@@ -3089,6 +3118,135 @@ export type DuplicateColumnNodeEditRequest = {
 };
 
 /**
+ * EmbeddingEndpointCheck
+ *
+ * What a check of an endpoint found; ``message`` explains a failure.
+ */
+export type EmbeddingEndpointCheck = {
+    /**
+     * Available
+     */
+    available: {
+        [key in TopicEmbeddingModel]?: boolean;
+    };
+    /**
+     * Message
+     */
+    message: string | null;
+    /**
+     * Reachable
+     */
+    reachable: boolean;
+    /**
+     * Served Models
+     */
+    served_models: Array<string>;
+};
+
+/**
+ * EmbeddingEndpointCreate
+ */
+export type EmbeddingEndpointCreate = {
+    /**
+     * Api Key
+     */
+    api_key?: null;
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Models
+     */
+    models?: {
+        [key in TopicEmbeddingModel]?: string;
+    } | null;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * EmbeddingEndpointList
+ */
+export type EmbeddingEndpointList = {
+    /**
+     * Endpoints
+     */
+    endpoints: Array<EmbeddingEndpointResource>;
+    /**
+     * Storage
+     */
+    storage: 'backend' | 'server';
+};
+
+/**
+ * EmbeddingEndpointResource
+ *
+ * An endpoint as the browser sees it: never a key, and for a server's
+ * endpoint a placeholder instead of its real address.
+ */
+export type EmbeddingEndpointResource = {
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Default
+     */
+    default: boolean;
+    /**
+     * Has Api Key
+     */
+    has_api_key: boolean;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Models
+     */
+    models: {
+        [key in TopicEmbeddingModel]?: string;
+    };
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Source
+     */
+    source: 'server' | 'user';
+};
+
+/**
+ * EmbeddingEndpointUpdate
+ *
+ * A partial update; ``api_key: null`` removes the key.
+ */
+export type EmbeddingEndpointUpdate = {
+    /**
+     * Api Key
+     */
+    api_key?: null;
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Models
+     */
+    models?: {
+        [key in TopicEmbeddingModel]?: string;
+    } | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
+/**
  * ExpressionDerivation
  */
 export type ExpressionDerivation = {
@@ -4875,6 +5033,59 @@ export type SequentialTabUpdate = {
 };
 
 /**
+ * ServerAiProviderConfiguration
+ *
+ * Shaped like a provider configuration; never holds a key or the real address.
+ */
+export type ServerAiProviderConfiguration = {
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Has Api Key
+     */
+    has_api_key: true;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Provider
+     */
+    provider: 'custom';
+};
+
+/**
+ * ServerAiProviderResource
+ */
+export type ServerAiProviderResource = {
+    configuration: ServerAiProviderConfiguration;
+    /**
+     * Default Model
+     */
+    default_model: string | null;
+    /**
+     * Max Requests Per User
+     */
+    max_requests_per_user: number | null;
+};
+
+/**
+ * ServerAiProviders
+ */
+export type ServerAiProviders = {
+    /**
+     * Providers
+     */
+    providers: Array<ServerAiProviderResource>;
+};
+
+/**
  * SessionResponse
  *
  * No-store bootstrap response for both supported deployment profiles.
@@ -5770,6 +5981,10 @@ export type TopicModelingAnalysisRequest = {
      * Cluster Sample Size
      */
     cluster_sample_size?: number | null;
+    /**
+     * Embedding Endpoint Id
+     */
+    embedding_endpoint_id?: string | null;
     embedding_model?: TopicEmbeddingModel;
     /**
      * Kind
@@ -7438,6 +7653,56 @@ export type DataPortalSearchRequestWritable = {
     query?: string;
 };
 
+/**
+ * EmbeddingEndpointCreate
+ */
+export type EmbeddingEndpointCreateWritable = {
+    /**
+     * Api Key
+     */
+    api_key?: string | null;
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Models
+     */
+    models?: {
+        [key in TopicEmbeddingModel]?: string;
+    } | null;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * EmbeddingEndpointUpdate
+ *
+ * A partial update; ``api_key: null`` removes the key.
+ */
+export type EmbeddingEndpointUpdateWritable = {
+    /**
+     * Api Key
+     */
+    api_key?: string | null;
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Models
+     */
+    models?: {
+        [key in TopicEmbeddingModel]?: string;
+    } | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
 export type FilterValueInputWritable = FilterScalar | Array<FilterScalar> | {
     [key: string]: JsonDataInputWritable;
 };
@@ -7845,6 +8110,222 @@ export type UpdateDataRootResponses = {
 
 export type UpdateDataRootResponse = UpdateDataRootResponses[keyof UpdateDataRootResponses];
 
+export type ListEmbeddingEndpointsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/embedding-endpoints';
+};
+
+export type ListEmbeddingEndpointsErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type ListEmbeddingEndpointsError = ListEmbeddingEndpointsErrors[keyof ListEmbeddingEndpointsErrors];
+
+export type ListEmbeddingEndpointsResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmbeddingEndpointList;
+};
+
+export type ListEmbeddingEndpointsResponse = ListEmbeddingEndpointsResponses[keyof ListEmbeddingEndpointsResponses];
+
+export type CreateEmbeddingEndpointData = {
+    body: EmbeddingEndpointCreateWritable;
+    path?: never;
+    query?: never;
+    url: '/api/embedding-endpoints';
+};
+
+export type CreateEmbeddingEndpointErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type CreateEmbeddingEndpointError = CreateEmbeddingEndpointErrors[keyof CreateEmbeddingEndpointErrors];
+
+export type CreateEmbeddingEndpointResponses = {
+    /**
+     * Successful Response
+     */
+    201: EmbeddingEndpointResource;
+};
+
+export type CreateEmbeddingEndpointResponse = CreateEmbeddingEndpointResponses[keyof CreateEmbeddingEndpointResponses];
+
+export type DeleteEmbeddingEndpointData = {
+    body?: never;
+    path: {
+        /**
+         * Endpoint Id
+         */
+        endpoint_id: string;
+    };
+    query?: never;
+    url: '/api/embedding-endpoints/{endpoint_id}';
+};
+
+export type DeleteEmbeddingEndpointErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type DeleteEmbeddingEndpointError = DeleteEmbeddingEndpointErrors[keyof DeleteEmbeddingEndpointErrors];
+
+export type DeleteEmbeddingEndpointResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteEmbeddingEndpointResponse = DeleteEmbeddingEndpointResponses[keyof DeleteEmbeddingEndpointResponses];
+
+export type UpdateEmbeddingEndpointData = {
+    body: EmbeddingEndpointUpdateWritable;
+    path: {
+        /**
+         * Endpoint Id
+         */
+        endpoint_id: string;
+    };
+    query?: never;
+    url: '/api/embedding-endpoints/{endpoint_id}';
+};
+
+export type UpdateEmbeddingEndpointErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type UpdateEmbeddingEndpointError = UpdateEmbeddingEndpointErrors[keyof UpdateEmbeddingEndpointErrors];
+
+export type UpdateEmbeddingEndpointResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmbeddingEndpointResource;
+};
+
+export type UpdateEmbeddingEndpointResponse = UpdateEmbeddingEndpointResponses[keyof UpdateEmbeddingEndpointResponses];
+
+export type CheckEmbeddingEndpointData = {
+    body?: never;
+    path: {
+        /**
+         * Endpoint Id
+         */
+        endpoint_id: string;
+    };
+    query?: never;
+    url: '/api/embedding-endpoints/{endpoint_id}/check';
+};
+
+export type CheckEmbeddingEndpointErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type CheckEmbeddingEndpointError = CheckEmbeddingEndpointErrors[keyof CheckEmbeddingEndpointErrors];
+
+export type CheckEmbeddingEndpointResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmbeddingEndpointCheck;
+};
+
+export type CheckEmbeddingEndpointResponse = CheckEmbeddingEndpointResponses[keyof CheckEmbeddingEndpointResponses];
+
 export type BackendEventsData = {
     body?: never;
     path?: never;
@@ -7929,6 +8410,77 @@ export type UpdatePreferencesResponses = {
 };
 
 export type UpdatePreferencesResponse = UpdatePreferencesResponses[keyof UpdatePreferencesResponses];
+
+export type GetAiDefaultModelsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/preferences/ai-default-models';
+};
+
+export type GetAiDefaultModelsErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type GetAiDefaultModelsError = GetAiDefaultModelsErrors[keyof GetAiDefaultModelsErrors];
+
+export type GetAiDefaultModelsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AiDefaultModels;
+};
+
+export type GetAiDefaultModelsResponse = GetAiDefaultModelsResponses[keyof GetAiDefaultModelsResponses];
+
+export type SetAiDefaultModelData = {
+    body: AiDefaultModelUpdate;
+    path: {
+        /**
+         * Configuration Id
+         */
+        configuration_id: string;
+    };
+    query?: never;
+    url: '/api/preferences/ai-default-models/{configuration_id}';
+};
+
+export type SetAiDefaultModelErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type SetAiDefaultModelError = SetAiDefaultModelErrors[keyof SetAiDefaultModelErrors];
+
+export type SetAiDefaultModelResponses = {
+    /**
+     * Successful Response
+     */
+    200: AiDefaultModels;
+};
+
+export type SetAiDefaultModelResponse = SetAiDefaultModelResponses[keyof SetAiDefaultModelResponses];
 
 export type ClearProviderCredentialsData = {
     body?: never;
@@ -8309,6 +8861,35 @@ export type SubmitSampleImportResponses = {
 };
 
 export type SubmitSampleImportResponse = SubmitSampleImportResponses[keyof SubmitSampleImportResponses];
+
+export type ListServerAiProvidersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/server-ai-providers';
+};
+
+export type ListServerAiProvidersErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type ListServerAiProvidersError = ListServerAiProvidersErrors[keyof ListServerAiProvidersErrors];
+
+export type ListServerAiProvidersResponses = {
+    /**
+     * Successful Response
+     */
+    200: ServerAiProviders;
+};
+
+export type ListServerAiProvidersResponse = ListServerAiProvidersResponses[keyof ListServerAiProvidersResponses];
 
 export type DeleteSessionData = {
     body?: never;

@@ -138,6 +138,34 @@ suggestion such as "Your sentences are short: 64 tokens per segment is plenty"
 offers to set it. Most segments then stay as they are, and the few longer ones
 are split into pieces of about that size. It only ever suggests a smaller cap.
 
+<h4 id="help-topic-modeling-remote-gpu">Remote GPU</h4>
+
+Reading the text into the model takes most of a first run. **Remote GPU**,
+beside **Max tokens**, has a Topic Modelling server do that part on a remote
+graphics processor, which takes seconds where this computer can take many
+minutes on a large corpus. Everything else (segments, grouping, topic words)
+still runs here, and the text read is kept for later runs as usual.
+
+- **Where the servers come from.** On a shared Wordflow server, it provides
+  them and you can see them under **Settings → Servers**, in **Topic
+  Modelling**. On the desktop app, add your own there: a name, the address
+  (ending in `/v1`), an API key if the server needs one, and the names the
+  server uses for the **English** and **Multilingual** models. **Check** lists
+  the server's models and tries each one. Wordflow picks the model a run
+  needs, so there is no default model to set. These servers are listed apart
+  from the generative AI ones Annotation uses, although one gateway can
+  provide both.
+- **When the tick is available.** Only when a server serves the selected
+  **Model**; otherwise it is greyed out and the text is read on this computer
+  (or the Wordflow server), as without one. With more than one server for the
+  model, choose which one beside the tick.
+- **If the server fails.** A run that can't reach the server, or that the
+  server refuses, stops with the server's error. It doesn't switch to
+  reading on this computer part way, because the two give very slightly
+  different results. Untick **Remote GPU** to run here instead.
+- **Saved runs** remember the server they used. The text read remotely is
+  kept apart from text read on this computer, so switching reads it again once.
+
 <h4 id="help-topic-modeling-min-cluster-size">Topic size: minimum (Min topic size)</h4>
 
 Sets the smallest number of Topic Segments a Topic can have. The default is 10

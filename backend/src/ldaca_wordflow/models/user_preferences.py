@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Literal
+import uuid
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 PREFERENCES_SCHEMA_VERSION = 2
 
@@ -57,7 +58,46 @@ class StoredUserPreferences(UserPreferences):
     schema_version: Literal[2] = Field(default=PREFERENCES_SCHEMA_VERSION, frozen=True)
 
 
+# Each Annotation provider's default model (Settings, Servers). Kept in its own
+# file, not preferences.toml: that file is strict, so a new field would make
+# 0.7.15 and earlier refuse everyone's preferences after a rollback.
+AI_DEFAULT_MODELS_SCHEMA_VERSION = 1
+MAX_AI_DEFAULT_MODELS = 200
+
+AiModelName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=300),
+]
+
+
+class AiDefaultModels(_StrictModel):
+    """Default model per Annotation provider configuration (id to model name).
+
+    Not secret. A new Annotation tab starts with a provider's default; a model
+    chosen in the tab is kept with the tab.
+    """
+
+    models: dict[uuid.UUID, AiModelName] = Field(
+        default_factory=dict, max_length=MAX_AI_DEFAULT_MODELS
+    )
+
+
+class AiDefaultModelUpdate(_StrictModel):
+    """Set one provider's default model, or remove it with null."""
+
+    model: AiModelName | None
+
+
+class StoredAiDefaultModels(AiDefaultModels):
+    schema_version: Literal[1] = Field(default=AI_DEFAULT_MODELS_SCHEMA_VERSION, frozen=True)
+
+
 __all__ = [
+    "AI_DEFAULT_MODELS_SCHEMA_VERSION",
+    "AiDefaultModelUpdate",
+    "AiDefaultModels",
+    "MAX_AI_DEFAULT_MODELS",
+    "StoredAiDefaultModels",
     "PREFERENCES_SCHEMA_VERSION",
     "StoredUserPreferences",
     "UserPreferences",

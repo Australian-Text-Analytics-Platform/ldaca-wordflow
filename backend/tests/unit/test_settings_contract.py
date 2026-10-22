@@ -108,14 +108,14 @@ def test_network_and_capacity_settings_are_bounded() -> None:
     with pytest.raises(ValidationError):
         Settings(ldaca_oni_timeout=0)
     with pytest.raises(ValidationError, match="HTTPS issuer URL"):
-        Settings(cilogon_issuer="http://issuer.example")
+        Settings(oidc_issuer="http://issuer.example")
     # An issuer may have a path, such as a Keycloak realm (issue 403).
-    assert Settings(cilogon_issuer="https://issuer.example/tenant").cilogon_issuer == (
+    assert Settings(oidc_issuer="https://issuer.example/tenant").oidc_issuer == (
         "https://issuer.example/tenant"
     )
     for malformed in ("https:", "https:///", "https://issuer.example/../tenant"):
         with pytest.raises(ValidationError, match="HTTPS issuer URL"):
-            Settings(cilogon_issuer=malformed)
+            Settings(oidc_issuer=malformed)
 
 
 def test_logging_and_cilogon_callback_paths_are_startup_validated() -> None:
@@ -130,7 +130,7 @@ def test_logging_and_cilogon_callback_paths_are_startup_validated() -> None:
         "cilogon_client_id": "client",
         "cilogon_client_secret": "cilogon-plaintext-secret",
     }
-    with pytest.raises(ValidationError, match="redirect URI is required"):
+    with pytest.raises(ValidationError, match="OIDC_REDIRECT_URI is required"):
         Settings.model_validate(provider)
     for uri in (
         "https://user:pass@wordflow.example/api/auth/cilogon/callback",

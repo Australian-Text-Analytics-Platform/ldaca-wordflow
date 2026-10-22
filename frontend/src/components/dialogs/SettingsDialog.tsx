@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { Bot, Eye, FolderOpen, Hash, KeyRound, Moon, RotateCcw, Sparkles, Sun } from 'lucide-react';
+import {
+  Eye,
+  FolderOpen,
+  Hash,
+  KeyRound,
+  Moon,
+  RotateCcw,
+  Server,
+  Sparkles,
+  Sun,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { DataFolderSettingsPanel } from '@/components/dialogs/DataFolderSettingsPanel';
 import { ToolCacheSettingsPanel } from '@/components/dialogs/ToolCacheSettingsPanel';
@@ -33,6 +43,7 @@ import {
 } from '@/features/theme/themeRuntime';
 import { DesktopUpdateSettings } from '@/features/updater/DesktopUpdateSettings';
 import { AiProvidersPreferencesPanel } from '@/features/views/annotation/components/AiProvidersPreferencesPanel';
+import { EmbeddingEndpointsPanel } from '@/features/embedding-endpoints/EmbeddingEndpointsPanel';
 import { useVisibleViews } from '@/features/views/useVisibleViews';
 import { VIEW_DEFINITIONS } from '@/features/views/viewRegistry';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
@@ -49,7 +60,7 @@ interface SettingsDialogProps {
 const SETTINGS_TABS = [
   { value: 'general', label: 'General', icon: Sparkles },
   { value: 'portal', label: 'Portal', icon: KeyRound },
-  { value: 'ai', label: 'AI', icon: Bot },
+  { value: 'servers', label: 'Servers', icon: Server },
   { value: 'workspace', label: 'Project', icon: FolderOpen },
   { value: 'views', label: 'Views', icon: Eye },
   { value: 'guidance', label: 'Guidance', icon: Hash },
@@ -264,8 +275,16 @@ export function SettingsDialog({
                 <DataPortalCredentialPanel />
               </TabsContent>
 
-              <TabsContent value="ai" className="mt-0">
+              {/* Servers Wordflow sends work to: generative AI for Annotation,
+                  remote GPUs for Topic Modelling, and others later. */}
+              <TabsContent value="servers" className="mt-0 space-y-8">
+                <p className="text-body text-description">
+                  Servers Wordflow can send work to, each with its address and, usually, an API key.
+                </p>
                 <AiProvidersPreferencesPanel />
+                <div className="border-t border-surface-border/60 pt-6">
+                  <EmbeddingEndpointsPanel />
+                </div>
               </TabsContent>
 
               <TabsContent value="workspace" className="mt-0 space-y-5">

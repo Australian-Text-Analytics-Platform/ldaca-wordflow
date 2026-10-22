@@ -163,6 +163,12 @@ class TopicModelingAnalysisRequest(_StrictModel):
         default=TopicEmbeddingModel.ENGLISH,
         exclude_if=lambda value: value == TopicEmbeddingModel.ENGLISH,
     )
+    # Embed on this remote embedding endpoint (a server's or one added in
+    # Settings) instead of this computer; None embeds locally as before. Left
+    # out of saved Projects when None, for the same reason.
+    embedding_endpoint_id: uuid.UUID | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     # Topic sampling (#330): cluster this many segments, picked with the run's
     # seed, and give every other segment its nearest sampled segment's topic.
     # None clusters every segment. Clustering time grows with the square of the

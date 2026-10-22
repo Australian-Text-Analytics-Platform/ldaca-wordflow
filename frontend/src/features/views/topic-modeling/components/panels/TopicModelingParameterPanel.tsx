@@ -45,6 +45,7 @@ import {
   TopicLargeInputNudge,
   TopicSegmentLengthNudge,
 } from '../TopicModelingNudges';
+import type { RemoteEmbeddingChoice } from '../../remoteEmbedding';
 import {
   EMBEDDING_MODEL_LABELS,
   ENGLISH_EMBEDDING_MODEL,
@@ -125,6 +126,10 @@ interface Props {
   cjkTokenizer: CjkTokenizerSource | null;
   /** Unit token counts for the segment-length suggestion (issue 414); null when unknown. */
   segmentLengths?: TopicSegmentLengthsResource | null;
+  /** Remote GPU: where the run embeds, and what endpoints there are (issue 412 follow-up). */
+  remoteEmbedding?: RemoteEmbeddingChoice & { anyEndpoints: boolean; canAdd: boolean };
+  onRemoteEmbeddingChange?: (ticked: boolean) => void;
+  onEmbeddingEndpointChange?: (endpointId: string) => void;
   isRunning: boolean;
   isStopping?: boolean;
   isClearing: boolean;
@@ -135,6 +140,14 @@ interface Props {
   parametersLocked: boolean;
 }
 const INTEGER_INPUT = 'h-8 w-20 px-2 text-right text-body tabular-nums';
+
+const NO_REMOTE_EMBEDDING = {
+  ticked: false,
+  endpointId: null,
+  serving: [],
+  anyEndpoints: false,
+  canAdd: false,
+};
 
 const LABEL_TEXT = 'text-label-secondary font-medium text-description';
 
@@ -218,6 +231,9 @@ export function TopicModelingParameterPanel({
   embeddingModelReason,
   cjkTokenizer,
   segmentLengths = null,
+  remoteEmbedding = NO_REMOTE_EMBEDDING,
+  onRemoteEmbeddingChange,
+  onEmbeddingEndpointChange,
   isRunning,
   isStopping,
   isClearing,
@@ -421,6 +437,14 @@ export function TopicModelingParameterPanel({
       ? maxSegmentTokensDraft.value
       : String(maxSegmentTokens);
 
+  // Why Remote GPU can't be ticked: no endpoint, or none for this model.
+  const remoteUnavailable = remoteEmbedding.serving.length
+    ? null
+    : !remoteEmbedding.anyEndpoints
+      ? remoteEmbedding.canAdd
+        ? 'Add a Topic Modelling server in Settings → Servers to read the text on a remote GPU.'
+        : 'This Wordflow server offers no Topic Modelling server, so the text is read here.'
+      : `No Topic Modelling server serves the ${EMBEDDING_MODEL_LABELS[embeddingModel]} model.`;
   // The cap's maximum follows the model: 256, or 128 for Multilingual.
   const segmentTokenLimit = embeddingModelTokenLimit(embeddingModel);
   const handleMaxSegmentTokensBlur = (event: FocusEvent<HTMLInputElement>) => {
@@ -632,6 +656,61 @@ export function TopicModelingParameterPanel({
               }}
               onBlur={handleMaxSegmentTokensBlur}
             />
+          </div>
+
+          <div className="space-y-1">
+            <ParameterLabel
+              helpKey="analysis.topic-modeling.remote-gpu"
+              htmlFor="topic-remote-gpu"
+              help="Read the text on a remote GPU set up in Settings → Servers: much faster on large corpora."
+            >
+              Remote GPU
+            </ParameterLabel>
+            <div className="flex h-8 items-center gap-2" title={remoteUnavailable ?? undefined}>
+              <Checkbox
+                {...nudgeTargetProps(NUDGE_TARGETS.topicRemoteGpu)}
+                id="topic-remote-gpu"
+                aria-label="Use a remote GPU"
+                aria-describedby={remoteUnavailable ? 'topic-remote-gpu-reason' : undefined}
+                checked={remoteEmbedding.ticked}
+                disabled={remoteUnavailable !== null}
+                onCheckedChange={(checked) => {
+                  onRemoteEmbeddingChange?.(checked === true);
+                }}
+              />
+              {remoteEmbedding.ticked && remoteEmbedding.serving.length > 1 ? (
+                <Select
+                  value={remoteEmbedding.endpointId ?? undefined}
+                  onValueChange={(value) => {
+                    onEmbeddingEndpointChange?.(value);
+                  }}
+                >
+                  <SelectTrigger
+                    id="topic-remote-gpu-endpoint"
+                    aria-label="Topic Modelling server"
+                    className="h-8 w-40"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {remoteEmbedding.serving.map((endpoint) => (
+                      <SelectItem key={endpoint.id} value={endpoint.id}>
+                        {endpoint.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : remoteEmbedding.ticked ? (
+                <span className="max-w-40 truncate text-label-secondary text-description">
+                  {remoteEmbedding.serving[0]?.name}
+                </span>
+              ) : null}
+              {remoteUnavailable ? (
+                <span id="topic-remote-gpu-reason" className="sr-only">
+                  {remoteUnavailable}
+                </span>
+              ) : null}
+            </div>
           </div>
 
           <fieldset className="space-y-1">

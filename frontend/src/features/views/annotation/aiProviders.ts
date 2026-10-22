@@ -1,4 +1,5 @@
 import type { AnnotationProviderConfigurationResource } from '@/api';
+import { isServerAiConfiguration } from '@/features/server-ai-providers/serverAiProviders';
 
 export type AnnotationProviderType = AnnotationProviderConfigurationResource['provider'];
 
@@ -25,6 +26,8 @@ export function getProviderDefinition(type: AnnotationProviderType): AnnotationP
 export function providerConfigurationSecondaryText(
   configuration: AnnotationProviderConfigurationResource,
 ): string {
+  // A server provider's address is a placeholder; never show it.
+  if (isServerAiConfiguration(configuration)) return 'Provided by this Wordflow server';
   if (configuration.provider !== 'custom') {
     return getProviderDefinition(configuration.provider).label;
   }

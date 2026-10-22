@@ -75,6 +75,7 @@ def analysis_process(
             sample_fractions=invocation.sample_fractions,
             cluster_sample_size=invocation.cluster_sample_size,
             embedding_model=invocation.embedding_model,
+            remote_embedding=invocation.remote_embedding,
             progress_callback=progress,
         )
     if isinstance(invocation, SequentialInput):

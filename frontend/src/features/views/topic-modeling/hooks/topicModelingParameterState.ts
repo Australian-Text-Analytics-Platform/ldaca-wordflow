@@ -29,6 +29,13 @@ export interface TopicModelingParameterState {
    * Data Blocks' tokeniser (issue 413).
    */
   embeddingModel: TopicEmbeddingModel | null;
+  /**
+   * Remote GPU as ticked or unticked by someone or a saved run; `null`
+   * follows the endpoints (ticked when a server endpoint is the default).
+   */
+  remoteEmbedding: boolean | null;
+  /** The endpoint chosen for Remote GPU; `null` takes the first that fits. */
+  embeddingEndpointId: string | null;
   /** Topic sampling; off by default (issue 330). */
   clusterSample: boolean;
   /** Segments to sample; `null` (an empty field) means the grey suggestion. */
@@ -43,6 +50,8 @@ type TopicModelingParameterAction =
   | { type: 'setSegmentationMethod'; value: TopicSegmentationMethod }
   | { type: 'setMaxSegmentTokens'; value: number }
   | { type: 'setEmbeddingModel'; value: TopicEmbeddingModel }
+  | { type: 'setRemoteEmbedding'; value: boolean }
+  | { type: 'setEmbeddingEndpointId'; value: string }
   | { type: 'setClusterSample'; value: boolean }
   | { type: 'setClusterSampleSize'; value: number | null }
   | { type: 'hydrateRequest'; request: TopicModelingAnalysisRequest };
@@ -63,6 +72,8 @@ export const createTopicModelingParameterState = (): TopicModelingParameterState
   segmentationMethod: 'automatic',
   maxSegmentTokens: DEFAULT_MAX_SEGMENT_TOKENS,
   embeddingModel: null,
+  remoteEmbedding: null,
+  embeddingEndpointId: null,
   clusterSample: false,
   clusterSampleSize: null,
 });
@@ -190,6 +201,10 @@ export const topicModelingParameterReducer = (
       return { ...state, maxSegmentTokens: sanitizeMaxSegmentTokens(action.value) };
     case 'setEmbeddingModel':
       return { ...state, embeddingModel: action.value };
+    case 'setRemoteEmbedding':
+      return { ...state, remoteEmbedding: action.value };
+    case 'setEmbeddingEndpointId':
+      return { ...state, embeddingEndpointId: action.value, remoteEmbedding: true };
     case 'setClusterSample':
       return { ...state, clusterSample: action.value };
     case 'setClusterSampleSize':
@@ -211,6 +226,9 @@ export const topicModelingParameterReducer = (
         embeddingModel: isTopicEmbeddingModel(action.request.embedding_model)
           ? action.request.embedding_model
           : ENGLISH_EMBEDDING_MODEL,
+        // A saved run embedded remotely only when it names an endpoint.
+        remoteEmbedding: action.request.embedding_endpoint_id != null,
+        embeddingEndpointId: action.request.embedding_endpoint_id ?? null,
         clusterSample: action.request.cluster_sample_size != null,
         clusterSampleSize: action.request.cluster_sample_size ?? null,
         corpusSamplesByNodeId: hasSampling
