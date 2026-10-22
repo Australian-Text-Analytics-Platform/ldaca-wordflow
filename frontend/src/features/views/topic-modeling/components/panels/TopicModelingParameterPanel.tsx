@@ -10,7 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { TopicSegmentationMethod } from '@/api';
+import type {
+  TopicEmbeddingModel,
+  TopicSegmentationMethod,
+  TopicSegmentLengthsResource,
+} from '@/api';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
 import {
   NodeInputsPanel,
@@ -36,7 +40,19 @@ import {
 import { acceptPlaceholderOnTab } from '@/features/views/common/placeholderTabFill';
 import { nudgeTargetProps } from '@/features/nudges/nudgeHighlight';
 import { NUDGE_TARGETS } from '@/features/nudges/nudges';
-import { TopicLargeInputNudge } from '../TopicModelingNudges';
+import {
+  TopicEmbeddingModelNudge,
+  TopicLargeInputNudge,
+  TopicSegmentLengthNudge,
+} from '../TopicModelingNudges';
+import {
+  EMBEDDING_MODEL_LABELS,
+  ENGLISH_EMBEDDING_MODEL,
+  MULTILINGUAL_EMBEDDING_MODEL,
+  embeddingModelTokenLimit,
+  isTopicEmbeddingModel,
+  type CjkTokenizerSource,
+} from '../../topicEmbeddingModels';
 import { isLargeTopicInput } from '@/features/nudges/nudges';
 import { useNudgeStore } from '@/features/nudges/nudgeStore';
 
@@ -100,6 +116,15 @@ interface Props {
   onSegmentationMethodChange: (value: TopicSegmentationMethod) => void;
   maxSegmentTokens: number;
   onMaxSegmentTokensChange: (value: number) => void;
+  /** The embedding model for the run (issue 413). */
+  embeddingModel: TopicEmbeddingModel;
+  onEmbeddingModelChange: (value: TopicEmbeddingModel) => void;
+  /** Set when the multilingual model was picked for a CJK tokeniser, not by a person. */
+  embeddingModelReason: CjkTokenizerSource | null;
+  /** A selected Data Block's Chinese, Japanese or Korean tokeniser, if any. */
+  cjkTokenizer: CjkTokenizerSource | null;
+  /** Unit token counts for the segment-length suggestion (issue 414); null when unknown. */
+  segmentLengths?: TopicSegmentLengthsResource | null;
   isRunning: boolean;
   isStopping?: boolean;
   isClearing: boolean;
@@ -188,6 +213,11 @@ export function TopicModelingParameterPanel({
   onSegmentationMethodChange,
   maxSegmentTokens,
   onMaxSegmentTokensChange,
+  embeddingModel,
+  onEmbeddingModelChange,
+  embeddingModelReason,
+  cjkTokenizer,
+  segmentLengths = null,
   isRunning,
   isStopping,
   isClearing,
@@ -391,8 +421,10 @@ export function TopicModelingParameterPanel({
       ? maxSegmentTokensDraft.value
       : String(maxSegmentTokens);
 
+  // The cap's maximum follows the model: 256, or 128 for Multilingual.
+  const segmentTokenLimit = embeddingModelTokenLimit(embeddingModel);
   const handleMaxSegmentTokensBlur = (event: FocusEvent<HTMLInputElement>) => {
-    const next = sanitizeMaxSegmentTokens(event.currentTarget.value);
+    const next = sanitizeMaxSegmentTokens(event.currentTarget.value, segmentTokenLimit);
     setMaxSegmentTokensDraft({ source: next, value: String(next) });
     onMaxSegmentTokensChange(next);
   };
@@ -513,6 +545,40 @@ export function TopicModelingParameterPanel({
         <div className="flex flex-wrap items-start gap-x-5 gap-y-3">
           <div className="space-y-1">
             <ParameterLabel
+              helpKey="analysis.topic-modeling.embedding-model"
+              htmlFor="topic-embedding-model"
+              help="Reads the text. Multilingual handles Chinese, Japanese, Korean and more, up to 128 tokens."
+            >
+              Model
+            </ParameterLabel>
+            <Select
+              value={embeddingModel}
+              onValueChange={(value) => {
+                if (isTopicEmbeddingModel(value)) onEmbeddingModelChange(value);
+              }}
+            >
+              <SelectTrigger
+                {...nudgeTargetProps(NUDGE_TARGETS.topicEmbeddingModel)}
+                id="topic-embedding-model"
+                aria-label="Embedding model"
+                aria-describedby={embeddingModelReason ? 'topic-embedding-model-note' : undefined}
+                className="h-8 w-36"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ENGLISH_EMBEDDING_MODEL}>
+                  {EMBEDDING_MODEL_LABELS[ENGLISH_EMBEDDING_MODEL]}
+                </SelectItem>
+                <SelectItem value={MULTILINGUAL_EMBEDDING_MODEL}>
+                  {EMBEDDING_MODEL_LABELS[MULTILINGUAL_EMBEDDING_MODEL]}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <ParameterLabel
               helpKey="analysis.topic-modeling.segmentation-method"
               htmlFor="topic-segmentation-method"
               help="How text is cut into segments. Automatic packs paragraphs up to Max tokens; Paragraph and Sentence keep one each."
@@ -544,16 +610,17 @@ export function TopicModelingParameterPanel({
             <ParameterLabel
               helpKey="analysis.topic-modeling.max-segment-tokens"
               htmlFor="topic-max-segment-tokens"
-              help="Largest segment, 32 to 256 tokens (words or parts of words)."
+              help={`Largest segment, 32 to ${String(segmentTokenLimit)} tokens (words or parts of words).`}
             >
               Max tokens
             </ParameterLabel>
             <Input
+              {...nudgeTargetProps(NUDGE_TARGETS.topicMaxSegmentTokens)}
               id="topic-max-segment-tokens"
               aria-label="Maximum tokens per segment"
               type="number"
               min={32}
-              max={256}
+              max={segmentTokenLimit}
               step={1}
               value={maxSegmentTokensValueDraft}
               className={INTEGER_INPUT}
@@ -663,6 +730,29 @@ export function TopicModelingParameterPanel({
             />
           </div>
         </div>
+        {embeddingModelReason ? (
+          <p id="topic-embedding-model-note" className="mt-2 text-label-secondary text-description">
+            {`Multilingual, because ${embeddingModelReason.name} uses the ${embeddingModelReason.tokenizer} tokeniser; it reads up to 128 tokens per segment.`}
+          </p>
+        ) : null}
+        {parametersLocked ? null : (
+          <>
+            <TopicEmbeddingModelNudge
+              cjkTokenizer={cjkTokenizer}
+              embeddingModel={embeddingModel}
+              onUseMultilingual={() => {
+                onEmbeddingModelChange(MULTILINGUAL_EMBEDDING_MODEL);
+              }}
+              className="mt-3"
+            />
+            <TopicSegmentLengthNudge
+              lengths={segmentLengths}
+              maxSegmentTokens={maxSegmentTokens}
+              onApply={onMaxSegmentTokensChange}
+              className="mt-3"
+            />
+          </>
+        )}
         <div className="mt-3 space-y-1">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <div

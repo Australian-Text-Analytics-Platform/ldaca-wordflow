@@ -39,6 +39,36 @@ Block's colour in the bubble chart and topic lists.
 
 <h3 id="help-topic-modeling-options">Step 3: Configure the model</h3>
 
+<h4 id="help-topic-modeling-embedding-model">Model (embedding model)</h4>
+
+The model reads each Topic Segment and turns it into numbers, so that segments
+about the same subject end up close together. There are two:
+
+| Model | Languages | Max tokens |
+| --- | --- | --- |
+| **English** (the default) | English | up to 256 |
+| **Multilingual** | Chinese, Japanese, Korean and about 50 other languages | up to 128 |
+
+The English model can read Chinese, Japanese or Korean text, but it does not
+understand it: it mostly matches the characters two segments share, so topics
+form around common characters and function words rather than subjects. The
+Multilingual model understands these languages, and also places a Chinese
+sentence close to its English translation. It reads at most 128 tokens per
+segment and is slower than the English model.
+
+When a selected Data Block's tokeniser (set in Frequency Analysis) is a
+Chinese, Japanese or Korean one, such as Jieba or IPADIC, **Multilingual** is
+chosen for you and **Max tokens** drops to 128; a note under the settings says
+why. You can switch back to **English**, which restores your Max tokens. With
+**Suggestions** on, choosing English for such a Data Block shows a suggestion
+with a **Use Multilingual** button. A saved run keeps the model it used.
+
+On a Mac with Apple silicon, Wordflow reads the text on the graphics processor,
+which is several times faster than on the processor. The first run after
+installing or updating Wordflow prepares the model for it once, which can add
+up to a minute; later runs start straight away. Results on a Mac can differ very
+slightly from those on another computer, so topics may differ a little.
+
 <h4 id="help-topic-modeling-segmentation-method">Segments (segmentation method)</h4>
 
 This setting controls which spans become Topic Segments. The same method is
@@ -87,7 +117,7 @@ algorithm, so abbreviations may occasionally form a short segment.
 <h4 id="help-topic-modeling-max-segment-tokens">Max tokens (maximum tokens per segment)</h4>
 
 Sets the maximum size of a Topic Segment in model tokens. The default is 256
-and the allowed range is 32–256. Tokens may be complete words or parts of
+and the allowed range is 32–256, or 32–128 with the **Multilingual** model. Tokens may be complete words or parts of
 words, and the cap includes special tokens added by the embedding model. A
 smaller cap gives more local observations; a larger cap gives each observation
 more context. With **Automatic**, the cap is also how far short paragraphs are
@@ -98,6 +128,15 @@ tiny leftovers and letterless segments described above, no text is discarded.
 Very small caps (such as 32 tokens) produce many short, fragment-like segments,
 which can make the number of topics unstable; 128–256 tokens usually gives more
 stable topics.
+
+With **Suggestions** on, Wordflow measures the first 200 documents of the first
+selected Data Block in the model's tokens: the sentences for **Sentence**, the
+paragraphs for **Paragraph**, and for **Automatic** whole texts (or their
+paragraphs, when nearly every text is longer than the model reads). When at
+least 9 in 10 of them fit whole in a smaller cap of 32, 64 or 128 tokens, a
+suggestion such as "Your sentences are short: 64 tokens per segment is plenty"
+offers to set it. Most segments then stay as they are, and the few longer ones
+are split into pieces of about that size. It only ever suggests a smaller cap.
 
 <h4 id="help-topic-modeling-min-cluster-size">Topic size: minimum (Min topic size)</h4>
 

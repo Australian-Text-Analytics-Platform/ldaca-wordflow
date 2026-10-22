@@ -10,6 +10,7 @@ import {
   isLargeTopicInput,
   LARGE_INPUT_DOCUMENTS,
   LARGE_INPUT_SEGMENTS,
+  suggestedSegmentTokenCap,
   topicResultNudge,
 } from '../nudges';
 import { useNudgeStore } from '../nudgeStore';
@@ -222,5 +223,44 @@ describe('NudgeCard', () => {
     renderCard('run-1');
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Max topic size')).not.toHaveAttribute('data-nudge-active');
+  });
+});
+
+describe('suggestedSegmentTokenCap (issue 414)', () => {
+  it('offers the smallest GPU length that holds 9 in 10 units', () => {
+    expect(suggestedSegmentTokenCap({ p90: 20, current: 256, limit: 256 })).toBe(32);
+    expect(suggestedSegmentTokenCap({ p90: 32, current: 256, limit: 256 })).toBe(32);
+    expect(suggestedSegmentTokenCap({ p90: 33, current: 256, limit: 256 })).toBe(64);
+    expect(suggestedSegmentTokenCap({ p90: 129, current: 256, limit: 256 })).toBeNull();
+  });
+
+  it('only ever suggests a smaller cap, within the model limit', () => {
+    expect(suggestedSegmentTokenCap({ p90: 50, current: 64, limit: 256 })).toBeNull();
+    expect(suggestedSegmentTokenCap({ p90: 50, current: 100, limit: 128 })).toBe(64);
+    expect(suggestedSegmentTokenCap({ p90: 120, current: 128, limit: 128 })).toBeNull();
+    expect(suggestedSegmentTokenCap({ p90: null, current: 256, limit: 256 })).toBeNull();
+  });
+});
+
+describe('NudgeCard action', () => {
+  beforeEach(() => {
+    useNudgeStore.setState({ enabled: true });
+  });
+
+  it('applies the offered change and closes', async () => {
+    const onApply = vi.fn();
+    render(
+      <NudgeCard
+        id="topic-segment-length"
+        occurrence="one"
+        action={{ label: 'Use 64 tokens', onApply }}
+      />,
+    );
+    await tick();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use 64 tokens' }));
+
+    expect(onApply).toHaveBeenCalledOnce();
+    expect(screen.getByRole('status')).toHaveClass('opacity-0');
   });
 });

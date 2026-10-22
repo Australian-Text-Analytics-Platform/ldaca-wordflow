@@ -29,6 +29,11 @@ interface NudgeCardProps {
   detail?: string;
   /** Replaces the title, for one with numbers in it ("Many (37%) documents are Ungrouped"). */
   title?: string;
+  /**
+   * A one-click change the suggestion offers, such as "Use 64 tokens" (issue
+   * 414). The card closes once it is applied.
+   */
+  action?: { label: string; onApply: () => void };
   className?: string;
 }
 
@@ -60,7 +65,13 @@ function openHelp(key: DocumentKey<'tutorial'> | undefined) {
   if (target) useUIStore.getState().openDocument(target);
 }
 
-function NudgeCardOccurrence({ id, detail, title, className }: Omit<NudgeCardProps, 'occurrence'>) {
+function NudgeCardOccurrence({
+  id,
+  detail,
+  title,
+  action,
+  className,
+}: Omit<NudgeCardProps, 'occurrence'>) {
   const nudge: NudgeDefinition = NUDGES[id];
   const startSettingsWalk = useSettingsWalk();
   const [phase, setPhase] = useState<Phase>('shown');
@@ -121,6 +132,20 @@ function NudgeCardOccurrence({ id, detail, title, className }: Omit<NudgeCardPro
           {nudge.message}
         </p>
         <div className="flex flex-wrap items-center gap-x-3">
+          {action ? (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0 font-medium"
+              onClick={() => {
+                action.onApply();
+                setPhase('fading');
+              }}
+            >
+              {action.label}
+            </Button>
+          ) : null}
           {/* Closes this one now; it comes back when the situation happens again (Chao). */}
           <Button
             type="button"

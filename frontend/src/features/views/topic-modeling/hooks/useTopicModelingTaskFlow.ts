@@ -1,6 +1,11 @@
 import { toast } from 'sonner';
 import { submitTabAnalysis } from '@/api';
-import type { Analysis, TopicModelingRequest, TopicSegmentationMethod } from '@/api';
+import type {
+  Analysis,
+  TopicEmbeddingModel,
+  TopicModelingRequest,
+  TopicSegmentationMethod,
+} from '@/api';
 import type { RunAnalysis } from '@/features/views/common/hooks/useAnalysisFeature';
 import type { NodeColumnSelection } from '@/features/views/common/nodeSelectionTypes';
 
@@ -17,6 +22,7 @@ interface TopicModelingState {
   sampleFractions?: (number | null)[] | null;
   segmentationMethod: TopicSegmentationMethod;
   maxSegmentTokens: number;
+  embeddingModel: TopicEmbeddingModel;
   /** Segments to sample for Topic sampling, or `null` to cluster every segment. */
   clusterSampleSize: number | null;
 }
@@ -46,6 +52,7 @@ export function useTopicModelingTaskFlow({
     sampleFractions,
     segmentationMethod,
     maxSegmentTokens,
+    embeddingModel,
     clusterSampleSize,
   },
   actions: { runAnalysis, setError, prepareBeforeRun },
@@ -73,6 +80,7 @@ export function useTopicModelingTaskFlow({
       random_seed: randomSeed,
       segmentation_method: segmentationMethod,
       max_segment_tokens: maxSegmentTokens,
+      embedding_model: embeddingModel,
       cluster_sample_size: clusterSampleSize,
       ...(sampleFractions != null ? { sample_fractions: sampleFractions } : {}),
     };
