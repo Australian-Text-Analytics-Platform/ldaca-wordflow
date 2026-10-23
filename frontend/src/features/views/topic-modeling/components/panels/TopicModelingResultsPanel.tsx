@@ -405,13 +405,10 @@ function ClusterCountControl({
       <div
         className={classes.column ? `${COLUMN_VALUE} w-full` : 'flex min-w-0 items-center gap-3'}
       >
-        <span
-          aria-label="Minimum number of topics"
-          className="w-5 shrink-0 text-center tabular-nums text-foreground"
+        <div
+          ref={sliderBoxRef}
+          className={classes.column ? 'relative min-w-0 flex-1' : 'relative w-32'}
         >
-          {clustering.min_cluster_count}
-        </span>
-        <div ref={sliderBoxRef} className={classes.column ? 'min-w-0 flex-1' : 'w-32'}>
           {clustering.adjustable ? (
             <Slider
               id="topic-cluster-count"
@@ -457,6 +454,12 @@ function ClusterCountControl({
               className="h-4 w-full accent-primary disabled:opacity-50"
             />
           )}
+          {/* The range in small type under the bar's ends, so a long maximum
+              doesn't take the bar's width (Chao, 2026-10-24). */}
+          <div className="pointer-events-none absolute inset-x-0 top-full mt-0.5 flex justify-between text-badge leading-none text-description tabular-nums">
+            <span aria-label="Minimum number of topics">{clustering.min_cluster_count}</span>
+            <span aria-label="Maximum number of topics">{clustering.max_cluster_count}</span>
+          </div>
         </div>
         {classes.column ? null : numberInput}
       </div>

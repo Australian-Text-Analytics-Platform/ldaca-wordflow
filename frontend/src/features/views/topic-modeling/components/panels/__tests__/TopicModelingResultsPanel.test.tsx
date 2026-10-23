@@ -196,6 +196,7 @@ describe('TopicModelingResultsPanel', () => {
     expect(slider).toHaveAttribute('aria-valuemax', '5');
     expect(slider).toHaveAttribute('aria-valuenow', '4');
     expect(screen.getByLabelText('Minimum number of topics')).toHaveTextContent('2');
+    expect(screen.getByLabelText('Maximum number of topics')).toHaveTextContent('5');
     const topicCountInput = screen.getByRole('spinbutton', { name: 'Number of topics' });
     expect(topicCountInput).toHaveAttribute('min', '2');
     expect(topicCountInput).toHaveAttribute('max', '5');
