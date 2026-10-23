@@ -21,6 +21,7 @@ import { Slider } from '@/components/ui/slider';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
 import { AnalysisRunningStateCard } from '@/features/views/common/components/AnalysisRunningStateCard';
 import { TopicModelingBubbleChartSection } from '../results/TopicModelingBubbleChartSection';
+import type { TopicChartLayout } from '../results/topicChartLayout';
 import type { TopicColorScheme } from '../results/topicModelingGraph';
 import { TopicModelingStopWordsControl } from '../TopicModelingStopWordsControl';
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
@@ -63,6 +64,9 @@ interface Props {
   /** Result settings folded to one summary line, remembered per tab on this device (issue 432). */
   settingsCollapsed?: boolean;
   onSettingsCollapsedChange?: (collapsed: boolean) => void;
+  /** Settings beside or below the chart, and its width, remembered like the fold (issue 433). */
+  chartLayout?: TopicChartLayout;
+  onChartLayoutChange?: (layout: TopicChartLayout) => void;
   panelNodeIds: string[];
   nodeColors: Record<string, string>;
   defaultPalette: string[];
@@ -477,7 +481,10 @@ function TopNTopicsControl({
   onCommit: (value: number) => void;
 }) {
   const applied = inclusion.top_n_topics;
-  const [draft, setDraft] = useState({ source: applied, value: String(applied) });
+  const [draft, setDraft] = useState({
+    source: applied,
+    value: String(applied),
+  });
   const latestCommitRef = useRef(applied);
   const displayed = draft.source === applied ? draft.value : String(applied);
 
@@ -569,6 +576,8 @@ export function TopicModelingResultsPanel({
   onTopicSearchQueryChange,
   settingsCollapsed = false,
   onSettingsCollapsedChange,
+  chartLayout,
+  onChartLayoutChange,
   panelNodeIds,
   nodeColors,
   defaultPalette,
@@ -691,7 +700,9 @@ export function TopicModelingResultsPanel({
                   colorScheme={colorBy?.scheme ?? null}
                   workspaceId={stopWordsDetectionTarget.workspaceId ?? undefined}
                   analysisId={analysisId ?? undefined}
-                  controlRowSlot={
+                  chartLayout={chartLayout}
+                  onChartLayoutChange={onChartLayoutChange}
+                  controlRowSlot={(placementToggle) => (
                     <section
                       aria-labelledby="topic-result-settings-heading"
                       className="w-full rounded-lg border border-surface-border/70 bg-panel/20 px-3 py-2"
@@ -762,6 +773,7 @@ export function TopicModelingResultsPanel({
                               Add to Project
                             </Button>
                           </DisabledReasonTooltip>
+                          {placementToggle}
                         </div>
                       </div>
                       {settingsCollapsed ? null : (
@@ -806,7 +818,7 @@ export function TopicModelingResultsPanel({
                         </div>
                       )}
                     </section>
-                  }
+                  )}
                 />
               </div>
             </div>

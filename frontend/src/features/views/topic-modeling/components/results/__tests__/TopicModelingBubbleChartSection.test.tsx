@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { TopicModelingBubbleChartSection } from '../TopicModelingBubbleChartSection';
+import { topicChartWidth } from '../topicChartLayout';
 import { buildTopicsCSV } from '../topicModelingCsv';
 import type { TopicBubbleModel } from '../topicModelingGraph';
 
@@ -147,5 +148,109 @@ describe('TopicModelingBubbleChartSection', () => {
 
     expect(csv).toContain('climate (8), policy (5)');
     expect(csv.split('\r\n')).toHaveLength(2);
+  });
+});
+
+/** Gives the chart layout wrapper a size, as the browser would. */
+const sizeChartLayout = (width: number, height: number) =>
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    const box =
+      this.dataset.testid === 'topic-chart-layout' ? { width, height } : { width: 0, height: 0 };
+    return {
+      ...box,
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: box.width,
+      bottom: box.height,
+      toJSON: () => box,
+    };
+  });
+
+describe('topic chart layout (issue 433)', () => {
+  it('makes the chart 4:3 of its height, or the dragged share, leaving the side its minimum', () => {
+    expect(topicChartWidth({ width: 1400, height: 480 }, null)).toBe(640);
+    expect(topicChartWidth({ width: 900, height: 480 }, null)).toBe(592);
+    expect(topicChartWidth({ width: 1400, height: 200 }, null)).toBe(420);
+    expect(topicChartWidth({ width: 1400, height: 480 }, 0.5)).toBe(700);
+    expect(topicChartWidth({ width: 1400, height: 480 }, 0.99)).toBe(1092);
+  });
+
+  it('puts the legend and settings beside a 4:3 chart on a wide card', () => {
+    const spy = sizeChartLayout(1400, 480);
+    const onChartLayoutChange = vi.fn();
+    render(
+      <TopicModelingBubbleChartSection
+        {...commonProps}
+        topics={[]}
+        nodeNames={['A', 'B']}
+        controlRowSlot={(toggle) => <section>Result settings{toggle}</section>}
+        onChartLayoutChange={onChartLayoutChange}
+      />,
+    );
+    expect(screen.getByTestId('topic-chart-layout')).toHaveAttribute(
+      'data-settings-placement',
+      'side',
+    );
+    const side = screen.getByTestId('topic-chart-side');
+    expect(within(side).getByText('Result settings')).toBeInTheDocument();
+    expect(within(side).getByRole('group', { name: 'Bubble colours by Data Block' })).toBeVisible();
+    expect(screen.getByTestId('topic-chart-column')).toHaveStyle({
+      width: '640px',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Move the settings below the chart' }));
+    expect(onChartLayoutChange).toHaveBeenLastCalledWith({
+      placement: 'below',
+      chartShare: null,
+    });
+    const divider = screen.getByTestId('topic-chart-divider');
+    fireEvent.keyDown(divider, { key: 'ArrowRight' });
+    expect(onChartLayoutChange.mock.lastCall?.[0].chartShare).toBeCloseTo(710 / 1400, 3);
+    fireEvent.doubleClick(divider);
+    expect(onChartLayoutChange).toHaveBeenLastCalledWith({
+      placement: 'side',
+      chartShare: null,
+    });
+    spy.mockRestore();
+  });
+
+  it('keeps the settings below when chosen, and on a narrow card without the choice', () => {
+    const spy = sizeChartLayout(1400, 480);
+    const view = render(
+      <TopicModelingBubbleChartSection
+        {...commonProps}
+        topics={[]}
+        controlRowSlot={(toggle) => <section>Result settings{toggle}</section>}
+        chartLayout={{ placement: 'below', chartShare: 0.5 }}
+        onChartLayoutChange={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('topic-chart-side')).not.toBeInTheDocument();
+    expect(screen.getByText('Result settings')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Move the settings beside the chart' }),
+    ).toBeInTheDocument();
+    view.unmount();
+    spy.mockRestore();
+
+    const narrow = sizeChartLayout(600, 400);
+    render(
+      <TopicModelingBubbleChartSection
+        {...commonProps}
+        topics={[]}
+        controlRowSlot={(toggle) => <section>Result settings{toggle}</section>}
+        onChartLayoutChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('topic-chart-layout')).toHaveAttribute(
+      'data-settings-placement',
+      'below',
+    );
+    expect(screen.queryByRole('button', { name: /Move the settings/ })).not.toBeInTheDocument();
+    narrow.mockRestore();
   });
 });

@@ -12,11 +12,11 @@ vi.mock('../../results/TopicModelingBubbleChartSection', () => ({
     controlRowSlot,
     topics,
   }: {
-    controlRowSlot?: React.ReactNode;
+    controlRowSlot?: React.ReactNode | ((placementToggle: React.ReactNode) => React.ReactNode);
     topics: { id: number }[];
   }) => (
     <div data-testid="topic-bubble-chart-section">
-      {controlRowSlot}
+      {typeof controlRowSlot === 'function' ? controlRowSlot(null) : controlRowSlot}
       <span>Topics {topics.length}</span>
     </div>
   ),

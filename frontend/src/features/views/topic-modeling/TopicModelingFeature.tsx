@@ -67,9 +67,22 @@ import { remoteEmbeddingChoice } from './remoteEmbedding';
 import { shouldSuggestRemoteGpu } from '@/features/nudges/nudges';
 import { useDetectedColumnLanguage } from '@/features/views/common/hooks/useDetectedColumnLanguage';
 import { TopicNamesContext } from './components/results/topicNamesContext';
+import type { TopicChartLayout } from './components/results/topicChartLayout';
 
 /** Result settings folded to one line in this tab, on this device (issue 432). */
 const RESULT_SETTINGS_COLLAPSED_SETTING = 'topicModeling.resultSettingsCollapsed';
+/** Settings below the chart instead of beside it, and the dragged chart width (issue 433). */
+const CHART_PLACEMENT_SETTING = 'topicModeling.chartSettingsPlacement';
+const CHART_SHARE_SETTING = 'topicModeling.chartShare';
+
+/** Reads the chart layout from the tab's settings; anything unreadable is the default. */
+const readChartLayout = (settings: Record<string, string>): TopicChartLayout => {
+  const share = Number(settings[CHART_SHARE_SETTING]);
+  return {
+    placement: settings[CHART_PLACEMENT_SETTING] === 'below' ? 'below' : 'side',
+    chartShare: share > 0 && share < 1 ? share : null,
+  };
+};
 import { topicGroupKey, withTopicName } from './topicNames';
 
 /**
@@ -451,7 +464,10 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     rename: tabTaskId
       ? (key: string, name: string) =>
           host.setPresentationSettings({
-            topicNames: { analysis_id: tabTaskId, names: withTopicName(topicNames, key, name) },
+            topicNames: {
+              analysis_id: tabTaskId,
+              names: withTopicName(topicNames, key, name),
+            },
           })
       : null,
   };
@@ -509,7 +525,9 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Topic Modelling results to the Project.');
     } catch (cause) {
-      toastError(cause, 'Try again.', { title: "Couldn't add Topic Modelling results." });
+      toastError(cause, 'Try again.', {
+        title: "Couldn't add Topic Modelling results.",
+      });
     } finally {
       setIsAddingToWorkspace(false);
     }
@@ -707,6 +725,14 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
             settingsCollapsed={host.settings[RESULT_SETTINGS_COLLAPSED_SETTING] === 'true'}
             onSettingsCollapsedChange={(collapsed) => {
               host.setSetting(RESULT_SETTINGS_COLLAPSED_SETTING, String(collapsed));
+            }}
+            chartLayout={readChartLayout(host.settings)}
+            onChartLayoutChange={(layout) => {
+              host.setSetting(CHART_PLACEMENT_SETTING, layout.placement);
+              host.setSetting(
+                CHART_SHARE_SETTING,
+                layout.chartShare === null ? '' : layout.chartShare.toFixed(3),
+              );
             }}
             panelNodeIds={colorNodeIds}
             nodeColors={nodeColors}

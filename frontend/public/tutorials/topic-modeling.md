@@ -291,13 +291,17 @@ selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clea
 
 ![Topic Modelling results: the bubble chart, Result settings, and the topic list beside the examples of Topic 12](tutorials/assets/topic_modelling/results.png)
 
-The **Result settings** row below the bubble chart holds **Topics**, **Per
-document**, **Words**, **Colour by** and the stop word controls, with **Find
-topics** and **Add to Project** at its right. Question-mark icons beside some of these controls give a short
-explanation. On a small screen, click **Result settings** to fold the row to one
+The **Result settings** hold **Topics**, **Per document**, **Words**, **Colour
+by** and the stop word controls, with **Find topics** and **Add to Project**.
+Question-mark icons beside some of these controls give a short explanation. On
+a wide results panel they sit beside the bubble chart, with the colour legend,
+and the chart keeps a 4:3 shape; drag the divider between them to widen or
+narrow the chart (double-click it to go back to 4:3). The button after **Add to
+Project** moves the settings below the chart, or back beside it. On a narrower
+panel they sit below the chart. Click **Result settings** to fold them to one
 summary line, such as "2 per document · 15 words · Colour: Data Block · Stop
-words on"; Find topics and Add to Project stay available, and the tab remembers
-the choice on this computer. Below it, the topic list takes the left third and the
+words on"; Find topics and Add to Project stay available. The tab remembers
+these choices on this computer. Below the chart and settings, the topic list takes the left third and the
 [examples of one topic](#help-topic-modeling-examples) the rest; drag the
 divider between them to widen the list (double-click it to go back to a
 third). In a narrow window the list sits above the examples. The area has its own
