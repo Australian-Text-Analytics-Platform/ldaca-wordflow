@@ -144,7 +144,7 @@ const bubble: TopicBubbleModel = {
   hovered: false,
   shown: false,
   filteredOut: false,
-  matchedWords: [],
+  matchedWords: {},
 };
 
 describe('TopicLassoCanvas', () => {
@@ -401,7 +401,7 @@ describe('TopicModelingFlowChart', () => {
     expect(screen.queryByTestId('topic-flow-tooltip-7')).not.toBeInTheDocument();
   });
 
-  it('shows Find topics matches bold orange in the hover word cloud (issue 342)', () => {
+  it('shows search matches bold, in each term colour, in the hover word cloud (issues 342, 434)', () => {
     render(
       <TopicModelingFlowChart
         plane={DEFAULT_TOPIC_GRAPH_PLANE}
@@ -413,9 +413,11 @@ describe('TopicModelingFlowChart', () => {
               representative_words: [
                 { word: 'family', occurrence_count: 5 },
                 { word: 'care', occurrence_count: 3 },
+                { word: 'home', occurrence_count: 2 },
+                { word: 'policy', occurrence_count: 1 },
               ],
             },
-            matchedWords: ['family'],
+            matchedWords: { family: 0, home: 1 },
           },
         ]}
         corpusPresentation={{
@@ -439,7 +441,7 @@ describe('TopicModelingFlowChart', () => {
 
     fireEvent.mouseEnter(screen.getByTestId('topic-flow-node-7'));
     expect(screen.getByTestId('topic-flow-tooltip-7')).toHaveTextContent(
-      'family:5 bold #d18616, care:3',
+      'family:5 bold #d18616, care:3, home:2 bold #1a5cff, policy:1',
     );
   });
 

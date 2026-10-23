@@ -5,11 +5,30 @@ export function topicRepresentativeText(topic: TopicModelingTopic): string {
 }
 
 /**
- * Whether a topic matches the Find topics text (issue 280). A topic matches
- * when the text matches its whole word list ("gst, government, tax") or any
- * one of its words, so `gs*` and `gs?` find "gst" wherever it sits; before,
- * a wildcard had to match the whole joined list. `matchOption` is the shared
- * checklist matcher.
+ * Splits a search into its terms at spaces, commas and other punctuation
+ * (issue 434): "chil, home house" is three terms. `*`, `?` and `\` stay in
+ * a term (wildcards and escapes), and so do hyphens and apostrophes
+ * ("covid-19", "don't"). Repeated terms count once, ignoring case.
+ *
+ * Self-contained on purpose: the bubble chart's HTML download embeds this
+ * function's source, so it must not use anything outside its body.
+ */
+export function topicSearchTerms(query: string): string[] {
+  const seen = new Set<string>();
+  return query.split(/[\s,;:.!"“”()[\]{}<>|/，、；：。！「」『』（）《》]+/u).filter((term) => {
+    const key = term.toLocaleLowerCase();
+    if (!term || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * Whether a topic matches the search (issues 280, 434): any one of its words
+ * matches any one term, so "chil, home" finds topics with child or homeless.
+ * `matchOption` is the shared checklist matcher: a term is found inside a
+ * word, or with `*` or `?` it must match the whole word, so `gs*` and `gs?`
+ * find "gst" wherever it sits. `splitTerms` is `topicSearchTerms`.
  *
  * Self-contained on purpose: the bubble chart's HTML download embeds this
  * function's source, so it must not use anything outside its body.
@@ -18,22 +37,31 @@ export function matchTopicWords(
   words: readonly string[],
   query: string,
   matchOption: (label: string, query: string) => boolean,
+  splitTerms: (query: string) => string[],
 ): boolean {
-  if (!query.trim()) return true;
-  return matchOption(words.join(', '), query) || words.some((word) => matchOption(word, query));
+  const terms = splitTerms(query);
+  if (terms.length === 0) return true;
+  return words.some((word) => terms.some((term) => matchOption(word, term)));
 }
 
 /**
- * The words of a topic that match the Find topics text on their own, so they
- * can be picked out in the list and the bubble's word cloud (issue 342).
+ * The words of a topic that match the search, each with the index of the
+ * first term it matches, so the list and the bubble's word cloud can colour
+ * each term's matches alike (issues 342, 434).
  */
 export function matchedTopicWords(
   words: readonly string[],
   query: string,
   matchOption: (label: string, query: string) => boolean,
-): Set<string> {
-  if (!query.trim()) return new Set();
-  return new Set(words.filter((word) => matchOption(word, query)));
+): Map<string, number> {
+  const terms = topicSearchTerms(query);
+  const matched = new Map<string, number>();
+  if (terms.length === 0) return matched;
+  for (const word of words) {
+    const index = terms.findIndex((term) => matchOption(word, term));
+    if (index >= 0) matched.set(word, index);
+  }
+  return matched;
 }
 
 export function filterTopicRepresentativeWords(
@@ -103,15 +131,33 @@ export function getReadableTextColor(hexColor: string): string {
   return luminance > 160 ? '#1e293b' : '#ffffff';
 }
 
-/** Find topics matches are bold and orange wherever topic words are listed (issue 342). */
-const MATCH_COLOR_VARIABLE = '--vscode-charts-orange';
-const MATCH_COLOR_FALLBACK = '#d18616';
+/**
+ * Search matches are bold wherever topic words are listed, in one colour per
+ * search term: orange for the first, as before, then the theme's other chart
+ * colours, repeating after six terms (issues 342, 434).
+ */
+const MATCH_COLORS: readonly (readonly [variable: string, fallback: string])[] = [
+  ['--vscode-charts-orange', '#d18616'],
+  ['--vscode-charts-blue', '#1a5cff'],
+  ['--vscode-charts-green', '#388a34'],
+  ['--vscode-charts-purple', '#652d90'],
+  ['--vscode-charts-red', '#ad0707'],
+  ['--vscode-charts-yellow', '#667309'],
+];
 
-/** The match colour as a concrete value, for chart text that cannot read CSS variables. */
-export function topicMatchColor(): string {
-  if (typeof document === 'undefined') return MATCH_COLOR_FALLBACK;
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(MATCH_COLOR_VARIABLE)
-    .trim();
-  return value || MATCH_COLOR_FALLBACK;
+const matchColorEntry = (termIndex: number) =>
+  MATCH_COLORS[termIndex % MATCH_COLORS.length] ?? (['--vscode-charts-orange', '#d18616'] as const);
+
+/** The colour of a search term's matches as a CSS value, for text styled in the page. */
+export function topicMatchColorVariable(termIndex = 0): string {
+  const [variable, fallback] = matchColorEntry(termIndex);
+  return `var(${variable}, ${fallback})`;
+}
+
+/** The colour of a search term's matches as a concrete value, for chart text that cannot read CSS variables. */
+export function topicMatchColor(termIndex = 0): string {
+  const [variable, fallback] = matchColorEntry(termIndex);
+  if (typeof document === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+  return value || fallback;
 }

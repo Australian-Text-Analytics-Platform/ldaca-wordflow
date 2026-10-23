@@ -1,12 +1,14 @@
 import { Fragment } from 'react';
+import { topicMatchColorVariable } from '../../topicModelingAdapters';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TopicWordsProps {
   words: readonly string[];
-  matched: ReadonlySet<string>;
+  /** Matching words, each with the index of the search term it matches. */
+  matched: ReadonlyMap<string, number>;
 }
 
-/** A topic's words in their own order and size, with the Find topics matches picked out. */
+/** A topic's words in their own order and size, with the search matches in their term's colour. */
 function TopicWords({ words, matched }: TopicWordsProps) {
   return (
     <>
@@ -14,7 +16,11 @@ function TopicWords({ words, matched }: TopicWordsProps) {
         <Fragment key={`${String(index)}-${word}`}>
           {index > 0 ? ', ' : null}
           {matched.has(word) ? (
-            <strong className="font-semibold text-chart-4" data-matched-word="">
+            <strong
+              className="font-semibold"
+              style={{ color: topicMatchColorVariable(matched.get(word)) }}
+              data-matched-word=""
+            >
               {word}
             </strong>
           ) : (

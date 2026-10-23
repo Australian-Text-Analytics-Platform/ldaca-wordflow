@@ -5,7 +5,7 @@ import { ResultFrame } from '@/features/views/common/components/ResultFrame';
 import type { TopicModelingTopic } from '@/api';
 import { Eye } from 'lucide-react';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
-import { matchedTopicWords, matchTopicWords } from '../../topicModelingAdapters';
+import { matchedTopicWords, matchTopicWords, topicSearchTerms } from '../../topicModelingAdapters';
 import { TopicWordsLine } from './TopicWords';
 import { TopicSizeComposition, type TopicCorpusPresentation } from './TopicSizeComposition';
 import { TopicExamplesPane, type TopicExamplesContext } from './TopicExamplesPane';
@@ -236,6 +236,7 @@ export function TopicSelectionPanel({
       topic.representative_words.map((term) => term.word),
       topicSearchQuery,
       matchChecklistOption,
+      topicSearchTerms,
     );
   };
   const matchingIds = new Set(sortedTopics.filter(matches).map((topic) => topic.id));

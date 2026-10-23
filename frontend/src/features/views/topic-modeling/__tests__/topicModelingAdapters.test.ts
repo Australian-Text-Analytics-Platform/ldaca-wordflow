@@ -5,7 +5,9 @@ import {
   filterTopicRepresentativeWords,
   matchedTopicWords,
   sliceTopicRepresentativeWords,
+  topicMatchColorVariable,
   topicRepresentativeText,
+  topicSearchTerms,
 } from '../topicModelingAdapters';
 
 const topic: TopicModelingTopic = {
@@ -49,7 +51,7 @@ describe('topic representative-word projections', () => {
 describe('matchedTopicWords (issue 342)', () => {
   it('returns every word that matches a wildcard search', () => {
     const words = ['family', 'care', 'familiarisation', 'home'];
-    expect([...matchedTopicWords(words, 'famil*', matchChecklistOption)]).toEqual([
+    expect([...matchedTopicWords(words, 'famil*', matchChecklistOption).keys()]).toEqual([
       'family',
       'familiarisation',
     ]);
@@ -57,5 +59,43 @@ describe('matchedTopicWords (issue 342)', () => {
 
   it('returns nothing without a search', () => {
     expect(matchedTopicWords(['family'], '  ', matchChecklistOption).size).toBe(0);
+  });
+});
+
+describe('multi-term search (issue 434)', () => {
+  it('splits at spaces, commas and other punctuation, keeping wildcards, hyphens and apostrophes', () => {
+    expect(topicSearchTerms('chil, home house')).toEqual(['chil', 'home', 'house']);
+    expect(topicSearchTerms(' gs*;covid-19 / don’t，家庭。Home home ')).toEqual([
+      'gs*',
+      'covid-19',
+      'don’t',
+      '家庭',
+      'Home',
+    ]);
+    expect(topicSearchTerms(' , ')).toEqual([]);
+  });
+
+  it('gives each matching word the first term it matches', () => {
+    const words = ['child', 'children', 'chill', 'home', 'homeless', 'house', 'housing', 'tax'];
+    expect(
+      Object.fromEntries(matchedTopicWords(words, 'chil, home house', matchChecklistOption)),
+    ).toEqual({
+      child: 0,
+      children: 0,
+      chill: 0,
+      home: 1,
+      homeless: 1,
+      house: 2,
+    });
+    expect(Object.fromEntries(matchedTopicWords(words, 'hous*', matchChecklistOption))).toEqual({
+      house: 0,
+      housing: 0,
+    });
+  });
+
+  it('colours terms orange first, then the other chart colours, repeating after six', () => {
+    expect(topicMatchColorVariable(0)).toBe('var(--vscode-charts-orange, #d18616)');
+    expect(topicMatchColorVariable(1)).toBe('var(--vscode-charts-blue, #1a5cff)');
+    expect(topicMatchColorVariable(6)).toBe(topicMatchColorVariable(0));
   });
 });

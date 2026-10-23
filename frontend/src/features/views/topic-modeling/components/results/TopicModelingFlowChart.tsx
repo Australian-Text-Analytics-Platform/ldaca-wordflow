@@ -140,7 +140,6 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
   const outerRadius = bubble.radius + 7;
   const diameter = outerRadius * 2;
   const tooltipPosition = bubble.position.x <= plane.width / 2 ? Position.Right : Position.Left;
-  const matchColor = bubble.matchedWords.length > 0 ? topicMatchColor() : undefined;
   // A named Topic keeps its short label on the bubble, bold and
   // underlined so it reads as named; the tooltip shows the name.
   const { names } = useTopicNames();
@@ -272,8 +271,10 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             words={bubble.topic.representative_words.map((term) => ({
               text: term.word,
               value: term.occurrence_count,
-              // Find topics matches: bold orange, as in the topic lists (issue 342).
-              ...(bubble.matchedWords.includes(term.word) ? { color: matchColor, bold: true } : {}),
+              // Search matches: bold, in their term's colour, as in the topic lists (issues 342, 434).
+              ...(Object.hasOwn(bubble.matchedWords, term.word)
+                ? { color: topicMatchColor(bubble.matchedWords[term.word]), bold: true }
+                : {}),
             }))}
             minWidth={180}
             aspectRatio={0.48}

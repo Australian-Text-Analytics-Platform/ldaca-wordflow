@@ -191,7 +191,8 @@ describe('TopicSelectionPanel', () => {
     for (const word of ['family', 'familiarisation']) {
       const highlighted = within(line).getByText(word);
       expect(highlighted).toHaveAttribute('data-matched-word');
-      expect(highlighted).toHaveClass('font-semibold', 'text-chart-4');
+      expect(highlighted).toHaveClass('font-semibold');
+      expect(highlighted).toHaveStyle({ color: 'var(--vscode-charts-orange, #d18616)' });
     }
 
     fireEvent.focus(line);

@@ -1,7 +1,12 @@
 import type { TopicColorGroups, TopicModelingTopic } from '@/api';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
 import { GREY, RANDOMIZABLE_FG } from '@/features/views/common/vizPalette';
-import { interpolateColor, matchedTopicWords, matchTopicWords } from '../../topicModelingAdapters';
+import {
+  interpolateColor,
+  matchedTopicWords,
+  matchTopicWords,
+  topicSearchTerms,
+} from '../../topicModelingAdapters';
 import { isUngrouped, UNGROUPED_BUBBLE_OPACITY } from '../../ungrouped';
 
 const TOPIC_GRAPH_WIDTH = 1000;
@@ -59,8 +64,11 @@ export interface TopicBubbleModel {
   /** Its examples are shown beside the list; the bubble carries an eye (issue 353). */
   shown: boolean;
   filteredOut: boolean;
-  /** Words matching Find topics, shown bold in the bubble's word cloud (issue 342). */
-  matchedWords: string[];
+  /**
+   * Words matching the search, each with the index of the term it matches,
+   * shown bold in that term's colour in the bubble's word cloud (issues 342, 434).
+   */
+  matchedWords: Record<string, number>;
 }
 
 /** One metadata value shown as a bubble colour, chip, and legend entry. */
@@ -467,13 +475,13 @@ export function buildTopicBubbleModels({
       lassoed: lassoTopicIds.has(topic.id),
       hovered: hoveredTopicId === topic.id,
       shown: shownTopicId === topic.id,
-      matchedWords: [
-        ...matchedTopicWords(
+      matchedWords: Object.fromEntries(
+        matchedTopicWords(
           topic.representative_words.map((term) => term.word),
           topicSearchQuery,
           matchChecklistOption,
         ),
-      ],
+      ),
       // Faded exactly when the Topic list leaves it out: outside the lasso, or
       // not matching the search (Chao, 2026-10-08: the chart lit search
       // matches outside the lasso while the list showed only lassoed ones).
@@ -484,6 +492,7 @@ export function buildTopicBubbleModels({
             topic.representative_words.map((term) => term.word),
             topicSearchQuery,
             matchChecklistOption,
+            topicSearchTerms,
           )),
     };
   });

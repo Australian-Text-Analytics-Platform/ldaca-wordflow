@@ -8,7 +8,7 @@ import {
   type ChartExportLegendItem,
 } from '@/lib/chartExport';
 import { saveBlob } from '@/lib/download';
-import { matchTopicWords } from '../../topicModelingAdapters';
+import { matchTopicWords, topicSearchTerms } from '../../topicModelingAdapters';
 import { topicNameDisplay, type TopicNames } from '../../topicNames';
 import { runTopicBubbleHtml, type TopicBubbleHtmlPayload } from './topicBubbleHtmlRuntime';
 import { topicSizeChips, type TopicCorpusPresentation } from './topicSizeChips';
@@ -101,7 +101,7 @@ export function buildTopicBubbleHtmlDocument(
         `<span class="chip"><i style="background:${escapeHtml(item.color)}"></i>${escapeHtml(item.label)}</span>`,
     )
     .join('');
-  const run = `(${runTopicBubbleHtml.toString()})(${jsonForScript(payload)}, (words, query) => (${matchTopicWords.toString()})(words, query, (${matchChecklistOption.toString()})));`;
+  const run = `(${runTopicBubbleHtml.toString()})(${jsonForScript(payload)}, (words, query) => (${matchTopicWords.toString()})(words, query, (${matchChecklistOption.toString()}), (${topicSearchTerms.toString()})));`;
   return `<!doctype html>
 <html lang="en">
 <head>

@@ -551,9 +551,13 @@ several Topic centres. Lasso mode remains active and later strokes add to the
 filter of the topic list; use **Clear filter** in the graph toolbar to
 remove that accumulated filter without changing manually selected Topics.
 A **Search term** further narrows the list and fades the other topics in the
-graph. A topic matches when the search text is found in its words; `*` (any
-letters) and `?` (one letter) match within a single word, so `gs*` and `gs?`
-both find topics with *gst* wherever it is in their list.
+graph. Spaces, commas and other punctuation separate several terms, and a topic
+matches when any one of its words contains any one term: `chil, home` finds
+topics with *child*, *children* or *chill*, and topics with *home* or
+*homeless*. `*` (any letters) and `?` (one letter) match a whole word, so `gs*`
+and `gs?` both find topics with *gst* wherever it is in their list. Matching
+words are bold in the topic list and in a bubble's word cloud, in one colour
+per term: orange for the first term, then blue, green, purple, red and yellow.
 
 <h3 id="help-topic-modeling-topic-list">Topic list</h3>
 

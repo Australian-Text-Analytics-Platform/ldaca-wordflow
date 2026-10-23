@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { TopicModelingTopic } from '@/api';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
-import { matchTopicWords } from '../../../topicModelingAdapters';
+import { matchTopicWords, topicSearchTerms } from '../../../topicModelingAdapters';
 import { buildTopicBubbleHtmlDocument, buildTopicBubblePayload } from '../topicBubbleHtmlExport';
 import { runTopicBubbleHtml } from '../topicBubbleHtmlRuntime';
 
@@ -63,21 +63,32 @@ describe('topic bubble interactive HTML (issue 279)', () => {
   it('embeds functions that run without the app', () => {
     const option = standalone<typeof matchChecklistOption>(matchChecklistOption);
     const topicMatch = standalone<typeof matchTopicWords>(matchTopicWords);
-    const match = (words: string[], query: string) => topicMatch(words, query, option);
+    const terms = standalone<typeof topicSearchTerms>(topicSearchTerms);
+    const match = (words: string[], query: string) => topicMatch(words, query, option, terms);
     expect(match(['climate', 'policy'], 'POL')).toBe(true);
     expect(match(['climate', 'policy'], 'clim*')).toBe(true);
     expect(match(['housing', 'rent'], 'clim*')).toBe(false);
+    // Any one term (issue 434).
+    expect(match(['housing', 'rent'], 'clim* rent')).toBe(true);
     expect(standalone(runTopicBubbleHtml)).toBeTypeOf('function');
   });
 
   it('matches wildcards against any one word, as in the app (issue 280)', () => {
     const words = ['government', 'gst', 'tax'];
-    expect(matchTopicWords(words, 'gst', matchChecklistOption)).toBe(true);
-    expect(matchTopicWords(words, 'gs*', matchChecklistOption)).toBe(true);
-    expect(matchTopicWords(words, 'gs?', matchChecklistOption)).toBe(true);
-    expect(matchTopicWords(words, 'govern*, gst*', matchChecklistOption)).toBe(true);
-    expect(matchTopicWords(words, 'gs??', matchChecklistOption)).toBe(false);
-    expect(matchTopicWords(words, '', matchChecklistOption)).toBe(true);
+    expect(matchTopicWords(words, 'gst', matchChecklistOption, topicSearchTerms)).toBe(true);
+    expect(matchTopicWords(words, 'gs*', matchChecklistOption, topicSearchTerms)).toBe(true);
+    expect(matchTopicWords(words, 'gs?', matchChecklistOption, topicSearchTerms)).toBe(true);
+    expect(matchTopicWords(words, 'govern*, gst*', matchChecklistOption, topicSearchTerms)).toBe(
+      true,
+    );
+    expect(matchTopicWords(words, 'gs??', matchChecklistOption, topicSearchTerms)).toBe(false);
+    expect(matchTopicWords(words, '', matchChecklistOption, topicSearchTerms)).toBe(true);
+    expect(matchTopicWords(words, 'housing, tax', matchChecklistOption, topicSearchTerms)).toBe(
+      true,
+    );
+    expect(matchTopicWords(words, 'housing rent', matchChecklistOption, topicSearchTerms)).toBe(
+      false,
+    );
   });
 
   it('writes the bubble picture, header and filter into one document', () => {
@@ -124,7 +135,8 @@ describe('topic bubble interactive HTML (issue 279)', () => {
     const topicMatch = standalone<typeof matchTopicWords>(matchTopicWords);
     run(
       buildTopicBubblePayload(topics, presentation, ['Senate', 'House'], 'clim*', 400, 300),
-      (words, query) => topicMatch(words, query, option),
+      (words, query) =>
+        topicMatch(words, query, option, standalone<typeof topicSearchTerms>(topicSearchTerms)),
     );
 
     const group = (id: number) => document.querySelector(`[data-topic-id="${String(id)}"]`);
