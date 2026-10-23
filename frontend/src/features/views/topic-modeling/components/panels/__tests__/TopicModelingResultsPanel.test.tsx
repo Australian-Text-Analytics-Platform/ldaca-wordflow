@@ -633,7 +633,7 @@ describe('TopicModelingResultsPanel', () => {
     expect(screen.getByText('Display options')).toBeInTheDocument();
     // Short visible labels (issue 152); the inputs keep their full names.
     expect(screen.queryByText('Topic structure')).not.toBeInTheDocument();
-    expect(screen.getByText('Topics per document')).toBeInTheDocument();
+    expect(screen.getByText('Topics per doc')).toBeInTheDocument();
     expect(screen.getByLabelText('Top topics per document')).toBeInTheDocument();
     expect(screen.getByLabelText('Words per topic')).toBeInTheDocument();
     expect(screen.queryByText(explanation)).not.toBeInTheDocument();

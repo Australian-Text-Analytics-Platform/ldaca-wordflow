@@ -289,10 +289,10 @@ selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clea
 
 <h2 id="help-topic-modeling-results">Result panel</h2>
 
-![Topic Modelling results: the bubble chart, Display options, and the topic list beside the examples of Topic 12](tutorials/assets/topic_modelling/results.png)
+![Topic Modelling results: the bubble chart with the Display options beside it, and the topic list beside the examples of Topic 12](tutorials/assets/topic_modelling/results.png)
 
 The **Display options** change how the result is shown: **Topics**, **Topics
-per document**, **Words per topic**, **Colour by**, the stop word controls and the
+per doc** (top topics per document), **Words per topic**, **Colour by**, the stop word controls and the
 **Search term**, with **Add to Project**. Question-mark icons beside some of
 these controls give a short explanation. On a wide results panel the options
 sit beside the bubble chart, with the colour legend: one option per row, the
@@ -302,7 +302,7 @@ narrow the chart (double-click it to go back to 4:3). The panel icon at the
 right of the Display options heading moves the options below the chart, in a
 compact row, and back beside it. On a narrower panel they always sit below the
 chart. Click **Display options** to fold them to one summary line, such as "2
-topics per document · 15 words per topic · Colour: Data Block · Stop words on"; the
+topics per doc · 15 words per topic · Colour: Data Block · Stop words on"; the
 search term and Add to Project stay available. The tab remembers these choices
 on this computer. Below the chart and options, the topic list takes the left third and the
 [examples of one topic](#help-topic-modeling-examples) the rest; drag the
@@ -310,7 +310,7 @@ divider between them to widen the list (double-click it to go back to a
 third). In a narrow window the list sits above the examples. The area has its own
 resize grip, like the chart itself.
 
-![Display options: Topics, Topics per document, Words per topic, the stop words switch and list, and the search term](tutorials/assets/topic_modelling/result_settings.png)
+![Display options moved below the chart, in a compact row: Topics, Topics per doc, Words per topic, Colour by, the stop words switch and list, the search term and Add to Project](tutorials/assets/topic_modelling/result_settings.png)
 
 <h3 id="help-topic-modeling-number-of-clusters">Topics (number of topics)</h3>
 
@@ -361,7 +361,7 @@ selecting a Topic. Its examples are shown in random order, since Ungrouped has
 no centre to rank them by.
 
 **Why only fully Ungrouped documents.** Ungrouped is not ranked in **Topics
-per document** (Top topics per document), because it is not a theme: it is the
+per doc** (Top topics per document), because it is not a theme: it is the
 passages that matched none. If it were ranked, a document that is 60% Ungrouped
 and 40% about a sugar tax would leave the sugar tax bubble at Top 1, hiding the
 one thing it is about, and the Ungrouped bubble would hold two thirds of the
@@ -408,7 +408,7 @@ can be about one percentage point. A larger size can put almost everything into
 one Topic. With **Suggestions** on, a result with many Ungrouped documents
 suggests trying a smaller Min topic size.
 
-<h3 id="help-topic-modeling-top-topics-per-row">Topics per document (top topics per document)</h3>
+<h3 id="help-topic-modeling-top-topics-per-row">Topics per doc (top topics per document)</h3>
 
 **Top topics per document** controls how many of each source row's strongest
 positive real-topic shares contribute to bubble counts. The default is 2. Topic
@@ -704,7 +704,7 @@ available for the next run.
 | Topic size | 10 to Auto |
 | Seed | 0 |
 | Topic sampling | Off; suggested for very large corpora |
-| Topics per document | 2, or the available Topic count when smaller |
+| Topics per doc | 2, or the available Topic count when smaller |
 | Words per topic | 15 |
 
 ## Practice exercise

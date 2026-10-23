@@ -174,7 +174,7 @@ function FindTopicsInput({
           // Examples show that parts of words and several terms work (issue 434).
           placeholder="e.g. house, pre, gov"
           title="Words or parts of words, separated by spaces or commas. Topics with any of them match."
-          className={`h-8 ${classes.column ? 'w-full' : 'w-48'} rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden`}
+          className={`h-8 ${classes.column ? 'w-full' : 'w-56'} rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden`}
         />
       </div>
     </div>
@@ -562,7 +562,7 @@ function TopNTopicsControl({
     <div className={classes.control}>
       <div className="flex items-center gap-1.5">
         <label htmlFor="topic-top-n" className="font-medium">
-          Topics per document
+          Topics per doc
         </label>
         <HelpIcon
           targetKey="analysis.topic-modeling.top-topics-per-row"
@@ -784,7 +784,7 @@ export function TopicModelingResultsPanel({
                       >
                         {[
                           topicInclusion
-                            ? `${String(topicInclusion.top_n_topics)} topics per document`
+                            ? `${String(topicInclusion.top_n_topics)} topics per doc`
                             : null,
                           `${String(wordsPerTopic)} words per topic`,
                           colorBy?.loaded ? `Colour: ${colorBy.column ?? 'Data Block'}` : null,
