@@ -684,4 +684,45 @@ describe('TopicModelingResultsPanel', () => {
     fireEvent.change(find, { target: { value: 'housing' } });
     expect(onTopicSearchQueryChange).toHaveBeenCalledWith('housing');
   });
+
+  it('folds Result settings to one summary line, keeping Find topics (issue 432)', () => {
+    const onSettingsCollapsedChange = vi.fn();
+    const { rerender } = render(
+      <TooltipProvider>
+        <TopicModelingResultsPanel
+          {...baseProps}
+          wordsPerTopic={15}
+          stopWordsEnabled
+          onSettingsCollapsedChange={onSettingsCollapsedChange}
+        />
+      </TooltipProvider>,
+    );
+    const toggle = screen.getByRole('button', { name: 'Result settings' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByLabelText('Words per topic')).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(onSettingsCollapsedChange).toHaveBeenCalledWith(true);
+
+    rerender(
+      <TooltipProvider>
+        <TopicModelingResultsPanel
+          {...baseProps}
+          wordsPerTopic={15}
+          stopWordsEnabled
+          settingsCollapsed
+          onSettingsCollapsedChange={onSettingsCollapsedChange}
+        />
+      </TooltipProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Result settings' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.queryByLabelText('Words per topic')).not.toBeInTheDocument();
+    expect(screen.getByTestId('topic-result-settings-summary')).toHaveTextContent(
+      /15 words · .*Stop words on/,
+    );
+    expect(screen.getByRole('searchbox', { name: 'Find topics' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add to Project/ })).toBeInTheDocument();
+  });
 });

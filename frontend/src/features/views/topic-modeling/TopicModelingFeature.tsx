@@ -67,6 +67,9 @@ import { remoteEmbeddingChoice } from './remoteEmbedding';
 import { shouldSuggestRemoteGpu } from '@/features/nudges/nudges';
 import { useDetectedColumnLanguage } from '@/features/views/common/hooks/useDetectedColumnLanguage';
 import { TopicNamesContext } from './components/results/topicNamesContext';
+
+/** Result settings folded to one line in this tab, on this device (issue 432). */
+const RESULT_SETTINGS_COLLAPSED_SETTING = 'topicModeling.resultSettingsCollapsed';
 import { topicGroupKey, withTopicName } from './topicNames';
 
 /**
@@ -701,6 +704,10 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
             onClearSelection={handleClearTopicSelection}
             topicSearchQuery={topicSearchQuery}
             onTopicSearchQueryChange={setTopicSearchQuery}
+            settingsCollapsed={host.settings[RESULT_SETTINGS_COLLAPSED_SETTING] === 'true'}
+            onSettingsCollapsedChange={(collapsed) => {
+              host.setSetting(RESULT_SETTINGS_COLLAPSED_SETTING, String(collapsed));
+            }}
             panelNodeIds={colorNodeIds}
             nodeColors={nodeColors}
             defaultPalette={defaultPalette}

@@ -1,5 +1,5 @@
 import type { ProgressDetail } from '@/api';
-import { LoaderCircle, Plus, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, LoaderCircle, Plus, Search } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import type {
   TopicClustering,
@@ -60,6 +60,9 @@ interface Props {
   onClearSelection: () => void;
   topicSearchQuery: string;
   onTopicSearchQueryChange: (query: string) => void;
+  /** Result settings folded to one summary line, remembered per tab on this device (issue 432). */
+  settingsCollapsed?: boolean;
+  onSettingsCollapsedChange?: (collapsed: boolean) => void;
   panelNodeIds: string[];
   nodeColors: Record<string, string>;
   defaultPalette: string[];
@@ -113,6 +116,10 @@ interface TopicColorByState {
 const COLOR_BY_DATA_BLOCK = '__data_block__';
 
 /** Find topics by their words; it dims the chart and filters the list (issue 353). */
+/** A label beside its control, wrapping as a unit, so the settings stay short (issue 432). */
+const INLINE_CONTROL =
+  'flex flex-wrap items-center gap-x-2 gap-y-1 text-label-secondary text-description';
+
 function FindTopicsInput({
   value,
   onChange,
@@ -121,8 +128,9 @@ function FindTopicsInput({
   onChange: (query: string) => void;
 }) {
   return (
-    <div className="grid gap-1 text-label-secondary text-description">
-      <label htmlFor="topic-find-input" className="font-medium">
+    <div className={INLINE_CONTROL}>
+      {/* The placeholder says it, so the label is for screen readers only (issue 432). */}
+      <label htmlFor="topic-find-input" className="sr-only">
         Find topics
       </label>
       <div className="relative">
@@ -137,8 +145,8 @@ function FindTopicsInput({
           onChange={(event) => {
             onChange(event.target.value);
           }}
-          placeholder="Words in a topic…"
-          className="h-8 w-56 rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden"
+          placeholder="Find topics…"
+          className="h-8 w-48 rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden"
         />
       </div>
     </div>
@@ -154,7 +162,7 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
     colorBy.unavailableReason ??
     (colorBy.columns.length === 0 && !colorBy.error ? NO_COLOR_COLUMN_REASON : undefined);
   return (
-    <div className="grid gap-1 text-label-secondary text-description">
+    <div className={INLINE_CONTROL}>
       <div className="flex items-center gap-1.5">
         <span id="topic-color-by-label" className="font-medium">
           Colour by
@@ -195,7 +203,7 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
         </SelectContent>
       </Select>
       {colorBy.error ? (
-        <p role="alert" className="text-error">
+        <p role="alert" className="basis-full text-error">
           {colorBy.error}
         </p>
       ) : null}
@@ -321,7 +329,7 @@ function ClusterCountControl({
   };
 
   return (
-    <div className="grid min-w-0 gap-1 text-label-secondary text-description">
+    <div className={`${INLINE_CONTROL} min-w-0`}>
       <div className="flex items-center gap-3">
         <label htmlFor="topic-cluster-count" className="font-medium">
           Topics
@@ -334,7 +342,7 @@ function ClusterCountControl({
         >
           {clustering.min_cluster_count}
         </span>
-        <div ref={sliderBoxRef} className="w-40">
+        <div ref={sliderBoxRef} className="w-32">
           {clustering.adjustable ? (
             <Slider
               id="topic-cluster-count"
@@ -412,7 +420,7 @@ function ClusterCountControl({
         />
       </div>
       {error ? (
-        <span className="flex items-center gap-2 whitespace-pre-wrap wrap-break-word text-error">
+        <span className="flex basis-full items-center gap-2 whitespace-pre-wrap wrap-break-word text-error">
           {error}
           {onRetry ? (
             <button type="button" className="underline" onClick={onRetry}>
@@ -435,10 +443,7 @@ function WordsPerTopicControl({
   const [draft, setDraft] = useState({ source: value, value: String(value) });
   const displayed = draft.source === value ? draft.value : String(value);
   return (
-    <label
-      htmlFor="topic-words-per-topic"
-      className="grid gap-1 text-label-secondary text-description"
-    >
+    <label htmlFor="topic-words-per-topic" className={INLINE_CONTROL}>
       <span className="font-medium">Words</span>
       <input
         id="topic-words-per-topic"
@@ -501,7 +506,7 @@ function TopNTopicsControl({
   };
 
   return (
-    <div className="grid gap-1 text-label-secondary text-description">
+    <div className={INLINE_CONTROL}>
       <div className="flex items-center gap-1.5">
         <label htmlFor="topic-top-n" className="font-medium">
           Per document
@@ -562,6 +567,8 @@ export function TopicModelingResultsPanel({
   onClearSelection,
   topicSearchQuery,
   onTopicSearchQueryChange,
+  settingsCollapsed = false,
+  onSettingsCollapsedChange,
   panelNodeIds,
   nodeColors,
   defaultPalette,
@@ -687,20 +694,51 @@ export function TopicModelingResultsPanel({
                   controlRowSlot={
                     <section
                       aria-labelledby="topic-result-settings-heading"
-                      className="w-full rounded-lg border border-surface-border/70 bg-panel/20 p-3"
+                      className="w-full rounded-lg border border-surface-border/70 bg-panel/20 px-3 py-2"
                     >
-                      {/* One wrapping row of short-labelled controls (issue 152). */}
-                      <div className="mb-3 flex flex-wrap items-center gap-3">
-                        <h3
+                      {/* One header row: fold toggle, count, summary when folded, Find topics,
+                          Add to Project; the settings wrap below it (issues 152, 432). */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <button
+                          type="button"
                           id="topic-result-settings-heading"
-                          className="text-body font-medium text-foreground"
+                          aria-expanded={!settingsCollapsed}
+                          aria-controls="topic-result-settings-controls"
+                          onClick={() => onSettingsCollapsedChange?.(!settingsCollapsed)}
+                          className="-ml-1 flex items-center gap-1 rounded-sm px-1 text-body font-medium text-foreground hover:bg-hover focus-visible:ring-1 focus-visible:ring-focus focus-visible:outline-hidden"
                         >
+                          {settingsCollapsed ? (
+                            <ChevronRight className="size-4" aria-hidden="true" />
+                          ) : (
+                            <ChevronDown className="size-4" aria-hidden="true" />
+                          )}
                           Result settings
-                        </h3>
+                        </button>
                         <span className="rounded-full border bg-editor px-2 py-0.5 text-label-secondary tabular-nums text-description">
                           Topics ({topics.filter((topic) => !isUngrouped(topic.id)).length})
                         </span>
-                        <div className="ml-auto">
+                        {settingsCollapsed ? (
+                          <span
+                            data-testid="topic-result-settings-summary"
+                            className="min-w-0 truncate text-label-secondary text-description"
+                          >
+                            {[
+                              topicInclusion
+                                ? `${String(topicInclusion.top_n_topics)} per document`
+                                : null,
+                              `${String(wordsPerTopic)} words`,
+                              colorBy?.loaded ? `Colour: ${colorBy.column ?? 'Data Block'}` : null,
+                              stopWordsEnabled ? 'Stop words on' : 'Stop words off',
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        ) : null}
+                        <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-2">
+                          <FindTopicsInput
+                            value={topicSearchQuery}
+                            onChange={onTopicSearchQueryChange}
+                          />
                           <DisabledReasonTooltip
                             reason={
                               isAddingToWorkspace
@@ -726,46 +764,47 @@ export function TopicModelingResultsPanel({
                           </DisabledReasonTooltip>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-                        {clustering ? (
-                          <ClusterCountControl
-                            key={`clusters:${String(clustering.cluster_count)}:${String(projectionControlResetKey)}`}
-                            clustering={clustering}
-                            pending={projectionPending}
-                            error={projectionError}
-                            onCommit={onClusterCountCommit}
-                            onRetry={onProjectionRetry}
-                            refocusSliderRef={refocusClusterSliderRef}
+                      {settingsCollapsed ? null : (
+                        <div
+                          id="topic-result-settings-controls"
+                          className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2"
+                        >
+                          {clustering ? (
+                            <ClusterCountControl
+                              key={`clusters:${String(clustering.cluster_count)}:${String(projectionControlResetKey)}`}
+                              clustering={clustering}
+                              pending={projectionPending}
+                              error={projectionError}
+                              onCommit={onClusterCountCommit}
+                              onRetry={onProjectionRetry}
+                              refocusSliderRef={refocusClusterSliderRef}
+                            />
+                          ) : null}
+                          {topicInclusion ? (
+                            <TopNTopicsControl
+                              key={`top-n:${String(topicInclusion.top_n_topics)}:${String(projectionControlResetKey)}`}
+                              inclusion={topicInclusion}
+                              pending={projectionPending}
+                              onCommit={onTopNTopicsCommit}
+                            />
+                          ) : null}
+                          <WordsPerTopicControl
+                            value={wordsPerTopic}
+                            onCommit={onWordsPerTopicChange}
                           />
-                        ) : null}
-                        {topicInclusion ? (
-                          <TopNTopicsControl
-                            key={`top-n:${String(topicInclusion.top_n_topics)}:${String(projectionControlResetKey)}`}
-                            inclusion={topicInclusion}
-                            pending={projectionPending}
-                            onCommit={onTopNTopicsCommit}
+                          {colorBy?.loaded ? <ColorByControl colorBy={colorBy} /> : null}
+                          <TopicModelingStopWordsControl
+                            enabled={stopWordsEnabled}
+                            onEnabledChange={onStopWordsEnabledChange}
+                            savedWords={stopWords}
+                            workspaceId={stopWordsDetectionTarget.workspaceId}
+                            nodeId={stopWordsDetectionTarget.nodeId}
+                            column={stopWordsDetectionTarget.column}
+                            onSavedWordsChange={onStopWordsChange}
+                            sources={stopWordListSources}
                           />
-                        ) : null}
-                        <WordsPerTopicControl
-                          value={wordsPerTopic}
-                          onCommit={onWordsPerTopicChange}
-                        />
-                        {colorBy?.loaded ? <ColorByControl colorBy={colorBy} /> : null}
-                        <TopicModelingStopWordsControl
-                          enabled={stopWordsEnabled}
-                          onEnabledChange={onStopWordsEnabledChange}
-                          savedWords={stopWords}
-                          workspaceId={stopWordsDetectionTarget.workspaceId}
-                          nodeId={stopWordsDetectionTarget.nodeId}
-                          column={stopWordsDetectionTarget.column}
-                          onSavedWordsChange={onStopWordsChange}
-                          sources={stopWordListSources}
-                        />
-                        <FindTopicsInput
-                          value={topicSearchQuery}
-                          onChange={onTopicSearchQueryChange}
-                        />
-                      </div>
+                        </div>
+                      )}
                     </section>
                   }
                 />
