@@ -171,7 +171,9 @@ function FindTopicsInput({
           onChange={(event) => {
             onChange(event.target.value);
           }}
-          placeholder={classes.column ? 'Words in topics' : 'Search term…'}
+          // Examples show that parts of words and several terms work (issue 434).
+          placeholder="e.g. house, pre, gov"
+          title="Words or parts of words, separated by spaces or commas. Topics with any of them match."
           className={`h-8 ${classes.column ? 'w-full' : 'w-48'} rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden`}
         />
       </div>
@@ -919,7 +921,7 @@ export function TopicModelingResultsPanel({
                               {settingsCollapsed ? null : (
                                 <div
                                   id="topic-result-settings-controls"
-                                  className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2"
+                                  className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-3 pb-1.5"
                                 >
                                   {controls}
                                 </div>
