@@ -557,7 +557,7 @@ function TopNTopicsControl({
     <div className={classes.control}>
       <div className="flex items-center gap-1.5">
         <label htmlFor="topic-top-n" className="font-medium">
-          Per document
+          Topics per document
         </label>
         <HelpIcon
           targetKey="analysis.topic-modeling.top-topics-per-row"
@@ -779,7 +779,7 @@ export function TopicModelingResultsPanel({
                       >
                         {[
                           topicInclusion
-                            ? `${String(topicInclusion.top_n_topics)} per document`
+                            ? `${String(topicInclusion.top_n_topics)} topics per document`
                             : null,
                           `${String(wordsPerTopic)} words per topic`,
                           colorBy?.loaded ? `Colour: ${colorBy.column ?? 'Data Block'}` : null,

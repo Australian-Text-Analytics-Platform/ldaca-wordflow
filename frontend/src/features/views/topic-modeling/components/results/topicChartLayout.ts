@@ -19,7 +19,7 @@ export const DEFAULT_TOPIC_CHART_LAYOUT: TopicChartLayout = {
 /** The chart's preferred shape beside the settings (Chao, 2026-10-24). */
 const CHART_ASPECT = 4 / 3;
 export const CHART_MIN_WIDTH = 420;
-export const SIDE_MIN_WIDTH = 300;
+export const SIDE_MIN_WIDTH = 340;
 export const DIVIDER_WIDTH = 8;
 export const CHART_SHARE_STEP = 0.05;
 /** Narrower cards keep the settings below the chart. */

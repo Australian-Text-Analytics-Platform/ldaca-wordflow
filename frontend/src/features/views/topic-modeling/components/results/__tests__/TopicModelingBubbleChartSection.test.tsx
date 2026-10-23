@@ -173,10 +173,10 @@ const sizeChartLayout = (width: number, height: number) =>
 describe('topic chart layout (issue 433)', () => {
   it('makes the chart 4:3 of its height, or the dragged share, leaving the side its minimum', () => {
     expect(topicChartWidth({ width: 1400, height: 480 }, null)).toBe(640);
-    expect(topicChartWidth({ width: 900, height: 480 }, null)).toBe(592);
+    expect(topicChartWidth({ width: 900, height: 480 }, null)).toBe(552);
     expect(topicChartWidth({ width: 1400, height: 200 }, null)).toBe(420);
     expect(topicChartWidth({ width: 1400, height: 480 }, 0.5)).toBe(700);
-    expect(topicChartWidth({ width: 1400, height: 480 }, 0.99)).toBe(1092);
+    expect(topicChartWidth({ width: 1400, height: 480 }, 0.99)).toBe(1052);
   });
 
   it('puts the legend and settings beside a 4:3 chart on a wide card', () => {
