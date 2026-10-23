@@ -187,7 +187,9 @@ describe('topic chart layout (issue 433)', () => {
         {...commonProps}
         topics={[]}
         nodeNames={['A', 'B']}
-        controlRowSlot={(toggle) => <section>Result settings{toggle}</section>}
+        controlRowSlot={({ placementToggle }) => (
+          <section>Display options{placementToggle}</section>
+        )}
         onChartLayoutChange={onChartLayoutChange}
       />,
     );
@@ -196,13 +198,13 @@ describe('topic chart layout (issue 433)', () => {
       'side',
     );
     const side = screen.getByTestId('topic-chart-side');
-    expect(within(side).getByText('Result settings')).toBeInTheDocument();
+    expect(within(side).getByText('Display options')).toBeInTheDocument();
     expect(within(side).getByRole('group', { name: 'Bubble colours by Data Block' })).toBeVisible();
     expect(screen.getByTestId('topic-chart-column')).toHaveStyle({
       width: '640px',
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Move the settings below the chart' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move the options below the chart' }));
     expect(onChartLayoutChange).toHaveBeenLastCalledWith({
       placement: 'below',
       chartShare: null,
@@ -224,15 +226,17 @@ describe('topic chart layout (issue 433)', () => {
       <TopicModelingBubbleChartSection
         {...commonProps}
         topics={[]}
-        controlRowSlot={(toggle) => <section>Result settings{toggle}</section>}
+        controlRowSlot={({ placementToggle }) => (
+          <section>Display options{placementToggle}</section>
+        )}
         chartLayout={{ placement: 'below', chartShare: 0.5 }}
         onChartLayoutChange={vi.fn()}
       />,
     );
     expect(screen.queryByTestId('topic-chart-side')).not.toBeInTheDocument();
-    expect(screen.getByText('Result settings')).toBeInTheDocument();
+    expect(screen.getByText('Display options')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Move the settings beside the chart' }),
+      screen.getByRole('button', { name: 'Move the options beside the chart' }),
     ).toBeInTheDocument();
     view.unmount();
     spy.mockRestore();
@@ -242,7 +246,9 @@ describe('topic chart layout (issue 433)', () => {
       <TopicModelingBubbleChartSection
         {...commonProps}
         topics={[]}
-        controlRowSlot={(toggle) => <section>Result settings{toggle}</section>}
+        controlRowSlot={({ placementToggle }) => (
+          <section>Display options{placementToggle}</section>
+        )}
         onChartLayoutChange={vi.fn()}
       />,
     );
@@ -250,7 +256,7 @@ describe('topic chart layout (issue 433)', () => {
       'data-settings-placement',
       'below',
     );
-    expect(screen.queryByRole('button', { name: /Move the settings/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Move the options/ })).not.toBeInTheDocument();
     narrow.mockRestore();
   });
 });

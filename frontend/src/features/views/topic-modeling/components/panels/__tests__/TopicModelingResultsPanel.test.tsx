@@ -7,16 +7,22 @@ import { useUIStore } from '@/stores/uiStore';
 
 import { TopicModelingResultsPanel } from '../TopicModelingResultsPanel';
 
+const chartSection = vi.hoisted(() => ({ beside: false }));
+
 vi.mock('../../results/TopicModelingBubbleChartSection', () => ({
   TopicModelingBubbleChartSection: ({
     controlRowSlot,
     topics,
   }: {
-    controlRowSlot?: React.ReactNode | ((placementToggle: React.ReactNode) => React.ReactNode);
+    controlRowSlot?:
+      | React.ReactNode
+      | ((layout: { beside: boolean; placementToggle: React.ReactNode }) => React.ReactNode);
     topics: { id: number }[];
   }) => (
     <div data-testid="topic-bubble-chart-section">
-      {typeof controlRowSlot === 'function' ? controlRowSlot(null) : controlRowSlot}
+      {typeof controlRowSlot === 'function'
+        ? controlRowSlot({ beside: chartSection.beside, placementToggle: null })
+        : controlRowSlot}
       <span>Topics {topics.length}</span>
     </div>
   ),
@@ -613,7 +619,7 @@ describe('TopicModelingResultsPanel', () => {
     expect(screen.getByRole('button', { name: 'Add to Project' })).toBeDisabled();
   });
 
-  it('keeps Result settings compact and moves the Top-N explanation into help', async () => {
+  it('keeps Display options compact and moves the Top-N explanation into help', async () => {
     const user = userEvent.setup();
     const explanation =
       'Top topics per document: each row counts toward this many bubbles. Cutoff ties can include more than this number.';
@@ -623,7 +629,7 @@ describe('TopicModelingResultsPanel', () => {
       </TooltipProvider>,
     );
 
-    expect(screen.getByText('Result settings')).toBeInTheDocument();
+    expect(screen.getByText('Display options')).toBeInTheDocument();
     // Short visible labels (issue 152); the inputs keep their full names.
     expect(screen.queryByText('Topic structure')).not.toBeInTheDocument();
     expect(screen.getByText('Per document')).toBeInTheDocument();
@@ -666,7 +672,7 @@ describe('TopicModelingResultsPanel', () => {
     expect(onWordsPerTopicChange).toHaveBeenCalledWith(100);
   });
 
-  it('finds topics from the result settings row (#353)', () => {
+  it('finds topics from the display options (#353)', () => {
     const onTopicSearchQueryChange = vi.fn();
     render(
       <TooltipProvider>
@@ -678,14 +684,14 @@ describe('TopicModelingResultsPanel', () => {
       </TooltipProvider>,
     );
 
-    const find = screen.getByRole('searchbox', { name: 'Find topics' });
+    const find = screen.getByRole('searchbox', { name: 'Search term' });
     expect(find).toHaveValue('hous');
-    expect(screen.getByRole('region', { name: 'Result settings' })).toContainElement(find);
+    expect(screen.getByRole('region', { name: 'Display options' })).toContainElement(find);
     fireEvent.change(find, { target: { value: 'housing' } });
     expect(onTopicSearchQueryChange).toHaveBeenCalledWith('housing');
   });
 
-  it('folds Result settings to one summary line, keeping Find topics (issue 432)', () => {
+  it('folds Display options to one summary line, keeping the search term (issue 432)', () => {
     const onSettingsCollapsedChange = vi.fn();
     const { rerender } = render(
       <TooltipProvider>
@@ -697,7 +703,7 @@ describe('TopicModelingResultsPanel', () => {
         />
       </TooltipProvider>,
     );
-    const toggle = screen.getByRole('button', { name: 'Result settings' });
+    const toggle = screen.getByRole('button', { name: 'Display options' });
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByLabelText('Words per topic')).toBeInTheDocument();
     fireEvent.click(toggle);
@@ -714,15 +720,37 @@ describe('TopicModelingResultsPanel', () => {
         />
       </TooltipProvider>,
     );
-    expect(screen.getByRole('button', { name: 'Result settings' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Display options' })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
     expect(screen.queryByLabelText('Words per topic')).not.toBeInTheDocument();
     expect(screen.getByTestId('topic-result-settings-summary')).toHaveTextContent(
-      /15 words · .*Stop words on/,
+      /15 words per topic · .*Stop words on/,
     );
-    expect(screen.getByRole('searchbox', { name: 'Find topics' })).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Search term' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Add to Project/ })).toBeInTheDocument();
+  });
+
+  it('beside the chart, puts one setting per row with the search term last and Add to Project below (issue 433)', () => {
+    chartSection.beside = true;
+    try {
+      render(
+        <TooltipProvider>
+          <TopicModelingResultsPanel {...baseProps} wordsPerTopic={15} stopWordsEnabled />
+        </TooltipProvider>,
+      );
+      const words = screen.getByLabelText('Words per topic');
+      const search = screen.getByRole('searchbox', { name: 'Search term' });
+      const add = screen.getByRole('button', { name: /Add to Project/ });
+      expect(screen.getByText('Search term')).not.toHaveClass('sr-only');
+      expect(search).toHaveClass('w-full');
+      expect(screen.getByText('Stop words')).toBeInTheDocument();
+      // Document order: the settings, then the search term, then Add to Project.
+      expect(words.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(search.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    } finally {
+      chartSection.beside = false;
+    }
   });
 });

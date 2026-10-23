@@ -1,5 +1,5 @@
 /**
- * The Topic Modelling chart's layout on a wide card: the Result settings and
+ * The Topic Modelling chart's layout on a wide card: the Display options and
  * legend beside a 4:3 chart, or below it (issue 433).
  * Used by: TopicModelingBubbleChartSection, and TopicModelingFeature, which
  * remembers the layout as tab settings on this device.

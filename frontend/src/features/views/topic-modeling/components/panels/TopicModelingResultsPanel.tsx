@@ -1,6 +1,6 @@
 import type { ProgressDetail } from '@/api';
 import { ChevronDown, ChevronRight, LoaderCircle, Plus, Search } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type {
   TopicClustering,
   TopicInclusion,
@@ -61,7 +61,7 @@ interface Props {
   onClearSelection: () => void;
   topicSearchQuery: string;
   onTopicSearchQueryChange: (query: string) => void;
-  /** Result settings folded to one summary line, remembered per tab on this device (issue 432). */
+  /** Display options folded to one summary line, remembered per tab on this device (issue 432). */
   settingsCollapsed?: boolean;
   onSettingsCollapsedChange?: (collapsed: boolean) => void;
   /** Settings beside or below the chart, and its width, remembered like the fold (issue 433). */
@@ -119,11 +119,31 @@ interface TopicColorByState {
 
 const COLOR_BY_DATA_BLOCK = '__data_block__';
 
-/** Find topics by their words; it dims the chart and filters the list (issue 353). */
 /** A label beside its control, wrapping as a unit, so the settings stay short (issue 432). */
 const INLINE_CONTROL =
   'flex flex-wrap items-center gap-x-2 gap-y-1 text-label-secondary text-description';
+/**
+ * Beside the chart, each control is one row of the settings grid: its label
+ * on the left and its value on the right (issue 433).
+ */
+const COLUMN_CONTROL =
+  'col-span-2 grid grid-cols-subgrid items-center gap-y-1 text-label-secondary text-description';
+const COLUMN_VALUE = 'flex min-w-0 items-center justify-end gap-2';
 
+/** True while the Display options sit in the column beside the chart (issue 433). */
+const SettingsColumnContext = createContext(false);
+
+/** The class for a control's row, and for the part holding its value. */
+function useControlClasses() {
+  const column = useContext(SettingsColumnContext);
+  return {
+    column,
+    control: column ? COLUMN_CONTROL : INLINE_CONTROL,
+    value: column ? COLUMN_VALUE : 'contents',
+  };
+}
+
+/** A search term dims the other topics in the chart and filters the list (issues 353, 433). */
 function FindTopicsInput({
   value,
   onChange,
@@ -131,13 +151,15 @@ function FindTopicsInput({
   value: string;
   onChange: (query: string) => void;
 }) {
+  const classes = useControlClasses();
   return (
-    <div className={INLINE_CONTROL}>
-      {/* The placeholder says it, so the label is for screen readers only (issue 432). */}
-      <label htmlFor="topic-find-input" className="sr-only">
-        Find topics
+    <div className={classes.control}>
+      {/* In the header row the placeholder says it, so the label is for
+          screen readers only (issue 432); beside the chart it is shown. */}
+      <label htmlFor="topic-find-input" className={classes.column ? 'font-medium' : 'sr-only'}>
+        Search term
       </label>
-      <div className="relative">
+      <div className={classes.column ? 'relative w-full' : 'relative'}>
         <Search
           aria-hidden="true"
           className="pointer-events-none absolute top-2.5 left-2.5 size-3.5 text-description"
@@ -149,8 +171,8 @@ function FindTopicsInput({
           onChange={(event) => {
             onChange(event.target.value);
           }}
-          placeholder="Find topics…"
-          className="h-8 w-48 rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden"
+          placeholder={classes.column ? 'Words in topics' : 'Search term…'}
+          className={`h-8 ${classes.column ? 'w-full' : 'w-48'} rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden`}
         />
       </div>
     </div>
@@ -165,8 +187,9 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
   const unavailable =
     colorBy.unavailableReason ??
     (colorBy.columns.length === 0 && !colorBy.error ? NO_COLOR_COLUMN_REASON : undefined);
+  const classes = useControlClasses();
   return (
-    <div className={INLINE_CONTROL}>
+    <div className={classes.control}>
       <div className="flex items-center gap-1.5">
         <span id="topic-color-by-label" className="font-medium">
           Colour by
@@ -178,36 +201,41 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
           className="size-5 shrink-0 text-description"
         />
       </div>
-      <Select
-        value={colorBy.column ?? COLOR_BY_DATA_BLOCK}
-        disabled={colorBy.columns.length === 0}
-        onValueChange={(value) => {
-          colorBy.onColumnChange(value === COLOR_BY_DATA_BLOCK ? null : value);
-        }}
-      >
-        <DisabledReasonTooltip reason={unavailable}>
-          <SelectTrigger
-            aria-labelledby="topic-color-by-label"
-            aria-description={unavailable}
-            className="h-8 w-44 text-body"
+      <div className={classes.value}>
+        <Select
+          value={colorBy.column ?? COLOR_BY_DATA_BLOCK}
+          disabled={colorBy.columns.length === 0}
+          onValueChange={(value) => {
+            colorBy.onColumnChange(value === COLOR_BY_DATA_BLOCK ? null : value);
+          }}
+        >
+          <DisabledReasonTooltip
+            reason={unavailable}
+            className={classes.column ? 'min-w-0 flex-1' : undefined}
           >
-            <SelectValue />
-          </SelectTrigger>
-        </DisabledReasonTooltip>
-        <SelectContent>
-          <SelectItem value={COLOR_BY_DATA_BLOCK}>Data Block colour</SelectItem>
-          {colorBy.columns.map((column) => (
-            <SelectItem key={column} value={column}>
-              {column}
-              {colorBy.valueCounts?.[column] === undefined ? null : (
-                <span className="text-description"> ({colorBy.valueCounts[column]})</span>
-              )}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+            <SelectTrigger
+              aria-labelledby="topic-color-by-label"
+              aria-description={unavailable}
+              className={`h-8 ${classes.column ? 'w-full' : 'w-44'} text-body`}
+            >
+              <SelectValue />
+            </SelectTrigger>
+          </DisabledReasonTooltip>
+          <SelectContent>
+            <SelectItem value={COLOR_BY_DATA_BLOCK}>Data Block colour</SelectItem>
+            {colorBy.columns.map((column) => (
+              <SelectItem key={column} value={column}>
+                {column}
+                {colorBy.valueCounts?.[column] === undefined ? null : (
+                  <span className="text-description"> ({colorBy.valueCounts[column]})</span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {colorBy.error ? (
-        <p role="alert" className="basis-full text-error">
+        <p role="alert" className="col-span-2 basis-full text-error">
           {colorBy.error}
         </p>
       ) : null}
@@ -332,21 +360,58 @@ function ClusterCountControl({
     setNumberDraft(String(applied));
   };
 
+  const classes = useControlClasses();
+  // Beside the chart the number sits by its label, so the slider can take
+  // the rest of the row (issue 433).
+  const numberInput = (
+    <input
+      id="topic-cluster-count-input"
+      aria-label="Number of topics"
+      type="number"
+      min={clustering.min_cluster_count}
+      max={clustering.max_cluster_count}
+      step={1}
+      value={numberDraft}
+      disabled={pending || !clustering.adjustable}
+      className="h-8 w-16 shrink-0 rounded-md border border-input-border bg-editor px-2 text-right text-body tabular-nums disabled:cursor-not-allowed disabled:opacity-50"
+      onChange={(event) => {
+        const raw = event.target.value;
+        setNumberDraft(raw);
+        if (raw.trim() === '') return;
+        const next = boundedTopicCount(raw);
+        if (next === null) return;
+        latestDraftRef.current = next;
+        setValue([next]);
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        commitNumberDraft(event.currentTarget.value);
+        event.currentTarget.blur();
+      }}
+      onBlur={(event) => {
+        commitNumberDraft(event.currentTarget.value);
+      }}
+    />
+  );
   return (
-    <div className={`${INLINE_CONTROL} min-w-0`}>
+    <div className={`${classes.control} min-w-0`}>
       <div className="flex items-center gap-3">
         <label htmlFor="topic-cluster-count" className="font-medium">
           Topics
         </label>
+        {classes.column ? numberInput : null}
       </div>
-      <div className="flex min-w-0 items-center gap-3">
+      <div
+        className={classes.column ? `${COLUMN_VALUE} w-full` : 'flex min-w-0 items-center gap-3'}
+      >
         <span
           aria-label="Minimum number of topics"
           className="w-5 shrink-0 text-center tabular-nums text-foreground"
         >
           {clustering.min_cluster_count}
         </span>
-        <div ref={sliderBoxRef} className="w-32">
+        <div ref={sliderBoxRef} className={classes.column ? 'min-w-0 flex-1' : 'w-32'}>
           {clustering.adjustable ? (
             <Slider
               id="topic-cluster-count"
@@ -393,38 +458,10 @@ function ClusterCountControl({
             />
           )}
         </div>
-        <input
-          id="topic-cluster-count-input"
-          aria-label="Number of topics"
-          type="number"
-          min={clustering.min_cluster_count}
-          max={clustering.max_cluster_count}
-          step={1}
-          value={numberDraft}
-          disabled={pending || !clustering.adjustable}
-          className="h-8 w-16 shrink-0 rounded-md border border-input-border bg-editor px-2 text-right text-body tabular-nums disabled:cursor-not-allowed disabled:opacity-50"
-          onChange={(event) => {
-            const raw = event.target.value;
-            setNumberDraft(raw);
-            if (raw.trim() === '') return;
-            const next = boundedTopicCount(raw);
-            if (next === null) return;
-            latestDraftRef.current = next;
-            setValue([next]);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            commitNumberDraft(event.currentTarget.value);
-            event.currentTarget.blur();
-          }}
-          onBlur={(event) => {
-            commitNumberDraft(event.currentTarget.value);
-          }}
-        />
+        {classes.column ? null : numberInput}
       </div>
       {error ? (
-        <span className="flex basis-full items-center gap-2 whitespace-pre-wrap wrap-break-word text-error">
+        <span className="col-span-2 flex basis-full items-center gap-2 whitespace-pre-wrap wrap-break-word text-error">
           {error}
           {onRetry ? (
             <button type="button" className="underline" onClick={onRetry}>
@@ -446,27 +483,30 @@ function WordsPerTopicControl({
 }) {
   const [draft, setDraft] = useState({ source: value, value: String(value) });
   const displayed = draft.source === value ? draft.value : String(value);
+  const classes = useControlClasses();
   return (
-    <label htmlFor="topic-words-per-topic" className={INLINE_CONTROL}>
-      <span className="font-medium">Words</span>
-      <input
-        id="topic-words-per-topic"
-        aria-label="Words per topic"
-        type="number"
-        min={3}
-        max={100}
-        value={displayed}
-        className="h-8 w-16 rounded-md border border-input-border bg-editor px-2 text-right text-body tabular-nums"
-        onChange={(event) => {
-          setDraft({ source: value, value: event.target.value });
-        }}
-        onBlur={(event) => {
-          const raw = Number(event.currentTarget.value);
-          const next = Math.min(100, Math.max(3, Number.isFinite(raw) ? Math.round(raw) : 15));
-          setDraft({ source: next, value: String(next) });
-          onCommit(next);
-        }}
-      />
+    <label htmlFor="topic-words-per-topic" className={classes.control}>
+      <span className="font-medium">Words per topic</span>
+      <span className={classes.value}>
+        <input
+          id="topic-words-per-topic"
+          aria-label="Words per topic"
+          type="number"
+          min={3}
+          max={100}
+          value={displayed}
+          className="h-8 w-16 rounded-md border border-input-border bg-editor px-2 text-right text-body tabular-nums"
+          onChange={(event) => {
+            setDraft({ source: value, value: event.target.value });
+          }}
+          onBlur={(event) => {
+            const raw = Number(event.currentTarget.value);
+            const next = Math.min(100, Math.max(3, Number.isFinite(raw) ? Math.round(raw) : 15));
+            setDraft({ source: next, value: String(next) });
+            onCommit(next);
+          }}
+        />
+      </span>
     </label>
   );
 }
@@ -512,8 +552,9 @@ function TopNTopicsControl({
     onCommit(next);
   };
 
+  const classes = useControlClasses();
   return (
-    <div className={INLINE_CONTROL}>
+    <div className={classes.control}>
       <div className="flex items-center gap-1.5">
         <label htmlFor="topic-top-n" className="font-medium">
           Per document
@@ -525,29 +566,31 @@ function TopNTopicsControl({
           className="size-5 shrink-0 text-description"
         />
       </div>
-      <input
-        id="topic-top-n"
-        aria-label="Top topics per document"
-        type="number"
-        min={inclusion.min_top_n_topics}
-        max={inclusion.max_top_n_topics}
-        step={1}
-        value={displayed}
-        disabled={pending || !inclusion.adjustable}
-        className="h-8 w-16 rounded-md border border-input-border bg-editor px-2 text-right text-body tabular-nums"
-        onChange={(event) => {
-          setDraft({ source: applied, value: event.target.value });
-        }}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter') return;
-          event.preventDefault();
-          commit(event.currentTarget.value);
-          event.currentTarget.blur();
-        }}
-        onBlur={(event) => {
-          commit(event.currentTarget.value);
-        }}
-      />
+      <span className={classes.value}>
+        <input
+          id="topic-top-n"
+          aria-label="Top topics per document"
+          type="number"
+          min={inclusion.min_top_n_topics}
+          max={inclusion.max_top_n_topics}
+          step={1}
+          value={displayed}
+          disabled={pending || !inclusion.adjustable}
+          className="h-8 w-16 rounded-md border border-input-border bg-editor px-2 text-right text-body tabular-nums"
+          onChange={(event) => {
+            setDraft({ source: applied, value: event.target.value });
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            commit(event.currentTarget.value);
+            event.currentTarget.blur();
+          }}
+          onBlur={(event) => {
+            commit(event.currentTarget.value);
+          }}
+        />
+      </span>
     </div>
   );
 }
@@ -702,123 +745,188 @@ export function TopicModelingResultsPanel({
                   analysisId={analysisId ?? undefined}
                   chartLayout={chartLayout}
                   onChartLayoutChange={onChartLayoutChange}
-                  controlRowSlot={(placementToggle) => (
-                    <section
-                      aria-labelledby="topic-result-settings-heading"
-                      className="w-full rounded-lg border border-surface-border/70 bg-panel/20 px-3 py-2"
-                    >
-                      {/* One header row: fold toggle, count, summary when folded, Find topics,
-                          Add to Project; the settings wrap below it (issues 152, 432). */}
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                        <button
-                          type="button"
-                          id="topic-result-settings-heading"
-                          aria-expanded={!settingsCollapsed}
-                          aria-controls="topic-result-settings-controls"
-                          onClick={() => onSettingsCollapsedChange?.(!settingsCollapsed)}
-                          className="-ml-1 flex items-center gap-1 rounded-sm px-1 text-body font-medium text-foreground hover:bg-hover focus-visible:ring-1 focus-visible:ring-focus focus-visible:outline-hidden"
-                        >
-                          {settingsCollapsed ? (
-                            <ChevronRight className="size-4" aria-hidden="true" />
-                          ) : (
-                            <ChevronDown className="size-4" aria-hidden="true" />
-                          )}
-                          Result settings
-                        </button>
-                        <span className="rounded-full border bg-editor px-2 py-0.5 text-label-secondary tabular-nums text-description">
-                          Topics ({topics.filter((topic) => !isUngrouped(topic.id)).length})
-                        </span>
+                  controlRowSlot={({ beside, placementToggle }) => {
+                    const foldButton = (
+                      <button
+                        type="button"
+                        id="topic-result-settings-heading"
+                        aria-expanded={!settingsCollapsed}
+                        aria-controls="topic-result-settings-controls"
+                        onClick={() => onSettingsCollapsedChange?.(!settingsCollapsed)}
+                        className="-ml-1 flex shrink-0 items-center gap-1 rounded-sm px-1 text-body font-medium whitespace-nowrap text-foreground hover:bg-hover focus-visible:ring-1 focus-visible:ring-focus focus-visible:outline-hidden"
+                      >
                         {settingsCollapsed ? (
-                          <span
-                            data-testid="topic-result-settings-summary"
-                            className="min-w-0 truncate text-label-secondary text-description"
-                          >
-                            {[
-                              topicInclusion
-                                ? `${String(topicInclusion.top_n_topics)} per document`
-                                : null,
-                              `${String(wordsPerTopic)} words`,
-                              colorBy?.loaded ? `Colour: ${colorBy.column ?? 'Data Block'}` : null,
-                              stopWordsEnabled ? 'Stop words on' : 'Stop words off',
-                            ]
-                              .filter(Boolean)
-                              .join(' · ')}
-                          </span>
-                        ) : null}
-                        <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-2">
-                          <FindTopicsInput
-                            value={topicSearchQuery}
-                            onChange={onTopicSearchQueryChange}
-                          />
-                          <DisabledReasonTooltip
-                            reason={
-                              isAddingToWorkspace
-                                ? 'A Data Block is being added to the Project'
-                                : (clustering?.cluster_count ?? 0) === 0
-                                  ? 'No Topics were discovered'
-                                  : undefined
-                            }
-                          >
-                            <Button
-                              data-guidance="topic-modeling-add-to-workspace"
-                              size="sm"
-                              onClick={onAddToWorkspace}
-                              disabled={
-                                isAddingToWorkspace ||
-                                projectionPending ||
-                                (clustering?.cluster_count ?? 0) === 0
-                              }
-                            >
-                              <Plus className="mr-1 h-4 w-4" />
-                              Add to Project
-                            </Button>
-                          </DisabledReasonTooltip>
-                          {placementToggle}
-                        </div>
-                      </div>
-                      {settingsCollapsed ? null : (
-                        <div
-                          id="topic-result-settings-controls"
-                          className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2"
+                          <ChevronRight className="size-4" aria-hidden="true" />
+                        ) : (
+                          <ChevronDown className="size-4" aria-hidden="true" />
+                        )}
+                        Display options
+                      </button>
+                    );
+                    const topicCount = (
+                      <span className="rounded-full border bg-editor px-2 py-0.5 text-label-secondary whitespace-nowrap tabular-nums text-description">
+                        Topics ({topics.filter((topic) => !isUngrouped(topic.id)).length})
+                      </span>
+                    );
+                    const summary = settingsCollapsed ? (
+                      <span
+                        data-testid="topic-result-settings-summary"
+                        className={
+                          beside
+                            ? 'block text-label-secondary text-description'
+                            : 'min-w-0 truncate text-label-secondary text-description'
+                        }
+                      >
+                        {[
+                          topicInclusion
+                            ? `${String(topicInclusion.top_n_topics)} per document`
+                            : null,
+                          `${String(wordsPerTopic)} words per topic`,
+                          colorBy?.loaded ? `Colour: ${colorBy.column ?? 'Data Block'}` : null,
+                          stopWordsEnabled ? 'Stop words on' : 'Stop words off',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    ) : null;
+                    const findTopics = (
+                      <FindTopicsInput
+                        value={topicSearchQuery}
+                        onChange={onTopicSearchQueryChange}
+                      />
+                    );
+                    const addToProject = (
+                      <DisabledReasonTooltip
+                        reason={
+                          isAddingToWorkspace
+                            ? 'A Data Block is being added to the Project'
+                            : (clustering?.cluster_count ?? 0) === 0
+                              ? 'No Topics were discovered'
+                              : undefined
+                        }
+                      >
+                        <Button
+                          data-guidance="topic-modeling-add-to-workspace"
+                          size="sm"
+                          onClick={onAddToWorkspace}
+                          disabled={
+                            isAddingToWorkspace ||
+                            projectionPending ||
+                            (clustering?.cluster_count ?? 0) === 0
+                          }
                         >
-                          {clustering ? (
-                            <ClusterCountControl
-                              key={`clusters:${String(clustering.cluster_count)}:${String(projectionControlResetKey)}`}
-                              clustering={clustering}
-                              pending={projectionPending}
-                              error={projectionError}
-                              onCommit={onClusterCountCommit}
-                              onRetry={onProjectionRetry}
-                              refocusSliderRef={refocusClusterSliderRef}
-                            />
-                          ) : null}
-                          {topicInclusion ? (
-                            <TopNTopicsControl
-                              key={`top-n:${String(topicInclusion.top_n_topics)}:${String(projectionControlResetKey)}`}
-                              inclusion={topicInclusion}
-                              pending={projectionPending}
-                              onCommit={onTopNTopicsCommit}
-                            />
-                          ) : null}
-                          <WordsPerTopicControl
-                            value={wordsPerTopic}
-                            onCommit={onWordsPerTopicChange}
+                          <Plus className="mr-1 h-4 w-4" />
+                          Add to Project
+                        </Button>
+                      </DisabledReasonTooltip>
+                    );
+                    const stopWordsControl = (
+                      <TopicModelingStopWordsControl
+                        enabled={stopWordsEnabled}
+                        onEnabledChange={onStopWordsEnabledChange}
+                        savedWords={stopWords}
+                        workspaceId={stopWordsDetectionTarget.workspaceId}
+                        nodeId={stopWordsDetectionTarget.nodeId}
+                        column={stopWordsDetectionTarget.column}
+                        onSavedWordsChange={onStopWordsChange}
+                        sources={stopWordListSources}
+                        fill={beside}
+                      />
+                    );
+                    const controls = (
+                      <>
+                        {clustering ? (
+                          <ClusterCountControl
+                            key={`clusters:${String(clustering.cluster_count)}:${String(projectionControlResetKey)}`}
+                            clustering={clustering}
+                            pending={projectionPending}
+                            error={projectionError}
+                            onCommit={onClusterCountCommit}
+                            onRetry={onProjectionRetry}
+                            refocusSliderRef={refocusClusterSliderRef}
                           />
-                          {colorBy?.loaded ? <ColorByControl colorBy={colorBy} /> : null}
-                          <TopicModelingStopWordsControl
-                            enabled={stopWordsEnabled}
-                            onEnabledChange={onStopWordsEnabledChange}
-                            savedWords={stopWords}
-                            workspaceId={stopWordsDetectionTarget.workspaceId}
-                            nodeId={stopWordsDetectionTarget.nodeId}
-                            column={stopWordsDetectionTarget.column}
-                            onSavedWordsChange={onStopWordsChange}
-                            sources={stopWordListSources}
+                        ) : null}
+                        {topicInclusion ? (
+                          <TopNTopicsControl
+                            key={`top-n:${String(topicInclusion.top_n_topics)}:${String(projectionControlResetKey)}`}
+                            inclusion={topicInclusion}
+                            pending={projectionPending}
+                            onCommit={onTopNTopicsCommit}
                           />
-                        </div>
-                      )}
-                    </section>
-                  )}
+                        ) : null}
+                        <WordsPerTopicControl
+                          value={wordsPerTopic}
+                          onCommit={onWordsPerTopicChange}
+                        />
+                        {colorBy?.loaded ? <ColorByControl colorBy={colorBy} /> : null}
+                        {beside ? (
+                          <div className={COLUMN_CONTROL}>
+                            <span className="font-medium">Stop words</span>
+                            <div className={COLUMN_VALUE}>{stopWordsControl}</div>
+                          </div>
+                        ) : (
+                          stopWordsControl
+                        )}
+                      </>
+                    );
+                    return (
+                      <SettingsColumnContext.Provider value={beside}>
+                        <section
+                          aria-labelledby="topic-result-settings-heading"
+                          className="w-full rounded-lg border border-surface-border/70 bg-panel/20 px-3 py-2"
+                        >
+                          {beside ? (
+                            <>
+                              {/* Beside the chart: one setting per row, labels left and
+                                  values right, the search term last, and Add to Project
+                                  at the bottom because it isn't a setting (issue 433). */}
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                {/* No Topics chip here: the Topics row shows the number. */}
+                                {foldButton}
+                                <div className="ml-auto">{placementToggle}</div>
+                              </div>
+                              {summary ? <div className="mt-1">{summary}</div> : null}
+                              <div className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
+                                {settingsCollapsed ? null : (
+                                  <div id="topic-result-settings-controls" className="contents">
+                                    {controls}
+                                  </div>
+                                )}
+                                {findTopics}
+                              </div>
+                              <div className="mt-3 border-t border-surface-border/70 pt-2">
+                                {addToProject}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {/* Below the chart: one header row (fold toggle, count, summary
+                                  when folded, search term, Add to Project), the settings
+                                  wrapping below it (issues 152, 432). */}
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                {foldButton}
+                                {topicCount}
+                                {summary}
+                                <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-2">
+                                  {findTopics}
+                                  {addToProject}
+                                </div>
+                                {placementToggle}
+                              </div>
+                              {settingsCollapsed ? null : (
+                                <div
+                                  id="topic-result-settings-controls"
+                                  className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2"
+                                >
+                                  {controls}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </section>
+                      </SettingsColumnContext.Provider>
+                    );
+                  }}
                 />
               </div>
             </div>

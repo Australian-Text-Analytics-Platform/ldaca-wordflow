@@ -59,9 +59,11 @@ interface Props {
   topNTopics?: number;
   /**
    * Result controls beside the graph on a wide card, otherwise between it and
-   * the Topic lists. A function receives the button that moves them (issue 433).
+   * the Topic lists. A function learns which, and receives the button that moves them (issue 433).
    */
-  controlRowSlot?: React.ReactNode | ((placementToggle: React.ReactNode) => React.ReactNode);
+  controlRowSlot?:
+    | React.ReactNode
+    | ((layout: { beside: boolean; placementToggle: React.ReactNode }) => React.ReactNode);
   /** Single-corpus metadata colouring chosen under "Colour by". */
   colorScheme?: TopicColorScheme | null;
   /** The run whose example segments the list can show (issue 353). */
@@ -373,18 +375,24 @@ export function TopicModelingBubbleChartSection({
         size="icon"
         className="size-7"
         aria-label={
-          beside ? 'Move the settings below the chart' : 'Move the settings beside the chart'
+          beside ? 'Move the options below the chart' : 'Move the options beside the chart'
         }
-        title={beside ? 'Move the settings below the chart' : 'Move the settings beside the chart'}
+        title={beside ? 'Move the options below the chart' : 'Move the options beside the chart'}
         onClick={() => {
           onChartLayoutChange({ ...chartLayout, placement: beside ? 'below' : 'side' });
         }}
       >
-        {beside ? <PanelBottom className="size-4" /> : <PanelRight className="size-4" />}
+        {beside ? (
+          <PanelBottom className="size-4" aria-hidden="true" />
+        ) : (
+          <PanelRight className="size-4" aria-hidden="true" />
+        )}
       </Button>
     ) : null;
   const controls =
-    typeof controlRowSlot === 'function' ? controlRowSlot(placementToggle) : controlRowSlot;
+    typeof controlRowSlot === 'function'
+      ? controlRowSlot({ beside, placementToggle })
+      : controlRowSlot;
   const legend = activeColorScheme ? (
     <TopicColorLegend scheme={activeColorScheme} />
   ) : corpusLegend ? (

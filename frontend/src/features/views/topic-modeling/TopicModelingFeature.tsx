@@ -69,7 +69,7 @@ import { useDetectedColumnLanguage } from '@/features/views/common/hooks/useDete
 import { TopicNamesContext } from './components/results/topicNamesContext';
 import type { TopicChartLayout } from './components/results/topicChartLayout';
 
-/** Result settings folded to one line in this tab, on this device (issue 432). */
+/** Display options folded to one line in this tab, on this device (issue 432). */
 const RESULT_SETTINGS_COLLAPSED_SETTING = 'topicModeling.resultSettingsCollapsed';
 /** Settings below the chart instead of beside it, and the dragged chart width (issue 433). */
 const CHART_PLACEMENT_SETTING = 'topicModeling.chartSettingsPlacement';

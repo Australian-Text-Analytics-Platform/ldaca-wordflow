@@ -289,25 +289,28 @@ selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clea
 
 <h2 id="help-topic-modeling-results">Result panel</h2>
 
-![Topic Modelling results: the bubble chart, Result settings, and the topic list beside the examples of Topic 12](tutorials/assets/topic_modelling/results.png)
+![Topic Modelling results: the bubble chart, Display options, and the topic list beside the examples of Topic 12](tutorials/assets/topic_modelling/results.png)
 
-The **Result settings** hold **Topics**, **Per document**, **Words**, **Colour
-by** and the stop word controls, with **Find topics** and **Add to Project**.
-Question-mark icons beside some of these controls give a short explanation. On
-a wide results panel they sit beside the bubble chart, with the colour legend,
-and the chart keeps a 4:3 shape; drag the divider between them to widen or
-narrow the chart (double-click it to go back to 4:3). The button after **Add to
-Project** moves the settings below the chart, or back beside it. On a narrower
-panel they sit below the chart. Click **Result settings** to fold them to one
-summary line, such as "2 per document · 15 words · Colour: Data Block · Stop
-words on"; Find topics and Add to Project stay available. The tab remembers
-these choices on this computer. Below the chart and settings, the topic list takes the left third and the
+The **Display options** change how the result is shown: **Topics**, **Per
+document**, **Words per topic**, **Colour by**, the stop word controls and the
+**Search term**, with **Add to Project**. Question-mark icons beside some of
+these controls give a short explanation. On a wide results panel the options
+sit beside the bubble chart, with the colour legend: one option per row, the
+search term last and **Add to Project** at the bottom, and the chart keeps a
+4:3 shape. Drag the divider between the chart and the options to widen or
+narrow the chart (double-click it to go back to 4:3). The panel icon at the
+right of the Display options heading moves the options below the chart, in a
+compact row, and back beside it. On a narrower panel they always sit below the
+chart. Click **Display options** to fold them to one summary line, such as "2
+per document · 15 words per topic · Colour: Data Block · Stop words on"; the
+search term and Add to Project stay available. The tab remembers these choices
+on this computer. Below the chart and options, the topic list takes the left third and the
 [examples of one topic](#help-topic-modeling-examples) the rest; drag the
 divider between them to widen the list (double-click it to go back to a
 third). In a narrow window the list sits above the examples. The area has its own
 resize grip, like the chart itself.
 
-![Result settings: Topics, Per document, Words, the stop words switch and list, and Find topics](tutorials/assets/topic_modelling/result_settings.png)
+![Display options: Topics, Per document, Words per topic, the stop words switch and list, and the search term](tutorials/assets/topic_modelling/result_settings.png)
 
 <h3 id="help-topic-modeling-number-of-clusters">Topics (number of topics)</h3>
 
@@ -475,7 +478,7 @@ opacity ≈ 0.26. Hovering over a bubble lifts it above this range, and selected
 topics are marked by an outline, so neither changes what the opacity means.
 Without **Colour by**, every bubble uses the same opacity.
 
-<h3 id="help-topic-modeling-words-per-topic">Words (words per topic) and stop words</h3>
+<h3 id="help-topic-modeling-words-per-topic">Words per topic and stop words</h3>
 
 **Words per topic** controls how many representative words appear in the topic
 list, search, and hover cloud. The default is 15 and the range is 3-100. The
@@ -547,7 +550,7 @@ around. Select topics directly, or enable the lasso control and draw around
 several Topic centres. Lasso mode remains active and later strokes add to the
 filter of the topic list; use **Clear filter** in the graph toolbar to
 remove that accumulated filter without changing manually selected Topics.
-**Find topics** further narrows the list and fades the other topics in the
+A **Search term** further narrows the list and fades the other topics in the
 graph. A topic matches when the search text is found in its words; `*` (any
 letters) and `?` (one letter) match within a single word, so `gs*` and `gs?`
 both find topics with *gst* wherever it is in their list.
@@ -571,7 +574,7 @@ list, or right-click its bubble. Its example segments then appear beside the
 list, and an eye marks its card and its bubble. Only one topic is shown at a
 time: showing another replaces it. Click the eye or right-click the bubble
 again, or close the examples with **×**, to stop showing them. Faded bubbles
-cannot be right-clicked. Find topics and the lasso never hide the examples; if
+cannot be right-clicked. The search term and the lasso never hide the examples; if
 they leave out the shown topic, a note says so, with **Clear filters**.
 
 ![The topic list, with two selected topics, beside the most typical examples of Topic 12](tutorials/assets/topic_modelling/topic_examples.png)
@@ -662,7 +665,7 @@ Choose **Interactive HTML** to save the graph as one web page that opens in any
 browser, offline. It shows the graph exactly as on screen (positions, colours,
 selection rings and faded topics) and keeps three things to explore: hover a
 bubble for its words, sized by count, and the same size chips as the app
-(per colour-by value, or per Data Block); type in **Find topics** to highlight
+(per colour-by value, or per Data Block); type a **Search term** to highlight
 matching topics, with the same rules as the app's search; and drag to move, or
 hold Command (Mac) or Control (Windows) while scrolling to zoom. Once zoomed in,
 plain scrolling moves the graph in any direction; at full size it scrolls the

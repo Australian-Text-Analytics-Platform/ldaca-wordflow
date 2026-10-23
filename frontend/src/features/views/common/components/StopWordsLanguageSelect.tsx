@@ -55,6 +55,8 @@ interface StopWordsLanguageSelectProps {
   active?: boolean;
   /** Turns the caller's switch off, keeping the saved list; used with `restingLabel`. */
   onDeactivate?: () => void;
+  /** The dropdown's width classes; a fixed width by default. */
+  widthClassName?: string;
 }
 
 /**
@@ -85,6 +87,7 @@ export function StopWordsLanguageSelect({
   restingLabel,
   active = false,
   onDeactivate,
+  widthClassName = 'w-56',
 }: StopWordsLanguageSelectProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
@@ -204,7 +207,7 @@ export function StopWordsLanguageSelect({
       }}
     >
       <SelectTrigger
-        className="h-9 w-56 max-w-full text-label-secondary"
+        className={`h-9 ${widthClassName} max-w-full text-label-secondary`}
         aria-label={restingMode ? 'Stop words list' : 'Stop words language'}
       >
         <SelectValue placeholder={restingLabel ?? 'Select language'} />

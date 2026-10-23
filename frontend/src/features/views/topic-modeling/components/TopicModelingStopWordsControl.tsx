@@ -28,6 +28,8 @@ interface TopicModelingStopWordsControlProps {
   onSavedWordsChange: (words: string[]) => Promise<void>;
   /** Other tabs' saved stop-word lists offered for copying. */
   sources?: StopWordListSource[];
+  /** Fill the row on one line, the dropdown taking the spare width (beside the chart, issue 433). */
+  fill?: boolean;
 }
 
 /**
@@ -46,6 +48,7 @@ export function TopicModelingStopWordsControl({
   column,
   onSavedWordsChange,
   sources = [],
+  fill = false,
 }: TopicModelingStopWordsControlProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorDraft, setEditorDraft] = useState('');
@@ -72,7 +75,13 @@ export function TopicModelingStopWordsControl({
 
   return (
     <>
-      <div className="flex min-h-8 flex-wrap items-center gap-2">
+      <div
+        className={
+          fill
+            ? 'flex min-h-8 w-full min-w-0 items-center gap-2'
+            : 'flex min-h-8 flex-wrap items-center gap-2'
+        }
+      >
         <StopWordsEnabledSwitch
           checked={enabled}
           onCheckedChange={onEnabledChange}
@@ -91,6 +100,7 @@ export function TopicModelingStopWordsControl({
             if (!enabled) onEnabledChange(true);
           }}
           restingLabel="Use stop words"
+          widthClassName={fill ? 'min-w-0 flex-1' : undefined}
           active={enabled}
           onDeactivate={() => {
             onEnabledChange(false);

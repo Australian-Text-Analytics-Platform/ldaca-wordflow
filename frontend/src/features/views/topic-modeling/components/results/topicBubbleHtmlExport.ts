@@ -140,7 +140,7 @@ footer{margin-top:12px;font-size:12px;opacity:.7}
 <dl>${items}</dl>
 ${legend ? `<div class="legend">${legend}</div>` : ''}
 <div class="tools">
-<label for="filter">Find topics</label>
+<label for="filter">Search term</label>
 <input id="filter" type="search" placeholder="Words, * and ? wildcards" autocomplete="off">
 <span id="filter-status" aria-live="polite"></span>
 <button id="reset" type="button">Reset view</button>
