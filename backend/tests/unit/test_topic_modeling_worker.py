@@ -743,6 +743,9 @@ def test__compute_topic_modeling_payload_keeps_all_ranked_candidates(
 
     assert result["topics"][0]["representative_words"] == _terms(*many_words)
     assert result["clustering"]["cluster_count"] == 1
+    # One topic: nothing to adjust.
+    assert result["clustering"]["min_cluster_count"] == 1
+    assert result["clustering"]["adjustable"] is False
 
 
 def test__compute_topic_modeling_sampling_records_before_after_sizes(
@@ -817,6 +820,9 @@ def test__compute_topic_modeling_forwards_requested_minimum_cluster_size(
 
     assert captured_kwargs["min_cluster_size"] == 4
     assert result["clustering"]["max_cluster_count"] == 2
+    # The slider starts at two topics, so two natural topics leave nothing to adjust.
+    assert result["clustering"]["min_cluster_count"] == 2
+    assert result["clustering"]["adjustable"] is False
 
 
 def test_a_topic_column_as_the_text_is_refused_in_plain_words(

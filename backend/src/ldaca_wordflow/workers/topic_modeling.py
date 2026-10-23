@@ -730,10 +730,13 @@ def _compute_topic_payload(
         context_path.write_bytes(raw_context)
     payload["clustering"] = {
         "cluster_count": natural_count,
-        "min_cluster_count": 1 if natural_count >= 1 else 0,
+        # At least two topics: one topic is the whole corpus (Chao,
+        # 2026-10-24). Earlier results keep their stored minimum of 1, so
+        # saved Projects that use it still load.
+        "min_cluster_count": min(2, natural_count),
         "max_cluster_count": natural_count,
         "default_cluster_count": natural_count,
-        "adjustable": natural_count > 1,
+        "adjustable": natural_count > 2,
         "max_topic_size": rust_result.get("max_topic_size"),
         "clustered_segments": rust_result.get("clustered_segments"),
         "auto_decision": rust_result.get("auto_decision"),
