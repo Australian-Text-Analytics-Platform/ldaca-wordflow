@@ -42,7 +42,38 @@ export interface TaskRow {
   /** A Run All's per-block results, folded under it (one entry per Data Block). */
   blockResults: TaskRowStep[];
   target: TaskRowTarget | null;
+  /** A finished Data Loader task in its last minute before it leaves the panel (issue 440). */
+  fading?: boolean;
 }
+
+/** A successful import or upload leaves the Tasks panel this long after it finishes (issue 440). */
+const LOADER_TASK_SHOWN_MS = 10 * 60 * 1000;
+const LOADER_TASK_FADE_MS = 60 * 1000;
+
+/**
+ * Whether a Data Loader task (import or upload) still shows (issue 440).
+ * Successful ones fade in their tenth minute and then go; failed and
+ * cancelled ones stay until cleared, so errors aren't missed. Analysis tasks
+ * always show.
+ */
+export function loaderTaskVisibility(task: TaskItem, now: number): 'shown' | 'fading' | 'hidden' {
+  if (task.resource_type === 'analysis' || task.state !== 'successful' || !task.finished_at) {
+    return 'shown';
+  }
+  const finished = Date.parse(task.finished_at);
+  if (Number.isNaN(finished)) return 'shown';
+  const age = now - finished;
+  if (age >= LOADER_TASK_SHOWN_MS) return 'hidden';
+  return age >= LOADER_TASK_SHOWN_MS - LOADER_TASK_FADE_MS ? 'fading' : 'shown';
+}
+
+/** Whether any finished Data Loader task can be cleared in one go (issue 440). */
+export const hasFinishedLoaderTasks = (tasks: readonly TaskItem[]): boolean =>
+  tasks.some(
+    (task) =>
+      task.resource_type !== 'analysis' &&
+      (task.state === 'successful' || task.state === 'failed' || task.state === 'cancelled'),
+  );
 
 const ANALYSIS_KINDS: readonly AnalysisKind[] = [
   'token_frequency',
@@ -105,6 +136,8 @@ export function buildTaskRows(
   tasks: readonly TaskItem[],
   tabsById: ReadonlyMap<string, TaskTab>,
   nodeNameById: ReadonlyMap<string, string>,
+  /** Now, for fading finished Data Loader tasks (issue 440); omitted, they all show. */
+  now?: number,
 ): TaskRow[] {
   const rows: TaskRow[] = [];
   const successfulByTab = new Map<string, TaskItem[]>();
@@ -154,7 +187,10 @@ export function buildTaskRows(
       continue;
     }
     if (task.resource_type !== 'analysis') {
+      const visibility = now === undefined ? 'shown' : loaderTaskVisibility(task, now);
+      if (visibility === 'hidden') continue;
       rows.push({
+        fading: visibility === 'fading',
         key: task.task_id,
         label: importLabel(task),
         state: task.state,

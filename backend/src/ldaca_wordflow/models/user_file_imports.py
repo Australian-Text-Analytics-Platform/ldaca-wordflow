@@ -26,6 +26,14 @@ UserFileImportItem = Annotated[
 ]
 
 
+class UserFileImportsCleared(BaseModel):
+    """How many finished import records Clear finished removed (issue 440)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    removed: int = Field(ge=0)
+
+
 class UserFileImportPage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

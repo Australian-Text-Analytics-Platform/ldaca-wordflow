@@ -6944,6 +6944,18 @@ export type UserFileImportPage = {
 };
 
 /**
+ * UserFileImportsCleared
+ *
+ * How many finished import records Clear finished removed (issue 440).
+ */
+export type UserFileImportsCleared = {
+    /**
+     * Removed
+     */
+    removed: number;
+};
+
+/**
  * UserPreferences
  *
  * Non-secret preferences synchronized for one authenticated user.
@@ -9269,6 +9281,31 @@ export type ClearUserToolCacheResponses = {
 };
 
 export type ClearUserToolCacheResponse = ClearUserToolCacheResponses[keyof ClearUserToolCacheResponses];
+
+export type ClearFinishedUserFileImportsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/user-file-imports';
+};
+
+export type ClearFinishedUserFileImportsErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+};
+
+export type ClearFinishedUserFileImportsError = ClearFinishedUserFileImportsErrors[keyof ClearFinishedUserFileImportsErrors];
+
+export type ClearFinishedUserFileImportsResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserFileImportsCleared;
+};
+
+export type ClearFinishedUserFileImportsResponse = ClearFinishedUserFileImportsResponses[keyof ClearFinishedUserFileImportsResponses];
 
 export type ListUserFileImportsData = {
     body?: never;

@@ -8,7 +8,11 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Request, Response, status
 
 from ..domain import UserFileImport
-from ..models.user_file_imports import UserFileImportItem, UserFileImportPage
+from ..models.user_file_imports import (
+    UserFileImportItem,
+    UserFileImportPage,
+    UserFileImportsCleared,
+)
 from .dependencies import RuntimeDep
 from .responses import api_errors, route_path
 from .security import CurrentSessionSecurityDep
@@ -88,6 +92,17 @@ async def cancel_user_file_import(
         import_id=resource.id,
     )
     return resource
+
+
+@router.delete("", response_model=UserFileImportsCleared)
+async def clear_finished_user_file_imports(
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> UserFileImportsCleared:
+    """Delete every finished history record of this person; running imports and files stay."""
+
+    removed = await runtime.user_file_import_service.delete_finished(principal.user.id)
+    return UserFileImportsCleared(removed=removed)
 
 
 @router.delete(

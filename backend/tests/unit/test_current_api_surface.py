@@ -96,6 +96,7 @@ EXPECTED_OPERATIONS = {
     ("DELETE", "/api/tool-caches/{kind}", "clear_user_tool_cache"),
     ("GET", "/api/tokenizer-models", "list_tokenizer_models"),
     ("GET", "/api/user-file-imports", "list_user_file_imports"),
+    ("DELETE", "/api/user-file-imports", "clear_finished_user_file_imports"),
     ("GET", "/api/user-file-imports/{import_id}", "get_user_file_import"),
     (
         "POST",

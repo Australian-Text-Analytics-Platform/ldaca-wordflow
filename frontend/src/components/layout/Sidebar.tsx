@@ -27,7 +27,11 @@ import { useUIStore } from '@/stores';
 import { tutorialIndexTarget } from '@/tutorials/documentationRegistry';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import SidebarTasksSection from '@/components/layout/sidebar/SidebarTasksSection';
-import type { TaskRowTarget, TaskTab } from '@/components/layout/sidebar/taskRows';
+import {
+  hasFinishedLoaderTasks,
+  type TaskRowTarget,
+  type TaskTab,
+} from '@/components/layout/sidebar/taskRows';
 import { analysisNavigationForKind } from '@/features/views/common/analysisNavigation';
 import { useAnalysisTabsPresentationStore } from '@/features/views/common/tabs/analysisTabsPresentationStore';
 import { useWorkspaceTabResources } from '@/features/views/common/tabs/workspaceTabsQuery';
@@ -49,6 +53,7 @@ import { useStackedSplits } from '@/components/layout/sidebar/useStackedSplits';
 import HelpIcon from '@/components/help/HelpIcon';
 import {
   BookOpen,
+  BrushCleaning,
   ChevronDown,
   ChevronRight,
   Circle,
@@ -146,6 +151,8 @@ function Sidebar() {
     stopUserFileImport,
     clearUserFileImport,
     clearUnavailableAnalysis,
+    clearFinishedLoaderTasks,
+    clearingFinishedLoaderTasks,
     stoppingImportId,
     clearingImportId,
     clearingAnalysisTabId,
@@ -370,6 +377,28 @@ function Sidebar() {
                             </div>
                           )}
                         </button>
+                        {key === 'tasks' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-description"
+                                aria-label="Clear finished Data Loader tasks"
+                                disabled={
+                                  clearingFinishedLoaderTasks || !hasFinishedLoaderTasks(tasks)
+                                }
+                                onClick={clearFinishedLoaderTasks}
+                              >
+                                <BrushCleaning className="h-3.5 w-3.5" aria-hidden="true" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                              Clear finished imports and uploads
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         {key === 'nodes' && (
                           <div className="flex items-center gap-2 text-[11px] text-description">
                             <Tooltip>

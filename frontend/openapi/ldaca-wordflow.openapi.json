@@ -13418,6 +13418,22 @@
         "title": "UserFileImportPage",
         "type": "object"
       },
+      "UserFileImportsCleared": {
+        "additionalProperties": false,
+        "description": "How many finished import records Clear finished removed (issue 440).",
+        "properties": {
+          "removed": {
+            "minimum": 0.0,
+            "title": "Removed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "removed"
+        ],
+        "title": "UserFileImportsCleared",
+        "type": "object"
+      },
       "UserPreferences": {
         "additionalProperties": false,
         "description": "Non-secret preferences synchronized for one authenticated user.",
@@ -16893,6 +16909,41 @@
       }
     },
     "/api/user-file-imports": {
+      "delete": {
+        "description": "Delete every finished history record of this person; running imports and files stay.",
+        "operationId": "clear_finished_user_file_imports",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserFileImportsCleared"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Clear Finished User File Imports",
+        "tags": [
+          "user-file-imports"
+        ]
+      },
       "get": {
         "description": "Return retained import history in stable newest-first order.",
         "operationId": "list_user_file_imports",

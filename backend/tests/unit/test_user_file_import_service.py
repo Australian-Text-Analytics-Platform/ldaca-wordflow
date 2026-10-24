@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
@@ -17,7 +17,7 @@ from ldaca_wordflow.domain import (
     SampleUserFileImportResult,
     UserFileImport,
 )
-from ldaca_wordflow.domain.background import BackgroundState, Progress
+from ldaca_wordflow.domain.background import BackgroundState, Failure, Progress
 from ldaca_wordflow.infrastructure.storage.user_file_import_store import (
     UserFileImportStore,
 )
@@ -122,6 +122,7 @@ def _service(
     samples: _Samples,
     *,
     capacity: int = 1,
+    finished_retention: timedelta | None = None,
 ) -> tuple[UserFileImportService, UserFileImportStore]:
     limiter = anyio.CapacityLimiter(4)
     users = tmp_path / "users"
@@ -141,6 +142,7 @@ def _service(
         max_storage_bytes=1024,
         max_storage_files=10,
         max_record_bytes=64 * 1024,
+        finished_retention=finished_retention,
     )
     return service, store
 
@@ -452,3 +454,88 @@ async def test_enqueue_rejection_compensates_record_staging_and_reservation(
         assert len(samples.cleaned) == 1
         assert not any((tmp_path / "staging").iterdir())
         await service.close(anyio.current_time() + 1)
+
+
+def _finished(finished_at: datetime) -> UserFileImport:
+    queued = UserFileImport.create(
+        SampleUserFileImportRequest(collection_id="demo"), timestamp=finished_at
+    )
+    return queued.fail(
+        finished_at,
+        failure=Failure(code="sample_import_failed", message="Failed."),
+        progress=queued.progress,
+    )
+
+
+async def test_single_user_start_drops_the_last_sessions_finished_imports(
+    tmp_path: Path,
+) -> None:
+    """Desktop and pip start with an empty Tasks list (issue 440); files stay."""
+
+    samples = _Samples(tmp_path / "staging")
+    service, store = _service(tmp_path, samples, finished_retention=timedelta(0))
+    finished = _finished(datetime.now(UTC) - timedelta(minutes=1))
+    interrupted = UserFileImport.create(
+        SampleUserFileImportRequest(collection_id="demo"), timestamp=datetime.now(UTC)
+    )
+    await store.save("alice", finished)
+    await store.save("alice", interrupted)
+
+    async with anyio.create_task_group() as tasks:
+        await service.start(tasks)
+        page = await service.list("alice", page=1, page_size=50)
+        # The interrupted import stays, so its error is seen.
+        assert [item.id for item in page.items] == [interrupted.id]
+        assert [r.resource.id for r in (await store.load_all()).records] == [interrupted.id]
+        await service.close(anyio.current_time() + 1)
+
+
+async def test_a_server_start_drops_finished_imports_older_than_the_retention(
+    tmp_path: Path,
+) -> None:
+    samples = _Samples(tmp_path / "staging")
+    service, store = _service(tmp_path, samples, finished_retention=timedelta(days=7))
+    old = _finished(datetime.now(UTC) - timedelta(days=8))
+    recent = _finished(datetime.now(UTC) - timedelta(days=1))
+    await store.save("alice", old)
+    await store.save("alice", recent)
+
+    async with anyio.create_task_group() as tasks:
+        await service.start(tasks)
+        page = await service.list("alice", page=1, page_size=50)
+        assert [item.id for item in page.items] == [recent.id]
+        await service.close(anyio.current_time() + 1)
+
+
+async def test_delete_finished_clears_one_persons_finished_imports_only(
+    tmp_path: Path,
+) -> None:
+    samples = _Samples(tmp_path / "staging", block=True)
+    service, store = _service(tmp_path, samples)
+    await store.save("alice", _finished(datetime.now(UTC) - timedelta(minutes=5)))
+    await store.save("bob", _finished(datetime.now(UTC) - timedelta(minutes=5)))
+
+    async with anyio.create_task_group() as tasks:
+        await service.start(tasks)
+        running = await service.submit_sample("alice", "demo")
+        await _wait_for_state(service, "alice", running, BackgroundState.RUNNING)
+
+        assert await service.delete_finished("alice") == 1
+        alice = await service.list("alice", page=1, page_size=50)
+        assert [item.id for item in alice.items] == [running.id]
+        assert (await service.list("bob", page=1, page_size=50)).total_items == 1
+
+        samples.release.set()
+        await _wait_for_state(service, "alice", running, BackgroundState.SUCCEEDED)
+        assert await service.delete_finished("alice") == 1
+        assert (await service.list("alice", page=1, page_size=50)).total_items == 0
+        await service.close(anyio.current_time() + 1)
+
+
+def test_clear_finished_endpoint_reports_how_many_it_removed(files_test_client) -> None:
+    """Clear finished in the Tasks panel (issue 440)."""
+
+    response = files_test_client.delete("/api/user-file-imports")
+    assert response.status_code == 200
+    assert response.json() == {"removed": 0}
+

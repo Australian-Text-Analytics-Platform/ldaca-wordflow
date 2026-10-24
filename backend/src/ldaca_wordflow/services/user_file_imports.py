@@ -6,7 +6,7 @@ import logging
 import math
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import anyio
@@ -86,6 +86,7 @@ class UserFileImportService:
         max_storage_bytes: int,
         max_storage_files: int,
         max_record_bytes: int,
+        finished_retention: timedelta | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         if min(max_storage_bytes, max_storage_files, max_record_bytes) < 1:
@@ -102,6 +103,10 @@ class UserFileImportService:
         self._max_storage_files = max_storage_files
         self._max_record_bytes = max_record_bytes
         self._clock = clock or (lambda: datetime.now(UTC))
+        # Finished imports older than this are removed at start (issue 440):
+        # zero on single-user Wordflow (the history of the last session), a
+        # week on a server. None keeps every record.
+        self._finished_retention = finished_retention
         self._scheduler = UserFileImportScheduler(
             capacity=capacity,
             runner=self._run,
@@ -165,11 +170,34 @@ class UserFileImportService:
                 warning=_UNAVAILABLE_IMPORT_WARNING,
             )
             self._operation_gates[key] = anyio.Lock()
+        cutoff = (
+            None
+            if self._finished_retention is None
+            else self._clock() - self._finished_retention
+        )
         for stored in snapshot.records:
             key = UserFileImportKey(stored.user_id, stored.resource.id)
             if key in self._unavailable_records:
                 continue  # its prepared publication could not be reconciled
             record = recovered_publications.pop(key, stored.resource)
+            if (
+                cutoff is not None
+                and record.finished_at is not None
+                and record.finished_at <= cutoff
+            ):
+                # Already finished before this start: the Tasks panel no
+                # longer needs it (issue 440). Only the record goes; the
+                # imported files stay. Interrupted imports, failed below,
+                # are kept so their error is seen.
+                try:
+                    await self._store.delete(stored.user_id, record.id)
+                    continue
+                except Exception:
+                    logger.exception(
+                        "Could not remove finished User File Import import_id=%s user_id=%s",
+                        record.id,
+                        stored.user_id,
+                    )
             if record.state in {BackgroundState.QUEUED, BackgroundState.RUNNING}:
                 record = record.fail(
                     self._clock(),
@@ -435,6 +463,30 @@ class UserFileImportService:
             )
         async with self._lock:
             self._operation_gates.pop(key, None)
+
+    async def delete_finished(self, user_id: str) -> int:
+        """Remove this person's finished import records, keeping running ones (issue 440).
+
+        Used by Clear finished in the Tasks panel and at sign-out on a server.
+        The imported files stay. Returns how many records were removed.
+        """
+
+        async with self._lock:
+            keys = [
+                key
+                for key, record in self._records.items()
+                if key.user_id == user_id
+                and record.state
+                in {BackgroundState.SUCCEEDED, BackgroundState.FAILED, BackgroundState.CANCELLED}
+            ]
+        removed = 0
+        for key in keys:
+            try:
+                await self.delete(user_id, key.import_id)
+            except (UserFileImportNotFoundError, UserFileImportNotTerminalError):
+                continue  # removed or restarted meanwhile
+            removed += 1
+        return removed
 
     def stop_accepting(self) -> None:
         """Reject new imports before runtime execution shutdown begins."""

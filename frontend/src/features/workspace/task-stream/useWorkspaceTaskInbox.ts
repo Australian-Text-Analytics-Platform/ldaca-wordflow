@@ -8,6 +8,7 @@ import { useCallback, useEffect } from 'react';
 import type { UserFileImport, UserFileImportPage, WorkspaceCatalogueItem } from '@/api';
 import {
   cancelUserFileImport,
+  clearFinishedUserFileImports,
   clearTabAnalysis,
   deleteUserFileImport,
   getAnalysis,
@@ -120,6 +121,9 @@ export interface WorkspaceTaskInboxState extends WorkspaceTaskStreamClientState 
   stopUserFileImport: (importId: string) => void;
   clearUserFileImport: (importId: string) => void;
   clearUnavailableAnalysis: (workspaceId: string, tabId: string) => void;
+  /** Clear finished: every finished import and upload goes (issue 440). */
+  clearFinishedLoaderTasks: () => void;
+  clearingFinishedLoaderTasks: boolean;
   stoppingImportId: string | null;
   clearingImportId: string | null;
   clearingAnalysisTabId: string | null;
@@ -179,6 +183,16 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
     },
     onError: (error) => {
       toastError(error, "Couldn't clear the file import.");
+    },
+  });
+
+  const clearFinishedMutation = useMutation({
+    mutationFn: async () => (await clearFinishedUserFileImports({ throwOnError: true })).data,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.userFileImports });
+    },
+    onError: (error) => {
+      toastError(error, "Couldn't clear the finished tasks.");
     },
   });
 
@@ -354,6 +368,14 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
     clearUnavailableAnalysis: (workspaceId: string, tabId: string) => {
       clearAnalysisMutation.mutate({ workspaceId, tabId });
     },
+    clearFinishedLoaderTasks: () => {
+      const uploads = useUploadTasksStore.getState();
+      for (const upload of uploads.uploads) {
+        if (upload.state !== 'running') uploads.clear(upload.id);
+      }
+      clearFinishedMutation.mutate();
+    },
+    clearingFinishedLoaderTasks: clearFinishedMutation.isPending,
     stoppingImportId: cancelImportMutation.isPending ? cancelImportMutation.variables : null,
     clearingImportId: deleteImportMutation.isPending ? deleteImportMutation.variables : null,
     clearingAnalysisTabId: clearAnalysisMutation.isPending

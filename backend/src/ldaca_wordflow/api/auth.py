@@ -202,6 +202,10 @@ async def delete_session(
     revoked_session_id = await runtime.session_service.revoke(token)
     if revoked_session_id is not None:
         await runtime.event_hub.close_session_streams(revoked_session_id)
+    if runtime.settings.multi_user and principal is not None:
+        # Signing out ends the session's Data Loader tasks too (issue 440);
+        # imported files stay.
+        await runtime.user_file_import_service.delete_finished(principal.user.id)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     _delete_session_cookie(response, request, runtime.session_service)
     return response

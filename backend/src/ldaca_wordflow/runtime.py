@@ -26,6 +26,7 @@ import tempfile
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import Literal, TypedDict, cast
 
@@ -1048,6 +1049,10 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
             max_storage_bytes=settings.max_user_file_import_bytes,
             max_storage_files=settings.max_user_file_import_files,
             max_record_bytes=settings.max_user_file_import_record_bytes,
+            # Finished Data Loader tasks don't stay in Tasks for ever (issue
+            # 440): single-user Wordflow starts with none from the last
+            # session; a server drops those over a week old.
+            finished_retention=timedelta(days=7) if settings.multi_user else timedelta(0),
         )
         await user_file_import_service.start(task_group)
         task_group_owner.register_admission_stopper(

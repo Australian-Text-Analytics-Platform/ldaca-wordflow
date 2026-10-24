@@ -111,7 +111,18 @@ function SidebarTasksSection({
   clearingImportId,
   clearingAnalysisTabId,
 }: SidebarTasksSectionProps) {
-  const rows = buildTaskRows(Array.isArray(tasks) ? tasks : [], tabsById, nodeNameById);
+  // Finished Data Loader tasks fade out after a while (issue 440): the clock
+  // ticks so they leave even when nothing else changes.
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+    }, 30_000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+  const rows = buildTaskRows(Array.isArray(tasks) ? tasks : [], tabsById, nodeNameById, now);
 
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Set<string>>(() => new Set());
 
@@ -237,11 +248,13 @@ function SidebarTasksSection({
                     if (element) rowElements.current.set(row.key, element);
                     else rowElements.current.delete(row.key);
                   }}
+                  data-fading={row.fading ? true : undefined}
                   className={cn(
-                    'rounded-md border bg-editor text-left transition-colors',
+                    'rounded-md border bg-editor text-left transition-[colors,opacity] duration-1000',
                     PROBLEMATIC_STATES.has(row.state.toLowerCase())
                       ? 'border-error bg-error-background/50'
                       : 'border-surface-border/40',
+                    row.fading && 'opacity-50',
                   )}
                 >
                   <div
