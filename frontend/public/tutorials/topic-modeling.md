@@ -295,10 +295,10 @@ The **Display options** change how the result is shown: **Topics**, **Topics
 per doc** (top topics per document), **Words per topic**, **Colour by**, the stop word controls and the
 **Search term**, with **Add to Project**. Question-mark icons beside some of
 these controls give a short explanation. On a wide results panel the options
-sit beside the bubble chart, with the colour legend: one option per row, the
-search term last and **Add to Project** at the bottom, and the chart keeps a
-4:3 shape. Drag the divider between the chart and the options to widen or
-narrow the chart (double-click it to go back to 4:3). The panel icon at the
+sit beside the bubble chart, with the colour legend, in a compact column: one
+option per row, the search term last and **Add to Project** at the bottom. The
+chart takes the rest of the width. Drag the divider between the chart and the
+options to widen or narrow the chart (double-click it to go back). The panel icon at the
 right of the Display options heading moves the options below the chart, in a
 compact row, and back beside it. On a narrower panel they always sit below the
 chart. Click **Display options** to fold them to one summary line, such as "2

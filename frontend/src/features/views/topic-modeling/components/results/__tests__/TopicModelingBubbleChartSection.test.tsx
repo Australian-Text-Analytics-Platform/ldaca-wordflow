@@ -171,15 +171,15 @@ const sizeChartLayout = (width: number, height: number) =>
   });
 
 describe('topic chart layout (issue 433)', () => {
-  it('makes the chart 4:3 of its height, or the dragged share, leaving the side its minimum', () => {
-    expect(topicChartWidth({ width: 1400, height: 480 }, null)).toBe(640);
-    expect(topicChartWidth({ width: 900, height: 480 }, null)).toBe(552);
-    expect(topicChartWidth({ width: 1400, height: 200 }, null)).toBe(420);
+  it('gives the options 380 px by default, or follows the dragged share, within both minimums', () => {
+    expect(topicChartWidth({ width: 1400, height: 480 }, null)).toBe(1012);
+    expect(topicChartWidth({ width: 900, height: 480 }, null)).toBe(512);
+    expect(topicChartWidth({ width: 800, height: 480 }, null)).toBe(420);
     expect(topicChartWidth({ width: 1400, height: 480 }, 0.5)).toBe(700);
     expect(topicChartWidth({ width: 1400, height: 480 }, 0.99)).toBe(1052);
   });
 
-  it('puts the legend and settings beside a 4:3 chart on a wide card', () => {
+  it('puts the legend and settings beside the chart on a wide card', () => {
     const spy = sizeChartLayout(1400, 480);
     const onChartLayoutChange = vi.fn();
     render(
@@ -201,7 +201,7 @@ describe('topic chart layout (issue 433)', () => {
     expect(within(side).getByText('Display options')).toBeInTheDocument();
     expect(within(side).getByRole('group', { name: 'Bubble colours by Data Block' })).toBeVisible();
     expect(screen.getByTestId('topic-chart-column')).toHaveStyle({
-      width: '640px',
+      width: '1012px',
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Move the options below the chart' }));
@@ -211,7 +211,7 @@ describe('topic chart layout (issue 433)', () => {
     });
     const divider = screen.getByTestId('topic-chart-divider');
     fireEvent.keyDown(divider, { key: 'ArrowRight' });
-    expect(onChartLayoutChange.mock.lastCall?.[0].chartShare).toBeCloseTo(710 / 1400, 3);
+    expect(onChartLayoutChange.mock.lastCall?.[0].chartShare).toBeCloseTo(1052 / 1400, 3);
     fireEvent.doubleClick(divider);
     expect(onChartLayoutChange).toHaveBeenLastCalledWith({
       placement: 'side',

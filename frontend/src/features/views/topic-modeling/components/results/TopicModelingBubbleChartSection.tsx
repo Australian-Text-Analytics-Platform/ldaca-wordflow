@@ -156,9 +156,9 @@ export function TopicModelingBubbleChartSection({
 }: Props) {
   const corpusCount = corpusSizes.length;
   const chartRef = useRef<HTMLDivElement | null>(null);
-  // On a wide card the settings and legend sit beside a 4:3 chart, so it
-  // isn't a wide strip; the divider sets the chart's width, double-click
-  // returns to 4:3, and a chart control moves the settings below (issue 433).
+  // On a wide card the options and legend sit in a compact column beside the
+  // chart; the divider sets the chart's width, double-click returns to the
+  // default, and an icon moves the options below (issue 433).
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const [layoutBox, setLayoutBox] = useState<{
     width: number;
@@ -469,7 +469,7 @@ export function TopicModelingBubbleChartSection({
               ((layoutBox.width - DIVIDER_WIDTH - SIDE_MIN_WIDTH) / layoutBox.width) * 100,
             )}
             tabIndex={0}
-            title="Drag to resize. Double-click for a 4:3 chart."
+            title="Drag to resize. Double-click to reset."
             data-testid="topic-chart-divider"
             onPointerDown={(event) => {
               if (event.button !== 0) return;
