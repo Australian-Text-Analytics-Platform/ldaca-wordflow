@@ -174,7 +174,7 @@ function FindTopicsInput({
           // Examples show that parts of words and several terms work (issue 434).
           placeholder="e.g. house, pre, gov"
           title="Words or parts of words, separated by spaces or commas. Topics with any of them match."
-          className={`h-8 ${classes.column ? 'w-full' : 'w-56'} rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden`}
+          className={`h-8 ${classes.column ? 'w-full' : 'w-56'} rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-[var(--vscode-input-placeholderForeground)] focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden`}
         />
       </div>
     </div>
