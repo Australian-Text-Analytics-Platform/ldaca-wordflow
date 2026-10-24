@@ -243,8 +243,8 @@ def _run_rust_topic_modeling(
 
     Rust owns the shared segment → embed → cluster → c-TF-IDF → length-weighted
     coverage pipeline. Its scalar result contains complete ``documents`` and
-    ``topics`` lists. This boundary pads Topic Coverage for persistence and
-    rejects malformed native output.
+    ``topics`` lists. This boundary rejects malformed native output and keeps
+    each document's Topic Coverage to the Topics it has (issue 436).
 
     Called by:
     - ``_compute_topic_payload`` in ``topic_modeling`` for the initial run.
@@ -323,6 +323,7 @@ def _run_rust_topic_modeling(
     raw_documents = raw_result.get("documents")
     if not isinstance(raw_documents, list) or len(raw_documents) != len(all_docs):
         raise ValueError("Topic modeling native documents are malformed")
+    known_topic_ids = {-1, *all_topic_ids}
     documents = []
     for index, raw_document in enumerate(raw_documents):
         if not isinstance(raw_document, dict):
@@ -336,7 +337,7 @@ def _run_rust_topic_modeling(
             raise ValueError("Topic modeling native document is malformed") from exc
         if doc_index != index:
             raise ValueError("Topic modeling native document indices are invalid")
-        if dominant_topic not in {-1, *all_topic_ids}:
+        if dominant_topic not in known_topic_ids:
             raise ValueError("Topic modeling native dominant topic is unknown")
         if not isinstance(raw_coverage, list):
             raise ValueError("Topic Coverage is malformed")
@@ -355,21 +356,23 @@ def _run_rust_topic_modeling(
             if not math.isfinite(coverage) or coverage < 0.0:
                 raise ValueError("Topic Coverage contains an invalid value")
             present[topic_id] = coverage
-        unknown = set(present).difference({-1, *all_topic_ids})
+        unknown = set(present).difference(known_topic_ids)
         if unknown:
             raise ValueError("Topic Coverage contains an unknown Topic id")
         if present and not math.isclose(sum(present.values()), 1.0, abs_tol=1e-5):
             raise ValueError("Topic Coverage must sum to one")
-        padded: dict[int, float] = {-1: present.get(-1, 0.0)}
-        for topic_id in all_topic_ids:
-            padded[topic_id] = present.get(topic_id, 0.0)
+        # Only the Topics a document has: padding every document to every
+        # Topic made one entry per document per Topic (29 million for 76,000
+        # paragraphs and 381 Topics, about 8 GB), built on one processor at
+        # the end of the last step (issue 436). Everything that reads these
+        # documents counts positive shares only.
         documents.append(
             {
                 "doc_index": index,
                 "dominant_topic": dominant_topic,
                 "topic_coverage": [
-                    {"topic_id": topic_id, "coverage": padded[topic_id]}
-                    for topic_id in sorted(padded)
+                    {"topic_id": topic_id, "coverage": present[topic_id]}
+                    for topic_id in sorted(present)
                 ],
             }
         )

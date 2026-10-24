@@ -292,18 +292,14 @@ def test_run_rust_topic_modeling_reconstructs_result_dict(monkeypatch):
         embedder_model="fake-model",
     )
 
-    # Documents carry both the dominant Topic and source-character coverage.
-    # Coverage always starts with outlier -1 and then every real Topic id.
-    # appears in every document, with 0.0 where the doc has no presence; this
-    # powers the Topic Coverage filter and data-view bars. The outlier
-    # document (-1) has no non-negative dominant topics of its own but still
-    # gets the full padded key set.
+    # Documents carry the dominant Topic and the Topics they have, in Topic id
+    # order: no padding to every Topic, which made one entry per document per
+    # Topic on large runs (issue 436). The outlier document keeps an empty list.
     assert result["documents"] == [
         {
             "doc_index": 0,
             "dominant_topic": 0,
             "topic_coverage": [
-                {"topic_id": -1, "coverage": pytest.approx(0.0)},
                 {"topic_id": 0, "coverage": pytest.approx(0.9)},
                 {"topic_id": 1, "coverage": pytest.approx(0.1)},
             ],
@@ -311,30 +307,17 @@ def test_run_rust_topic_modeling_reconstructs_result_dict(monkeypatch):
         {
             "doc_index": 1,
             "dominant_topic": 0,
-            "topic_coverage": [
-                {"topic_id": -1, "coverage": pytest.approx(0.0)},
-                {"topic_id": 0, "coverage": pytest.approx(1.0)},
-                {"topic_id": 1, "coverage": pytest.approx(0.0)},
-            ],
+            "topic_coverage": [{"topic_id": 0, "coverage": pytest.approx(1.0)}],
         },
         {
             "doc_index": 2,
             "dominant_topic": 0,
             "topic_coverage": [
-                {"topic_id": -1, "coverage": pytest.approx(0.0)},
                 {"topic_id": 0, "coverage": pytest.approx(0.2)},
                 {"topic_id": 1, "coverage": pytest.approx(0.8)},
             ],
         },
-        {
-            "doc_index": 3,
-            "dominant_topic": -1,
-            "topic_coverage": [
-                {"topic_id": -1, "coverage": pytest.approx(0.0)},
-                {"topic_id": 0, "coverage": pytest.approx(0.0)},
-                {"topic_id": 1, "coverage": pytest.approx(0.0)},
-            ],
-        },
+        {"doc_index": 3, "dominant_topic": -1, "topic_coverage": []},
     ]
     # Topic 1 is preserved even though it never dominates a document.
     assert result["topics"] == [
