@@ -163,13 +163,14 @@ SERVER_NOTICE_FILE=/etc/ldaca-wordflow/notice.md
 
 Example for wordflow.ldaca.edu.au (ARDC Nectar Research Cloud, CILogon
 sign-in). People with sensitive data are pointed to the desktop app, which
-keeps their data on their own computer:
+keeps their data on their own computer; the link is the Wordflow landing
+page, whose download buttons always offer the latest installers:
 
 ```markdown
 **Wordflow online is hosted on the ARDC Nectar Research Cloud.** Before you
 upload anything sensitive, check that your ethics approval allows it. If you
 have any concerns, use the
-[Wordflow desktop app](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/latest)
+[Wordflow desktop app](https://sih.tools/wordflow)
 instead: it keeps your data on your own computer.
 ```
 
