@@ -21,6 +21,7 @@ import { NodeInputPointerCarrier } from '@/components/layout/NodeInputPointerCar
 import { ResizeHandle } from '@/components/layout/ResizeHandle';
 import { AccountThemeSynchronizer } from '@/features/theme/AccountThemeSynchronizer';
 import { DesktopNavigationHeader } from '@/components/layout/DesktopNavigationHeader';
+import { ServerNoticeBanner } from '@/features/server-notice/ServerNoticeBanner';
 
 const WorkspaceView = lazy(() => import('@/components/layout/WorkspaceView'));
 
@@ -91,6 +92,8 @@ function WorkspaceShellContent() {
                     <SidebarTrigger />
                   </div>
                 </header>
+                {/* The operator's notice, until Got it (issue 438). */}
+                <ServerNoticeBanner />
 
                 <div className="flex flex-1 flex-col overflow-hidden">
                   {/* Stack whenever the post-sidebar shell becomes too narrow for both panes. */}

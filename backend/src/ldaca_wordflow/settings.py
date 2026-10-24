@@ -250,6 +250,13 @@ class Settings(BaseSettings):
         ),
         description="Update file for each deployment kind ({kind} is filled in)",
     )
+    # A notice to everyone signed in to a server (issue 438): a small text
+    # file the operator can change at any time; it is read again when it
+    # changes, and a new text shows again to people who dismissed the old one.
+    server_notice_file: Path | None = Field(
+        default=None,
+        description="Text file whose Markdown is shown as a notice to every signed-in user",
+    )
 
     # Google OAuth Configuration (when multi_user=True)
     google_client_id: str = Field(default="", description="Google OAuth client ID")

@@ -371,6 +371,15 @@ class ToolCacheBusyError(ResourceConflictError):
         )
 
 
+class ServerNoticeChangedError(ResourceConflictError):
+    """Got it was sent for a notice the operator has since changed (issue 438)."""
+
+    code = "server_notice_changed"
+
+    def __init__(self) -> None:
+        super().__init__("The notice has changed. Reload to read the current one.")
+
+
 class DataRootBusyError(ResourceConflictError):
     """A root switch would interrupt retained background work."""
 

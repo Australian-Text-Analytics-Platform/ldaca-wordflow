@@ -133,6 +133,47 @@ else; with 32 cores, 8 threads each is a reasonable start (polars-text 0.6.3
 and later honour the number). A full lane queues new work rather than refusing
 it.
 
+### Notice to everyone signed in
+
+A multi-user server can show every signed-in person a notice across the top
+of the workspace, for example where their data is stored and who can see it
+(issue 438). Single-user Wordflow (desktop, pip, Binder) never shows one. Put
+the text in a small UTF-8 file (Markdown: paragraphs, **bold** and https
+links; up to 4 KB) and name it:
+
+```dotenv
+SERVER_NOTICE_FILE=/etc/ldaca-wordflow/notice.md
+```
+
+- **Changing it:** edit the file. Wordflow reads it again when it changes, so
+  no restart is needed, and open pages pick up the new text within five
+  minutes or when the window gets focus again.
+- **Got it:** each person can dismiss the notice. The server records it, so
+  it stays dismissed on every device, and a changed text shows again to
+  everyone. Hints and suggestions being off doesn't hide it.
+- **Taking it down:** empty the file or remove it. A missing, empty,
+  unreadable or oversized file means no notice; the last two are logged.
+- **Records:** `<DATA_ROOT>/server-notices/` keeps, as append-only JSON lines,
+  every notice text once (`notices.jsonl`: id, first shown, text) and every
+  Got it (`acknowledgements.jsonl`: notice id, the person's email and name,
+  time), so who acknowledged which words, and when, can be looked up later.
+  The folder is part of the data folder: it is in the backups, and it carries
+  over to a new version or another machine with the data folder, as `users/`
+  and `workspaces/` do.
+
+Example for wordflow.ldaca.edu.au (LDaCA, ARDC Nectar Research Cloud, CILogon
+sign-in):
+
+```markdown
+**Wordflow online is a shared service run by the Language Data Commons of
+Australia (LDaCA) on the ARDC Nectar Research Cloud.** Files you upload and
+Projects you create stay on the LDaCA server until you delete them. Only the
+server's administrators can access them. Before you upload data with privacy
+or data protection concerns, check that your ethics approval allows it. When
+you finish, you can export your Project and delete it here to remove it from
+the server.
+```
+
 ## Provider Credentials
 
 A deployment can also offer its own LLMs for AI annotation, with keys kept on

@@ -9915,6 +9915,52 @@
         "title": "ServerAiProviders",
         "type": "object"
       },
+      "ServerNoticeContent": {
+        "additionalProperties": false,
+        "description": "The notice's Markdown text and an id that changes with the text.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "ServerNoticeContent",
+        "type": "object"
+      },
+      "ServerNoticeResource": {
+        "additionalProperties": false,
+        "description": "The operator's notice to everyone signed in, and whether this person acknowledged it.",
+        "properties": {
+          "acknowledged": {
+            "title": "Acknowledged",
+            "type": "boolean"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServerNoticeContent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "notice",
+          "acknowledged"
+        ],
+        "title": "ServerNoticeResource",
+        "type": "object"
+      },
       "SessionResponse": {
         "additionalProperties": false,
         "description": "No-store bootstrap response for both supported deployment profiles.",
@@ -16461,6 +16507,111 @@
         "summary": "List Server Ai Providers",
         "tags": [
           "annotations"
+        ]
+      }
+    },
+    "/api/server-notice": {
+      "get": {
+        "description": "Return the notice in ``SERVER_NOTICE_FILE`` and whether this person acknowledged it.",
+        "operationId": "get_server_notice",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerNoticeResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Server Notice",
+        "tags": [
+          "server-notice"
+        ]
+      }
+    },
+    "/api/server-notice/{notice_id}/acknowledgement": {
+      "post": {
+        "description": "Record this person's Got it (name, email, time) for the current notice.",
+        "operationId": "acknowledge_server_notice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notice_id",
+            "required": true,
+            "schema": {
+              "title": "Notice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerNoticeResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource state conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Acknowledge Server Notice",
+        "tags": [
+          "server-notice"
         ]
       }
     },

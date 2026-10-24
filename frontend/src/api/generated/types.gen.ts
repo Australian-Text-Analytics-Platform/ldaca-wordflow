@@ -5139,6 +5139,35 @@ export type ServerAiProviders = {
 };
 
 /**
+ * ServerNoticeContent
+ *
+ * The notice's Markdown text and an id that changes with the text.
+ */
+export type ServerNoticeContent = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * ServerNoticeResource
+ *
+ * The operator's notice to everyone signed in, and whether this person acknowledged it.
+ */
+export type ServerNoticeResource = {
+    /**
+     * Acknowledged
+     */
+    acknowledged: boolean;
+    notice: ServerNoticeContent | null;
+};
+
+/**
  * SessionResponse
  *
  * No-store bootstrap response for both supported deployment profiles.
@@ -9007,6 +9036,69 @@ export type ListServerAiProvidersResponses = {
 };
 
 export type ListServerAiProvidersResponse = ListServerAiProvidersResponses[keyof ListServerAiProvidersResponses];
+
+export type GetServerNoticeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/server-notice';
+};
+
+export type GetServerNoticeErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+};
+
+export type GetServerNoticeError = GetServerNoticeErrors[keyof GetServerNoticeErrors];
+
+export type GetServerNoticeResponses = {
+    /**
+     * Successful Response
+     */
+    200: ServerNoticeResource;
+};
+
+export type GetServerNoticeResponse = GetServerNoticeResponses[keyof GetServerNoticeResponses];
+
+export type AcknowledgeServerNoticeData = {
+    body?: never;
+    path: {
+        /**
+         * Notice Id
+         */
+        notice_id: string;
+    };
+    query?: never;
+    url: '/api/server-notice/{notice_id}/acknowledgement';
+};
+
+export type AcknowledgeServerNoticeErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type AcknowledgeServerNoticeError = AcknowledgeServerNoticeErrors[keyof AcknowledgeServerNoticeErrors];
+
+export type AcknowledgeServerNoticeResponses = {
+    /**
+     * Successful Response
+     */
+    200: ServerNoticeResource;
+};
+
+export type AcknowledgeServerNoticeResponse = AcknowledgeServerNoticeResponses[keyof AcknowledgeServerNoticeResponses];
 
 export type DeleteSessionData = {
     body?: never;

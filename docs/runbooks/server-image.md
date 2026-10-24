@@ -88,6 +88,23 @@ Behind a reverse proxy on the same host or pod, run it on loopback instead, for 
   only, which stops its Analysis workers and records them as interrupted.
 - Set `UPDATE_CHECK_ENABLED=false` if people shouldn't be told about public
   releases this deployment doesn't follow.
+- To show everyone a notice, such as where their data is stored, mount a small
+  Markdown file (for example from the same ConfigMap as the server AI providers
+  file) and set `SERVER_NOTICE_FILE` to its path. Editing the file changes the
+  notice without a restart. Who acknowledged which text, and when, is kept in
+  `/data/server-notices/` on the data volume, so it survives upgrades and new
+  pods. See [Notice to everyone signed in](hosted-deployment.md#notice-to-everyone-signed-in).
+  Example for Apollo:
+
+  ```markdown
+  **Wordflow on Apollo is a shared service run by the Sydney Informatics Hub
+  (SIH).** Files you upload and Projects you create are stored in the
+  Wordflow2026 project on Apollo. Only the Apollo administrators, the Wordflow
+  developers and the project's academic lead can access them. Before you
+  upload protected or sensitive data, check that your ethics approval allows
+  it. When you finish, export your Project and delete it here to remove it
+  from the storage.
+  ```
 
 The rest of the configuration is as in [Hosted deployment](hosted-deployment.md).
 

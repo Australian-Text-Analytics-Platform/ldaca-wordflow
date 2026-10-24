@@ -37,7 +37,7 @@ class DataRootOwnerError(PermissionError):
 
 # What Wordflow creates at the top of a Data Root; their owner is the uid that
 # created the data (issue 425).
-_OWNED_ENTRIES = ("deployment.sqlite3", "users", "workspaces")
+_OWNED_ENTRIES = ("deployment.sqlite3", "users", "workspaces", "server-notices")
 
 
 @dataclass(frozen=True, slots=True)
