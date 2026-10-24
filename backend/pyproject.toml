@@ -1,6 +1,6 @@
 [project]
 name = "ldaca-wordflow"
-version = "0.7.17"
+version = "0.7.18"
 description = "LDaCA Wordflow - FastAPI backend with bundled production frontend for the Language Data Commons of Australia"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -34,7 +34,7 @@ dependencies = [
     "python-multipart>=0.0.20",                 # OAuth form callbacks
     "pyyaml>=6.0.2",                            # SERVER_AI_PROVIDERS_FILE (issue 411)
     "psutil>=6.1.0",                            # Process management for proper cleanup of child processes
-    "polars-text>=0.7.1,<0.8",
+    "polars-text>=0.7.2,<0.8",
     "polars-source-utils>=0.6.0",
     "tbb>=2022.3.1 ; sys_platform != 'darwin'",
     "tzdata>=2025.2 ; sys_platform == 'win32'",
