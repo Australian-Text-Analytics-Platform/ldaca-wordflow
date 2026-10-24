@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   getUpdaterSnapshot: vi.fn(),
   installUpdate: vi.fn(),
   openUpdateLink: vi.fn(),
+  onUpdaterRefresh: vi.fn(),
+  refresh: undefined as ((kind: 'check' | 'snapshot') => void) | undefined,
 }));
 
 vi.mock('../desktopUpdater', () => mocks);
@@ -30,6 +32,52 @@ describe('UpdaterWindow', () => {
     mocks.installUpdate.mockResolvedValue(undefined);
     mocks.openUpdateLink.mockResolvedValue(undefined);
     mocks.getUpdaterSnapshot.mockResolvedValue({ status: 'available', update });
+    mocks.refresh = undefined;
+    mocks.onUpdaterRefresh.mockImplementation((handler: (kind: 'check' | 'snapshot') => void) => {
+      mocks.refresh = handler;
+      return Promise.resolve(() => undefined);
+    });
+  });
+
+  describe('when shown again while open (issue 439)', () => {
+    const newer = { ...update, version: '0.8.1' };
+
+    it('shows a newer staged update instead of the one it opened with', async () => {
+      render(<UpdaterWindow mode="available" />);
+      await screen.findByText('Wordflow 0.8.0');
+      mocks.getUpdaterSnapshot.mockResolvedValue({ status: 'available', update: newer });
+      await waitFor(() => {
+        expect(mocks.refresh).toBeDefined();
+      });
+      act(() => {
+        mocks.refresh?.('snapshot');
+      });
+      expect(await screen.findByText('Wordflow 0.8.1')).toBeInTheDocument();
+    });
+
+    it('checks again for Check for Updates', async () => {
+      mocks.checkForUpdates.mockResolvedValueOnce({ status: 'available', update });
+      render(<UpdaterWindow mode="manual" />);
+      await screen.findByText('Wordflow 0.8.0');
+      mocks.checkForUpdates.mockResolvedValueOnce({ status: 'available', update: newer });
+      act(() => {
+        mocks.refresh?.('check');
+      });
+      expect(await screen.findByText('Wordflow 0.8.1')).toBeInTheDocument();
+      expect(mocks.checkForUpdates).toHaveBeenCalledTimes(2);
+    });
+
+    it('leaves a downloaded update ready to install alone', async () => {
+      mocks.getUpdaterSnapshot.mockResolvedValue({ status: 'readyToInstall', update });
+      render(<UpdaterWindow mode="available" />);
+      await screen.findByText('Wordflow 0.8.0');
+      act(() => {
+        mocks.refresh?.('check');
+        mocks.refresh?.('snapshot');
+      });
+      expect(mocks.checkForUpdates).not.toHaveBeenCalled();
+      expect(mocks.getUpdaterSnapshot).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('shows checking and then the up-to-date state for a manual check', async () => {

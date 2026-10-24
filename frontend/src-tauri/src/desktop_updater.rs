@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::ipc::Channel;
 use tauri::{
-    AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
+    AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window,
+    WindowEvent,
 };
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_store::StoreExt;
@@ -457,11 +458,21 @@ async fn fetch_update(app: &AppHandle) -> Result<Option<Update>, String> {
     updater.check().await.map_err(|error| error.to_string())
 }
 
+/// Sent to an update window that is already open (issue 439): "check" asks it
+/// to check again (Check for Updates), "snapshot" to show the update a check
+/// has just staged. Before, the window kept what it read when it opened, so
+/// it could offer 0.7.17 after 0.7.18 was out.
+const UPDATER_REFRESH_EVENT: &str = "updater-refresh";
+
 fn open_updater_window(app: &AppHandle, manual: bool) -> Result<(), String> {
     if let Some(window) = app.get_webview_window(UPDATER_WINDOW_LABEL) {
         window.show().map_err(|error| error.to_string())?;
         window.unminimize().map_err(|error| error.to_string())?;
-        return window.set_focus().map_err(|error| error.to_string());
+        window.set_focus().map_err(|error| error.to_string())?;
+        let refresh = if manual { "check" } else { "snapshot" };
+        return app
+            .emit_to(UPDATER_WINDOW_LABEL, UPDATER_REFRESH_EVENT, refresh)
+            .map_err(|error| error.to_string());
     }
 
     let mode = if manual { "manual" } else { "available" };

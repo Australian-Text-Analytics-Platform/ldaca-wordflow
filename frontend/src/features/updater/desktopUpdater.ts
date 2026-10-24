@@ -1,4 +1,5 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 
 export interface UpdateMetadata {
   currentVersion: string;
@@ -59,4 +60,18 @@ export function getUpdatePreferences(): Promise<UpdatePreferences> {
 
 export function setAutomaticUpdateChecks(enabled: boolean): Promise<UpdatePreferences> {
   return invoke('set_automatic_update_checks', { enabled });
+}
+
+/** What an already open update window should do when shown again (issue 439). */
+export type UpdaterRefresh = 'check' | 'snapshot';
+
+/**
+ * Called when the app shows this update window again: "check" after Check
+ * for Updates, "snapshot" after a check staged a newer update. Resolves to a
+ * function that stops listening.
+ */
+export function onUpdaterRefresh(handler: (refresh: UpdaterRefresh) => void): Promise<() => void> {
+  return getCurrentWebviewWindow().listen<UpdaterRefresh>('updater-refresh', (event) => {
+    handler(event.payload);
+  });
 }

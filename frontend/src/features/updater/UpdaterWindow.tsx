@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { AlertCircle, CheckCircle2, Download, RefreshCw, Rocket } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,8 +11,10 @@ import {
   downloadUpdate,
   getUpdaterSnapshot,
   installUpdate,
+  onUpdaterRefresh,
   openUpdateLink,
   type UpdateMetadata,
+  type UpdaterRefresh,
 } from './desktopUpdater';
 import { bundledReleaseNotes } from './bundledReleaseNotes';
 
@@ -106,15 +108,7 @@ export function UpdaterWindow({ mode }: { mode: 'manual' | 'available' }) {
     }
   };
 
-  useEffect(() => {
-    if (mode === 'manual') {
-      void checkForUpdates()
-        .then(setView)
-        .catch((error: unknown) => {
-          setView({ status: 'error', message: errorMessage(error), retry: 'check' });
-        });
-      return;
-    }
+  const showSnapshot = () => {
     void getUpdaterSnapshot()
       .then((snapshot) => {
         switch (snapshot.status) {
@@ -143,7 +137,51 @@ export function UpdaterWindow({ mode }: { mode: 'manual' | 'available' }) {
       .catch((error: unknown) => {
         setView({ status: 'error', message: errorMessage(error), retry: 'check' });
       });
+  };
+
+  useEffect(() => {
+    if (mode === 'manual') {
+      void checkForUpdates()
+        .then(setView)
+        .catch((error: unknown) => {
+          setView({ status: 'error', message: errorMessage(error), retry: 'check' });
+        });
+      return;
+    }
+    showSnapshot();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- read once when the window opens; later reads come from refreshes
   }, [mode]);
+
+  // Shown again by the app while still open (issue 439): Check for Updates
+  // checks again, and a newer staged update replaces the one shown. Not
+  // while checking, downloading, installing or holding a downloaded update.
+  const refresh = useEffectEvent((kind: UpdaterRefresh) => {
+    if (
+      view.status === 'checking' ||
+      view.status === 'downloading' ||
+      view.status === 'installing' ||
+      view.status === 'readyToInstall'
+    ) {
+      return;
+    }
+    if (kind === 'check') void check();
+    else showSnapshot();
+  });
+
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let closed = false;
+    void onUpdaterRefresh((kind) => {
+      refresh(kind);
+    }).then((unlisten) => {
+      if (closed) unlisten();
+      else stop = unlisten;
+    });
+    return () => {
+      closed = true;
+      stop?.();
+    };
+  }, []);
 
   const download = async (update: UpdateMetadata) => {
     setView({ status: 'downloading', update, downloadedBytes: 0, contentLength: null });
