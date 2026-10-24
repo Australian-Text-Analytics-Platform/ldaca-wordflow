@@ -161,17 +161,16 @@ SERVER_NOTICE_FILE=/etc/ldaca-wordflow/notice.md
   over to a new version or another machine with the data folder, as `users/`
   and `workspaces/` do.
 
-Example for wordflow.ldaca.edu.au (LDaCA, ARDC Nectar Research Cloud, CILogon
-sign-in):
+Example for wordflow.ldaca.edu.au (ARDC Nectar Research Cloud, CILogon
+sign-in). People with sensitive data are pointed to the desktop app, which
+keeps their data on their own computer:
 
 ```markdown
-**Wordflow online is a shared service run by the Language Data Commons of
-Australia (LDaCA) on the ARDC Nectar Research Cloud.** Files you upload and
-Projects you create stay on the LDaCA server until you delete them. Only the
-server's administrators can access them. Before you upload data with privacy
-or data protection concerns, check that your ethics approval allows it. When
-you finish, you can export your Project and delete it here to remove it from
-the server.
+**Wordflow online is hosted on the ARDC Nectar Research Cloud.** Before you
+upload anything sensitive, check that your ethics approval allows it. If you
+have any concerns, use the
+[Wordflow desktop app](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/latest)
+instead: it keeps your data on your own computer.
 ```
 
 ## Provider Credentials
