@@ -577,6 +577,32 @@ describe('DataLoaderFeature citation UI', () => {
     );
   });
 
+  it('pulses an imported Project until its row is clicked (issue 443)', async () => {
+    mockImportWorkspaceArchive.mockResolvedValue({
+      data: { id: 'ws-1' },
+      response: new Response(null),
+    });
+    renderWithProviders(<DataLoaderFeature />);
+    expect(
+      getVisibleMatch(screen.getAllByTestId('workspace-manager-item-ws-1')),
+    ).not.toHaveAttribute('data-fresh-item');
+
+    fireEvent.change(screen.getByLabelText('Import Project archive'), {
+      target: { files: [new File(['zip'], 'copy.zip', { type: 'application/zip' })] },
+    });
+
+    await waitFor(() => {
+      expect(getVisibleMatch(screen.getAllByTestId('workspace-manager-item-ws-1'))).toHaveAttribute(
+        'data-fresh-item',
+        'true',
+      );
+    });
+    fireEvent.pointerDown(getVisibleMatch(screen.getAllByTestId('workspace-manager-item-ws-1')));
+    expect(
+      getVisibleMatch(screen.getAllByTestId('workspace-manager-item-ws-1')),
+    ).not.toHaveAttribute('data-fresh-item');
+  });
+
   it('renders unavailable project metadata and keeps archive download available', async () => {
     const user = userEvent.setup();
     const unavailableId = '0a120442-2f33-4474-9d09-9adbdfea7ebc';

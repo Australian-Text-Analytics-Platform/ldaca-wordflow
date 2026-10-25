@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { WorkspaceCatalogueItem } from '@/api';
 import { importWorkspaceArchive } from '@/api';
+import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { describeSkippedFiles } from '@/features/workspace/common/skippedFiles';
 import { getInvalidWorkspaceNameMessage } from '@/features/workspace/common/workspaceName';
@@ -219,12 +220,13 @@ export function useDataLoaderWorkspaceActions({
   const handleUploadWorkspaceZip = async (file: File) => {
     setUploadingWorkspaceZip(true);
     try {
-      const { response } = await importWorkspaceArchive({
+      const { data, response } = await importWorkspaceArchive({
         body: file,
         query: { filename: file.name },
         throwOnError: true,
       });
       await queryClient.refetchQueries({ queryKey: queryKeys.workspaceList, exact: true });
+      useFreshItemsStore.getState().markProject(data.id);
       const omittedTabs = Number(response.headers.get('x-wordflow-omitted-tab-count') ?? 0);
       const omittedAnalyses = Number(
         response.headers.get('x-wordflow-omitted-analysis-count') ?? 0,

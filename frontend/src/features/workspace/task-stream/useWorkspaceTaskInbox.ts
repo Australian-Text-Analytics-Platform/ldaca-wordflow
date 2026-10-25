@@ -19,6 +19,7 @@ import { workspaceAnalysesQueryOptions } from '@/features/workspace/common/hooks
 import { invalidateNodeWorkspaceQueries } from '@/features/workspace/common/hooks/workspaceMutationCache';
 import { queryKeys } from '@/lib/queryKeys';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
+import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import {
   analysisToTask,
   importToTask,
@@ -263,6 +264,9 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
           void queryClient.invalidateQueries({ queryKey: queryKeys.userFileImports });
           if (data.availability !== 'unavailable' && data.state === 'succeeded') {
             void queryClient.invalidateQueries({ queryKey: queryKeys.fileList, exact: true });
+            if (data.result) {
+              useFreshItemsStore.getState().importSucceeded(data.id, data.result.destination_path);
+            }
             void queryClient.invalidateQueries({
               queryKey: queryKeys.sampleCollections,
               exact: true,

@@ -48,6 +48,7 @@ import {
   selectionRoots,
 } from '../utils/fileTreeHelpers';
 import { useFileRevealStore } from '@/stores/fileRevealStore';
+import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import { formatBytes } from '../utils/format';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
@@ -422,6 +423,46 @@ function FileTreeContent({
     visit(nodes);
     return paths;
   }, [nodes]);
+
+  // A new upload or import pulses until its row is clicked (issue 443). The
+  // newest is shown once it is in the tree: its parents open and it scrolls
+  // into view.
+  const freshPaths = useFreshItemsStore((state) => state.paths);
+  const freshScroll = useFreshItemsStore((state) => state.scrollRequest);
+  const clearFreshScroll = useFreshItemsStore((state) => state.clearScrollRequest);
+  const clearFreshPath = useFreshItemsStore((state) => state.clearPath);
+  useEffect(() => {
+    if (freshScroll?.kind !== 'path' || !allPaths.has(freshScroll.key)) return;
+    const path = freshScroll.key;
+    const parts = path.split('/');
+    const parents = new Set(
+      parts.slice(0, -1).map((_part, index) => parts.slice(0, index + 1).join('/')),
+    );
+    let scrollFrame = 0;
+    const frame = requestAnimationFrame(() => {
+      setStoredCollapsedPaths((previous) => {
+        const next = new Set([...previous].filter((candidate) => !parents.has(candidate)));
+        if (next.size === previous.size) return previous;
+        try {
+          localStorage.setItem(collapsedStorageKey, JSON.stringify(Array.from(next)));
+        } catch {
+          // Device-local presentation persistence is best effort.
+        }
+        return next;
+      });
+      clearFreshScroll();
+      scrollFrame = requestAnimationFrame(() => {
+        const escaped = CSS.escape(path);
+        document
+          .querySelector(`[data-file-path="${escaped}"], [data-folder-path="${escaped}"]`)
+          ?.scrollIntoView({ block: 'center' });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      cancelAnimationFrame(scrollFrame);
+    };
+  }, [allPaths, clearFreshScroll, collapsedStorageKey, freshScroll]);
   const liveSelected = new Set([...selectedPaths].filter((path) => allPaths.has(path)));
   const selecting = liveSelected.size > 0;
 
@@ -573,6 +614,10 @@ function FileTreeContent({
       draggable
       data-file-path={file.path}
       data-testid={`file-row-${file.path}`}
+      data-fresh-item={freshPaths.has(file.path) || undefined}
+      onPointerDown={() => {
+        clearFreshPath(file.path);
+      }}
       onDragStart={(event) => {
         handleTreeFileDragStart(event, file.path);
       }}
@@ -704,6 +749,10 @@ function FileTreeContent({
           }`}
           data-folder-path={node.path}
           data-testid={`folder-row-${node.path}`}
+          data-fresh-item={freshPaths.has(node.path) || undefined}
+          onPointerDown={() => {
+            clearFreshPath(node.path);
+          }}
           draggable
           aria-selected={liveSelected.has(node.path) || undefined}
           onDragStart={(event) => {

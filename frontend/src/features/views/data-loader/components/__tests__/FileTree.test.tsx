@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useFileRevealStore } from '@/stores/fileRevealStore';
+import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import { FileTree } from '../FileTree';
 
 // The help icon needs the app's TooltipProvider; these tests do not cover it.
@@ -100,6 +101,69 @@ describe('FileTree project routing', () => {
       );
     });
     expect(useFileRevealStore.getState().path).toBeNull();
+  });
+
+  it('pulses a finished import and a new upload until their rows are clicked (issue 443)', async () => {
+    const tree = [
+      {
+        type: 'directory' as const,
+        name: 'sample_data',
+        path: 'sample_data',
+        children: [
+          {
+            type: 'directory' as const,
+            name: 'ADO',
+            path: 'sample_data/ADO',
+            children: [
+              {
+                type: 'file' as const,
+                name: 'a.parquet',
+                path: 'sample_data/ADO/a.parquet',
+                size: 5,
+              },
+            ],
+          },
+        ],
+      },
+      { type: 'file' as const, name: 'notes.csv', path: 'notes.csv', size: 3 },
+    ];
+    render(
+      <FileTree
+        nodes={tree}
+        selectedFile={null}
+        loadingFiles={false}
+        hasWorkspaceSelected
+        workspaceId="workspace-1"
+        onPreviewFile={vi.fn()}
+        onAddFile={vi.fn()}
+        onSelectFile={vi.fn()}
+        onDownloadFile={vi.fn()}
+        onDeleteFile={vi.fn()}
+        onCreateFolderInside={vi.fn()}
+        onOpenCitation={vi.fn()}
+        onMoveFile={vi.fn()}
+      />,
+    );
+    const store = useFreshItemsStore.getState();
+    store.importStarted('import-1');
+    store.importSucceeded('import-1', 'sample_data/ADO');
+    store.markPaths(['notes.csv']);
+
+    const folder = await screen.findByTestId('folder-row-sample_data/ADO');
+    await waitFor(() => {
+      expect(folder).toHaveAttribute('data-fresh-item', 'true');
+    });
+    const file = screen.getByTestId('file-row-notes.csv');
+    expect(file).toHaveAttribute('data-fresh-item', 'true');
+    await waitFor(() => {
+      expect(useFreshItemsStore.getState().scrollRequest).toBeNull();
+    });
+
+    fireEvent.pointerDown(folder);
+    expect(folder).not.toHaveAttribute('data-fresh-item');
+    expect(file).toHaveAttribute('data-fresh-item', 'true');
+    fireEvent.pointerDown(within(file).getByRole('button', { name: 'Preview' }));
+    expect(screen.getByTestId('file-row-notes.csv')).not.toHaveAttribute('data-fresh-item');
   });
 
   it('adds a whole folder as one Data Block', () => {

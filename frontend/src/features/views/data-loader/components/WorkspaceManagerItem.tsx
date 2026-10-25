@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { WorkspaceDownloadsHandle } from '@/features/workspace/workspace-downloads/WorkspaceDownloadsContext';
+import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import { formatTimestamp } from '../utils/format';
 
 interface WorkspaceManagerItemProps {
@@ -71,6 +72,15 @@ export function WorkspaceManagerItem({
   onDeleteWorkspace,
 }: WorkspaceManagerItemProps) {
   const workspaceId = workspace.id;
+  // A just-imported Project pulses until its row is clicked (issue 443).
+  const fresh = useFreshItemsStore((state) => state.projectIds.has(workspaceId));
+  const clearFresh = useFreshItemsStore((state) => state.clearProject);
+  const freshProps = {
+    'data-fresh-item': fresh || undefined,
+    onPointerDown: () => {
+      clearFresh(workspaceId);
+    },
+  };
   if ('message' in workspace) {
     const isIncompatible = workspace.reason === 'incompatible_format';
     const isSelectionTarget =
@@ -81,6 +91,7 @@ export function WorkspaceManagerItem({
     return (
       <div
         data-testid={`workspace-manager-item-${workspaceId}`}
+        {...freshProps}
         className="flex flex-col gap-3 rounded-md border border-error/50 bg-error/5 px-4 py-3 @min-[480px]/workspace-manager:flex-row @min-[480px]/workspace-manager:items-center @min-[480px]/workspace-manager:justify-between"
       >
         <div className="min-w-0">
@@ -176,6 +187,7 @@ export function WorkspaceManagerItem({
   return (
     <div
       data-testid={`workspace-manager-item-${workspaceId}`}
+      {...freshProps}
       className={`flex flex-col gap-2 rounded-md border px-4 py-3 @min-[480px]/workspace-manager:flex-row @min-[480px]/workspace-manager:items-center @min-[480px]/workspace-manager:justify-between ${
         loadFailure
           ? 'border-error/50 bg-error/5'

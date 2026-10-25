@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import type { FileResource } from '@/api';
 import { isExternalFileDrag } from '@/lib/externalFileDropGuard';
 import { isUploadCancelled, type UploadOptions } from '@/lib/backend/uploadTransport';
+import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import { useUploadTasksStore } from '@/stores/uploadTasksStore';
 import { needsLargeUploadReminder } from '../utils/largeUploadReminder';
 import type { FileTreeNode } from '../types';
@@ -9,6 +10,7 @@ import {
   collectDroppedSelection,
   collectPickerSelection,
   computeUploadConflicts,
+  freshUploadItems,
   getMissingUploadDirectories,
   prepareUploadSelection,
   type DroppedEntry,
@@ -199,6 +201,8 @@ export function useUploadState({
     let attemptedMutation = false;
     let createdFolders = 0;
     let uploadedFiles = 0;
+    const createdFolderPaths: string[] = [];
+    const uploadedPaths: string[] = [];
     let cancelled = false;
     let failure: { path: string; error: unknown } | null = null;
 
@@ -218,6 +222,7 @@ export function useUploadState({
       try {
         await createUploadDirectory(path);
         createdFolders += 1;
+        createdFolderPaths.push(path);
       } catch (error) {
         if (isResourceConflict(error)) {
           try {
@@ -274,6 +279,7 @@ export function useUploadState({
             },
           });
           uploadedFiles += 1;
+          uploadedPaths.push(candidate.relativePath);
           sentBeforeCurrent += candidate.file.size;
         } catch (error) {
           if (isUploadCancelled(error)) {
@@ -298,6 +304,8 @@ export function useUploadState({
         refreshFailure = error;
       }
     }
+    // What arrived pulses in the file tree until clicked (issue 443).
+    useFreshItemsStore.getState().markPaths(freshUploadItems(uploadedPaths, createdFolderPaths));
 
     if (abortRef.current === controller) abortRef.current = null;
     if (failure) {

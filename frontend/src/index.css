@@ -356,9 +356,18 @@
   }
 }
 
+/* A newly uploaded or imported file, folder or Project (issue 443): the
+   same pulsing outline as a hint's click target, until its row is clicked. */
+[data-fresh-item] {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: -2px;
+  animation: hint-target-pulse 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-hint-target="click"],
-  [data-walk-target] {
+  [data-walk-target],
+  [data-fresh-item] {
     animation: none;
   }
 }

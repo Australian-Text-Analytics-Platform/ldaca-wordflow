@@ -1,5 +1,5 @@
 import { Loader2, RefreshCcw, Upload } from 'lucide-react';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { WorkspaceCatalogueItem } from '@/api';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import {
   useUserPreferences,
 } from '@/features/preferences/useUserPreferences';
 import type { WorkspaceDownloadsHandle } from '@/features/workspace/workspace-downloads/WorkspaceDownloadsContext';
+import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import { WorkspaceManagerItem } from './WorkspaceManagerItem';
 
 export interface WorkspaceManagerCardProps {
@@ -65,6 +66,25 @@ export function WorkspaceManagerCard({
         : [...favoriteWorkspaces, workspaceId],
     });
   };
+
+  // An imported Project pulses until its row is clicked (issue 443), and
+  // scrolls into view once it is listed.
+  const freshScroll = useFreshItemsStore((state) => state.scrollRequest);
+  const clearFreshScroll = useFreshItemsStore((state) => state.clearScrollRequest);
+  useEffect(() => {
+    if (freshScroll?.kind !== 'project') return;
+    const projectId = freshScroll.key;
+    if (!workspaces.some((workspace) => workspace.id === projectId)) return;
+    const frame = requestAnimationFrame(() => {
+      clearFreshScroll();
+      document
+        .querySelector(`[data-testid="workspace-manager-item-${CSS.escape(projectId)}"]`)
+        ?.scrollIntoView({ block: 'nearest' });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [clearFreshScroll, freshScroll, workspaces]);
 
   /**
    * Forwards the selected ZIP file to the parent upload action and clears the

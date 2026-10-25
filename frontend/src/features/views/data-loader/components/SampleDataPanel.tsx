@@ -5,6 +5,7 @@ import { FolderPlus, Quote } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getRawFile, listSampleCollections, submitSampleImport } from '@/api';
+import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import type { SampleDataCollection } from '@/api';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -201,10 +202,11 @@ export function SampleDataPanel() {
     const loadingToastId = toast.loading('Importing sample data…');
     try {
       for (const collectionId of selectedIds) {
-        await submitSampleImport({
+        const { data } = await submitSampleImport({
           path: { collection_id: collectionId },
           throwOnError: true,
         });
+        useFreshItemsStore.getState().importStarted(data.id);
       }
       toast.dismiss(loadingToastId);
       toast.success('Sample data import started.');

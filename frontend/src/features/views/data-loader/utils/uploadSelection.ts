@@ -268,6 +268,28 @@ export function computeUploadConflicts(
   return [...conflicts].sort(comparePaths);
 }
 
+/**
+ * The new item each uploaded file arrived as (issue 443): the highest folder
+ * the upload created on its path, or else the file itself. A folder upload
+ * gives one item, not one per file.
+ */
+export function freshUploadItems(
+  uploadedPaths: readonly string[],
+  createdFolders: readonly string[],
+): string[] {
+  const created = new Set(createdFolders);
+  const items = new Set<string>();
+  for (const path of uploadedPaths) {
+    const parts = path.split('/');
+    const folder = parts
+      .slice(0, -1)
+      .map((_part, index) => parts.slice(0, index + 1).join('/'))
+      .find((candidate) => created.has(candidate));
+    items.add(folder ?? path);
+  }
+  return [...items];
+}
+
 export function getMissingUploadDirectories(
   selection: PreparedUploadSelection,
   completeTree: FileTreeNode[],

@@ -8,6 +8,7 @@ import {
   ldacaImportReducer,
   type LdacaImportAction,
 } from './ldacaImportState';
+import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 
 type Notify = (
@@ -81,6 +82,7 @@ export function useLdacaImport({ notify }: UseLdacaImportParams) {
         identifier: recordId,
         metadata_only: metadataOnly,
       });
+      useFreshItemsStore.getState().importStarted(data.id);
       notify(
         'success',
         metadataOnly ? `LDaCA metadata import ${data.state}.` : `LDaCA import ${data.state}.`,

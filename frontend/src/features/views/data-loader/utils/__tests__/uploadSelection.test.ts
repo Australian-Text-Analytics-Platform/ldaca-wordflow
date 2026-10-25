@@ -4,6 +4,7 @@ import {
   collectDroppedSelection,
   collectPickerSelection,
   computeUploadConflicts,
+  freshUploadItems,
   getMissingUploadDirectories,
   prepareUploadSelection,
   type DroppedEntry,
@@ -195,5 +196,16 @@ describe('upload selection', () => {
       'hidden.bin',
     ]);
     expect(getMissingUploadDirectories(selection, completeTree)).toEqual(['blocked']);
+  });
+});
+
+describe('freshUploadItems (issue 443)', () => {
+  it('gives the highest new folder of a folder upload, or the file itself', () => {
+    expect(
+      freshUploadItems(
+        ['loose.csv', 'corpus/a.txt', 'corpus/sub/b.txt', 'existing/new/c.txt', 'existing/d.txt'],
+        ['corpus', 'corpus/sub', 'existing/new'],
+      ),
+    ).toEqual(['loose.csv', 'corpus', 'existing/new', 'existing/d.txt']);
   });
 });
