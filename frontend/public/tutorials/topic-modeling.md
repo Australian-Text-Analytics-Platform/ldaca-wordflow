@@ -289,7 +289,7 @@ selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clea
 
 <h2 id="help-topic-modeling-results">Result panel</h2>
 
-![Topic Modelling results: the bubble chart with the Display options beside it, and the topic list beside the examples of Topic 12](tutorials/assets/topic_modelling/results.png)
+![Topic Modelling results: the bubble chart with the Display options beside it, and the topic list beside the examples of Topic 8](tutorials/assets/topic_modelling/results.png)
 
 The **Display options** change how the result is shown: **Topics**, **Topics
 per doc** (top topics per document), **Words per topic**, **Colour by**, the stop word controls and the
@@ -581,7 +581,7 @@ again, or close the examples with **×**, to stop showing them. Faded bubbles
 cannot be right-clicked. The search term and the lasso never hide the examples; if
 they leave out the shown topic, a note says so, with **Clear filters**.
 
-![The topic list, with two selected topics, beside the most typical examples of Topic 12](tutorials/assets/topic_modelling/topic_examples.png)
+![The topic list, with two selected topics, beside the most typical examples of Topic 8](tutorials/assets/topic_modelling/topic_examples.png)
 
 - **Most typical** lists the passages closest to the centre of the topic
   first. **Random** lists them in a random order set by the run's seed, so the
