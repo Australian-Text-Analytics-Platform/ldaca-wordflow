@@ -315,7 +315,7 @@ export function TopicExamplesPane({
         ) : null}
         {data ? (
           <span className="text-label-secondary text-description">
-            {data.segment_count.toLocaleString()} segments in {data.document_count.toLocaleString()}{' '}
+            {data.segment_count.toLocaleString()} passages in {data.document_count.toLocaleString()}{' '}
             documents
           </span>
         ) : null}

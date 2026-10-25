@@ -409,12 +409,12 @@ const tutorial = {
   'analysis.topic-modeling.segmentation-method': {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-segmentation-method',
-    label: 'Segmentation method',
+    label: 'Passages',
   },
   'analysis.topic-modeling.max-segment-tokens': {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-max-segment-tokens',
-    label: 'Maximum tokens per segment',
+    label: 'Maximum tokens per passage',
   },
   'analysis.topic-modeling.remote-gpu': {
     file: 'tutorials/topic-modeling.md',

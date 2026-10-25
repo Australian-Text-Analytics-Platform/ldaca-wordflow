@@ -99,7 +99,7 @@ describe('TopicExamplesPane (#353)', () => {
 
   it('lists the most typical examples, one per document, with rank badges', async () => {
     renderPane();
-    expect(await screen.findByText('40 segments in 12 documents')).toBeInTheDocument();
+    expect(await screen.findByText('40 passages in 12 documents')).toBeInTheDocument();
     expect(api.queryTopicSegments).toHaveBeenCalledWith(
       expect.objectContaining({
         path: { workspace_id: 'ws-1', analysis_id: 'analysis-1' },
@@ -132,7 +132,7 @@ describe('TopicExamplesPane (#353)', () => {
       data: page({ items: [item(0, 96), { ...item(1, 50), metadata: { speaker: null } }] }),
     });
     renderPane();
-    await screen.findByText('40 segments in 12 documents');
+    await screen.findByText('40 passages in 12 documents');
     await user.click(screen.getByRole('combobox', { name: 'Label each example by' }));
     await user.click(screen.getByRole('option', { name: 'Label: speaker' }));
     const cards = screen.getAllByRole('listitem');

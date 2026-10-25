@@ -44,7 +44,7 @@ describe('Topic Modelling suggestions (issue 360)', () => {
         analysisId="a"
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent('One topic holds most segments');
+    expect(screen.getByRole('status')).toHaveTextContent('One topic holds most passages');
   });
 
   it('judges a giant topic by segments, not by the documents a topic counts', () => {

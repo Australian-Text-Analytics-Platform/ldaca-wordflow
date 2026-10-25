@@ -40,7 +40,7 @@ describe('TopicDocumentDialog (#353)', () => {
     });
   });
 
-  it('tints the opened segment more strongly and steps through its segments', async () => {
+  it('tints the opened passage more strongly and steps through its passages', async () => {
     const user = userEvent.setup();
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -79,7 +79,7 @@ describe('TopicDocumentDialog (#353)', () => {
       'rents, housing',
     );
 
-    await user.click(screen.getByRole('button', { name: /Previous segment/ }));
+    await user.click(screen.getByRole('button', { name: /Previous passage/ }));
     await waitFor(() => {
       expect(screen.getByText('rose.', { exact: false })).toHaveAttribute('data-current-segment');
     });

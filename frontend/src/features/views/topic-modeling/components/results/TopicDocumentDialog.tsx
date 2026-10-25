@@ -111,7 +111,7 @@ export function TopicDocumentDialog({
             style={isCurrent ? currentStyle : isShown ? otherStyle : undefined}
           >
             {isShown
-              ? // The Topic's words, bold and italic within its segments (Chao, 2026-10-08).
+              ? // The Topic's words, bold and italic within its passages (Chao, 2026-10-08).
                 splitTopicWords(text.slice(start, end), topicWords).map((piece, pieceIndex) =>
                   piece.word ? (
                     <strong key={pieceIndex} className="font-bold italic">
@@ -160,7 +160,7 @@ export function TopicDocumentDialog({
             value: (
               <span className="flex flex-wrap items-center gap-2">
                 <span className={cn(SHOWN_SEGMENT, 'px-1')} style={currentStyle}>
-                  Topic {topicId}, this segment
+                  Topic {topicId}, this passage
                 </span>
                 <span className={cn(SHOWN_SEGMENT, 'px-1')} style={otherStyle}>
                   Topic {topicId}, others
@@ -172,7 +172,7 @@ export function TopicDocumentDialog({
             ),
           },
           {
-            label: 'Segment',
+            label: 'Passage',
             value:
               shownSpans.length > 0
                 ? `${String(currentIndex + 1)} of ${String(shownSpans.length)} in Topic ${String(topicId)}`
@@ -192,8 +192,8 @@ export function TopicDocumentDialog({
         onNext: () => {
           setChosenIndex(Math.min(shownSpans.length - 1, currentIndex + 1));
         },
-        previousLabel: 'Previous segment',
-        nextLabel: 'Next segment',
+        previousLabel: 'Previous passage',
+        nextLabel: 'Next passage',
       }}
     />
   );

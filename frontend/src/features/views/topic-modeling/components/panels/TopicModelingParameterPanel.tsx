@@ -285,7 +285,7 @@ export function TopicModelingParameterPanel({
 
   const lastRunSummary = (() => {
     if (!lastRunClustering) return null;
-    const segments = `Last run: ${lastRunClustering.segmentCount.toLocaleString()} segments`;
+    const segments = `Last run: ${lastRunClustering.segmentCount.toLocaleString()} passages`;
     const sampled =
       lastRunClustering.clusteredSegments === null
         ? ''
@@ -299,14 +299,14 @@ export function TopicModelingParameterPanel({
     const largest =
       largestTopicSize === null
         ? ''
-        : `; the largest topic has ${largestTopicSize.toLocaleString()} segments`;
+        : `; the largest topic has ${largestTopicSize.toLocaleString()} passages`;
     const share =
       autoDocumentShare === null ? null : `${String(Math.round(autoDocumentShare * 100))}%`;
     if (autoDecision === 'not_needed') {
       return `${segments}${sampled}; no topic was the main topic of more than half of the documents, so none was split${largest}`;
     }
     if (autoDecision === 'split' && share !== null && appliedMaxTopicSize !== null) {
-      return `${segments}${sampled}; one topic was the main topic of ${share} of documents, so topics larger than ${appliedMaxTopicSize.toLocaleString()} segments were split`;
+      return `${segments}${sampled}; one topic was the main topic of ${share} of documents, so topics larger than ${appliedMaxTopicSize.toLocaleString()} passages were split`;
     }
     if (autoDecision === 'kept' && share !== null) {
       return `${segments}${sampled}; one topic is the main topic of ${share} of documents, but splitting it did not give more topics, so it was kept. Try a fixed Max topic size${largestTopicSize === null ? '' : ` below ${largestTopicSize.toLocaleString()}`}`;
@@ -383,7 +383,7 @@ export function TopicModelingParameterPanel({
         return {
           warning: false,
           lines: [
-            `About ${total.toLocaleString()} segments (estimated); every segment is clustered.`,
+            `About ${total.toLocaleString()} passages (estimated); every passage is clustered.`,
           ],
         };
       }
@@ -391,14 +391,14 @@ export function TopicModelingParameterPanel({
         return {
           warning: false,
           lines: [
-            `About ${total.toLocaleString()} segments; clustering time grows with the square of this number.`,
+            `About ${total.toLocaleString()} passages; clustering time grows with the square of this number.`,
           ],
         };
       }
       return {
         warning: true,
         lines: [
-          `About ${total.toLocaleString()} segments. Clustering time grows with the square of the number of segments, so this run may take a long time. Topic sampling shortens it, but may miss small topics.`,
+          `About ${total.toLocaleString()} passages. Clustering time grows with the square of the number of passages, so this run may take a long time. Topic sampling shortens it, but may miss small topics.`,
         ],
       };
     }
@@ -406,21 +406,21 @@ export function TopicModelingParameterPanel({
       return {
         warning: false,
         lines: [
-          `This corpus has about ${total.toLocaleString()} segments, no more than the sample, so every segment is clustered.`,
+          `This corpus has about ${total.toLocaleString()} passages, no more than the sample, so every passage is clustered.`,
         ],
       };
     }
     const from =
       total === null
-        ? `${sampleSize.toLocaleString()} segments`
-        : `${sampleSize.toLocaleString()} of about ${total.toLocaleString()} segments`;
+        ? `${sampleSize.toLocaleString()} passages`
+        : `${sampleSize.toLocaleString()} of about ${total.toLocaleString()} passages`;
     return {
       warning: false,
       lines: [
-        `Topics are found from ${from}, picked with seed ${String(randomSeed)}; every other segment joins the topic of the sampled segment most similar to it.`,
+        `Topics are found from ${from}, picked with seed ${String(randomSeed)}; every other passage joins the topic of the sampled passage most similar to it.`,
         total === null
           ? 'A smaller sample clusters much faster but may miss small topics.'
-          : `Clustering time grows with the square of the sample, so half the sample is about four times faster, but topics smaller than about ${smallestFindableTopic(minClusterSize, total, sampleSize).toLocaleString()} segments may be missed.`,
+          : `Clustering time grows with the square of the sample, so half the sample is about four times faster, but topics smaller than about ${smallestFindableTopic(minClusterSize, total, sampleSize).toLocaleString()} passages may be missed.`,
       ],
     };
   })();
@@ -592,9 +592,9 @@ export function TopicModelingParameterPanel({
             <ParameterLabel
               helpKey="analysis.topic-modeling.segmentation-method"
               htmlFor="topic-segmentation-method"
-              help="How text is cut into segments. Automatic packs paragraphs up to Max tokens; Paragraph and Sentence keep one each."
+              help="How text is split into passages. Automatic packs paragraphs up to Max tokens; Paragraph and Sentence keep one each."
             >
-              Segments
+              Passages
             </ParameterLabel>
             <Select
               value={segmentationMethod}
@@ -604,7 +604,7 @@ export function TopicModelingParameterPanel({
             >
               <SelectTrigger
                 id="topic-segmentation-method"
-                aria-label="Segmentation method"
+                aria-label="Passages"
                 className="h-8 w-32"
               >
                 <SelectValue />
@@ -621,7 +621,7 @@ export function TopicModelingParameterPanel({
             <ParameterLabel
               helpKey="analysis.topic-modeling.max-segment-tokens"
               htmlFor="topic-max-segment-tokens"
-              help={`Largest segment: ${segmentTokenSizes.join(', ')} tokens (words or parts of words).`}
+              help={`Largest passage: ${segmentTokenSizes.join(', ')} tokens (words or parts of words).`}
             >
               Max tokens
             </ParameterLabel>
@@ -634,7 +634,7 @@ export function TopicModelingParameterPanel({
               <SelectTrigger
                 {...nudgeTargetProps(NUDGE_TARGETS.topicMaxSegmentTokens)}
                 id="topic-max-segment-tokens"
-                aria-label="Maximum tokens per segment"
+                aria-label="Maximum tokens per passage"
                 className="h-8 w-20"
               >
                 <SelectValue />
@@ -653,7 +653,7 @@ export function TopicModelingParameterPanel({
             <ParameterLabel
               helpKey="analysis.topic-modeling.topic-size"
               as="legend"
-              help="Smallest and largest topic, counted in segments (not documents). Leave Max empty for Auto."
+              help="Smallest and largest topic, counted in passages (not documents). Leave Max empty for Auto."
             >
               Topic size
             </ParameterLabel>
@@ -693,7 +693,7 @@ export function TopicModelingParameterPanel({
                 title={
                   autoMaxReference === null
                     ? undefined
-                    : `Auto worked with ${autoMaxReference.toLocaleString()} segments in the last run`
+                    : `Auto worked with ${autoMaxReference.toLocaleString()} passages in the last run`
                 }
                 value={maxClusterSizeValueDraft}
                 className={INTEGER_INPUT}
@@ -805,8 +805,8 @@ export function TopicModelingParameterPanel({
         {embeddingModelReason ? (
           <p id="topic-embedding-model-note" className="mt-2 text-label-secondary text-description">
             {isLanguageSource(embeddingModelReason)
-              ? `Multilingual, because ${embeddingModelReason.name} looks like ${embeddingModelReason.language} text; it reads up to 128 tokens per segment.`
-              : `Multilingual, because ${embeddingModelReason.name} uses the ${embeddingModelReason.tokenizer} tokeniser; it reads up to 128 tokens per segment.`}
+              ? `Multilingual, because ${embeddingModelReason.name} looks like ${embeddingModelReason.language} text; it reads up to 128 tokens per passage.`
+              : `Multilingual, because ${embeddingModelReason.name} uses the ${embeddingModelReason.tokenizer} tokeniser; it reads up to 128 tokens per passage.`}
           </p>
         ) : null}
         {parametersLocked ? null : (
@@ -844,7 +844,7 @@ export function TopicModelingParameterPanel({
               <ParameterLabel
                 helpKey="analysis.topic-modeling.topic-sampling"
                 htmlFor="topic-cluster-sample"
-                help="Find topics from a sample of segments, then assign the rest. Faster on very large corpora; may miss small topics."
+                help="Find topics from a sample of passages, then assign the rest. Faster on very large corpora; may miss small topics."
               >
                 Topic sampling
               </ParameterLabel>
@@ -852,7 +852,7 @@ export function TopicModelingParameterPanel({
             {clusterSample ? (
               <div className="flex items-center gap-2">
                 <Label htmlFor="topic-cluster-sample-size" className={LABEL_TEXT}>
-                  Segments to sample
+                  Passages to sample
                 </Label>
                 <Input
                   id="topic-cluster-sample-size"
@@ -908,8 +908,8 @@ export function TopicModelingParameterPanel({
             </p>
           ) : null}
         </div>
-        {/* The segment count depends on every setting in the row (Segments and
-            Max tokens make the segments; Topic size groups them), so it spans
+        {/* The passage count depends on every setting in the row (Passages and
+            Max tokens make the passages; Topic size groups them), so it spans
             the row instead of sitting under Topic size. */}
         {lastRunSummary ? (
           <p id="topic-last-run-summary" className="mt-2 text-label-secondary text-description">

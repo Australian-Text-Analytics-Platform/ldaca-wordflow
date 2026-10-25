@@ -55,11 +55,11 @@ export function TopicResultSummary({
       : `${count(clusterCount)} topics (merged from ${count(defaultClusterCount)})`;
   const parts = [
     `${count(documents)} documents${sampleNote}`,
-    `${count(segmentCount)} segments`,
+    `${count(segmentCount)} passages`,
     topics,
   ];
   if (clusteredSegments)
-    parts.push(`topics found from ${count(clusteredSegments)} sampled segments`);
+    parts.push(`topics found from ${count(clusteredSegments)} sampled passages`);
   const ungrouped = ungroupedDocuments
     ? ungroupedDocuments.reduce((sum, size) => sum + size, 0)
     : null;

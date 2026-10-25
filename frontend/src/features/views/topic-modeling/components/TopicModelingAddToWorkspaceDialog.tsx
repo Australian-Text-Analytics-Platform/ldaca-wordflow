@@ -103,13 +103,13 @@ const createDialogSource = (
       id: source.id,
       name: source.name,
       defaultName:
-        topics === 'topics' ? `${source.name} topic segments` : `${source.name} ${topics} segments`,
+        topics === 'topics' ? `${source.name} topic passages` : `${source.name} ${topics} passages`,
       columns: [
         ...PER_TOPIC_COLUMNS.map((name) => ({
           name,
           required: true,
           includeInSubmission: false,
-          title: 'The topic, its share of the document and its segment count are always included.',
+          title: 'The topic, its share of the document and its passage count are always included.',
         })),
         ...nameColumn('TOPIC_topic_name', topicNames),
         ...sourceColumns(source).map((column) =>
@@ -117,7 +117,7 @@ const createDialogSource = (
             ? {
                 name: column,
                 required: true,
-                title: "Holds only the topic's segments, so it is always included.",
+                title: "Holds only the topic's passages, so it is always included.",
               }
             : { name: column },
         ),
@@ -172,7 +172,7 @@ export function TopicModelingAddToWorkspaceDialog({
         <>
           {rowUnit === 'documents'
             ? 'For each selected source, creates a Data Block with one row per document and its topic coverage, and a Data Block of topic meanings.'
-            : "For each selected source, creates a Data Block with one row per topic in each document, and a Data Block of topic meanings. The document column holds only that topic's segments, joined by line breaks. Every segment of a chosen topic is taken, also from documents outside its bubble, so there can be more documents than the bubble counts."}
+            : "For each selected source, creates a Data Block with one row per topic in each document, and a Data Block of topic meanings. The document column holds only that topic's passages, joined by line breaks. Every passage of a chosen topic is taken, also from documents outside its bubble, so there can be more documents than the bubble counts."}
           {topicScope}
         </>
       }

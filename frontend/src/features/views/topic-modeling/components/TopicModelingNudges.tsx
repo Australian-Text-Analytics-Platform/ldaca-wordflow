@@ -187,7 +187,7 @@ export function TopicSegmentLengthNudge({
     <NudgeCard
       id="topic-segment-length"
       occurrence={`${lengths.column}\0${lengths.segmentation_method}\0${lengths.embedding_model}\0${String(tokens)}`}
-      title={`Your ${units} are short: ${String(tokens)} tokens per segment is plenty`}
+      title={`Your ${units} are short: ${String(tokens)} tokens per passage is plenty`}
       detail={`At least 9 in 10 ${units} in the first ${lengths.sampled_documents.toLocaleString()} documents fit in ${String(tokens)} tokens.`}
       action={{
         label: `Use ${String(tokens)} tokens`,

@@ -16,10 +16,10 @@ const base = {
 };
 
 describe('TopicResultSummary (issue 362)', () => {
-  it('gives documents, segments, topics and the in-topic and Ungrouped split', () => {
+  it('gives documents, passages, topics and the in-topic and Ungrouped split', () => {
     render(<TopicResultSummary {...base} />);
     expect(screen.getByTestId('topic-result-summary')).toHaveTextContent(
-      '26,163 documents · 107,551 segments · 782 topics · 16,513 (63%) in a topic · 9,650 (37%) Ungrouped',
+      '26,163 documents · 107,551 passages · 782 topics · 16,513 (63%) in a topic · 9,650 (37%) Ungrouped',
     );
   });
 
@@ -33,7 +33,7 @@ describe('TopicResultSummary (issue 362)', () => {
       />,
     );
     expect(screen.getByTestId('topic-result-summary')).toHaveTextContent(
-      '26,163 documents (10% sample) · 107,551 segments · 60 topics (merged from 782) · topics found from 20,000 sampled segments',
+      '26,163 documents (10% sample) · 107,551 passages · 60 topics (merged from 782) · topics found from 20,000 sampled passages',
     );
   });
 

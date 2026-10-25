@@ -157,8 +157,8 @@ describe('TopicModelingParameterPanel', () => {
 
     expect(screen.getByLabelText('Random seed')).toBeInTheDocument();
     expect(screen.queryByLabelText('Words per topic')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Segmentation method')).toBeInTheDocument();
-    expect(screen.getByLabelText('Maximum tokens per segment')).toHaveTextContent('256');
+    expect(screen.getByLabelText('Passages')).toBeInTheDocument();
+    expect(screen.getByLabelText('Maximum tokens per passage')).toHaveTextContent('256');
     expect(screen.getByLabelText('Min topic size')).toHaveValue(10);
     expect(screen.queryByText('Topic Modelling Options')).not.toBeInTheDocument();
   });
@@ -168,7 +168,7 @@ describe('TopicModelingParameterPanel', () => {
 
     for (const [label, anchor] of [
       ['About Model', 'help-topic-modeling-embedding-model'],
-      ['About Segments', 'help-topic-modeling-segmentation-method'],
+      ['About Passages', 'help-topic-modeling-segmentation-method'],
       ['About Max tokens', 'help-topic-modeling-max-segment-tokens'],
       ['About Topic size', 'help-topic-modeling-min-cluster-size'],
       ['About Seed', 'help-topic-modeling-random-seed'],
@@ -213,7 +213,7 @@ describe('TopicModelingParameterPanel', () => {
     );
 
     // A dropdown of the four lengths the embedder pads to (32, 64, 128, 256).
-    await user.click(screen.getByLabelText('Maximum tokens per segment'));
+    await user.click(screen.getByLabelText('Maximum tokens per passage'));
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
       '32',
       '64',
@@ -313,7 +313,7 @@ describe('TopicModelingParameterPanel', () => {
     expect(screen.getByLabelText('Max topic size')).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('reports the last run segment count and the cap Auto applied', () => {
+  it('reports the last run passage count and the cap Auto applied', () => {
     const { rerender } = render(
       <TopicModelingParameterPanel
         {...baseProps}
@@ -330,7 +330,7 @@ describe('TopicModelingParameterPanel', () => {
       />,
     );
     expect(
-      screen.getByText('Last run: 4,047 segments; no topic needed splitting'),
+      screen.getByText('Last run: 4,047 passages; no topic needed splitting'),
     ).toBeInTheDocument();
 
     rerender(
@@ -349,7 +349,7 @@ describe('TopicModelingParameterPanel', () => {
       />,
     );
     expect(
-      screen.getByText('Last run: 4,047 segments; topics larger than 1,540 were split'),
+      screen.getByText('Last run: 4,047 passages; topics larger than 1,540 were split'),
     ).toBeInTheDocument();
   });
 
@@ -403,7 +403,7 @@ describe('TopicModelingParameterPanel', () => {
     );
     expect(
       screen.getByText(
-        'Last run: 107,551 segments; no topic was the main topic of more than half of the documents, so none was split; the largest topic has 1,540 segments',
+        'Last run: 107,551 passages; no topic was the main topic of more than half of the documents, so none was split; the largest topic has 1,540 passages',
       ),
     ).toBeInTheDocument();
 
@@ -420,7 +420,7 @@ describe('TopicModelingParameterPanel', () => {
     );
     expect(
       screen.getByText(
-        'Last run: 107,551 segments; one topic was the main topic of 83% of documents, so topics larger than 1,540 segments were split',
+        'Last run: 107,551 passages; one topic was the main topic of 83% of documents, so topics larger than 1,540 passages were split',
       ),
     ).toBeInTheDocument();
 
@@ -453,7 +453,7 @@ describe('TopicModelingParameterPanel', () => {
     );
     expect(
       screen.getByText(
-        'Last run: 105,000 segments; topics found from a sample of 20,000 (seed 7); no topic needed splitting',
+        'Last run: 105,000 passages; topics found from a sample of 20,000 (seed 7); no topic needed splitting',
       ),
     ).toBeInTheDocument();
   });
@@ -471,10 +471,10 @@ describe('TopicModelingParameterPanel', () => {
     );
 
     expect(screen.getByRole('checkbox', { name: 'Topic sampling' })).toBeChecked();
-    const note = screen.getByText(/Topics are found from 100,000 of about 400,000 segments/);
+    const note = screen.getByText(/Topics are found from 100,000 of about 400,000 passages/);
     expect(note).toHaveTextContent('picked with seed 3');
     // Min topic size 10 x 400,000 / 100,000.
-    expect(note).toHaveTextContent('topics smaller than about 40 segments may be missed');
+    expect(note).toHaveTextContent('topics smaller than about 40 passages may be missed');
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Topic sampling' }));
     expect(onClusterSampleChange).toHaveBeenLastCalledWith(false);
@@ -496,7 +496,7 @@ describe('TopicModelingParameterPanel', () => {
         onClusterSampleSizeChange={onClusterSampleSizeChange}
       />,
     );
-    const input = screen.getByLabelText<HTMLInputElement>('Segments to sample');
+    const input = screen.getByLabelText<HTMLInputElement>('Passages to sample');
     expect(input).toHaveValue('');
     expect(input).toHaveAttribute('placeholder', '100,000');
 
@@ -514,13 +514,13 @@ describe('TopicModelingParameterPanel', () => {
     expect(onClusterSampleSizeChange).toHaveBeenLastCalledWith(null);
   });
 
-  it('suggests topic sampling, unticked, when a corpus has very many segments', () => {
+  it('suggests topic sampling, unticked, when a corpus has very many passages', () => {
     // With Suggestions off, the note carries the advice (issue 360).
     useNudgeStore.setState({ enabled: false });
     render(<TopicModelingParameterPanel {...baseProps} estimatedSegmentCount={400_000} />);
 
     expect(screen.getByRole('checkbox', { name: 'Topic sampling' })).not.toBeChecked();
-    expect(screen.queryByLabelText('Segments to sample')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Passages to sample')).not.toBeInTheDocument();
     expect(screen.getByText(/this run may take a long time/)).toHaveClass('text-warning');
     useNudgeStore.setState({ enabled: true });
   });
@@ -536,28 +536,28 @@ describe('TopicModelingParameterPanel', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('A large input');
     expect(
-      screen.getByText(/About 400,000 segments; clustering time grows with the square/),
+      screen.getByText(/About 400,000 passages; clustering time grows with the square/),
     ).toHaveClass('text-description');
     const firstRun = screen.getByText(/About 25 million tokens to read/);
     expect(firstRun).toHaveClass('text-description');
     expect(firstRun).not.toHaveTextContent('Lower the sampling percentage');
   });
 
-  it('says every segment is clustered when sampling is on but the corpus is small', () => {
+  it('says every passage is clustered when sampling is on but the corpus is small', () => {
     render(<TopicModelingParameterPanel {...baseProps} clusterSample />);
 
     expect(
       screen.getByText(
-        /about 3,000 segments, no more than the sample, so every segment is clustered/,
+        /about 3,000 passages, no more than the sample, so every passage is clustered/,
       ),
     ).toBeInTheDocument();
   });
 
-  it('shows the estimated segment count with sampling off', () => {
+  it('shows the estimated passage count with sampling off', () => {
     render(<TopicModelingParameterPanel {...baseProps} />);
 
     expect(
-      screen.getByText(/About 3,000 segments \(estimated\); every segment is clustered/),
+      screen.getByText(/About 3,000 passages \(estimated\); every passage is clustered/),
     ).toHaveClass('text-description');
   });
 
@@ -574,13 +574,13 @@ describe('TopicModelingParameterPanel', () => {
     expect(screen.queryByText(/tokens to read/)).not.toBeInTheDocument();
   });
 
-  it('shows no sampling note while the segments are being counted', () => {
+  it('shows no sampling note while the passages are being counted', () => {
     render(<TopicModelingParameterPanel {...baseProps} estimatedSegmentCount={null} />);
 
     expect(screen.queryByRole('button', { name: 'Learn more' })).not.toBeInTheDocument();
   });
 
-  describe('embedding model and segment length (issues 413, 414)', () => {
+  describe('embedding model and passage length (issues 413, 414)', () => {
     const segmentLengths = {
       column: 'text',
       segmentation_method: 'sentence' as const,
@@ -609,10 +609,10 @@ describe('TopicModelingParameterPanel', () => {
       expect(screen.getByLabelText('Embedding model')).toHaveTextContent('Multilingual');
       expect(
         screen.getByText(
-          'Multilingual, because People’s Daily uses the Jieba tokeniser; it reads up to 128 tokens per segment.',
+          'Multilingual, because People’s Daily uses the Jieba tokeniser; it reads up to 128 tokens per passage.',
         ),
       ).toBeInTheDocument();
-      expect(screen.getByLabelText('Maximum tokens per segment')).toHaveTextContent('128');
+      expect(screen.getByLabelText('Maximum tokens per passage')).toHaveTextContent('128');
     });
 
     it('offers Max tokens up to the model limit', async () => {
@@ -628,7 +628,7 @@ describe('TopicModelingParameterPanel', () => {
         />,
       );
 
-      await user.click(screen.getByLabelText('Maximum tokens per segment'));
+      await user.click(screen.getByLabelText('Maximum tokens per passage'));
       expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
         '32',
         '64',
@@ -650,7 +650,7 @@ describe('TopicModelingParameterPanel', () => {
       );
 
       expect(
-        screen.getByText('Your sentences are short: 64 tokens per segment is plenty.'),
+        screen.getByText('Your sentences are short: 64 tokens per passage is plenty.'),
       ).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Use 64 tokens' }));
 
@@ -711,7 +711,7 @@ describe('TopicModelingParameterPanel', () => {
 
       expect(
         screen.getByText(
-          'Multilingual, because Le Monde looks like French text; it reads up to 128 tokens per segment.',
+          'Multilingual, because Le Monde looks like French text; it reads up to 128 tokens per passage.',
         ),
       ).toBeInTheDocument();
     });

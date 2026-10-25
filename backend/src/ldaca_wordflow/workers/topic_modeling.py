@@ -586,10 +586,10 @@ def _load_corpora_from_snapshot(
 # the time on a CPU (issue 350): reading the text into the model dominates.
 TOPIC_PROGRESS_BAND = (0.1, 0.85)
 TOPIC_PROGRESS_STEPS = (
-    Step("segmenting", "Splitting the documents into segments", weight=0.03),
+    Step("segmenting", "Splitting the documents into passages", weight=0.03),
     Step("embedding", "Reading the text into the model", weight=0.62),
-    Step("arranging", "Arranging the segments", weight=0.1, counted=False),
-    Step("grouping", "Grouping the segments into topics", weight=0.18, counted=False),
+    Step("arranging", "Arranging the passages", weight=0.1, counted=False),
+    Step("grouping", "Grouping the passages into topics", weight=0.18, counted=False),
     Step("topic_words", "Finding each topic's words", weight=0.07, counted=False),
 )
 

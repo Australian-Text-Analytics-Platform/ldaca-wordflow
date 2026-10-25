@@ -186,7 +186,7 @@ class TopicModelingAnalysisRequest(_StrictModel):
         token_limit = TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS[self.embedding_model]
         if self.max_segment_tokens > token_limit:
             raise ValueError(
-                f"Max tokens per segment must be at most {token_limit} "
+                f"Max tokens per passage must be at most {token_limit} "
                 "for this embedding model"
             )
         if self.sample_fractions is not None:

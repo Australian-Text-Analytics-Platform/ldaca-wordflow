@@ -298,13 +298,13 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.topicModeling.run,
     '[data-guidance="topic-modeling-actions"]',
     'Control what becomes a topic',
-    'Segmentation, segment size, sampling, and the random seed shape the model. Check the settings, then choose Run.',
+    'Passages and their size, sampling, and the random seed shape the model. Check the settings, then choose Run.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.topicModeling.results,
     '[data-guidance="topic-modeling-results"]',
     'Explore patterns, not labels',
-    'The bubbles and representative words describe the topics found; segments that fit no topic are Ungrouped, a grey bubble of their own. Inspect source documents before naming or interpreting a topic.',
+    'The bubbles and representative words describe the topics found; passages that fit no topic are Ungrouped, a grey bubble of their own. Inspect source documents before naming or interpreting a topic.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.topicModeling.addToWorkspace,

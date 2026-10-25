@@ -7,8 +7,8 @@
 ![Topic modelling parameter panel](tutorials/assets/topic_modelling.png)
 
 Topic modelling discovers recurring themes in a collection. Wordflow divides
-each document into **Topic Segments**, embeds those segments, groups similar
-segments, and rolls their topic assignments back up to each source document.
+each document into **passages**, embeds those passages, groups similar
+passages, and rolls their topic assignments back up to each source document.
 
 <h2 id="help-topic-modeling-parameters">Parameter panel</h2>
 
@@ -35,13 +35,13 @@ the same Seed and percentage always pick the same documents, whichever order the
 Data Blocks are in. The **Colour** square sets the Data
 Block's colour in the bubble chart and topic lists.
 
-![Two Data Block cards with sampling, and the model settings below them](tutorials/assets/topic_modelling/parameters.png)
+![A Data Block card with sampling, and the model settings below it](tutorials/assets/topic_modelling/parameters.png)
 
 <h3 id="help-topic-modeling-options">Step 3: Configure the model</h3>
 
 <h4 id="help-topic-modeling-embedding-model">Model (embedding model)</h4>
 
-The model reads each Topic Segment and turns it into numbers, so that segments
+The model reads each passage and turns it into numbers, so that passages
 about the same subject end up close together. There are two:
 
 | Model | Languages | Max tokens |
@@ -50,11 +50,11 @@ about the same subject end up close together. There are two:
 | **Multilingual** | Chinese, Japanese, Korean and about 50 other languages | up to 128 |
 
 The English model can read Chinese, Japanese or Korean text, but it does not
-understand it: it mostly matches the characters two segments share, so topics
+understand it: it mostly matches the characters two passages share, so topics
 form around common characters and function words rather than subjects. The
 Multilingual model understands these languages, and also places a Chinese
 sentence close to its English translation. It reads at most 128 tokens per
-segment and is slower than the English model.
+passage and is slower than the English model.
 
 **Multilingual** is chosen for you, and **Max tokens** drops to 128, when:
 
@@ -75,30 +75,30 @@ installing or updating Wordflow prepares the model for it once, which can add
 up to a minute; later runs start straight away. Results on a Mac can differ very
 slightly from those on another computer, so topics may differ a little.
 
-<h4 id="help-topic-modeling-segmentation-method">Segments (segmentation method)</h4>
+<h4 id="help-topic-modeling-segmentation-method">Passages (how text is split)</h4>
 
-This setting controls which spans become Topic Segments. The same method is
+This setting controls which spans become passages. The same method is
 used for every selected Data Block.
 
-![The Segments list](tutorials/assets/topic_modelling/segments_menu.png)
+![The Passages list](tutorials/assets/topic_modelling/segments_menu.png)
 
 | Method | Starting unit | Short neighbouring units | Oversized unit |
 | --- | --- | --- | --- |
-| **Automatic** | Each paragraph: a blank-line block when the text has blank lines, otherwise each non-empty line | Packed into one segment while together they fit the token cap | Split into its sentences, packed the same way within the paragraph, then as below |
-| **Paragraph** | Each trimmed, non-empty line, treated as a paragraph | Kept apart: at most one paragraph per segment | Split at the sentence boundary nearest its middle, repeatedly, then as below |
-| **Sentence** | Each Unicode UAX #29 sentence | Kept apart: one sentence per segment | Split as below |
+| **Automatic** | Each paragraph: a blank-line block when the text has blank lines, otherwise each non-empty line | Packed into one passage while together they fit the token cap | Split into its sentences, packed the same way within the paragraph, then as below |
+| **Paragraph** | Each trimmed, non-empty line, treated as a paragraph | Kept apart: at most one paragraph per passage | Split at the sentence boundary nearest its middle, repeatedly, then as below |
+| **Sentence** | Each Unicode UAX #29 sentence | Kept apart: one sentence per passage | Split as below |
 
 **Automatic** packs neighbouring paragraphs: it adds the next paragraph to the
-current segment while the segment still fits **Max tokens**, and starts a new
-segment when it would not. A paragraph is never cut to fill a segment, so every
-segment still begins and ends at a paragraph boundary. News articles, speeches
+current passage while the passage still fits **Max tokens**, and starts a new
+passage when it would not. A paragraph is never cut to fill a passage, so every
+passage still begins and ends at a paragraph boundary. News articles, speeches
 and transcripts often have many one- or two-sentence paragraphs; packing them
-gives each segment enough context to embed well and cuts the number of segments
+gives each passage enough context to embed well and cuts the number of passages
 several times (about 5 times fewer on a 26,000-article news corpus at 256
 tokens), which makes the run much faster. A paragraph longer than the cap on its
-own ends the current segment and is split into its sentences, which are packed
+own ends the current passage and is split into its sentences, which are packed
 the same way within that paragraph, so an article stored as one long paragraph
-gives a few full segments rather than one per sentence.
+gives a few full passages rather than one per sentence.
 
 Choose **Paragraph** when each paragraph should be its own observation (for
 example, short survey answers or social media posts stored one per line), and
@@ -111,29 +111,29 @@ A sentence that is still too long is split at the clause
 punctuation (commas, semicolons, colons, dashes) nearest its middle, repeatedly,
 so the pieces stay similar in size and end at natural pauses. Only a stretch with
 no usable punctuation is cut at the token cap, and a leftover of fewer than four
-tokens from such a cut is dropped. Segments with no letters or digits (a stray
+tokens from such a cut is dropped. Passages with no letters or digits (a stray
 quotation mark or full stop) are dropped in every mode.
 
 Automatic and Paragraph differ in two ways: Automatic packs short neighbouring
 paragraphs, and for text that uses blank lines between paragraphs it keeps each
-blank-line block together, while Paragraph starts a new segment at every line
+blank-line block together, while Paragraph starts a new passage at every line
 break. Sentence uses a language-independent Unicode boundary
-algorithm, so abbreviations may occasionally form a short segment.
+algorithm, so abbreviations may occasionally form a short passage.
 
-<h4 id="help-topic-modeling-max-segment-tokens">Max tokens (maximum tokens per segment)</h4>
+<h4 id="help-topic-modeling-max-segment-tokens">Max tokens (maximum tokens per passage)</h4>
 
-Sets the maximum size of a Topic Segment in model tokens: **32**, **64**,
+Sets the maximum size of a passage in model tokens: **32**, **64**,
 **128** or **256** (the default), or up to 128 with the **Multilingual** model.
-These are the fixed lengths the model is prepared for, so every segment fits
+These are the fixed lengths the model is prepared for, so every passage fits
 one exactly. A run saved with another value opens at the size below it.
 Tokens may be complete words or parts of words, and the cap includes special tokens added by the embedding model. A
 smaller cap gives more local observations; a larger cap gives each observation
 more context. With **Automatic**, the cap is also how far short paragraphs are
-packed together, so a larger cap gives fewer, fuller segments.
+packed together, so a larger cap gives fewer, fuller passages.
 
 All modes split over-cap text into non-overlapping source spans. Apart from the
-tiny leftovers and letterless segments described above, no text is discarded.
-Very small caps (such as 32 tokens) produce many short, fragment-like segments,
+tiny leftovers and letterless passages described above, no text is discarded.
+Very small caps (such as 32 tokens) produce many short, fragment-like passages,
 which can make the number of topics unstable; 128–256 tokens usually gives more
 stable topics.
 
@@ -142,8 +142,8 @@ selected Data Block in the model's tokens: the sentences for **Sentence**, the
 paragraphs for **Paragraph**, and for **Automatic** whole texts (or their
 paragraphs, when nearly every text is longer than the model reads). When at
 least 9 in 10 of them fit whole in a smaller cap of 32, 64 or 128 tokens, a
-suggestion such as "Your sentences are short: 64 tokens per segment is plenty"
-offers to set it. Most segments then stay as they are, and the few longer ones
+suggestion such as "Your sentences are short: 64 tokens per passage is plenty"
+offers to set it. Most passages then stay as they are, and the few longer ones
 are split into pieces of about that size. It only ever suggests a smaller cap.
 
 <h4 id="help-topic-modeling-remote-gpu">Remote GPU</h4>
@@ -157,7 +157,7 @@ isn't shown at all.
 Reading the text into the model takes most of a first run. **Remote GPU**,
 beside **Max tokens**, has a Topic Modelling server do that part on a remote
 graphics processor, which takes seconds where this computer can take many
-minutes on a large corpus. Everything else (segments, grouping, topic words)
+minutes on a large corpus. Everything else (passages, grouping, topic words)
 still runs here, and the text read is kept for later runs as usual.
 
 - **Where the servers come from.** On a shared Wordflow server, it provides
@@ -187,19 +187,19 @@ still runs here, and the text read is kept for later runs as usual.
 
 <h4 id="help-topic-modeling-min-cluster-size">Topic size: minimum (Min topic size)</h4>
 
-Sets the smallest number of Topic Segments a Topic can have. The default is 10
+Sets the smallest number of passages a Topic can have. The default is 10
 and the minimum is 2. A smaller value finds more, smaller Topics, which may be
-noisier; a larger value needs more segments behind each Topic. Changing this
+noisier; a larger value needs more passages behind each Topic. Changing this
 value needs a new Run.
 
 <h4 id="help-topic-modeling-max-cluster-size">Topic size: maximum (Max topic size)</h4>
 
-Limits the largest number of Topic Segments one Topic can hold. Topic size
-counts segments, not documents. Leave it empty for **Auto**: sometimes one huge
+Limits the largest number of passages one Topic can hold. Topic size
+counts passages, not documents. Leave it empty for **Auto**: sometimes one huge
 Topic swallows most of the corpus, so Auto steps in when one Topic is the main
 topic of more than half of the documents (a document's main topic is the one
 that covers most of its text). It then splits that Topic into smaller ones and
-keeps the split whenever it gives more Topics; segments that fit none of them
+keeps the split whenever it gives more Topics; passages that fit none of them
 become [Ungrouped](#help-topic-modeling-ungrouped). A fixed value must be larger
 than Min topic size, and is used exactly as you set it: Auto never changes it.
 
@@ -209,59 +209,59 @@ split. It tells you which way to go: a smaller Max gives more, smaller Topics,
 though more text may become Ungrouped; a larger one gives fewer, broader Topics.
 Press **Tab** to fill it in and change it, or type a number.
 
-After each run, the line under the settings shows the segment count and what
+After each run, the line under the settings shows the passage count and what
 Auto decided, for example *one topic was the main topic of 83% of documents, so
-topics larger than 1,540 segments were split*. When splitting does not give
+topics larger than 1,540 passages were split*. When splitting does not give
 more Topics, Auto keeps the large Topic and says so; try a fixed Max topic size
-then, for example a few thousand segments, and compare.
+then, for example a few thousand passages, and compare.
 
 <h4 id="help-topic-modeling-random-seed">Seed (random seed)</h4>
 
 Controls the random steps of the run. The default is 0. The same seed always
 picks the same documents for each Data Block's sample and, with
-[Topic sampling](#help-topic-modeling-topic-sampling), the same segments.
+[Topic sampling](#help-topic-modeling-topic-sampling), the same passages.
 
 Running again with the same seed and settings gives very similar topics, but
-not always identical ones: the step that maps segments before clustering
+not always identical ones: the step that maps passages before clustering
 spreads its work over all processor cores, and the order in which they finish
-can shift a few borderline segments, and occasionally add or merge a small
+can shift a few borderline passages, and occasionally add or merge a small
 topic. The main topics stay the same. To check how stable the topics are,
 compare runs with a few different seeds.
 
 <h4 id="help-topic-modeling-topic-sampling">Topic sampling</h4>
 
 **Topic sampling** is off by default. When ticked, Wordflow finds the topics
-from a sample of Topic Segments picked at random with the **Seed**, then gives
-every other segment the topic of the sampled segment most similar to it (the
-nearest one by embedding cosine similarity). Every segment is still embedded and
-still gets a topic, or is Ungrouped when its nearest sampled segment is, so
+from a sample of passages picked at random with the **Seed**, then gives
+every other passage the topic of the sampled passage most similar to it (the
+nearest one by embedding cosine similarity). Every passage is still embedded and
+still gets a topic, or is Ungrouped when its nearest sampled passage is, so
 document coverage and the bubble chart cover the whole corpus. After the run the
 summary line reads, for example, **topics found from a sample of 100,000
 (seed 0)**.
 
-**Segments to sample.** The field shows a suggested size in grey. **Run** uses
+**Passages to sample.** The field shows a suggested size in grey. **Run** uses
 it as it is; press **Tab** to fill it in and change it, or just type your own
 number (at least 1,000). The note under the checkbox shows the sample, the
-estimated number of segments in the corpus, and what the sample may miss.
+estimated number of passages in the corpus, and what the sample may miss.
 
-**Why it can help.** Clustering (HDBSCAN) compares segments with their
-neighbours, and its time grows with the square of the number of segments:
-twice the segments take about four times as long. With Automatic segments a
-corpus of 26,000 news articles makes about 107,000 segments, and clustering all
+**Why it can help.** Clustering (HDBSCAN) compares passages with their
+neighbours, and its time grows with the square of the number of passages:
+twice the passages take about four times as long. With Automatic passages a
+corpus of 26,000 news articles makes about 107,000 passages, and clustering all
 of them takes under a minute. Corpora many times larger can take much longer,
-and that is where sampling saves time. When the estimated segment count is
+and that is where sampling saves time. When the estimated passage count is
 large, the note under the unticked checkbox suggests it.
 
-**What it costs.** A topic must have at least **Min topic size** segments inside
+**What it costs.** A topic must have at least **Min topic size** passages inside
 the sample to be found, so the smallest topic a sample can find is about Min
-topic size × (all segments ÷ sample size). With 107,000 segments, a sample of
-20,000 and Min topic size 10, a theme needs about 54 segments in the corpus to
+topic size × (all passages ÷ sample size). With 107,000 passages, a sample of
+20,000 and Min topic size 10, a theme needs about 54 passages in the corpus to
 show up. A thin sample also blurs the gaps between neighbouring themes, so they
 can merge into one large topic. Use the largest sample that runs in acceptable
 time, and compare two seeds to check that the topics are stable.
 
 **What it does not change.** Embedding takes most of a long run, and every
-segment is still embedded, so sampling only shortens clustering. Embeddings are
+passage is still embedded, so sampling only shortens clustering. Embeddings are
 saved, so a second run on the same text (for example with another Topic size)
 skips embedding. Topic sampling is also different from Step 2's sampling
 percentage, which leaves documents out of the run: with Topic sampling no
@@ -269,22 +269,22 @@ document is left out of the result.
 
 <h2 id="help-topic-modeling-run">Step 4: Run the analysis</h2>
 
-Choose **Run**. The native pipeline constructs Topic Segments, embeds
+Choose **Run**. The native pipeline constructs passages, embeds
 them with the configured sentence-transformer model, reduces the embeddings
 with PaCMAP, clusters them with HDBSCAN, calculates c-TF-IDF representative
 words, and saves the Result. The first run can be slower while model resources
 are loaded or downloaded.
 
-Every mode uses this same downstream pipeline. Each Topic Segment is one equal
+Every mode uses this same downstream pipeline. Each passage is one equal
 clustering observation. When assignments are rolled back to documents, each
-segment is weighted by the Unicode-character length of its owned source span.
+passage is weighted by the Unicode-character length of its owned source span.
 Outlier coverage remains part of normalised Topic Coverage and can be dominant.
 
 Settings are locked while **Run** works. After it finishes, Run turns on again
 only when you change a setting that affects the topics. Words per topic, stop
 words, search, selection, and chart controls only change what is shown, so they
 do not turn Run on. After a failure or a stop, Run stays off until you choose
-**Clear**; your segmentation method, token cap, and Min topic size stay
+**Clear**; your **Passages** setting, token cap, and Min topic size stay
 selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-topic-modeling-results">Result panel</h2>
@@ -316,7 +316,7 @@ resize grip, like the chart itself.
 
 The Result starts with the number of Topics the run found. Use **Number of
 topics** to merge them, down to one Topic, without running the analysis again.
-Segments that fit no Topic are **Ungrouped**; they stay as they are and
+Passages that fit no Topic are **Ungrouped**; they stay as they are and
 do not count toward the number shown. Results with zero or one real Topic
 show a fixed disabled control.
 
@@ -340,8 +340,8 @@ pending.
 
 <h3 id="help-topic-modeling-ungrouped">Ungrouped</h3>
 
-A segment joins a Topic only when it sits in a dense group of similar segments.
-Segments that are not close enough to any group stay **Ungrouped** rather than
+A passage joins a Topic only when it sits in a dense group of similar passages.
+Passages that are not close enough to any group stay **Ungrouped** rather than
 being forced into the nearest Topic, so a Topic remains a group of passages
 that really are alike. Ungrouped is what BERTopic calls outliers and HDBSCAN
 calls noise. It does not mean the analysis failed on those passages: they were
@@ -383,13 +383,13 @@ in that Topic's bubble.
 - **One row per document** takes the documents in the chosen bubbles: those
   whose Top topics per document include a chosen Topic, and, for Ungrouped,
   the fully Ungrouped documents.
-- **One row per topic** takes every segment of each chosen Topic, from every
+- **One row per topic** takes every passage of each chosen Topic, from every
   document that has any, whatever the Topic's rank in the document. So it can
   have more documents than the bubble counts. In the benchmark this added about
   6% more documents across all Topics; for one Topic, 656 documents against a
-  bubble of 552. With Ungrouped chosen, it takes the Ungrouped segments of
+  bubble of 552. With Ungrouped chosen, it takes the Ungrouped passages of
   every document: for example 500 fully Ungrouped documents (their full text)
-  and 1,000 partly Ungrouped documents (only their Ungrouped segments) give
+  and 1,000 partly Ungrouped documents (only their Ungrouped passages) give
   1,500 rows.
 
 **A theme every document shares does not become a Topic.** Topics come from
@@ -540,8 +540,8 @@ documents (6.7%) weighs about as much as 296 of 3,729 (7.9%).
 ![Hovering over a bubble shows its representative words and its counts in each corpus](tutorials/assets/topic_modelling/bubble_hover.png)
 
 Hover for a representative-word cloud. Word order reflects c-TF-IDF
-distinctiveness, while word size reflects occurrences in assigned Topic
-Segments. Because segments do not overlap, source tokens are not counted twice. These are
+distinctiveness, while word size reflects occurrences in assigned
+passages. Because passages do not overlap, source tokens are not counted twice. These are
 not source-document frequencies.
 
 Drag empty graph space to pan. To zoom, pinch on a trackpad, or hold ⌘ on a Mac (Ctrl elsewhere) while scrolling; a plain scroll scrolls the page, even over the graph. The graph initially
@@ -574,7 +574,7 @@ are then shown faded. Hover over a topic's words to see all of them.
 <h3 id="help-topic-modeling-examples">Examples of a topic</h3>
 
 To see the texts behind a topic, click the eye at the right of its card in the
-list, or right-click its bubble. Its example segments then appear beside the
+list, or right-click its bubble. Its example passages then appear beside the
 list, and an eye marks its card and its bubble. Only one topic is shown at a
 time: showing another replaces it. Click the eye or right-click the bubble
 again, or close the examples with **×**, to stop showing them. Faded bubbles
@@ -583,11 +583,11 @@ they leave out the shown topic, a note says so, with **Clear filters**.
 
 ![The topic list, with two selected topics, beside the most typical examples of Topic 12](tutorials/assets/topic_modelling/topic_examples.png)
 
-- **Most typical** lists the segments closest to the centre of the topic
+- **Most typical** lists the passages closest to the centre of the topic
   first. **Random** lists them in a random order set by the run's seed, so the
   same run always gives the same examples.
 - **One per document** (on by default) shows only the most typical (or first
-  random) segment of each document.
+  random) passage of each document.
 - With **Colour by** on, you can limit the examples to one of its values. For
   a two-corpus run, you can limit them to one Data Block.
 - Each example is named by its Data Block, in the Data Block's colour, and its
@@ -595,25 +595,25 @@ they leave out the shown topic, a note says so, with **Clear filters**.
   date; a row without a value says so, for example *(no speaker)*. For a
   two-corpus run, the menu lists only the columns both Data Blocks have.
 
-Each example shows about three lines (**Show more** shows the whole segment),
+Each example shows about three lines (**Show more** shows the whole passage),
 the topic's words in the bubble's colour, and a badge such as
-**Top 10%**: this segment is more typical of the topic than 90% of its
-segments. Green marks the top quarter, amber the middle half and grey the
-bottom quarter. Hover over the badge for the segment's similarity to the
-topic's centre. The badge ranks segments within one topic; it is not the
-chance that the segment belongs to the topic. Runs from Wordflow 0.7.10 or
+**Top 10%**: this passage is more typical of the topic than 90% of its
+passages. Green marks the top quarter, amber the middle half and grey the
+bottom quarter. Hover over the badge for the passage's similarity to the
+topic's centre. The badge ranks passages within one topic; it is not the
+chance that the passage belongs to the topic. Runs from Wordflow 0.7.10 or
 earlier list their examples without a badge; run Topic Modelling again to rank
 them.
 
 **Open document** shows the whole document with its metadata, and the topic's
 words under the title for reference. The opened
-segment has a tint of the bubble's colour; the topic's other segments in the
-document have a lighter tint of it, and segments of other topics a grey one. In
-the topic's segments, its words are bold and italic. Ungrouped text is not
-highlighted. **Previous segment** and **Next segment** step through the shown
-topic's segments in that document.
+passage has a tint of the bubble's colour; the topic's other passages in the
+document have a lighter tint of it, and passages of other topics a grey one. In
+the topic's passages, its words are bold and italic. Ungrouped text is not
+highlighted. **Previous passage** and **Next passage** step through the shown
+topic's passages in that document.
 
-![A document opened from an example, with its segments highlighted and the topic's words in bold italic](tutorials/assets/topic_modelling/topic_document.png)
+![A document opened from an example, with its passages highlighted and the topic's words in bold italic](tutorials/assets/topic_modelling/topic_document.png)
 
 <h3 id="help-topic-modeling-add-to-project">Add to Project</h3>
 
@@ -643,19 +643,19 @@ The **Rows** choice in the dialog sets how rows are formed:
   duplicated, renamed, or deleted. CSV and Excel exports write it as text;
   Parquet keeps it as it is.
 - **One row per topic**: one row for each topic in each document. The document column holds only
-  the segments assigned to that topic, joined by line breaks in source order, so
+  the passages assigned to that topic, joined by line breaks in source order, so
   a document with three topics becomes three rows. Each row also carries the
   topic (`TOPIC_topic`), its share of the document's text (`TOPIC_share`), and how
-  many segments it joined (`TOPIC_segment_count`). Ungrouped segments are
+  many passages it joined (`TOPIC_segment_count`). Ungrouped passages are
   left out unless you choose Ungrouped (its rows have `TOPIC_topic` −1), and
-  every segment of a chosen topic is taken, so there can be more documents than
+  every passage of a chosen topic is taken, so there can be more documents than
   its bubble counts (see [Ungrouped](#help-topic-modeling-ungrouped)). Use this when you are interested in particular topics rather than whole
   documents.
 
 The suggested name for each new Data Block includes the selected topic numbers,
 for example _Corpus topic 5_, _Corpus ungrouped_ or _Corpus topics 3, 7_ (with more than three
-topics selected, _Corpus 8 topics_). **One row per topic** names end in _segments_,
-for example _Corpus topic 5 segments_. You can edit the name before adding it.
+topics selected, _Corpus 8 topics_). **One row per topic** names end in _passages_,
+for example _Corpus topic 5 passages_. You can edit the name before adding it.
 
 Both modes use the topics as currently shown, including any merging from
 **Number of topics**. One row per topic needs a result from this version of Wordflow;
@@ -680,17 +680,17 @@ add anything to a Project.
 <h3 id="help-topic-modeling-clear-results">Clear results</h3>
 
 **Clear** removes this tab's result. The selected
-**Segments** method, **Max tokens** value, and **Topic size** range remain
+**Passages** method, **Max tokens** value, and **Topic size** range remain
 available for the next run.
 
 <h2 id="help-topic-modeling-troubleshooting">Troubleshooting</h2>
 
 | Symptom | What to try |
 | --- | --- |
-| Almost all segments are Ungrouped | Increase sampling, try another segmentation method, or check whether the corpus has shared themes |
+| Almost all passages are Ungrouped | Increase sampling, try another **Passages** setting, or check whether the corpus has shared themes |
 | Topics change substantially between runs | Increase sampling and compare runs with fixed seeds |
-| Representative words describe formatting rather than subject matter | Clean boilerplate or choose a segmentation method that better matches the document structure |
-| A structural unit becomes many segments | Increase Maximum tokens per segment or choose a coarser segmentation mode |
+| Representative words describe formatting rather than subject matter | Clean boilerplate or choose a **Passages** setting that better matches the document structure |
+| A structural unit becomes many passages | Increase Maximum tokens per passage or choose a coarser **Passages** setting |
 | Run time is very long | Reading the text takes most of a first run and depends on how much text there is, so reduce the per-Data-Block sampling percentage. A larger Max tokens and [Topic sampling](#help-topic-modeling-topic-sampling) shorten only the later grouping step |
 | Many documents are Ungrouped | Expected on varied text; see [Ungrouped](#help-topic-modeling-ungrouped). A slightly smaller Min topic size may group a few more |
 
@@ -699,7 +699,7 @@ available for the next run.
 | Setting | Default |
 | --- | --- |
 | Sampling | 100% per Data Block |
-| Segments | Automatic |
+| Passages | Automatic |
 | Max tokens | 256 |
 | Topic size | 10 to Auto |
 | Seed | 0 |
@@ -709,12 +709,12 @@ available for the next run.
 
 ## Practice exercise
 
-1. Run a corpus with Automatic segmentation.
+1. Run a corpus with **Passages** set to Automatic.
 2. Change Top topics per document and compare bubble membership without moving the map.
 3. Move Number of topics down and compare the merged representative words.
 4. Clear the Result, choose Paragraph or Sentence, and run again with the same
    sample and seed.
-5. Compare the topic map, representative words, and how many segments are Ungrouped.
+5. Compare the topic map, representative words, and how many passages are Ungrouped.
 
 <h2 id="help-topic-modeling-benchmark">Appendix: an informal benchmark of Max tokens</h2>
 
@@ -726,18 +726,18 @@ differently, so try settings on your own data.
 - **Corpus**: 26,163 news articles that mention obesity (about 25 million
   tokens, about 3,800 characters per article).
 - **Computer**: Apple M5 Pro, 18 cores, 64 GB memory.
-- **Settings**: Automatic segments, Topic size 10 to Auto, no sampling, no
+- **Settings**: Automatic passages, Topic size 10 to Auto, no sampling, no
   Topic sampling, seeds 0 and 1. Max tokens 128 and 256.
 - **Times**: the first run of each Max tokens read the text into the model;
   the second seed reused that work.
 
 | | Max tokens 128 | Max tokens 256 |
 | --- | --- | --- |
-| Segments | 224,502 | 107,551 |
+| Passages | 224,502 | 107,551 |
 | First run (seed 0) | 13 minutes | 14 minutes |
 | Second run, reading reused (seed 1) | 2.9 minutes | 1.0 minute |
 | Topics (seed 0, seed 1) | 1,215 and 60 | 782 and 815 |
-| Largest topic's share of segments (seed 0, seed 1) | 2% and 95% | 2% and 2% |
+| Largest topic's share of passages (seed 0, seed 1) | 2% and 95% | 2% and 2% |
 | Topics that are the main topic of 10 or more documents | 83 and 4 | 167 and 157 |
 | Text Ungrouped (seed 0) | 69% | 62% |
 | Agreement between the two seeds on each document's main topic (0 to 1) | 0.22 | 0.68 |
@@ -746,11 +746,11 @@ differently, so try settings on your own data.
 What it showed for this corpus:
 
 - Reading the text took about as long at both sizes; it follows the amount of
-  text, not the segment size.
-- 256 grouped the segments about three times faster, because there were half
+  text, not the passage size.
+- 256 grouped the passages about three times faster, because there were half
   as many.
 - 256 gave similar results with both seeds. 128 did not: with seed 1, one
-  Topic took 95% of the segments.
+  Topic took 95% of the passages.
 - The largest Topics were much the same at both sizes (for example sleep, junk
   food advertising, a sugar tax, weight-loss surgery), so 128 did not give
   sharper Topics.
@@ -768,7 +768,7 @@ A second comparison on the same corpus and computer, at Max tokens 256 and seed
 | 3 | 9,675 | 6.8 hours | 45% | 16% |
 | 5 | 2,848 | 7.6 minutes | 58% | 30% |
 | 10 (default) | 782 | about 1 minute | 62% | 37% |
-| 20 | 26 | 1.2 minutes | none: one Topic held 94% of the segments | none |
+| 20 | 26 | 1.2 minutes | none: one Topic held 94% of the passages | none |
 
 A smaller Min topic size left fewer documents Ungrouped, but made many more,
 smaller Topics and, at 3, took hours to group. A larger one put almost

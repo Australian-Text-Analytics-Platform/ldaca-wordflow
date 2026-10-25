@@ -186,7 +186,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
         {
           sourceId: 'node-1',
           selectedColumns: ['text'],
-          newName: 'Corpus topic segments',
+          newName: 'Corpus topic passages',
         },
       ],
       'topics',
@@ -195,7 +195,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
 
   it.each([
     [[4], 'documents', 'Corpus topic 4'],
-    [[4], 'topics', 'Corpus topic 4 segments'],
+    [[4], 'topics', 'Corpus topic 4 passages'],
     [[9, 1, 4, 7], 'documents', 'Corpus 4 topics'],
   ] as const)(
     'names a block from topics %j (%s rows) with its topic numbers (issue 170)',

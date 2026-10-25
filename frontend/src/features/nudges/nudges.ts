@@ -69,7 +69,7 @@ export const NUDGES = {
     targets: [NUDGE_TARGETS.concordancePageSize, NUDGE_TARGETS.concordanceRun],
   },
   'topic-giant-topic': {
-    title: 'One topic holds most segments',
+    title: 'One topic holds most passages',
     // Both directions and their cost (Chao, issue 361): a fixed Max is used as
     // set; Auto never lowers it.
     message:
@@ -111,14 +111,14 @@ export const NUDGES = {
   'topic-large-input': {
     title: 'A large input',
     message:
-      'For a faster first run, use a sample: fewer documents with Sampling, or fewer segments with Topic sampling.',
+      'For a faster first run, use a sample: fewer documents with Sampling, or fewer passages with Topic sampling.',
     help: 'analysis.topic-modeling.topic-sampling',
     targets: [NUDGE_TARGETS.topicDocumentSampling, NUDGE_TARGETS.topicClusterSample],
   },
   'topic-segment-length': {
     // The card's title gives the numbers ("Your sentences are short: 64
     // tokens per segment is plenty"); Apply sets Max tokens (issue 414).
-    title: 'Shorter segments are enough',
+    title: 'Shorter passages are enough',
     message:
       'Apply lowers Max tokens: most stay whole, and the few longer ones are split into pieces of about that size.',
     help: 'analysis.topic-modeling.max-segment-tokens',
@@ -127,7 +127,7 @@ export const NUDGES = {
   'topic-embedding-language': {
     title: 'Text in another language',
     message:
-      'The English model is trained on English text. The Multilingual model understands about 50 languages, reading up to 128 tokens per segment.',
+      'The English model is trained on English text. The Multilingual model understands about 50 languages, reading up to 128 tokens per passage.',
     help: 'analysis.topic-modeling.embedding-model',
     targets: [NUDGE_TARGETS.topicEmbeddingModel],
   },
@@ -137,7 +137,7 @@ export const NUDGES = {
     // Chinese sentence and its English translation 0.21; the multilingual
     // model -0.07 and 0.90 (issue 413).
     message:
-      'The English model mostly matches shared characters in these languages. The Multilingual model understands them, reading up to 128 tokens per segment.',
+      'The English model mostly matches shared characters in these languages. The Multilingual model understands them, reading up to 128 tokens per passage.',
     help: 'analysis.topic-modeling.embedding-model',
     targets: [NUDGE_TARGETS.topicEmbeddingModel],
   },

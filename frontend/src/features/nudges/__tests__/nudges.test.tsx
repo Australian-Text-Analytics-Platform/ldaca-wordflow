@@ -161,7 +161,7 @@ describe('NudgeCard', () => {
   it('shows the suggestion, outlines its settings, and offers the way to turn it off', async () => {
     const user = userEvent.setup();
     renderCard('run-1');
-    expect(screen.getByRole('status')).toHaveTextContent('One topic holds most segments');
+    expect(screen.getByRole('status')).toHaveTextContent('One topic holds most passages');
     expect(screen.getByLabelText('Max topic size')).toHaveAttribute('data-nudge-active', '');
     // Clear loses results, so it is named in the message but never pulses.
     expect(screen.getByText('Clear')).not.toHaveAttribute('data-nudge-active');
@@ -203,7 +203,7 @@ describe('NudgeCard', () => {
         <NudgeCard id="topic-giant-topic" occurrence="run-2" />
       </GuidanceContext.Provider>,
     );
-    expect(screen.getByRole('status')).toHaveTextContent('One topic holds most segments');
+    expect(screen.getByRole('status')).toHaveTextContent('One topic holds most passages');
   });
 
   it('closes on Dismiss, with its outline (Chao)', async () => {
