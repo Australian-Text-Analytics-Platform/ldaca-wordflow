@@ -91,6 +91,7 @@ from .response_snapshots import ResponseSnapshot, ResponseSnapshotService
 from ..infrastructure.storage.input_snapshots import (
     create_worker_input_snapshot,
     load_snapshot_node,
+    rebase_worker_input_snapshot_sources,
 )
 
 T = TypeVar("T")
@@ -315,6 +316,15 @@ class WorkspaceArchiveService:
         )
         loaded = await self._run_sync(self._workspace_store.load, source_snapshot)
         detached = loaded.workspace
+        # A preview's saved query input still names the live Project's files;
+        # point it at the copy, or reading it fails the containment check.
+        # The copy's plans are replaced, not edited, so the live links stay.
+        for record in _terminal_archive_analyses(detached):
+            if record.query_snapshot is not None:
+                await self._run_sync(
+                    rebase_worker_input_snapshot_sources,
+                    source_snapshot / record.query_snapshot.relative_path,
+                )
         if workspace_name is None:
             workspace_name = detached.name
         snapshot = await self._response_snapshots.create_generated(

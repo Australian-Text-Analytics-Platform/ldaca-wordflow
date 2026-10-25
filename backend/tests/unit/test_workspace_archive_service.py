@@ -47,12 +47,15 @@ from ldaca_wordflow.services.workspace_archives import (
     WorkspaceArchiveService,
     WorkspaceArchiveStorage,
     _create_workspace_export,
+    _snapshot_workspace_tree,
 )
 from ldaca_wordflow.infrastructure.storage.input_snapshots import (
     create_worker_input_snapshot,
     load_snapshot_node,
     rebase_worker_input_snapshot_sources,
 )
+
+from polars_source_utils import list_source_paths
 
 from ._storage import unlimited_storage_admission
 from ldaca_wordflow.services.response_snapshots import ResponseSnapshotService
@@ -462,6 +465,76 @@ async def test_archive_round_trip_preserves_query_snapshot(
     assert json.loads((restored_snapshot / "snapshot.json").read_text())[
         "workspace_id"
     ] == cast(str, summary["id"])
+
+
+async def test_export_copy_reads_a_preview_s_query_input(tmp_path: Path) -> None:
+    """A Concordance preview's query input exports from the private copy."""
+
+    store = WorkspaceStore(max_nodes=10_000, max_snapshot_bytes=1024 * 1024 * 1024)
+    live = tmp_path / "workspaces" / str(uuid.uuid4())
+    source = Workspace(name="Preview export", workspace_id=uuid.uuid4())
+    node_id = uuid.uuid4()
+    corpus = live / "data" / f"{node_id}.parquet"
+    corpus.parent.mkdir(parents=True)
+    pl.DataFrame({"text": ["one", "two"]}).write_parquet(corpus)
+    node = source.add_node(
+        Node(id=node_id, name="Corpus", data=pl.scan_parquet(corpus))
+    )
+    store.commit(live, source, expected_revision=None)
+    saved = store.load(live).workspace
+    timestamp = datetime.now(UTC)
+    tab = Tab.create(
+        kind=AnalysisKind.CONCORDANCE,
+        name="Concordance",
+        timestamp=timestamp,
+    )
+    saved.add_tab(tab)
+    analysis = AnalysisRecord.create(
+        ConcordanceAnalysisRequest(
+            node_ids=[node.id],
+            node_columns={node.id: "text"},
+            search_word="one",
+        ),
+        tab_id=tab.id,
+        execution_scope=AnalysisExecutionScope.PREVIEW,
+        timestamp=timestamp,
+    ).start(timestamp)
+    query_relative = f"analyses/{analysis.id}/query-input"
+    create_worker_input_snapshot(
+        workspace_id=saved.id,
+        node_ids=[node.id],
+        workspace=saved,
+        workspace_data_dir=live / "data",
+        snapshot_dir=live / query_relative,
+        max_snapshot_bytes=1024 * 1024,
+    )
+    saved.add_analysis(
+        analysis.succeed(
+            timestamp,
+            result_payload={"ready": True},
+            query_snapshot=AnalysisQuerySnapshotRecord(relative_path=query_relative),
+        )
+    )
+    store.commit(live, saved, expected_revision=1)
+    live_plan = next((live / query_relative).rglob("*.plbin"))
+    assert list_source_paths(live_plan)
+    live_plan_bytes = live_plan.read_bytes()
+
+    (live.parent / ".staging").mkdir()
+    copy = _snapshot_workspace_tree(live, 1024 * 1024 * 1024)
+    storage = FakeWorkspaceStorage(tmp_path / "installed")
+    response, _name, _revision, _tabs, _analyses = await _service(
+        storage
+    )._export_snapshot(copy, None, None)
+    try:
+        with zipfile.ZipFile(response.path) as archive:
+            manifest = json.loads(archive.read("workspace/workspace.json"))
+            data_file = manifest["analyses"][0]["query_inputs"][0]["data_file"]
+            exported = pl.read_parquet(io.BytesIO(archive.read(f"workspace/{data_file}")))
+    finally:
+        await response.cleanup()
+    assert exported.to_dicts() == [{"text": "one"}, {"text": "two"}]
+    assert live_plan.read_bytes() == live_plan_bytes
 
 
 async def test_archive_rejects_unsupported_data_schema_version(tmp_path: Path) -> None:
