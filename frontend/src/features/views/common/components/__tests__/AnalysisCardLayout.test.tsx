@@ -24,6 +24,18 @@ describe('AnalysisCardLayout', () => {
     expect(screen.getByRole('button', { name: /clear results/i })).toBeInTheDocument();
   });
 
+  it('labels the results Clear button with its full effect, not just "Clear"', () => {
+    render(
+      <AnalysisCardLayout title="Example Analysis" actions={{ onRunAll: vi.fn(), onClear: vi.fn() }}>
+        <div>Parameters</div>
+      </AnalysisCardLayout>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Clear results' })).toHaveTextContent(
+      'Clear results',
+    );
+  });
+
   it('hides Stop when the analysis is not running', () => {
     render(
       <AnalysisCardLayout

@@ -38,7 +38,7 @@ The Study corpus is the collection whose key words you want to find. The Referen
 
 Stop words are terms you want to exclude from the frequency count: commonly words like _the_, _and_, or domain-specific filler that would otherwise dominate the results.
 
-- Turn on **Enable stop words**, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
+- Turn on **Enable stop words**, then choose **Edit list** to open the list and type words separated by commas or newlines. The list opens by itself when you turn the filter on with no words yet; **Hide list** closes it. While the list is closed and the filter is on, the words being hidden are shown under the settings. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
 - Pick a list from the dropdown below the switch (**Select language**, shown as **Saved list (N words)** once the tab has a list) to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modelling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a list switches the filter on if it was off.
 
 ![The stop words dropdown, with lists from other tabs, the classic lists, and the detected language](tutorials/assets/token_frequency/stop_words_menu.png)
@@ -59,7 +59,7 @@ they do not turn Run on. See [How Preview, Run and Clear work](./ui.md#help-ui-p
 
 <h2 id="help-token-frequency-results">Result panel</h2>
 
-The results panel shows controls for stop words and display limits at the top, followed by a shared **Filter tokens** card and the **Cloud view / List view** selector. The **Enable stop words** switch is remembered with the tab, so it stays on across tool switches, reloads, and new runs until you turn it off. Results for each Data Block appear in the same order as the Data Block cards in the parameter panel.
+The results panel starts with one row of display settings: stop words, the Cloud display limit and the List display limit. It wraps onto more lines when the panel is narrow. Below it, **Filter tokens** and the **Cloud view / List view** selector share a row, and the results follow. The **Enable stop words** switch is remembered with the tab, so it stays on across tool switches, reloads, and new runs until you turn it off. Results for each Data Block appear in the same order as the Data Block cards in the parameter panel.
 
 <h3 id="help-token-frequency-token-limit">Cloud display limit</h3>
 
@@ -81,7 +81,7 @@ The result-level **Filter tokens** input remains active in both Cloud and List v
 
 ![Filter tokens set to *ing, with both clouds showing only words ending in ing](tutorials/assets/token_frequency/filter_tokens.png)
 
-Click **Clear** to remove the filter. Downloads also follow the active filter: frequency and Keyword Analysis CSVs contain all matching rows, while cloud image exports capture the filtered cloud.
+Click **Clear filter** to remove the filter. Downloads also follow the active filter: frequency and Keyword Analysis CSVs contain all matching rows, while cloud image exports capture the filtered cloud.
 
 <h2 id="help-token-frequency-cloud-view">Cloud view</h2>
 
@@ -161,8 +161,8 @@ The full table can be downloaded as a CSV file, in the order the table is sorted
 <h3 id="help-token-frequency-clear-results">Clear results</h3>
 
 The tab keeps its result when you move to another tool or reopen the Project.
-**Clear** removes it and resets the tab. After a failure or a stop, the settings
-stay editable but Run stays off until you choose **Clear**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+**Clear results** removes it and resets the tab. After a failure or a stop, the settings
+stay editable but Run stays off until you choose **Clear results**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-token-frequency-troubleshooting">Troubleshooting</h2>
 

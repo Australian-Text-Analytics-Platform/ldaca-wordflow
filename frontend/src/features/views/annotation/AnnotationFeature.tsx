@@ -1162,6 +1162,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                       <div>
                         <NodeInputsPanel
                           title="Codebook Data Block"
+                          offerOpenDataBlock={false}
                           resolvedNodes={classNodeInputs.resolvedNodes}
                           availableNodes={classNodeInputs.availableNodes}
                           canAddMore={classNodeInputs.canAddMore}
@@ -1306,6 +1307,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                           </Label>
                           <NodeInputsPanel
                             title="Example Data Block"
+                            offerOpenDataBlock={false}
                             resolvedNodes={exampleNodeInputs.resolvedNodes}
                             availableNodes={exampleNodeInputs.availableNodes}
                             canAddMore={exampleNodeInputs.canAddMore}

@@ -1,4 +1,4 @@
-import React, { type Dispatch, type SetStateAction } from 'react';
+import React, { type Dispatch, type SetStateAction, useId } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Play, Square, Trash2 } from 'lucide-react';
@@ -102,6 +102,8 @@ export function ConcordanceParameterPanel({
   handleClearResults,
   renderTokenizerModelSelector,
 }: ConcordanceParameterPanelProps) {
+  const leftContextId = useId();
+  const rightContextId = useId();
   const effectiveNodeColumnSelections: NodeColumnSelection[] = nodeInputs.nodeColumnSelections;
   const runDisabledReason = (() => {
     if (isSearching) return 'Preview is already running';
@@ -185,12 +187,17 @@ export function ConcordanceParameterPanel({
                   className="w-full rounded-md border border-input-border bg-editor px-3 py-2 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              {/* Wraps by the pane's width, not the window's (the pane is resizable). */}
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-3">
                 <div className="space-y-2">
-                  <label className="block text-body font-medium text-foreground">
+                  <label
+                    htmlFor={leftContextId}
+                    className="block text-body font-medium text-foreground"
+                  >
                     Left context (tokens)
                   </label>
                   <input
+                    id={leftContextId}
                     type="number"
                     value={numLeftTokens}
                     onChange={(e) => {
@@ -202,10 +209,14 @@ export function ConcordanceParameterPanel({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-body font-medium text-foreground">
+                  <label
+                    htmlFor={rightContextId}
+                    className="block text-body font-medium text-foreground"
+                  >
                     Right context (tokens)
                   </label>
                   <input
+                    id={rightContextId}
                     type="number"
                     value={numRightTokens}
                     onChange={(e) => {
@@ -389,10 +400,9 @@ export function ConcordanceParameterPanel({
                 }}
                 variant="destructive"
                 disabled={actionState.clearDisabled}
-                aria-label="Clear results"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Clear
+                <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                Clear results
               </Button>
             </DisabledReasonTooltip>
             <HelpIcon targetKey="analysis.concordance.clear-results" label="Clear results" />

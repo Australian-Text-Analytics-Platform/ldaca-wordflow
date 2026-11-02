@@ -341,7 +341,8 @@ is correct and opens properly in LibreOffice Calc, Numbers and other programs.
 See [Excel's cell limit](./export.md#help-export-excel-limit).
 
 Use **Add to Project** to create new Data Blocks after reviewing the
-result. From Table view, **Add Concordance Matches to Project** creates a Data
+result. The window opens with one line saying what each row of the new Data
+Block will be, before the list of columns. From Table view, **Add Concordance Matches to Project** creates a Data
 Block with one row per match and the columns you select; the document column
 starts selected, and you can untick it. From Dispersion view,
 **Add Concordance Documents to Project** creates a Data Block with one row per
@@ -376,9 +377,9 @@ example stacked `CONC_extraction` text, the Result keeps it as `CONC_source`
 
 <h3 id="help-concordance-clear-results">Clear results</h3>
 
-**Clear** removes this tab's Preview and Run results. Settings are locked while
+**Clear results** removes this tab's Preview and Run results. Settings are locked while
 Preview or Run is working, and **Stop** cancels it. After a failure or a stop,
-Preview and Run stay off until you choose **Clear**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+Preview and Run stay off until you choose **Clear results**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-concordance-troubleshooting">Troubleshooting</h2>
 

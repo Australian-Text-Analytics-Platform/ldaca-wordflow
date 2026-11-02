@@ -284,7 +284,7 @@ Settings are locked while **Run** works. After it finishes, Run turns on again
 only when you change a setting that affects the topics. Words per topic, stop
 words, search, selection, and chart controls only change what is shown, so they
 do not turn Run on. After a failure or a stop, Run stays off until you choose
-**Clear**; your **Passages** setting, token cap, and Min topic size stay
+**Clear results**; your **Passages** setting, token cap, and Min topic size stay
 selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-topic-modeling-results">Result panel</h2>
@@ -679,7 +679,7 @@ add anything to a Project.
 
 <h3 id="help-topic-modeling-clear-results">Clear results</h3>
 
-**Clear** removes this tab's result. The selected
+**Clear results** removes this tab's result. The selected
 **Passages** method, **Max tokens** value, and **Topic size** range remain
 available for the next run.
 

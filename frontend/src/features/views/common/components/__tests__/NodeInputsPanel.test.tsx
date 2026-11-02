@@ -4,6 +4,7 @@ import { Field, Utf8 } from 'apache-arrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { projectWorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import type { NodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
+import { useSelectionStore } from '@/stores/selectionStore';
 import { NodeInputsPanel } from '../NodeInputsPanel';
 
 const mocks = vi.hoisted(() => ({
@@ -72,6 +73,7 @@ describe('NodeInputsPanel', () => {
       selector({ currentView: 'annotation' }),
     );
     nodeInputRequestsStore();
+    useSelectionStore.getState().clearSelection();
   });
 
   it('keeps its guidance anchor clear of analysis tab chrome when Joyride scrolls to it', () => {
@@ -249,5 +251,73 @@ describe('NodeInputsPanel', () => {
 
     expect(onAddNodes).toHaveBeenCalledWith(['node-a']);
     expect(consume).not.toHaveBeenCalled();
+  });
+
+  describe('Data Block open in the Data Editor', () => {
+    const openNode = projectWorkspaceNodeMetadata(
+      { id: 'node-open', name: 'Interviews' },
+      { id: 'node-open', name: 'Interviews', shape: [24, 5] },
+    );
+
+    it('names it in an empty panel and adds it in one click', async () => {
+      const user = userEvent.setup();
+      const onAddNodes = vi.fn(() => []);
+      useSelectionStore.getState().replaceSelectedNodes(['node-open'], 'node-open');
+      render(
+        <NodeInputsPanel
+          {...baseProps}
+          resolvedNodes={[]}
+          availableNodes={[openNode]}
+          onAddNodes={onAddNodes}
+        />,
+      );
+
+      expect(screen.getByTestId('node-inputs-open-data-block')).toHaveTextContent(
+        'Interviews is open in the Data Editor but not added to this tool.',
+      );
+      await user.click(screen.getByRole('button', { name: 'Add Interviews to this tool' }));
+      expect(onAddNodes).toHaveBeenCalledWith(['node-open']);
+    });
+
+    it('stays quiet when nothing is open, when the tool is full, or for a role panel', () => {
+      const { rerender } = render(
+        <NodeInputsPanel {...baseProps} resolvedNodes={[]} availableNodes={[openNode]} />,
+      );
+      expect(screen.queryByTestId('node-inputs-open-data-block')).not.toBeInTheDocument();
+
+      useSelectionStore.getState().replaceSelectedNodes(['node-open'], 'node-open');
+      rerender(
+        <NodeInputsPanel
+          {...baseProps}
+          resolvedNodes={[]}
+          availableNodes={[openNode]}
+          offerOpenDataBlock={false}
+        />,
+      );
+      expect(screen.queryByTestId('node-inputs-open-data-block')).not.toBeInTheDocument();
+
+      rerender(
+        <NodeInputsPanel
+          {...baseProps}
+          resolvedNodes={[]}
+          availableNodes={[openNode]}
+          canAddMore={false}
+        />,
+      );
+      expect(screen.getByRole('button', { name: 'Add Interviews to this tool' })).toBeDisabled();
+    });
+
+    it('does not offer a Data Block the tool already has', () => {
+      useSelectionStore.getState().replaceSelectedNodes(['node-1'], 'node-1');
+      render(<NodeInputsPanel {...baseProps} resolvedNodes={[]} availableNodes={[]} />);
+      expect(screen.queryByTestId('node-inputs-open-data-block')).not.toBeInTheDocument();
+    });
+
+    it('labels the remove-everything action by what it does', () => {
+      render(<NodeInputsPanel {...baseProps} />);
+      expect(screen.getByRole('button', { name: 'Remove all Data Blocks' })).toHaveTextContent(
+        'Remove all',
+      );
+    });
   });
 });

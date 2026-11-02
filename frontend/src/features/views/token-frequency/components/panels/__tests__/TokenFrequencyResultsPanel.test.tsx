@@ -73,6 +73,9 @@ describe('TokenFrequencyResultsPanel stop words', () => {
       </TooltipProvider>,
     );
 
+    // The list editor opens on request; the count stays in the settings row.
+    expect(screen.queryByRole('textbox', { name: 'Stop words filter (2)' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Edit list' }));
     const editor = screen.getByRole('textbox', { name: 'Stop words filter (2)' });
     expect(editor).toHaveValue('the, and');
     expect(editor).toBeDisabled();
@@ -153,7 +156,59 @@ describe('TokenFrequencyResultsPanel stop words', () => {
     );
     expect(filterInput).toHaveValue('pre*');
 
-    await user.click(screen.getByRole('button', { name: 'Clear' }));
+    await user.click(screen.getByRole('button', { name: 'Clear filter' }));
     expect(filterInput).toHaveValue('');
+  });
+
+  it('keeps display settings in one row that wraps by the pane, not the window', () => {
+    render(
+      <TooltipProvider>
+        <TokenFrequencyResultsPanel {...baseProps} />
+      </TooltipProvider>,
+    );
+
+    const settings = screen.getByTestId('token-frequency-display-settings');
+    expect(settings.innerHTML).not.toMatch(/\b(sm|md|lg):grid-cols/);
+    expect(screen.getByRole('spinbutton', { name: 'Cloud display limit (10–100)' })).toBeVisible();
+    expect(screen.getByRole('spinbutton', { name: /List display limit/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Edit list' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('shows which words are hidden while the list is closed and the filter is on', () => {
+    render(
+      <TooltipProvider>
+        <TokenFrequencyResultsPanel
+          {...baseProps}
+          stopWordsEnabled
+          stopWords="the, and, of, a, to, in, is, it, that, was"
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByTestId('token-frequency-stop-words-preview')).toHaveTextContent(
+      'Hidden words: the, and, of, a, to, in, is, it and 2 more',
+    );
+  });
+
+  it('opens the list when the filter is switched on with no words yet', async () => {
+    const user = userEvent.setup();
+    const onStopWordsEnabledChange = vi.fn();
+    render(
+      <TooltipProvider>
+        <TokenFrequencyResultsPanel
+          {...baseProps}
+          stopWords=""
+          appliedStopCount={0}
+          onStopWordsEnabledChange={onStopWordsEnabledChange}
+        />
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'Enable stop words' }));
+    expect(onStopWordsEnabledChange).toHaveBeenCalledWith(true);
+    expect(screen.getByRole('textbox', { name: 'Stop words filter (0)' })).toBeInTheDocument();
   });
 });
