@@ -18,6 +18,9 @@ Read only the sections relevant to the work at hand.
 - [Runbooks](runbooks/) contains operational and development procedures.
 - [Release records](releases/) are historical snapshots, not current
   architecture.
+- [UI evaluation for Astra](reviews/ui-evaluation-2026-11-02/ASTRA-REVIEW.md)
+  records the 2 November 2026 interface assessment, behavior memory and local
+  screenshot evidence.
 - [Active and archived specifications](../specs/README.md) record substantial
   changes.
 - [Agent configuration](agents/) tells installed engineering skills how to use

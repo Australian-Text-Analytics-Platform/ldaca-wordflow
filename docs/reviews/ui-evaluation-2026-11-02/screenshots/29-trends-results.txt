@@ -1,0 +1,139 @@
+- banner:
+  - link "Wordflow":
+    - /url: https://sih.tools/wordflow
+  - button "About Wordflow"
+  - button "Cite Wordflow"
+  - text: by
+  - link "LDaCA Logo":
+    - /url: https://www.ldaca.edu.au/
+    - img "LDaCA Logo"
+  - navigation "Navigation history":
+    - button "Go back"
+    - button "Go forward" [disabled]
+  - button "Open quick access": UI evaluation - synthetic public discourse
+  - button "Open settings"
+- button "Views" [expanded]
+- button "Views"
+- button "Edit visible views"
+- list:
+  - listitem:
+    - button "Loader"
+  - listitem:
+    - button "Builder"
+  - listitem:
+    - button "Frequency"
+  - listitem:
+    - button "Concordance"
+  - listitem:
+    - button "Trends"
+  - listitem:
+    - button "Topics"
+  - listitem:
+    - button "Quotation"
+  - listitem:
+    - button "Annotation"
+  - listitem:
+    - button "Export"
+- separator "Resize Data Blocks"
+- button "Data Blocks" [expanded]
+- button "Clear selection" [disabled]
+- text: "1"
+- button "Data Blocks"
+- button "Select synthetic-discourse": synthetic-discourse
+- separator "Resize Tasks"
+- button "Tasks" [expanded]
+- button "Clear finished Data Loader tasks" [disabled]
+- button "Tasks"
+- 'button "Task: T-1. Expand details"':
+  - text: T-1
+  - button "Open T-1"
+- 'button "Task: C-1. Expand details"':
+  - text: C-1
+  - button "Open C-1"
+- 'button "Task: F-1. Expand details"':
+  - text: F-1
+  - button "Open F-1"
+- button "Help"
+- button "Feedback"
+- separator "Resize sidebar"
+- main:
+  - main:
+    - tablist "Analysis tabs":
+      - tab "T-1 Close tab" [selected]:
+        - text: T-1
+        - button "Close tab"
+      - button "New tab"
+    - text: Trends Analysis
+    - button "About Trends Analysis"
+    - button "Trends parameters"
+    - group:
+      - group "Data Blocks controls":
+        - text: Data Blocks (1/1)
+        - button "Remove all Data Blocks": Clear
+        - button "Add Data Block" [disabled]
+      - button "Remove synthetic-discourse"
+      - text: synthetic-discourse Time, number or category column *
+      - combobox "Time, number or category column *": id
+      - text: Start
+      - spinbutton "Smallest value"
+      - paragraph: Leave blank to start at the smallest value.
+      - text: Step *
+      - spinbutton "e.g. 10": "1"
+      - paragraph: The width of each group, for example 10 gives 0–9, 10–19, and so on.
+      - text: Group By Columns (Optional, max 3)
+      - button "Group By columns"
+      - button "Add group"
+    - button "Run" [disabled]
+    - button "Clear results": Clear
+    - button "Clear results"
+    - separator "Resize parameters and results"
+    - button "About resizing parameters and results"
+    - text: Trends Results
+    - button "Trends results"
+    - button "Add to Project"
+    - text: Chart
+    - combobox "Chart": Line
+    - text: Spacing
+    - button "About Spacing"
+    - combobox "Spacing": Even (hide empty periods)
+    - button "Download chart"
+    - button "Zoom in"
+    - button "Zoom out" [disabled]
+    - button "Reset zoom" [disabled]
+    - img "Trends chart":
+      - img: Rows 0 1 [1, 2) [2, 3) [3, 4) [4, 5) [5, 6) [6, 7) [7, 8) [8, 9) [9, 10) [10, 11) [11, 12) [12, 13) [13, 14) [14, 15) [15, 16) [16, 17) [17, 18) [18, 19) [19, 20) [20, 21) [21, 22) [22, 23) [23, 24) [24, 25)
+    - paragraph: Click a period to select it, click it again to deselect it, and Shift-click another period to select every period in between.
+    - text: 0 chart points selected.
+    - separator "Resize this result"
+    - button "About the legend"
+    - group "Trends groups":
+      - button "synthetic-discourse (24 · 100.0%)" [pressed]
+    - button "Clear selection" [disabled]
+  - separator "Resize right panel"
+  - complementary:
+    - button "Collapse Project panel"
+    - heading "Project Graph" [level=3]
+    - button "Project Graph"
+    - text: "| UI evaluation - synthetic public discourse"
+    - button "Rename Project": Rename
+    - button "Switch Project"
+    - button "About switching Projects"
+    - application:
+      - group: synthetic-discourse 24 rows × 5 columns
+      - img
+      - status "0 of 1 selected": 0/1
+      - button "Zoom in"
+      - button "Zoom out"
+      - button "Fit view"
+      - button "Drag to pan. Switch to drag to select"
+      - button "Clear selection" [disabled]
+      - button "Delete (0)" [disabled]
+      - link "React Flow attribution":
+        - /url: https://reactflow.dev/attribution
+        - text: React Flow
+    - separator "Resize graph and data panels"
+    - heading "No Data Block Selected" [level=3]
+    - paragraph: Select a Data Block from the graph to view its data.
+- button "Open Tanstack query devtools":
+  - img
+- region "Notifications alt+T"

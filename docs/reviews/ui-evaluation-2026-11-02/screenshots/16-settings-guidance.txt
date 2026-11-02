@@ -1,0 +1,24 @@
+- main:
+  - complementary:
+    - application
+- region "Notifications alt+T"
+- dialog "Settings":
+  - heading "Settings" [level=2]
+  - paragraph: Manage saved preferences and browser-side options.
+  - text: Account
+  - tablist:
+    - tab "General"
+    - tab "Portal"
+    - tab "Servers"
+    - tab "Project"
+    - tab "Views"
+    - tab "Guidance" [selected]
+  - tabpanel "Guidance":
+    - paragraph: Hints show tips while you learn Wordflow. Turn them off here, and back on here at any time.
+    - checkbox "Show contextual hints" [checked]
+    - text: Show contextual hints 0 acknowledged
+    - button "Reset Contextual Hint history"
+    - paragraph: Suggestions appear when a result or run looks off, and point to the settings that may help.
+    - checkbox "Show suggestions" [checked]
+    - text: Show suggestions
+  - button "Close"

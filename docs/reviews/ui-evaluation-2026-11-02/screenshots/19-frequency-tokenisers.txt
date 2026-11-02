@@ -1,0 +1,15 @@
+- main:
+  - complementary:
+    - application
+- region "Notifications alt+T"
+- listbox:
+  - option "None"
+  - group "Recommended":
+    - text: Recommended
+    - option "Plain words Any language with spaces native:plain_words_en"
+    - option "BERT base uncased English huggingface:bert-base-uncased"
+  - option "Jieba Chinese lindera:jieba"
+  - option "CC-CEDICT Chinese lindera:cc-cedict"
+  - option "IPADIC Japanese lindera:ja-ipadic"
+  - option "UniDic Japanese lindera:ja-unidic"
+  - option "ko-dic Korean lindera:ko-dic"

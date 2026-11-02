@@ -1,0 +1,25 @@
+- main:
+  - complementary:
+    - application
+- region "Notifications alt+T"
+- dialog "Settings":
+  - heading "Settings" [level=2]
+  - paragraph: Manage saved preferences and browser-side options.
+  - text: Account
+  - tablist:
+    - tab "General" [selected]
+    - tab "Portal"
+    - tab "Servers"
+    - tab "Project"
+    - tab "Views"
+    - tab "Guidance"
+  - tabpanel "General":
+    - heading "Appearance" [level=3]
+    - paragraph: Use the VS Code 2026 Light or Dark theme. This preference follows your account.
+    - text: Light 2026
+    - switch "Use Dark 2026 theme"
+    - heading "Preference sync" [level=3]
+    - paragraph: These preferences follow your account. Provider credentials use dedicated mode-specific storage and are not User Preferences.
+    - text: Account 0 favorites 9 visible views Enable multi-tab
+    - switch "Enable multi-tab" [checked]
+  - button "Close"

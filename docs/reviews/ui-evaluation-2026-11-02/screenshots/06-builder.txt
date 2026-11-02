@@ -1,0 +1,115 @@
+- banner:
+  - link "Wordflow":
+    - /url: https://sih.tools/wordflow
+  - button "About Wordflow"
+  - button "Cite Wordflow"
+  - text: by
+  - link "LDaCA Logo":
+    - /url: https://www.ldaca.edu.au/
+    - img "LDaCA Logo"
+  - navigation "Navigation history":
+    - button "Go back"
+    - button "Go forward" [disabled]
+  - button "Open quick access": UI evaluation - synthetic public discourse
+  - button "Open settings"
+- button "Views" [expanded]
+- button "Views"
+- button "Edit visible views"
+- list:
+  - listitem:
+    - button "Loader"
+  - listitem:
+    - button "Builder"
+  - listitem:
+    - button "Frequency"
+  - listitem:
+    - button "Concordance"
+  - listitem:
+    - button "Trends"
+  - listitem:
+    - button "Topics"
+  - listitem:
+    - button "Quotation"
+  - listitem:
+    - button "Annotation"
+  - listitem:
+    - button "Export"
+- separator "Resize Data Blocks"
+- button "Data Blocks" [expanded]
+- button "Clear selection" [disabled]
+- text: "1"
+- button "Data Blocks"
+- button "Select synthetic-discourse": synthetic-discourse
+- separator "Resize Tasks"
+- button "Tasks" [expanded]
+- button "Clear finished Data Loader tasks" [disabled]
+- button "Tasks"
+- text: No tasks
+- button "Help"
+- button "Feedback"
+- separator "Resize sidebar"
+- main:
+  - main:
+    - heading "Data Builder" [level=1]
+    - button "About Data Builder"
+    - paragraph: Make new Data Blocks from existing ones.
+    - tablist "Data preprocessing sub-views":
+      - tab "Filter" [selected]
+      - tab "Group"
+      - tab "Join"
+      - tab "Segment"
+      - tab "Aggregate"
+      - tab "Sample"
+      - tab "Deduplicate"
+      - tab "Stack"
+    - tabpanel "Filter":
+      - text: Filter a Data Block
+      - button "About Filter"
+      - group "Data Blocks controls":
+        - text: Data Blocks (0/1)
+        - button "Add Data Block"
+      - text: No Data Blocks added yet. Use Add Data Block, or carry one here from a Data Block's + button.
+      - paragraph:
+        - text: Filter conditions
+        - button "Filter conditions builder"
+      - paragraph: Keep only the rows that match your conditions, in a new Data Block.
+      - button "Add condition" [disabled]
+      - text: Configure conditions once a Data Block is selected.
+      - group "Apply result":
+        - text: New Data Block name
+        - button "Filter output name"
+        - textbox "New Data Block name" [disabled]:
+          - /placeholder: dataset_filtered
+        - button "Add to Project" [disabled]
+        - button "About Add to Project"
+      - text: Preview filtered results
+      - button "Preview table"
+      - text: Review rows that match the current filter configuration. Select a Data Block to preview filtered results.
+  - separator "Resize right panel"
+  - complementary:
+    - button "Collapse Project panel"
+    - heading "Project Graph" [level=3]
+    - button "Project Graph"
+    - text: "| UI evaluation - synthetic public discourse"
+    - button "Rename Project": Rename
+    - button "Switch Project"
+    - button "About switching Projects"
+    - application:
+      - group: synthetic-discourse 24 rows × 5 columns
+      - img
+      - status "0 of 1 selected": 0/1
+      - button "Zoom in"
+      - button "Zoom out"
+      - button "Fit view"
+      - button "Drag to pan. Switch to drag to select"
+      - button "Clear selection" [disabled]
+      - button "Delete (0)" [disabled]
+      - link "React Flow attribution":
+        - /url: https://reactflow.dev/attribution
+        - text: React Flow
+    - separator "Resize graph and data panels"
+    - heading "No Data Block Selected" [level=3]
+    - paragraph: Select a Data Block from the graph to view its data.
+- button "Open Tanstack query devtools":
+  - img
+- region "Notifications alt+T"

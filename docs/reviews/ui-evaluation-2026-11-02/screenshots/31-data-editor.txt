@@ -1,0 +1,340 @@
+- banner:
+  - link "Wordflow":
+    - /url: https://sih.tools/wordflow
+  - button "About Wordflow"
+  - button "Cite Wordflow"
+  - text: by
+  - link "LDaCA Logo":
+    - /url: https://www.ldaca.edu.au/
+    - img "LDaCA Logo"
+  - navigation "Navigation history":
+    - button "Go back" [disabled]
+    - button "Go forward" [disabled]
+  - button "Open quick access": UI evaluation - synthetic public discourse
+  - button "Open settings"
+- button "Views" [expanded]
+- button "Views"
+- button "Edit visible views"
+- list:
+  - listitem:
+    - button "Loader"
+  - listitem:
+    - button "Builder"
+  - listitem:
+    - button "Frequency"
+  - listitem:
+    - button "Concordance"
+  - listitem:
+    - button "Trends"
+  - listitem:
+    - button "Topics"
+  - listitem:
+    - button "Quotation"
+  - listitem:
+    - button "Annotation"
+  - listitem:
+    - button "Export"
+- separator "Resize Data Blocks"
+- button "Data Blocks" [expanded]
+- button "Clear selection"
+- text: 1/2
+- button "Data Blocks"
+- button "Deselect synthetic-discourse" [pressed]:
+  - text: synthetic-discourse
+  - toolbar "Actions for synthetic-discourse":
+    - button "Pin synthetic-discourse"
+    - button "Actions for synthetic-discourse"
+    - button "Add synthetic-discourse to tool"
+- button "Select UI first six": UI first six
+- separator "Resize Tasks"
+- button "Tasks" [expanded]
+- button "Clear finished Data Loader tasks" [disabled]
+- button "Tasks"
+- 'button "Task: T-1. Expand details"':
+  - text: T-1
+  - button "Open T-1"
+- 'button "Task: C-1. Expand details"':
+  - text: C-1
+  - button "Open C-1"
+- 'button "Task: F-1. Expand details"':
+  - text: F-1
+  - button "Open F-1"
+- button "Help"
+- button "Feedback"
+- separator "Resize sidebar"
+- main:
+  - main:
+    - heading "Data Loader" [level=1]
+    - button "About the Data Loader"
+    - button "Data loader overview"
+    - text: Active Project
+    - button "Active Project overview"
+    - text: UI evaluation - synthetic public discourse 2 Data Blocks Updated 11/2/2026, 7:03:27 PM | Created 11/2/2026, 6:55:30 PM Rename Project
+    - button "Rename Project input"
+    - textbox "Rename Project":
+      - /placeholder: Enter new name
+      - text: UI evaluation - synthetic public discourse
+    - button "Rename"
+    - text: Project description
+    - textbox "Project description":
+      - /placeholder: Enter Project description
+      - text: Synthetic fixture only. Interface evaluation, not research evidence.
+    - button "Update description" [disabled]
+    - text: Project manager
+    - button "Project manager overview"
+    - button "Import Project"
+    - button "Refresh Project list"
+    - button "Add to favourites"
+    - text: UI evaluation - synthetic public discourse
+    - button "View Project description"
+    - text: Updated 11/2/2026, 7:03:27 PM | 2 Data Blocks
+    - button "Close"
+    - button "Download"
+    - button "Delete"
+    - separator "Resize data loader sections"
+    - text: Files & uploads
+    - button "Files and uploads section"
+    - button "Refresh file list"
+    - button "Upload files"
+    - button "About upload files"
+    - button "Upload folder"
+    - button "Import sample data"
+    - button "About import sample data"
+    - button "Import LDaCA collections"
+    - button "About import LDaCA collections"
+    - text: Drop files and folders into the file list, or use the upload buttons. Folder picking is available if this browser cannot accept a dropped folder.
+    - region "Files upload area":
+      - toolbar "File list":
+        - button "Add root folder"
+      - tree "Files":
+        - checkbox "Select all at root"
+        - text: Select all at root
+        - button "About organising files"
+        - checkbox "Select synthetic-discourse.csv"
+        - text: synthetic-discourse.csv 2.6 KB
+        - button "Preview"
+        - button "Add"
+        - button "Download synthetic-discourse.csv": Download
+        - button "Delete synthetic-discourse.csv"
+    - text: "Total files: 1"
+  - separator "Resize right panel"
+  - complementary:
+    - button "Collapse Project panel"
+    - heading "Project Graph" [level=3]
+    - button "Project Graph"
+    - text: "| UI evaluation - synthetic public discourse"
+    - button "Rename Project": Rename
+    - button "Switch Project"
+    - button "About switching Projects"
+    - application:
+      - img:
+        - group "Edge from c9c013f3-8f43-45ff-ae6e-584bd1998de5 to 15c3b45f-491c-41a5-a9c1-bf5e784863b7"
+      - group: synthetic-discourse
+      - group: UI first six
+      - img
+      - status "1 of 2 selected": 1/2
+      - button "Zoom in"
+      - button "Zoom out"
+      - button "Fit view"
+      - button "Drag to pan. Switch to drag to select"
+      - button "Clear selection"
+      - button "Delete (1)"
+      - link "React Flow attribution":
+        - /url: https://reactflow.dev/attribution
+        - text: React Flow
+    - separator "Resize graph and data panels"
+    - heading "Data Editor" [level=3]
+    - button "Data Editor"
+    - tablist "Data Block tabs":
+      - tab "synthetic-discourse Close tab" [selected]:
+        - text: synthetic-discourse
+        - button "Close tab"
+    - button "All Data Block tabs"
+    - button "Add column"
+    - button "Find & replace"
+    - button "Clean text"
+    - button "About the column tools"
+    - button "Delete columns"
+    - button "Overview"
+    - button "Download Data Block"
+    - button "Undo Data Block edit" [disabled]: Undo
+    - button "Redo Data Block edit" [disabled]: Redo
+    - table:
+      - rowgroup:
+        - row "Pin column id to the start id Sort by id Change data type for column id Column settings for id Pin column text to the start text Sort by text Change data type for column text Column settings for text Pin column date to the start date Sort by date Change data type for column date Column settings for date Pin column group to the start group Sort by group Change data type for column group Column settings for group Pin column score to the start score Sort by score Change data type for column score Column settings for score":
+          - columnheader "Pin column id to the start id Sort by id Change data type for column id Column settings for id":
+            - button "Pin column id to the start"
+            - text: id
+            - button "Sort by id"
+            - button "Change data type for column id"
+            - button "Column settings for id"
+          - columnheader "Pin column text to the start text Sort by text Change data type for column text Column settings for text":
+            - button "Pin column text to the start"
+            - text: text
+            - button "Sort by text"
+            - button "Change data type for column text"
+            - button "Column settings for text"
+          - columnheader "Pin column date to the start date Sort by date Change data type for column date Column settings for date":
+            - button "Pin column date to the start"
+            - text: date
+            - button "Sort by date"
+            - button "Change data type for column date"
+            - button "Column settings for date"
+          - columnheader "Pin column group to the start group Sort by group Change data type for column group Column settings for group":
+            - button "Pin column group to the start"
+            - text: group
+            - button "Sort by group"
+            - button "Change data type for column group"
+            - button "Column settings for group"
+          - columnheader "Pin column score to the start score Sort by score Change data type for column score Column settings for score":
+            - button "Pin column score to the start"
+            - text: score
+            - button "Sort by score"
+            - button "Change data type for column score"
+            - button "Column settings for score"
+      - rowgroup:
+        - row "1 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-01-15 Housing 1":
+          - cell "1"
+          - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+          - cell "2024-01-15"
+          - cell "Housing"
+          - cell "1"
+        - row "2 Education improves opportunities. The teacher said \"Students need support.\" 2024-02-15 Education 2":
+          - cell "2"
+          - cell "Education improves opportunities. The teacher said \"Students need support.\""
+          - cell "2024-02-15"
+          - cell "Education"
+          - cell "2"
+        - row "3 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-03-15 Transport 3":
+          - cell "3"
+          - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+          - cell "2024-03-15"
+          - cell "Transport"
+          - cell "3"
+        - row "4 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-04-15 Housing 4":
+          - cell "4"
+          - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+          - cell "2024-04-15"
+          - cell "Housing"
+          - cell "4"
+        - row "5 Education improves opportunities. The teacher said \"Students need support.\" 2024-05-15 Education 5":
+          - cell "5"
+          - cell "Education improves opportunities. The teacher said \"Students need support.\""
+          - cell "2024-05-15"
+          - cell "Education"
+          - cell "5"
+        - row "6 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-06-15 Transport 6":
+          - cell "6"
+          - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+          - cell "2024-06-15"
+          - cell "Transport"
+          - cell "6"
+        - row "7 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-07-15 Housing 7":
+          - cell "7"
+          - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+          - cell "2024-07-15"
+          - cell "Housing"
+          - cell "7"
+        - row "8 Education improves opportunities. The teacher said \"Students need support.\" 2024-08-15 Education 8":
+          - cell "8"
+          - cell "Education improves opportunities. The teacher said \"Students need support.\""
+          - cell "2024-08-15"
+          - cell "Education"
+          - cell "8"
+        - row "9 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-09-15 Transport 9":
+          - cell "9"
+          - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+          - cell "2024-09-15"
+          - cell "Transport"
+          - cell "9"
+        - row "10 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-10-15 Housing 10":
+          - cell "10"
+          - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+          - cell "2024-10-15"
+          - cell "Housing"
+          - cell "10"
+        - row "11 Education improves opportunities. The teacher said \"Students need support.\" 2024-11-15 Education 11":
+          - cell "11"
+          - cell "Education improves opportunities. The teacher said \"Students need support.\""
+          - cell "2024-11-15"
+          - cell "Education"
+          - cell "11"
+        - row "12 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-12-15 Transport 12":
+          - cell "12"
+          - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+          - cell "2024-12-15"
+          - cell "Transport"
+          - cell "12"
+        - row "13 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-01-15 Housing 13":
+          - cell "13"
+          - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+          - cell "2024-01-15"
+          - cell "Housing"
+          - cell "13"
+        - row "14 Education improves opportunities. The teacher said \"Students need support.\" 2024-02-15 Education 14":
+          - cell "14"
+          - cell "Education improves opportunities. The teacher said \"Students need support.\""
+          - cell "2024-02-15"
+          - cell "Education"
+          - cell "14"
+        - row "15 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-03-15 Transport 15":
+          - cell "15"
+          - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+          - cell "2024-03-15"
+          - cell "Transport"
+          - cell "15"
+        - row "16 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-04-15 Housing 16":
+          - cell "16"
+          - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+          - cell "2024-04-15"
+          - cell "Housing"
+          - cell "16"
+        - row "17 Education improves opportunities. The teacher said \"Students need support.\" 2024-05-15 Education 17":
+          - cell "17"
+          - cell "Education improves opportunities. The teacher said \"Students need support.\""
+          - cell "2024-05-15"
+          - cell "Education"
+          - cell "17"
+        - row "18 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-06-15 Transport 18":
+          - cell "18"
+          - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+          - cell "2024-06-15"
+          - cell "Transport"
+          - cell "18"
+        - row "19 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-07-15 Housing 19":
+          - cell "19"
+          - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+          - cell "2024-07-15"
+          - cell "Housing"
+          - cell "19"
+        - row "20 Education improves opportunities. The teacher said \"Students need support.\" 2024-08-15 Education 20":
+          - cell "20"
+          - cell "Education improves opportunities. The teacher said \"Students need support.\""
+          - cell "2024-08-15"
+          - cell "Education"
+          - cell "20"
+    - text: Rows per page
+    - combobox:
+      - option "10"
+      - option "20" [selected]
+      - option "50"
+      - option "100"
+    - navigation "pagination":
+      - list:
+        - listitem:
+          - link "Go to previous page" [disabled]:
+            - /url: "#"
+            - text: Previous
+        - listitem:
+          - link "1":
+            - /url: "#"
+        - listitem:
+          - link "2":
+            - /url: "#"
+        - listitem:
+          - link "Go to next page":
+            - /url: "#"
+            - text: Next
+- button "Open Tanstack query devtools":
+  - img
+- region "Notifications alt+T"

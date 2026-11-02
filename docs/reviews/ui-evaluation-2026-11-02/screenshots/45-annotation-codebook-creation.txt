@@ -1,0 +1,144 @@
+- banner:
+  - link "Wordflow":
+    - /url: https://sih.tools/wordflow
+  - button "About Wordflow"
+  - button "Cite Wordflow"
+  - text: by
+  - link "LDaCA Logo":
+    - /url: https://www.ldaca.edu.au/
+    - img "LDaCA Logo"
+  - navigation "Navigation history":
+    - button "Go back"
+    - button "Go forward" [disabled]
+  - button "Open quick access": UI evaluation - synthetic public discourse
+  - button "Open settings"
+- button "Views" [expanded]
+- button "Views"
+- button "Edit visible views"
+- list:
+  - listitem:
+    - button "Loader"
+  - listitem:
+    - button "Builder"
+  - listitem:
+    - button "Frequency"
+  - listitem:
+    - button "Concordance"
+  - listitem:
+    - button "Trends"
+  - listitem:
+    - button "Topics"
+  - listitem:
+    - button "Quotation"
+  - listitem:
+    - button "Annotation"
+  - listitem:
+    - button "Export"
+- separator "Resize Data Blocks"
+- button "Data Blocks" [expanded]
+- button "Clear selection" [disabled]
+- text: "3"
+- button "Data Blocks"
+- button "Select synthetic-discourse": synthetic-discourse
+- button "Select UI first six": UI first six
+- button "Select synthetic-discourse_codebook": synthetic-discourse_codebook
+- separator "Resize Tasks"
+- button "Tasks" [expanded]
+- button "Clear finished Data Loader tasks" [disabled]
+- button "Tasks"
+- 'button "Task: T-1. Expand details"':
+  - text: T-1
+  - button "Open T-1"
+- 'button "Task: C-1. Expand details"':
+  - text: C-1
+  - button "Open C-1"
+- 'button "Task: F-1. Expand details"':
+  - text: F-1
+  - button "Open F-1"
+- button "Help"
+- button "Feedback"
+- separator "Resize sidebar"
+- main:
+  - main:
+    - tablist "Analysis tabs":
+      - tab "A-1 Close tab" [selected]:
+        - text: A-1
+        - button "Close tab"
+      - button "New tab"
+    - region "Annotation Setup":
+      - region "Annotation Parameter Panel":
+        - text: Annotation
+        - button "About Annotation"
+        - button "Annotation setup"
+        - group:
+          - region "Main Data Block Setup":
+            - heading "Annotation Data Block" [level=3]
+            - group "Data Blocks controls":
+              - text: Data Blocks (1/1)
+              - button "Remove all Data Blocks": Clear
+              - button "Add Data Block" [disabled]
+            - button "Remove synthetic-discourse"
+            - text: synthetic-discourse Text column
+            - combobox "Text column": text
+            - text: Annotation column
+            - combobox "Annotation column": Select annotation column
+            - text: Colour
+            - button "Change colour for synthetic-discourse"
+          - region "Codebook Setup":
+            - heading "Codebook" [level=3]
+            - button "Create new"
+            - group "Codebook Data Block controls":
+              - text: Codebook Data Block (1/1)
+              - button "Remove all Data Blocks": Clear
+              - button "Add Data Block" [disabled]
+            - button "Remove synthetic-discourse_codebook"
+            - text: synthetic-discourse_codebook Code column
+            - combobox "Code column": class
+            - text: Description column
+            - combobox "Description column": description
+            - heading "Codes" [level=3]
+            - button "Edit"
+            - text: No codes yet.
+          - region "Annotation Mode":
+            - text: Manual
+            - switch "Toggle AI annotation mode"
+            - text: AI
+        - button "Start" [disabled]
+  - separator "Resize right panel"
+  - complementary:
+    - button "Collapse Project panel"
+    - heading "Project Graph" [level=3]
+    - button "Project Graph"
+    - text: "| UI evaluation - synthetic public discourse"
+    - button "Rename Project": Rename
+    - button "Switch Project"
+    - button "About switching Projects"
+    - application:
+      - img:
+        - group "Edge from c9c013f3-8f43-45ff-ae6e-584bd1998de5 to 15c3b45f-491c-41a5-a9c1-bf5e784863b7"
+      - img:
+        - group "Edge from c9c013f3-8f43-45ff-ae6e-584bd1998de5 to 31ce4e17-e6bd-4958-8437-9178976baea0"
+      - group: synthetic-discourse
+      - group: UI first six
+      - group: synthetic-discourse_codebook
+      - img
+      - status "0 of 3 selected": 0/3
+      - button "Zoom in"
+      - button "Zoom out"
+      - button "Fit view"
+      - button "Drag to pan. Switch to drag to select"
+      - button "Clear selection" [disabled]
+      - button "Delete (0)" [disabled]
+      - link "React Flow attribution":
+        - /url: https://reactflow.dev/attribution
+        - text: React Flow
+    - separator "Resize graph and data panels"
+    - heading "No Data Block Selected" [level=3]
+    - paragraph: Select a Data Block from the graph to view its data.
+- button "Open Tanstack query devtools":
+  - img
+- region "Notifications alt+T":
+  - list:
+    - listitem:
+      - button "Close toast"
+      - text: Created an empty Codebook Data Block.

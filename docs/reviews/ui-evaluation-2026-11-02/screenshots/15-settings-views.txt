@@ -1,0 +1,37 @@
+- main:
+  - complementary:
+    - application
+- region "Notifications alt+T"
+- dialog "Settings":
+  - heading "Settings" [level=2]
+  - paragraph: Manage saved preferences and browser-side options.
+  - text: Account
+  - tablist:
+    - tab "General"
+    - tab "Portal"
+    - tab "Servers"
+    - tab "Project"
+    - tab "Views" [selected]
+    - tab "Guidance"
+  - tabpanel "Views":
+    - heading "Visible views" [level=3]
+    - paragraph: Data Loader stays visible so Projects remain reachable.
+    - checkbox "Data Loader" [checked] [disabled]
+    - text: Data Loader
+    - checkbox "Data Builder" [checked]
+    - text: Data Builder
+    - checkbox "Frequency" [checked]
+    - text: Frequency
+    - checkbox "Concordance" [checked]
+    - text: Concordance
+    - checkbox "Trends" [checked]
+    - text: Trends
+    - checkbox "Topic Modelling" [checked]
+    - text: Topic Modelling
+    - checkbox "Quotation" [checked]
+    - text: Quotation
+    - checkbox "Annotation" [checked]
+    - text: Annotation
+    - checkbox "Export" [checked]
+    - text: Export
+  - button "Close"

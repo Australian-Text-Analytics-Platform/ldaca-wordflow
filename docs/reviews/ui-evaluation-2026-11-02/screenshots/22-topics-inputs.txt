@@ -1,0 +1,132 @@
+- banner:
+  - link "Wordflow":
+    - /url: https://sih.tools/wordflow
+  - button "About Wordflow"
+  - button "Cite Wordflow"
+  - text: by
+  - link "LDaCA Logo":
+    - /url: https://www.ldaca.edu.au/
+    - img "LDaCA Logo"
+  - navigation "Navigation history":
+    - button "Go back"
+    - button "Go forward" [disabled]
+  - button "Open quick access": UI evaluation - synthetic public discourse
+  - button "Open settings"
+- button "Views" [expanded]
+- button "Views"
+- button "Edit visible views"
+- list:
+  - listitem:
+    - button "Loader"
+  - listitem:
+    - button "Builder"
+  - listitem:
+    - button "Frequency"
+  - listitem:
+    - button "Concordance"
+  - listitem:
+    - button "Trends"
+  - listitem:
+    - button "Topics"
+  - listitem:
+    - button "Quotation"
+  - listitem:
+    - button "Annotation"
+  - listitem:
+    - button "Export"
+- separator "Resize Data Blocks"
+- button "Data Blocks" [expanded]
+- button "Clear selection" [disabled]
+- text: "1"
+- button "Data Blocks"
+- button "Select synthetic-discourse": synthetic-discourse
+- separator "Resize Tasks"
+- button "Tasks" [expanded]
+- button "Clear finished Data Loader tasks" [disabled]
+- button "Tasks"
+- 'button "Task: F-1. Expand details"':
+  - text: F-1
+  - button "Open F-1"
+- button "Help"
+- button "Feedback"
+- separator "Resize sidebar"
+- main:
+  - main:
+    - tablist "Analysis tabs":
+      - tab "TM-1 Close tab" [selected]:
+        - text: TM-1
+        - button "Close tab"
+      - button "New tab"
+    - text: Topic Modelling
+    - button "About Topic Modelling"
+    - group:
+      - group "Data Blocks controls":
+        - text: Data Blocks (1/2)
+        - button "Remove all Data Blocks": Clear
+        - button "Add Data Block" [disabled]
+      - button "Remove synthetic-discourse"
+      - text: synthetic-discourse Text column
+      - combobox "Text column": text
+      - text: Sampling (24 documents)
+      - spinbutton "Sampling (24 documents)": "100"
+      - text: "% Colour"
+      - button "Change colour for synthetic-discourse"
+      - text: Model
+      - button "About Model"
+      - combobox "Embedding model": English
+      - text: Passages
+      - button "About Passages"
+      - combobox "Passages": Automatic
+      - text: Max tokens
+      - button "About Max tokens"
+      - combobox "Maximum tokens per passage": "256"
+      - group "Topic size About Topic size":
+        - text: Topic size
+        - button "About Topic size"
+        - spinbutton "Min topic size": "10"
+        - spinbutton "Max topic size"
+      - text: Seed
+      - button "About Seed"
+      - spinbutton "Random seed": "0"
+      - status:
+        - paragraph: "Your texts are short: 32 tokens per passage is plenty. At least 9 in 10 texts in the first 24 documents fit in 32 tokens. Apply lowers Max tokens: most stay whole, and the few longer ones are split into pieces of about that size."
+        - button "Use 32 tokens"
+        - button "Dismiss"
+        - button "Learn more"
+        - button "Turn off suggestions…"
+      - checkbox "Topic sampling"
+      - text: Topic sampling
+      - button "About Topic sampling"
+      - paragraph:
+        - text: About 24 passages (estimated); every passage is clustered.
+        - button "Learn more"
+    - button "Run"
+    - button "Clear results" [disabled]: Clear
+  - separator "Resize right panel"
+  - complementary:
+    - button "Collapse Project panel"
+    - heading "Project Graph" [level=3]
+    - button "Project Graph"
+    - text: "| UI evaluation - synthetic public discourse"
+    - button "Rename Project": Rename
+    - button "Switch Project"
+    - button "About switching Projects"
+    - application:
+      - group: synthetic-discourse 24 rows × 5 columns
+      - img
+      - status "0 of 1 selected": 0/1
+      - button "Zoom in"
+      - button "Zoom out"
+      - button "Fit view"
+      - button "Drag to pan. Switch to drag to select"
+      - button "Clear selection" [disabled]
+      - button "Delete (0)" [disabled]
+      - link "React Flow attribution":
+        - /url: https://reactflow.dev/attribution
+        - text: React Flow
+    - separator "Resize graph and data panels"
+    - heading "No Data Block Selected" [level=3]
+    - paragraph: Select a Data Block from the graph to view its data.
+- button "Open Tanstack query devtools":
+  - img
+- region "Notifications alt+T"

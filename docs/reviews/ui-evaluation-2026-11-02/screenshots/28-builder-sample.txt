@@ -1,0 +1,215 @@
+- banner:
+  - link "Wordflow":
+    - /url: https://sih.tools/wordflow
+  - button "About Wordflow"
+  - button "Cite Wordflow"
+  - text: by
+  - link "LDaCA Logo":
+    - /url: https://www.ldaca.edu.au/
+    - img "LDaCA Logo"
+  - navigation "Navigation history":
+    - button "Go back"
+    - button "Go forward" [disabled]
+  - button "Open quick access": UI evaluation - synthetic public discourse
+  - button "Open settings"
+- button "Views" [expanded]
+- button "Views"
+- button "Edit visible views"
+- list:
+  - listitem:
+    - button "Loader"
+  - listitem:
+    - button "Builder"
+  - listitem:
+    - button "Frequency"
+  - listitem:
+    - button "Concordance"
+  - listitem:
+    - button "Trends"
+  - listitem:
+    - button "Topics"
+  - listitem:
+    - button "Quotation"
+  - listitem:
+    - button "Annotation"
+  - listitem:
+    - button "Export"
+- separator "Resize Data Blocks"
+- button "Data Blocks" [expanded]
+- button "Clear selection" [disabled]
+- text: "1"
+- button "Data Blocks"
+- button "Select synthetic-discourse": synthetic-discourse
+- separator "Resize Tasks"
+- button "Tasks" [expanded]
+- button "Clear finished Data Loader tasks" [disabled]
+- button "Tasks"
+- 'button "Task: C-1. Expand details"':
+  - text: C-1
+  - button "Open C-1"
+- 'button "Task: F-1. Expand details"':
+  - text: F-1
+  - button "Open F-1"
+- button "Help"
+- button "Feedback"
+- separator "Resize sidebar"
+- main:
+  - main:
+    - heading "Data Builder" [level=1]
+    - button "About Data Builder"
+    - paragraph: Make new Data Blocks from existing ones.
+    - tablist "Data preprocessing sub-views":
+      - tab "Filter"
+      - tab "Group"
+      - tab "Join"
+      - tab "Segment"
+      - tab "Aggregate"
+      - tab "Sample" [selected]
+      - tab "Deduplicate"
+      - tab "Stack"
+    - tabpanel "Sample":
+      - text: Sample or slice a Data Block
+      - button "About Sample"
+      - group "Data Blocks controls":
+        - text: Data Blocks (1/1)
+        - button "Remove all Data Blocks": Clear
+        - button "Add Data Block" [disabled]
+      - button "Remove synthetic-discourse"
+      - text: synthetic-discourse
+      - tablist:
+        - tab "Slice" [selected]
+        - tab "Random sample"
+      - tabpanel "Slice":
+        - text: Start row
+        - button "Slice start row"
+        - spinbutton "Start row": "0"
+        - paragraph: 0 means the first row.
+        - text: Length
+        - button "Slice length"
+        - spinbutton "Length"
+        - paragraph: Number of rows to be sliced from the start row.
+      - text: New Data Block name
+      - button "Sample output name"
+      - textbox "New Data Block name":
+        - /placeholder: synthetic-discourse_sliced_from_0
+      - button "Add to Project" [disabled]
+      - button "About Add to Project"
+      - text: Preview output rows
+      - button "Preview table"
+      - text: Review rows returned by the current slice or random sample configuration before adding to the Project.
+      - table:
+        - rowgroup:
+          - row "id text date group score":
+            - columnheader "id"
+            - columnheader "text"
+            - columnheader "date"
+            - columnheader "group"
+            - columnheader "score"
+        - rowgroup:
+          - row "1 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-01-15 Housing 1":
+            - cell "1"
+            - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+            - cell "2024-01-15"
+            - cell "Housing"
+            - cell "1"
+          - row "2 Education improves opportunities. The teacher said \"Students need support.\" 2024-02-15 Education 2":
+            - cell "2"
+            - cell "Education improves opportunities. The teacher said \"Students need support.\""
+            - cell "2024-02-15"
+            - cell "Education"
+            - cell "2"
+          - row "3 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-03-15 Transport 3":
+            - cell "3"
+            - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+            - cell "2024-03-15"
+            - cell "Transport"
+            - cell "3"
+          - row "4 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-04-15 Housing 4":
+            - cell "4"
+            - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+            - cell "2024-04-15"
+            - cell "Housing"
+            - cell "4"
+          - row "5 Education improves opportunities. The teacher said \"Students need support.\" 2024-05-15 Education 5":
+            - cell "5"
+            - cell "Education improves opportunities. The teacher said \"Students need support.\""
+            - cell "2024-05-15"
+            - cell "Education"
+            - cell "5"
+          - row "6 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-06-15 Transport 6":
+            - cell "6"
+            - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+            - cell "2024-06-15"
+            - cell "Transport"
+            - cell "6"
+          - row "7 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-07-15 Housing 7":
+            - cell "7"
+            - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+            - cell "2024-07-15"
+            - cell "Housing"
+            - cell "7"
+          - row "8 Education improves opportunities. The teacher said \"Students need support.\" 2024-08-15 Education 8":
+            - cell "8"
+            - cell "Education improves opportunities. The teacher said \"Students need support.\""
+            - cell "2024-08-15"
+            - cell "Education"
+            - cell "8"
+          - row "9 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-09-15 Transport 9":
+            - cell "9"
+            - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+            - cell "2024-09-15"
+            - cell "Transport"
+            - cell "9"
+          - row "10 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-10-15 Housing 10":
+            - cell "10"
+            - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+            - cell "2024-10-15"
+            - cell "Housing"
+            - cell "10"
+      - text: Rows per page
+      - combobox "Rows per page": "10"
+      - navigation "pagination":
+        - list:
+          - listitem:
+            - link "Go to previous page" [disabled]:
+              - /url: "#"
+              - text: Previous
+          - listitem:
+            - link "1":
+              - /url: "#"
+          - listitem:
+            - link "2":
+              - /url: "#"
+          - listitem
+          - listitem:
+            - link "Go to next page":
+              - /url: "#"
+              - text: Next
+  - separator "Resize right panel"
+  - complementary:
+    - button "Collapse Project panel"
+    - heading "Project Graph" [level=3]
+    - button "Project Graph"
+    - text: "| UI evaluation - synthetic public discourse"
+    - button "Rename Project": Rename
+    - button "Switch Project"
+    - button "About switching Projects"
+    - application:
+      - group: synthetic-discourse 24 rows × 5 columns
+      - img
+      - status "0 of 1 selected": 0/1
+      - button "Zoom in"
+      - button "Zoom out"
+      - button "Fit view"
+      - button "Drag to pan. Switch to drag to select"
+      - button "Clear selection" [disabled]
+      - button "Delete (0)" [disabled]
+      - link "React Flow attribution":
+        - /url: https://reactflow.dev/attribution
+        - text: React Flow
+    - separator "Resize graph and data panels"
+    - heading "No Data Block Selected" [level=3]
+    - paragraph: Select a Data Block from the graph to view its data.
+- button "Open Tanstack query devtools":
+  - img
+- region "Notifications alt+T"

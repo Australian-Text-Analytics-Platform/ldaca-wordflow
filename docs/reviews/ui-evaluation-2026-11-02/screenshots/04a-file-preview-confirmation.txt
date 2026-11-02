@@ -1,0 +1,91 @@
+- main:
+  - complementary:
+    - application
+- region "Notifications alt+T"
+- 'dialog "Add File: synthetic-discourse.csv"':
+  - 'heading "Add File: synthetic-discourse.csv" [level=2]'
+  - paragraph: Check the preview, then add the file to the Project as a Data Block.
+  - text: "Add File: synthetic-discourse.csv Check the preview, then add the file to the Project as a Data Block."
+  - paragraph: Preview (first rows)
+  - table:
+    - rowgroup:
+      - row "id Resize column id text Resize column text date Resize column date group Resize column group score Resize column score":
+        - columnheader "id Resize column id":
+          - text: id
+          - separator "Resize column id"
+        - columnheader "text Resize column text":
+          - text: text
+          - separator "Resize column text"
+        - columnheader "date Resize column date":
+          - text: date
+          - separator "Resize column date"
+        - columnheader "group Resize column group":
+          - text: group
+          - separator "Resize column group"
+        - columnheader "score Resize column score":
+          - text: score
+          - separator "Resize column score"
+    - rowgroup:
+      - row "1 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-01-15 Housing 1":
+        - cell "1"
+        - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+        - cell "2024-01-15"
+        - cell "Housing"
+        - cell "1"
+      - row "2 Education improves opportunities. The teacher said \"Students need support.\" 2024-02-15 Education 2":
+        - cell "2"
+        - cell "Education improves opportunities. The teacher said \"Students need support.\""
+        - cell "2024-02-15"
+        - cell "Education"
+        - cell "2"
+      - row "3 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-03-15 Transport 3":
+        - cell "3"
+        - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+        - cell "2024-03-15"
+        - cell "Transport"
+        - cell "3"
+      - row "4 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-04-15 Housing 4":
+        - cell "4"
+        - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+        - cell "2024-04-15"
+        - cell "Housing"
+        - cell "4"
+      - row "5 Education improves opportunities. The teacher said \"Students need support.\" 2024-05-15 Education 5":
+        - cell "5"
+        - cell "Education improves opportunities. The teacher said \"Students need support.\""
+        - cell "2024-05-15"
+        - cell "Education"
+        - cell "5"
+      - row "6 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-06-15 Transport 6":
+        - cell "6"
+        - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+        - cell "2024-06-15"
+        - cell "Transport"
+        - cell "6"
+      - row "7 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-07-15 Housing 7":
+        - cell "7"
+        - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+        - cell "2024-07-15"
+        - cell "Housing"
+        - cell "7"
+      - row "8 Education improves opportunities. The teacher said \"Students need support.\" 2024-08-15 Education 8":
+        - cell "8"
+        - cell "Education improves opportunities. The teacher said \"Students need support.\""
+        - cell "2024-08-15"
+        - cell "Education"
+        - cell "8"
+      - row "9 Public transport connects communities. The mayor said \"Better buses help everyone.\" 2024-09-15 Transport 9":
+        - cell "9"
+        - cell "Public transport connects communities. The mayor said \"Better buses help everyone.\""
+        - cell "2024-09-15"
+        - cell "Transport"
+        - cell "9"
+      - row "10 Affordable housing supports the community. The minister said \"We need more homes.\" 2024-10-15 Housing 10":
+        - cell "10"
+        - cell "Affordable housing supports the community. The minister said \"We need more homes.\""
+        - cell "2024-10-15"
+        - cell "Housing"
+        - cell "10"
+  - button "Cancel"
+  - button "Add to Project"
+  - button "Close"

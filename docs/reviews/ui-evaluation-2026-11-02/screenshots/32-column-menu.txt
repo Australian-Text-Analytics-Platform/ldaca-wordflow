@@ -1,0 +1,14 @@
+- main:
+  - complementary:
+    - application
+- region "Notifications alt+T"
+- menu "Column settings for text":
+  - menuitem "Find & replace…"
+  - menuitem "Clean text…"
+  - menuitem "Extract text…"
+  - menuitem "Split…"
+  - menuitem "Count…"
+  - menuitem "Map values…"
+  - menuitem "Copy column…"
+  - menuitem "Rename"
+  - menuitem "Delete"

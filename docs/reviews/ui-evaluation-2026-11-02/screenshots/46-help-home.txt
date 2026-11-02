@@ -1,0 +1,145 @@
+- main:
+  - complementary:
+    - application
+- region "Notifications alt+T"
+- dialog "Help":
+  - heading "Help" [level=2]
+  - banner:
+    - heading "Help" [level=1]
+    - link "LDaCA, Language Data Commons of Australia":
+      - /url: https://www.ldaca.edu.au/
+      - img "LDaCA, Language Data Commons of Australia"
+    - link "ARDC, Australian Research Data Commons":
+      - /url: https://ardc.edu.au/
+      - img "ARDC, Australian Research Data Commons"
+    - link "Australian Government, NCRIS, National Research Infrastructure for Australia":
+      - /url: https://www.education.gov.au/ncris
+      - img "Australian Government, NCRIS, National Research Infrastructure for Australia"
+    - link "Sydney Corpus Lab":
+      - /url: https://sydneycorpuslab.com/
+      - img "Sydney Corpus Lab"
+    - link "The University of Sydney, Sydney Informatics Hub":
+      - /url: https://informatics.sydney.edu.au/
+      - img "The University of Sydney, Sydney Informatics Hub"
+    - button "Close"
+    - button "Zoom out": −
+    - button "Reset zoom": 100%
+    - button "Zoom in": +
+  - main:
+    - heading "Wordflow Help" [level=1]
+    - paragraph:
+      - text: Welcome to Wordflow. This Help guide provides written instructions for the interface and each analysis feature. Open it at any time from
+      - strong: Help
+      - text: in the sidebar or jump directly to a section with a
+      - strong: "?"
+      - text: icon.
+    - heading "Overview" [level=2]
+    - paragraph: Wordflow offers an interface that prioritises ease of use and efficient navigation. The main user interface includes the following main sections, systematically presented in three primary columns.
+    - paragraph:
+      - img "Wordflow main view"
+    - list:
+      - listitem: "Views: Choose and customise which tool to use."
+      - listitem: "Data Blocks: Select the Data Block to analyse."
+      - listitem: "Tasks: Show the progress of longer tasks."
+      - listitem: "Project Graph: Manage all processible and produced Data Blocks."
+      - listitem: "Data Editor: View and edit the selected Data Block(s) as a table."
+      - listitem: "Tool Interface: The main interface of the selected analytic tool."
+      - listitem: "Data folder: where Wordflow keeps your Projects and files."
+      - listitem: "Appearance: Switch between the light and dark themes."
+      - listitem: "Help and Feedback: When you encounter problems."
+    - paragraph:
+      - text: For detailed explanation of how each of the above sections work, please refer to
+      - link "User Interface Overview":
+        - /url: ./ui.md
+      - text: .
+    - 'heading "Concept: How the Analyses Interoperate" [level=2]'
+    - paragraph: "Wordflow's analyses are designed to work together seamlessly, allowing you to conduct comprehensive text analyses. Here’s how the components interact:"
+    - list:
+      - listitem:
+        - strong: Data Block
+        - text: ": Tabular data consists of at least one column of analysable textual contents. Each row represents a unit of text (document, post, comment, speech etc.) and its associated metadata in columns. A Data Block can be viewed as a collection of texts with various types of metadata."
+      - listitem:
+        - strong: Project
+        - text: ": A set of Data Blocks that can be processed, analysed and derived from each other. The Project is a virtual space where the user uploads, processes and manipulates all relevant Data Blocks to a project or task. The Project is visualised as a graph of interconnecting Data Blocks, where the links indicates how new Data Blocks are derived from their parent Data Blocks through various operations. The user can select, rename, clone, export, or delete the Data Blocks in the Project Graph."
+    - paragraph: "The Data Block is the fundamental analytic unit across Wordflow, serves as both input and output so that the result of one analysis can be processed by any other seamlessly. The text corpus and metadata can be uploaded to Wordflow then loaded as a Data Block to an active Project. Data Builder tools (such as filtering, grouping, joining, sampling, and stacking) create new Data Blocks in the Project and leave their sources unchanged, while the Data Editor adds or changes columns of a Data Block in place. The main steps are:"
+    - list:
+      - listitem: "Data Loader: Upload your text files and load the text corpus (e.g., interview transcripts, articles) into a Project."
+      - listitem: "Data Editor and Data Builder: Clean and add columns in place with the Data Editor, and make new Data Blocks (filter, group, join, segment, aggregate, sample, deduplicate, stack) with the Data Builder."
+      - listitem: "Analysis Modules: Select from available tools (such as frequency analysis, quotation extraction, topic modelling, or concordance analysis) to process your data."
+      - listitem: "Results Integration: Combine the findings from different modules to gain holistic insights, e.g., linking topics to historical trends."
+      - listitem: "Export & Share: Export your results in various formats (CSV or Excel tables, chart images, or a whole Project as a ZIP archive) and share them with your collaborators."
+    - heading "How to use the help icons" [level=2]
+    - list:
+      - listitem:
+        - text: Click a
+        - strong: "?"
+        - text: icon next to a control to jump straight to its explanation.
+      - listitem: Help will scroll to that section and briefly highlight it.
+      - listitem: If a help link is missing, you will see a toast and Help will stay closed.
+    - heading "Quick start (first session)" [level=2]
+    - list:
+      - listitem:
+        - strong: Create or open a Project
+        - text: so your work is saved together.
+      - listitem:
+        - strong: Upload files
+        - text: or import sample data to explore quickly.
+      - listitem:
+        - strong: Clean, reshape, and join
+        - text: your data if needed, with the Data Editor and the Data Builder.
+      - listitem:
+        - strong: Run analyses
+        - text: like frequency, concordance, or topic modelling.
+      - listitem:
+        - strong: Export
+        - text: results for sharing or downstream work.
+    - heading "Help sections" [level=2]
+    - list:
+      - listitem:
+        - link "User Interface Overview":
+          - /url: ./ui.md
+        - text: ": learn what each section of the main screen does."
+      - listitem:
+        - link "Data Loader":
+          - /url: ./data-loader.md
+        - text: ": create Projects and upload data."
+      - listitem:
+        - link "Data Builder":
+          - /url: ./preprocessing.md
+        - text: ": make new Data Blocks by filtering, grouping, joining, segmenting, aggregating, sampling, deduplicating, and stacking."
+      - listitem:
+        - link "Frequency":
+          - /url: ./token-frequency.md
+        - text: ": count and explore common terms."
+      - listitem:
+        - link "Concordance":
+          - /url: ./concordance.md
+        - text: ": inspect terms in context."
+      - listitem:
+        - link "Topic Modelling":
+          - /url: ./topic-modeling.md
+        - text: ": discover themes with native semantic clustering."
+      - listitem:
+        - link "Trends":
+          - /url: ./sequential-analysis.md
+        - text: ": count documents over time or along an ordered number."
+      - listitem:
+        - link "Quotation extraction":
+          - /url: ./quotation.md
+        - text: ": capture quoted segments with context."
+      - listitem:
+        - link "Annotation":
+          - /url: ./annotation.md
+        - text: ": label text manually or with a configured AI provider."
+      - listitem:
+        - link "Export":
+          - /url: ./export.md
+        - text: ": download tables or reports."
+    - heading "Questions to check your understanding" [level=2]
+    - paragraph:
+      - strong: "Q: What is a Project?"
+    - paragraph: A Project is a saved container for your Data Blocks, settings, and analysis outputs. Think of it as a project folder inside the app.
+    - paragraph:
+      - strong: "Q: Why are there separate Help pages?"
+    - paragraph: Each page focuses on a single area so you can learn in small steps and jump directly from a help icon.
+  - button "Close"

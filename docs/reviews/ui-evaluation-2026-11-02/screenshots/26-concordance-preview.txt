@@ -1,0 +1,250 @@
+- banner:
+  - link "Wordflow":
+    - /url: https://sih.tools/wordflow
+  - button "About Wordflow"
+  - button "Cite Wordflow"
+  - text: by
+  - link "LDaCA Logo":
+    - /url: https://www.ldaca.edu.au/
+    - img "LDaCA Logo"
+  - navigation "Navigation history":
+    - button "Go back"
+    - button "Go forward" [disabled]
+  - button "Open quick access": UI evaluation - synthetic public discourse
+  - button "Open settings"
+- button "Views" [expanded]
+- button "Views"
+- button "Edit visible views"
+- list:
+  - listitem:
+    - button "Loader"
+  - listitem:
+    - button "Builder"
+  - listitem:
+    - button "Frequency"
+  - listitem:
+    - button "Concordance"
+  - listitem:
+    - button "Trends"
+  - listitem:
+    - button "Topics"
+  - listitem:
+    - button "Quotation"
+  - listitem:
+    - button "Annotation"
+  - listitem:
+    - button "Export"
+- separator "Resize Data Blocks"
+- button "Data Blocks" [expanded]
+- button "Clear selection" [disabled]
+- text: "1"
+- button "Data Blocks"
+- button "Select synthetic-discourse": synthetic-discourse
+- separator "Resize Tasks"
+- button "Tasks" [expanded]
+- button "Clear finished Data Loader tasks" [disabled]
+- button "Tasks"
+- 'button "Task: C-1. Expand details"':
+  - text: C-1
+  - button "Open C-1"
+- 'button "Task: F-1. Expand details"':
+  - text: F-1
+  - button "Open F-1"
+- button "Help"
+- button "Feedback"
+- separator "Resize sidebar"
+- main:
+  - main:
+    - tablist "Analysis tabs":
+      - tab "C-1 Close tab" [selected]:
+        - text: C-1
+        - button "Close tab"
+      - button "New tab"
+    - text: Concordance Search
+    - button "About Concordance Search"
+    - button "Concordance parameters"
+    - group:
+      - group "Data Blocks controls":
+        - text: Data Blocks (1/2)
+        - button "Remove all Data Blocks": Clear
+        - button "Add Data Block" [disabled]
+      - button "Remove synthetic-discourse"
+      - text: synthetic-discourse Text column
+      - combobox "Text column": text
+      - text: Tokeniser model
+      - combobox "Tokeniser model" [disabled]: None
+      - text: Colour
+      - button "Change colour for synthetic-discourse"
+      - text: Search word or phrase
+      - button "Concordance search term"
+      - textbox "Enter word or phrase to search for": housing
+      - text: Left context (tokens)
+      - spinbutton: "10"
+      - text: Right context (tokens)
+      - spinbutton: "10"
+      - text: "Search mode:"
+      - tablist:
+        - tab "Text" [selected]
+        - tab "Tokens"
+      - button "Search mode (text vs tokens)"
+      - checkbox "Case sensitive"
+      - text: Case sensitive
+      - button "About Case sensitive"
+      - checkbox "Ignore punctuation" [checked]
+      - text: Ignore punctuation
+      - checkbox "Whole word" [checked]
+      - text: Whole word
+      - checkbox "Use regular expression"
+      - text: Use regular expression
+      - button "About regular expressions"
+    - button "Preview" [disabled]
+    - button "Run"
+    - button "Clear results": Clear
+    - button "Clear results"
+    - separator "Resize parameters and results"
+    - button "About resizing parameters and results"
+    - text: Concordance Results
+    - button "Concordance results"
+    - tablist:
+      - tab "Table view" [selected]
+      - tab "Dispersion view"
+    - checkbox "Highlight L1/R1 for sorting" [checked]
+    - text: Highlight L1/R1 for sorting
+    - button "Show metadata": Show metadata (0)
+    - text: synthetic-discourse
+    - table:
+      - rowgroup:
+        - row "Move column CONC_left_context CONC_left_context Move column CONC_matched_text CONC_matched_text Move column CONC_right_context CONC_right_context Move column CONC_l1 CONC_l1 Move column CONC_r1 CONC_r1":
+          - columnheader "Move column CONC_left_context CONC_left_context":
+            - button "Move column CONC_left_context"
+            - text: CONC_left_context
+          - columnheader "Move column CONC_matched_text CONC_matched_text":
+            - button "Move column CONC_matched_text"
+            - text: CONC_matched_text
+          - columnheader "Move column CONC_right_context CONC_right_context":
+            - button "Move column CONC_right_context"
+            - text: CONC_right_context
+          - columnheader "Move column CONC_l1 CONC_l1":
+            - button "Move column CONC_l1"
+            - text: CONC_l1
+          - columnheader "Move column CONC_r1 CONC_r1":
+            - button "Move column CONC_r1"
+            - text: CONC_r1
+        - status
+      - rowgroup:
+        - row "Affordable housing supports the community. The minister said \"We need more homes Affordable supports":
+          - cell "Affordable":
+            - mark: Affordable
+          - cell "housing"
+          - cell "supports the community. The minister said \"We need more homes":
+            - mark: supports
+            - text: the community. The minister said "We need more homes
+          - cell "Affordable"
+          - cell "supports"
+        - row "Affordable housing supports the community. The minister said \"We need more homes Affordable supports":
+          - cell "Affordable":
+            - mark: Affordable
+          - cell "housing"
+          - cell "supports the community. The minister said \"We need more homes":
+            - mark: supports
+            - text: the community. The minister said "We need more homes
+          - cell "Affordable"
+          - cell "supports"
+        - row "Affordable housing supports the community. The minister said \"We need more homes Affordable supports":
+          - cell "Affordable":
+            - mark: Affordable
+          - cell "housing"
+          - cell "supports the community. The minister said \"We need more homes":
+            - mark: supports
+            - text: the community. The minister said "We need more homes
+          - cell "Affordable"
+          - cell "supports"
+        - row "Affordable housing supports the community. The minister said \"We need more homes Affordable supports":
+          - cell "Affordable":
+            - mark: Affordable
+          - cell "housing"
+          - cell "supports the community. The minister said \"We need more homes":
+            - mark: supports
+            - text: the community. The minister said "We need more homes
+          - cell "Affordable"
+          - cell "supports"
+        - row "Affordable housing supports the community. The minister said \"We need more homes Affordable supports":
+          - cell "Affordable":
+            - mark: Affordable
+          - cell "housing"
+          - cell "supports the community. The minister said \"We need more homes":
+            - mark: supports
+            - text: the community. The minister said "We need more homes
+          - cell "Affordable"
+          - cell "supports"
+        - row "Affordable housing supports the community. The minister said \"We need more homes Affordable supports":
+          - cell "Affordable":
+            - mark: Affordable
+          - cell "housing"
+          - cell "supports the community. The minister said \"We need more homes":
+            - mark: supports
+            - text: the community. The minister said "We need more homes
+          - cell "Affordable"
+          - cell "supports"
+        - row "Affordable housing supports the community. The minister said \"We need more homes Affordable supports":
+          - cell "Affordable":
+            - mark: Affordable
+          - cell "housing"
+          - cell "supports the community. The minister said \"We need more homes":
+            - mark: supports
+            - text: the community. The minister said "We need more homes
+          - cell "Affordable"
+          - cell "supports"
+        - row "Affordable housing supports the community. The minister said \"We need more homes Affordable supports":
+          - cell "Affordable":
+            - mark: Affordable
+          - cell "housing"
+          - cell "supports the community. The minister said \"We need more homes":
+            - mark: supports
+            - text: the community. The minister said "We need more homes
+          - cell "Affordable"
+          - cell "supports"
+    - text: (Found 8 matches in 8 documents after checking 24 documents). Documents per page
+    - combobox "Documents per page": "50"
+    - navigation "pagination":
+      - list:
+        - listitem:
+          - link "Go to previous page" [disabled]:
+            - /url: "#"
+            - text: Previous
+        - listitem:
+          - link "1":
+            - /url: "#"
+        - listitem:
+          - link "Go to next page" [disabled]:
+            - /url: "#"
+            - text: Next
+    - separator "Resize this result"
+  - separator "Resize right panel"
+  - complementary:
+    - button "Collapse Project panel"
+    - heading "Project Graph" [level=3]
+    - button "Project Graph"
+    - text: "| UI evaluation - synthetic public discourse"
+    - button "Rename Project": Rename
+    - button "Switch Project"
+    - button "About switching Projects"
+    - application:
+      - group: synthetic-discourse 24 rows × 5 columns
+      - img
+      - status "0 of 1 selected": 0/1
+      - button "Zoom in"
+      - button "Zoom out"
+      - button "Fit view"
+      - button "Drag to pan. Switch to drag to select"
+      - button "Clear selection" [disabled]
+      - button "Delete (0)" [disabled]
+      - link "React Flow attribution":
+        - /url: https://reactflow.dev/attribution
+        - text: React Flow
+    - separator "Resize graph and data panels"
+    - heading "No Data Block Selected" [level=3]
+    - paragraph: Select a Data Block from the graph to view its data.
+- button "Open Tanstack query devtools":
+  - img
+- region "Notifications alt+T"

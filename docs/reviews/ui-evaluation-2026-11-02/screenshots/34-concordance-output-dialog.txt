@@ -1,0 +1,50 @@
+- main:
+  - main:
+    - table:
+      - rowgroup:
+        - status
+  - complementary:
+    - application
+- region "Notifications alt+T"
+- dialog "Add Concordance Matches to Project":
+  - heading "Add Concordance Matches to Project" [level=2]
+  - paragraph: Choose which immutable Result columns create new Project Data Blocks.
+  - checkbox "synthetic-discourse" [checked]
+  - text: synthetic-discourse New Data Block name
+  - textbox "New Data Block name": synthetic-discourse_concordance
+  - paragraph: Columns
+  - button "Select all for synthetic-discourse": Select all
+  - button "Select none for synthetic-discourse": Select none
+  - checkbox "text" [checked]
+  - text: text
+  - checkbox "id"
+  - text: id
+  - checkbox "date"
+  - text: date
+  - checkbox "group"
+  - text: group
+  - checkbox "score"
+  - text: score
+  - checkbox "CONC_left_context" [checked]
+  - text: CONC_left_context
+  - checkbox "CONC_matched_text" [checked]
+  - text: CONC_matched_text
+  - checkbox "CONC_right_context" [checked]
+  - text: CONC_right_context
+  - checkbox "CONC_start_idx" [checked]
+  - text: CONC_start_idx
+  - checkbox "CONC_end_idx" [checked]
+  - text: CONC_end_idx
+  - checkbox "CONC_l1" [checked]
+  - text: CONC_l1
+  - checkbox "CONC_r1" [checked]
+  - text: CONC_r1
+  - checkbox "CONC_l1_freq" [checked]
+  - text: CONC_l1_freq
+  - checkbox "CONC_r1_freq" [checked]
+  - text: CONC_r1_freq
+  - checkbox "CONC_extraction" [checked]
+  - text: CONC_extraction
+  - button "Cancel"
+  - button "Add to Project"
+  - button "Close"

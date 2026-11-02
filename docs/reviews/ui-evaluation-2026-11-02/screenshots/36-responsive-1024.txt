@@ -1,0 +1,151 @@
+- banner:
+  - link "Wordflow":
+    - /url: https://sih.tools/wordflow
+  - button "About Wordflow"
+  - button "Cite Wordflow"
+  - text: by
+  - link "LDaCA Logo":
+    - /url: https://www.ldaca.edu.au/
+    - img "LDaCA Logo"
+  - navigation "Navigation history":
+    - button "Go back"
+    - button "Go forward" [disabled]
+  - button "Open quick access": UI evaluation - synthetic public discourse
+  - button "Open settings"
+- button "Views" [expanded]
+- button "Views"
+- button "Edit visible views"
+- list:
+  - listitem:
+    - button "Loader"
+  - listitem:
+    - button "Builder"
+  - listitem:
+    - button "Frequency"
+  - listitem:
+    - button "Concordance"
+  - listitem:
+    - button "Trends"
+  - listitem:
+    - button "Topics"
+  - listitem:
+    - button "Quotation"
+  - listitem:
+    - button "Annotation"
+  - listitem:
+    - button "Export"
+- separator "Resize Data Blocks"
+- button "Data Blocks" [expanded]
+- button "Clear selection" [disabled]
+- text: "2"
+- button "Data Blocks"
+- button "Select synthetic-discourse": synthetic-discourse
+- button "Select UI first six": UI first six
+- separator "Resize Tasks"
+- button "Tasks" [expanded]
+- button "Clear finished Data Loader tasks" [disabled]
+- button "Tasks"
+- 'button "Task: T-1. Expand details"':
+  - text: T-1
+  - button "Open T-1"
+- 'button "Task: C-1. Expand details"':
+  - text: C-1
+  - button "Open C-1"
+- 'button "Task: F-1. Expand details"':
+  - text: F-1
+  - button "Open F-1"
+- button "Help"
+- button "Feedback"
+- separator "Resize sidebar"
+- main:
+  - main:
+    - tablist "Analysis tabs":
+      - tab "F-1 Close tab" [selected]:
+        - text: F-1
+        - button "Close tab"
+      - button "New tab"
+    - text: Frequency Analysis
+    - button "About Frequency Analysis"
+    - button "Frequency parameters"
+    - group:
+      - group "Data Blocks controls":
+        - text: Data Blocks (1/2)
+        - button "Remove all Data Blocks": Clear
+        - button "Add Data Block"
+      - button "Remove synthetic-discourse"
+      - text: synthetic-discourse Text column
+      - combobox "Text column": text
+      - text: Tokeniser model
+      - combobox "Tokeniser model": Plain words · Any language with spaces
+      - link "About Plain words (opens in a new tab)":
+        - /url: https://github.com/Australian-Text-Analytics-Platform/polars-text
+      - text: Colour
+      - button "Change colour for synthetic-discourse"
+    - button "Run" [disabled]
+    - button "Run Frequency"
+    - button "Clear results": Clear
+    - button "Clear results"
+    - separator "Resize parameters and results"
+    - button "About resizing parameters and results"
+    - text: Frequency Results
+    - button "Frequency results"
+    - group:
+      - text: Stop words filter (0)
+      - switch "Enable stop words"
+      - text: Enable stop words
+      - combobox "Stop words language": Select language
+      - button "Sort" [disabled]
+      - button "Stop words"
+      - textbox "Stop words filter (0)" [disabled]:
+        - /placeholder: the, and, of
+      - text: Cloud display limit (10–100)
+      - button "Cloud display limit"
+      - spinbutton "Cloud display limit (10–100)": "25"
+      - button "Apply"
+      - text: List display limit (10 – 26)
+      - button "List display limit"
+      - spinbutton "List display limit (10 – 26)": "25"
+      - button "Apply"
+      - text: Filter tokens
+      - button "Token filter"
+      - textbox "Filter tokens":
+        - /placeholder: Filter tokens (use * as wildcard, e.g. pre* or *ing)
+      - tablist:
+        - tab "Cloud view" [selected]
+        - tab "List view"
+      - text: synthetic-discourse
+      - button "Download word cloud"
+      - 'img "the: 32, said: 24, need: 16, better: 8, help: 8, support: 8, housing: 8, homes: 8, mayor: 8, affordable: 8, buses: 8, more: 8, public: 8, everyone: 8, education: 8, minister: 8, community: 8, opportunities: 8, students: 8, improves: 8, teacher: 8, transport: 8, supports: 8, we: 8, connects: 8"':
+        - img: the said need better help support housing homes mayor affordable buses more public everyone education minister community opportunities students improves teacher transport supports we connects
+      - separator "Resize this result"
+  - separator "Resize right panel"
+  - complementary:
+    - button "Collapse Project panel"
+    - heading "Project Graph" [level=3]
+    - button "Project Graph"
+    - text: "| UI evaluation - synthetic public discourse"
+    - button "Rename Project": Rename
+    - button "Switch Project"
+    - button "About switching Projects"
+    - application:
+      - img:
+        - group "Edge from c9c013f3-8f43-45ff-ae6e-584bd1998de5 to 15c3b45f-491c-41a5-a9c1-bf5e784863b7"
+      - group: synthetic-discourse
+      - group: UI first six
+      - img
+      - status "0 of 2 selected": 0/2
+      - button "Zoom in"
+      - button "Zoom out"
+      - button "Fit view"
+      - button "Drag to pan. Switch to drag to select"
+      - button "Clear selection" [disabled]
+      - button "Delete (0)" [disabled]
+      - link "React Flow attribution":
+        - /url: https://reactflow.dev/attribution
+        - text: React Flow
+    - separator "Resize graph and data panels"
+    - heading "No Data Block Selected" [level=3]
+    - paragraph: Select a Data Block from the graph to view its data.
+- button "Open Tanstack query devtools":
+  - img
+- region "Notifications alt+T"
