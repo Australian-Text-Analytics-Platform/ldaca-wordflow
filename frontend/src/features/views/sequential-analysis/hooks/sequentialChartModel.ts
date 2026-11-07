@@ -25,7 +25,7 @@ export type SequentialScale =
   | 'per-100k-words'
   | 'percent-of-rows';
 export const SEQUENTIAL_SCALE_LABELS: Record<SequentialScale, string> = {
-  count: 'Count',
+  count: 'Row count',
   composition: 'Composition (% of period)',
   'per-million-words': 'Per million words',
   'per-100k-words': 'Per 100,000 words',

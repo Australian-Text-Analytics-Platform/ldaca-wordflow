@@ -26,9 +26,9 @@ together, tick **Ignore capitals** beside the result legend.
 
 Note that these trends are based on **raw (absolute) frequencies**: each point
 counts rows. To see the normalised frequency corpus linguists use, hits per
-million words of all the texts in each period, choose the corpus the matches
-were made from under **Normalise against** before running, then set **Show as**
-to **Per million words**. **Composition (% of period)** instead shows each
+million words of all the texts in each period, keep the corpus the matches
+were made from under **Normalise against** (it starts selected) and run, then
+set **Show as** to **Per million words**. **Composition (% of period)** instead shows each
 group as a percentage of all rows in the same period.
 
 - **Can I change any of the settings/parameters?**

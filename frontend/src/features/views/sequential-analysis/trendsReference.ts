@@ -32,6 +32,22 @@ export function ancestorIds(nodes: readonly WorkspaceNodeInfo[], nodeId: string)
   return ancestors;
 }
 
+/**
+ * The reference a Data Block starts with: the first Data Block it was made
+ * from that still exists, or null for a Data Block made from none.
+ */
+export function defaultReferenceNode(
+  nodes: readonly WorkspaceNodeInfo[],
+  nodeId: string,
+): WorkspaceNodeInfo | null {
+  const parentIds = nodes.find((node) => node.id === nodeId)?.parent_ids ?? [];
+  for (const parentId of parentIds) {
+    const parent = nodes.find((node) => node.id === parentId);
+    if (parent && parent.id !== nodeId) return parent;
+  }
+  return null;
+}
+
 export interface ReferenceOption {
   id: string;
   name: string;

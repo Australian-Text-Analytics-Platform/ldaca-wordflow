@@ -45,6 +45,7 @@ import {
 } from './hooks/useSequentialAnalysisParameters';
 import { useSequentialChartControls } from './hooks/useSequentialChartControls';
 import { useReferenceCandidates } from './hooks/useReferenceCandidates';
+import { defaultReferenceNode } from './trendsReference';
 import { SequentialAnalysisParameterPanel } from './components/panels/SequentialAnalysisParameterPanel';
 import { SequentialAnalysisResultsPanel } from './components/panels/SequentialAnalysisResultsPanel';
 import { SequentialAddToWorkspaceDialog } from './components/SequentialAddToWorkspaceDialog';
@@ -274,6 +275,26 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     timeColumn: activeTimeColumn,
     columnType: derivedColumnType,
   });
+  // A freshly chosen Data Block starts with the Data Block it was made from
+  // as its reference, with that one's document column and tokeniser (Chao):
+  // the choice that is rarely wrong, still open to change, including to none.
+  // A reopened run keeps what it ran with, so a draft with a result is left.
+  const defaultedReferenceFor = useRef('');
+  useEffect(() => {
+    if (!activeNodeId || defaultedReferenceFor.current === activeNodeId) return;
+    if (hydratingSelection || results) return;
+    defaultedReferenceFor.current = activeNodeId;
+    if (sequentialParameters.referenceNodeId !== '') return;
+    const parent = defaultReferenceNode(workspaceNodes, activeNodeId);
+    if (parent) setReference(parent.id, parent.document ?? '', parent.tokenizer_model ?? '');
+  }, [
+    activeNodeId,
+    hydratingSelection,
+    results,
+    sequentialParameters.referenceNodeId,
+    setReference,
+    workspaceNodes,
+  ]);
   // A Data Block cannot be its own reference, nor can one without the time
   // column: when the analysed Data Block or its time column changes so the
   // chosen reference no longer qualifies, the reference reads as none.

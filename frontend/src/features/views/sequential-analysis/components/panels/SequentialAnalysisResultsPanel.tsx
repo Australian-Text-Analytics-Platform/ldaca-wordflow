@@ -154,7 +154,7 @@ export function SequentialAnalysisResultsPanel({
                     <HelpIcon
                       targetKey="analysis.sequential-analysis.show-as"
                       label="About Show as"
-                      tooltip="Count: rows. Composition: each group's share of its period. Per million words and % of reference rows: rates against the reference Data Block."
+                      tooltip="Row count: the rows in each period. Composition: each group's share of its period. Per million words and % of reference rows: rates against the reference Data Block."
                       className="size-5 shrink-0 text-description"
                     />
                   </span>

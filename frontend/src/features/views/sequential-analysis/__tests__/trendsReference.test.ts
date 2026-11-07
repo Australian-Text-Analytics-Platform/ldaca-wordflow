@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { WorkspaceNodeInfo } from '@/api';
 import { Field, Float64, Int64, Utf8, DateDay, TimestampMillisecond } from 'apache-arrow';
-import { ancestorIds, referenceAxisMatches, referenceOptions } from '../trendsReference';
+import {
+  ancestorIds,
+  defaultReferenceNode,
+  referenceAxisMatches,
+  referenceOptions,
+} from '../trendsReference';
 
 const node = (id: string, name: string, parent_ids: string[] = []): WorkspaceNodeInfo =>
   ({
@@ -61,6 +66,14 @@ describe('ancestorIds', () => {
   it('walks every Data Block a Data Block was made from', () => {
     expect(ancestorIds(nodes, 'matches')).toEqual(new Set(['women', 'corpus']));
     expect(ancestorIds(nodes, 'corpus')).toEqual(new Set());
+  });
+});
+
+describe('defaultReferenceNode', () => {
+  it('starts with the Data Block this one was made from, or none', () => {
+    expect(defaultReferenceNode(nodes, 'matches')?.id).toBe('women');
+    expect(defaultReferenceNode(nodes, 'corpus')).toBeNull();
+    expect(defaultReferenceNode([node('orphan', 'Orphan', ['gone'])], 'orphan')).toBeNull();
   });
 });
 
