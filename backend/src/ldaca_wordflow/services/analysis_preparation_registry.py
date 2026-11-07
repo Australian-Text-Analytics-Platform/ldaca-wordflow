@@ -10,6 +10,7 @@ import polars as pl
 
 from ..shared.remote_embedding import decode_embedding_run
 from ..analysis.generated_columns import DOCUMENT_POSITION_COLUMNS
+from ..analysis.sequential_core import reference_group_columns
 from ..analysis.token_cache import tokens_cache_path
 from ..domain.workspace import (
     AnalysisRecord,
@@ -194,12 +195,70 @@ def _prepare_sequential(
         )
         _require_trends_axis(schema, request)
         _require_drawable_groups(node.data, schema, request)
+    if request.reference_node_id is not None:
+        _require_reference(request, context)
     return SequentialInput(
         input_snapshot_dir=str(context.snapshot_dir),
         node_id=request.node_id,
         artifact_dir=str(context.artifact_dir),
         request_payload=request.model_dump(mode="json", exclude={"kind", "node_id"}),
+        token_cache_path=(
+            str(tokens_cache_path(context.cache_root))
+            if request.reference_text_column is not None
+            else None
+        ),
     )
+
+
+def _require_reference(
+    request: SequentialAnalysisRequest, context: AnalysisPreparationContext
+) -> None:
+    """Refuse a reference Data Block that cannot supply Trends denominators.
+
+    The reference needs the same time column, binnable the same way, and a
+    text column of plain text when words are counted. Group columns it lacks
+    are allowed: their groups share the period's total. Whether its periods
+    cover the analysed rows is checked on the data by the worker.
+    """
+
+    reference = context.workspace.nodes.get(request.reference_node_id)
+    if reference is None:
+        raise InvalidInputError(
+            "The reference Data Block no longer exists. Choose another, usually "
+            "the Data Block this one was made from."
+        )
+    schema = reference.data.collect_schema()
+    if request.time_column not in schema:
+        raise InvalidInputError(
+            f"The reference Data Block '{reference.name}' has no column "
+            f"'{request.time_column}'. Choose a reference with the same time column, "
+            "usually the Data Block this one was made from."
+        )
+    require_supported_columns(
+        schema, [request.time_column], use="as the reference's time axis"
+    )
+    try:
+        _require_trends_axis(schema, request)
+    except InvalidInputError as exc:
+        raise InvalidInputError(
+            f"The reference Data Block's '{request.time_column}' column is not a "
+            "date, number or category like the analysed Data Block's, so its rows "
+            "can't be counted per period."
+        ) from exc
+    shared, _ignored = reference_group_columns(request.group_by_columns, schema)
+    require_supported_columns(schema, shared, use="to group the reference's totals")
+    if request.reference_text_column is not None:
+        dtype = schema.get(request.reference_text_column)
+        if dtype is None:
+            raise InvalidInputError(
+                f"The reference Data Block has no column "
+                f"'{request.reference_text_column}' to count words in."
+            )
+        if dtype != pl.String:
+            raise InvalidInputError(
+                f"'{request.reference_text_column}' does not hold text, so its "
+                "words can't be counted. Choose a text column of the reference."
+            )
 
 
 # Trends draws one line or bar series per group; far more freezes the page,

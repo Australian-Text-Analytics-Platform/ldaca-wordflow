@@ -511,6 +511,16 @@ const tutorial = {
     anchor: 'help-sequential-legend',
     label: 'Legend',
   },
+  'analysis.sequential-analysis.reference': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-reference',
+    label: 'Reference Data Block',
+  },
+  'analysis.sequential-analysis.show-as': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-show-as',
+    label: 'Show as',
+  },
   'analysis.quotation.tab': {
     file: 'tutorials/quotation.md',
     anchor: 'help-quotation-section',

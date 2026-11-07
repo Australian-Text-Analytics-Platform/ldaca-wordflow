@@ -4943,6 +4943,18 @@ export type SequentialAnalysisRequest = {
      */
     numeric_origin?: number | null;
     /**
+     * Reference Node Id
+     */
+    reference_node_id?: string | null;
+    /**
+     * Reference Text Column
+     */
+    reference_text_column?: string | null;
+    /**
+     * Reference Tokenizer Model
+     */
+    reference_tokenizer_model?: string | null;
+    /**
      * Sort By Time
      */
     sort_by_time?: boolean;
@@ -5020,6 +5032,43 @@ export type SequentialDataBlockCreationSource = {
 };
 
 /**
+ * SequentialReferenceDescriptor
+ *
+ * The reference Data Block a Trends Result was normalised against.
+ *
+ * ``group_by_columns`` are the request's group columns the reference shares,
+ * which split its totals; ``ignored_group_by_columns`` are the rest, whose
+ * groups all share the period's total. ``text_column`` and
+ * ``tokenizer_model`` are set when words were counted.
+ */
+export type SequentialReferenceDescriptor = {
+    /**
+     * Group By Columns
+     */
+    group_by_columns: Array<string>;
+    /**
+     * Ignored Group By Columns
+     */
+    ignored_group_by_columns: Array<string>;
+    /**
+     * Node Id
+     */
+    node_id: string;
+    /**
+     * Node Name
+     */
+    node_name: string;
+    /**
+     * Text Column
+     */
+    text_column?: string | null;
+    /**
+     * Tokenizer Model
+     */
+    tokenizer_model?: string | null;
+};
+
+/**
  * SequentialResult
  */
 export type SequentialResult = {
@@ -5059,6 +5108,7 @@ export type SequentialSourceDescriptor = {
      * Period Count
      */
     period_count: number;
+    reference?: SequentialReferenceDescriptor | null;
 };
 
 /**

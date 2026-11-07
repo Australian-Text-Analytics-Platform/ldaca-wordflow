@@ -86,6 +86,7 @@ def analysis_process(
             node_id=invocation.node_id,
             artifact_dir=invocation.artifact_dir,
             request_payload=invocation.request_payload,
+            token_cache_path=invocation.token_cache_path,
             progress_callback=progress,
         )
     if isinstance(invocation, TopicDataBlockCreationInput):

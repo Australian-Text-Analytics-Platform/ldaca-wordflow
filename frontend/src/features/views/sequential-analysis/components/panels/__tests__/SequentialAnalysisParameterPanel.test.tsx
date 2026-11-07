@@ -11,6 +11,19 @@ vi.mock('@/features/views/common/components/NodeInputsPanel', () => ({
   NodeInputsPanel: () => null,
 }));
 vi.mock('../../UniqueValueCount', () => ({ UniqueValueCount: () => null }));
+vi.mock('../SequentialReferencePanel', () => ({
+  SequentialReferencePanel: () => null,
+}));
+
+const reference = {
+  nodes: [],
+  referenceNodeId: '',
+  onReferenceChange: vi.fn(),
+  referenceTextColumn: '',
+  onReferenceTextColumnChange: vi.fn(),
+  referenceTokenizerModel: '',
+  onReferenceTokenizerModelChange: vi.fn(),
+};
 
 window.HTMLElement.prototype.hasPointerCapture = vi.fn();
 window.HTMLElement.prototype.setPointerCapture = vi.fn();
@@ -38,14 +51,27 @@ const renderPanel = (groupByColumns: string[]) =>
       numericIntervalInput="1"
       onNumericIntervalChange={vi.fn()}
       availableColumns={[
-        { name: 'count', typeName: 'Int64', field: new Field('count', new Int64()) },
-        { name: 'score', typeName: 'Float64', field: new Field('score', new Float64()) },
-        { name: 'legacy_text', typeName: 'Utf8', field: new Field('legacy_text', new Utf8()) },
+        {
+          name: 'count',
+          typeName: 'Int64',
+          field: new Field('count', new Int64()),
+        },
+        {
+          name: 'score',
+          typeName: 'Float64',
+          field: new Field('score', new Float64()),
+        },
+        {
+          name: 'legacy_text',
+          typeName: 'Utf8',
+          field: new Field('legacy_text', new Utf8()),
+        },
       ]}
       groupByColumns={groupByColumns}
       onAddGroupByColumn={vi.fn()}
       onRemoveGroupByColumn={vi.fn()}
       onGroupByColumnChange={vi.fn()}
+      reference={reference}
     />,
   );
 
@@ -73,14 +99,27 @@ describe('SequentialAnalysisParameterPanel', () => {
         numericIntervalInput="1"
         onNumericIntervalChange={vi.fn()}
         availableColumns={[
-          { name: 'count', typeName: 'Int64', field: new Field('count', new Int64()) },
-          { name: 'score', typeName: 'Float64', field: new Field('score', new Float64()) },
-          { name: 'legacy_text', typeName: 'Utf8', field: new Field('legacy_text', new Utf8()) },
+          {
+            name: 'count',
+            typeName: 'Int64',
+            field: new Field('count', new Int64()),
+          },
+          {
+            name: 'score',
+            typeName: 'Float64',
+            field: new Field('score', new Float64()),
+          },
+          {
+            name: 'legacy_text',
+            typeName: 'Utf8',
+            field: new Field('legacy_text', new Utf8()),
+          },
         ]}
         groupByColumns={['']}
         onAddGroupByColumn={vi.fn()}
         onRemoveGroupByColumn={vi.fn()}
         onGroupByColumnChange={vi.fn()}
+        reference={reference}
       />,
     );
 

@@ -267,6 +267,13 @@ class SequentialAnalysisRequest(_StrictModel):
     custom_interval_unit: (
         Literal["seconds", "minutes", "hours", "days", "weeks"] | None
     ) = None
+    # Normalisation against a reference Data Block, usually the corpus the
+    # analysed Data Block was made from: its rows per period and group, and
+    # the words of ``reference_text_column`` counted with
+    # ``reference_tokenizer_model``, give rates such as per million words.
+    reference_node_id: uuid.UUID | None = None
+    reference_text_column: ColumnName | None = Field(default=None, max_length=500)
+    reference_tokenizer_model: ColumnName | None = Field(default=None, max_length=500)
 
     @field_validator("group_by_columns")
     @classmethod
@@ -275,6 +282,25 @@ class SequentialAnalysisRequest(_StrictModel):
         if len(set(columns)) != len(columns):
             raise ValueError("choose each column only once")
         return columns
+
+    @model_validator(mode="after")
+    def validate_reference(self) -> SequentialAnalysisRequest:
+        if self.reference_node_id is None:
+            if self.reference_text_column is not None:
+                raise ValueError("A reference text column needs a reference Data Block")
+            if self.reference_tokenizer_model is not None:
+                raise ValueError("A reference tokeniser needs a reference Data Block")
+            return self
+        if self.reference_node_id == self.node_id:
+            raise ValueError(
+                "The reference must be a different Data Block, usually the one "
+                "this Data Block was made from"
+            )
+        if self.reference_text_column is None and self.reference_tokenizer_model:
+            raise ValueError("A reference tokeniser needs a reference text column")
+        if self.reference_text_column is not None and not self.reference_tokenizer_model:
+            raise ValueError("Choose a tokeniser to count the reference's words")
+        return self
 
     @model_validator(mode="after")
     def validate_interval(self) -> SequentialAnalysisRequest:
@@ -759,6 +785,9 @@ def analysis_input_ids(request: AnalysisRequest) -> tuple[uuid.UUID, ...]:
         ids.append(request.class_node_id)
         if request.example_node_id is not None:
             ids.append(request.example_node_id)
+    if isinstance(request, SequentialAnalysisRequest) and request.reference_node_id:
+        # The reference Data Block's rows and words are the denominators.
+        ids.append(request.reference_node_id)
     return tuple(dict.fromkeys(ids))
 
 

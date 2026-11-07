@@ -246,6 +246,21 @@ Run-All-scoped Analyses directly. Trends and Topic Modelling Data Block Creation
 remain ordinary Supporting Analyses. Trends creates one filtered original-row
 Data Block; Topic Modelling may create multiple ordered output Data Blocks.
 
+A Trends request may name a reference Data Block, usually the one the analysed
+Data Block was made from, with an optional text column and tokeniser model.
+The reference is a snapshot input of the Analysis. Its rows per period, and
+the words of the text column counted with the tokeniser, are grouped by the
+period and by the group columns the reference shares; group columns it lacks
+are recorded as ignored and their groups share the period's total. With a
+reference the Result holds every period of either Data Block for every group,
+so a period with reference text but no rows is a zero, and the publication
+artifact still holds only the analysed rows. Submission refuses a reference
+without the time column or with one of another kind; execution refuses one
+with no rows in a period and group where the analysed Data Block has some, or
+with fewer words there than the analysed rows. The rates themselves (per
+million words, per 100,000 words, share of reference rows) and the composition
+share are display scales computed by the client from the stored counts.
+
 A Topic Modelling Analysis request owns one embedding model, segmentation
 method, maximum token count, and HDBSCAN minimum cluster size for all selected
 Data Blocks. The maximum token count cannot exceed the embedding model's limit

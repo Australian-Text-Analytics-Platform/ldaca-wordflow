@@ -19,6 +19,10 @@ export interface SequentialHydratedParams {
   numericInterval: number | null;
   customIntervalValue: number | null;
   customIntervalUnit: SequentialCustomIntervalUnit | null;
+  /** The reference Data Block the result was normalised against, if any. */
+  referenceNodeId: string | null;
+  referenceTextColumn: string | null;
+  referenceTokenizerModel: string | null;
 }
 
 export interface SequentialParameterValues {
@@ -35,6 +39,9 @@ export interface SequentialParameterValues {
     numeric_interval: number | null;
     custom_interval_value: number | null;
     custom_interval_unit: SequentialCustomIntervalUnit | null;
+    reference_node_id: string | null;
+    reference_text_column: string | null;
+    reference_tokenizer_model: string | null;
   };
 }
 
@@ -45,6 +52,14 @@ export interface SequentialParameterDraftState {
   numericIntervalInput: string;
   customIntervalValueInput: string;
   customIntervalUnit: SequentialCustomIntervalUnit;
+  /**
+   * Normalise against a reference Data Block, usually the one the analysed
+   * Data Block was made from: empty for none. Its text column, when set, has
+   * its words counted with the tokeniser.
+   */
+  referenceNodeId: string;
+  referenceTextColumn: string;
+  referenceTokenizerModel: string;
 }
 
 interface SequentialParameterState extends SequentialParameterDraftState {
@@ -102,6 +117,11 @@ export function deriveSequentialParameterValues(
   const customIntervalUnitValue: SequentialCustomIntervalUnit | null = isCustomDatetime
     ? elapsedUnit(derivedColumnType, state.customIntervalUnit)
     : null;
+  const referenceNodeId = state.referenceNodeId.trim() || null;
+  const referenceTextColumn =
+    referenceNodeId === null ? null : state.referenceTextColumn.trim() || null;
+  const referenceTokenizerModel =
+    referenceTextColumn === null ? null : state.referenceTokenizerModel.trim() || null;
 
   return {
     numericOriginValue,
@@ -117,6 +137,9 @@ export function deriveSequentialParameterValues(
       numeric_interval: derivedColumnType === 'numeric' ? numericIntervalValue : null,
       custom_interval_value: isCustomDatetime ? customIntervalValue : null,
       custom_interval_unit: isCustomDatetime ? customIntervalUnitValue : null,
+      reference_node_id: referenceNodeId,
+      reference_text_column: referenceTextColumn,
+      reference_tokenizer_model: referenceTokenizerModel,
     },
   };
 }
@@ -129,6 +152,9 @@ const INITIAL_SEQUENTIAL_PARAMETER_STATE: SequentialParameterState = {
   numericIntervalInput: '1',
   customIntervalValueInput: '1',
   customIntervalUnit: 'minutes',
+  referenceNodeId: '',
+  referenceTextColumn: '',
+  referenceTokenizerModel: '',
 };
 
 type SequentialParameterAction =
@@ -139,6 +165,14 @@ type SequentialParameterAction =
   | { type: 'set-numeric-interval-input'; value: string }
   | { type: 'set-custom-interval-value-input'; value: string }
   | { type: 'set-custom-interval-unit'; value: SequentialCustomIntervalUnit }
+  | {
+      type: 'set-reference';
+      nodeId: string;
+      textColumn: string;
+      tokenizerModel: string;
+    }
+  | { type: 'set-reference-text-column'; value: string }
+  | { type: 'set-reference-tokenizer-model'; value: string }
   | { type: 'add-group-by-column' }
   | { type: 'remove-group-by-column'; index: number }
   | { type: 'change-group-by-column'; index: number; value: string }
@@ -169,6 +203,22 @@ const sequentialParameterReducer = (
       return { ...state, customIntervalValueInput: action.value };
     case 'set-custom-interval-unit':
       return { ...state, customIntervalUnit: action.value };
+    case 'set-reference':
+      return {
+        ...state,
+        referenceNodeId: action.nodeId,
+        referenceTextColumn: action.textColumn,
+        referenceTokenizerModel: action.tokenizerModel,
+      };
+    case 'set-reference-text-column':
+      // The tokeniser follows the column's language, so it is chosen again.
+      return {
+        ...state,
+        referenceTextColumn: action.value,
+        referenceTokenizerModel: '',
+      };
+    case 'set-reference-tokenizer-model':
+      return { ...state, referenceTokenizerModel: action.value };
     case 'add-group-by-column':
       return state.groupByColumns.length < 3
         ? { ...state, groupByColumns: [...state.groupByColumns, ''] }
@@ -207,6 +257,9 @@ export function readSequentialServerParams(request: SequentialAnalysisRequest) {
     numeric_interval: serverColumnType === 'numeric' ? (request.numeric_interval ?? null) : null,
     custom_interval_value: serverIsCustomDatetime ? (request.custom_interval_value ?? null) : null,
     custom_interval_unit: serverIsCustomDatetime ? (request.custom_interval_unit ?? null) : null,
+    reference_node_id: request.reference_node_id ?? null,
+    reference_text_column: request.reference_text_column ?? null,
+    reference_tokenizer_model: request.reference_tokenizer_model ?? null,
   };
 }
 
@@ -244,6 +297,11 @@ function resolveHydratedSequentialParameters(req: SequentialAnalysisRequest): {
     timeBins && frequency === 'custom' && req.custom_interval_unit != null
       ? req.custom_interval_unit
       : null;
+  const referenceNodeId = req.reference_node_id ?? null;
+  const referenceTextColumn = referenceNodeId ? (req.reference_text_column ?? null) : null;
+  const referenceTokenizerModel = referenceTextColumn
+    ? (req.reference_tokenizer_model ?? null)
+    : null;
   return {
     nodeId,
     columnType,
@@ -261,6 +319,9 @@ function resolveHydratedSequentialParameters(req: SequentialAnalysisRequest): {
           : '1',
       customIntervalUnit:
         frequency === 'custom' && timeBins ? (customIntervalUnit ?? 'minutes') : 'minutes',
+      referenceNodeId: referenceNodeId ?? '',
+      referenceTextColumn: referenceTextColumn ?? '',
+      referenceTokenizerModel: referenceTokenizerModel ?? '',
     },
     hydratedParams: {
       timeColumn,
@@ -271,6 +332,9 @@ function resolveHydratedSequentialParameters(req: SequentialAnalysisRequest): {
       numericInterval,
       customIntervalValue,
       customIntervalUnit,
+      referenceNodeId,
+      referenceTextColumn,
+      referenceTokenizerModel,
     },
   };
 }
@@ -307,6 +371,21 @@ export function useSequentialAnalysisParameters() {
   }, []);
   const setCustomIntervalUnit = useCallback((value: SequentialCustomIntervalUnit) => {
     dispatch({ type: 'set-custom-interval-unit', value });
+  }, []);
+  /**
+   * Chooses the reference Data Block with its starting text column and
+   * tokeniser (the Data Block's own document column and tokeniser preference),
+   * or none with an empty id.
+   * Called by: SequentialReferencePanel through SequentialAnalysisFeature.
+   */
+  const setReference = useCallback((nodeId: string, textColumn = '', tokenizerModel = '') => {
+    dispatch({ type: 'set-reference', nodeId, textColumn, tokenizerModel });
+  }, []);
+  const setReferenceTextColumn = useCallback((value: string) => {
+    dispatch({ type: 'set-reference-text-column', value });
+  }, []);
+  const setReferenceTokenizerModel = useCallback((value: string) => {
+    dispatch({ type: 'set-reference-tokenizer-model', value });
   }, []);
 
   /**
@@ -361,6 +440,12 @@ export function useSequentialAnalysisParameters() {
     setCustomIntervalValueInput,
     customIntervalUnit: state.customIntervalUnit,
     setCustomIntervalUnit,
+    referenceNodeId: state.referenceNodeId,
+    referenceTextColumn: state.referenceTextColumn,
+    referenceTokenizerModel: state.referenceTokenizerModel,
+    setReference,
+    setReferenceTextColumn,
+    setReferenceTokenizerModel,
     addGroupByColumn,
     removeGroupByColumn,
     changeGroupByColumn,

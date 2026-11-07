@@ -440,6 +440,23 @@ class QuotationResult(_StrictModel):
     result: PreviewReadyResult
 
 
+class SequentialReferenceDescriptor(_StrictModel):
+    """The reference Data Block a Trends Result was normalised against.
+
+    ``group_by_columns`` are the request's group columns the reference shares,
+    which split its totals; ``ignored_group_by_columns`` are the rest, whose
+    groups all share the period's total. ``text_column`` and
+    ``tokenizer_model`` are set when words were counted.
+    """
+
+    node_id: uuid.UUID
+    node_name: NodeName
+    text_column: str | None = Field(default=None, max_length=500)
+    tokenizer_model: str | None = Field(default=None, max_length=500)
+    group_by_columns: list[str]
+    ignored_group_by_columns: list[str]
+
+
 class SequentialSourceDescriptor(_StrictModel):
     node_id: uuid.UUID
     node_name: NodeName
@@ -447,6 +464,7 @@ class SequentialSourceDescriptor(_StrictModel):
     columns: list[str] = Field(min_length=1)
     period_count: int = Field(ge=0)
     group_count: int = Field(ge=0)
+    reference: SequentialReferenceDescriptor | None = None
 
     @model_validator(mode="after")
     def validate_columns(self) -> SequentialSourceDescriptor:

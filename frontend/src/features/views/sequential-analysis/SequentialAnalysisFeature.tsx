@@ -32,7 +32,11 @@ import { getAnalysisResultResource } from '../common/analysisApi';
 import { AnalysisCardLayout } from '../common/components/AnalysisCardLayout';
 import { useSequentialAnalysisTaskFlow } from './hooks/useSequentialAnalysisTaskFlow';
 import { buildSequentialChartExportMetadata } from './hooks/sequentialChartExport';
-import { buildSequentialChartModel, type ChartTypeOption } from './hooks/sequentialChartModel';
+import {
+  buildSequentialChartModel,
+  type ChartTypeOption,
+  type SequentialScale,
+} from './hooks/sequentialChartModel';
 import {
   deriveSequentialParameterValues,
   readSequentialServerParams,
@@ -77,7 +81,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   } = host;
   const tabTaskId = latestRunAll?.id ?? null;
   const queryClient = useQueryClient();
-  const { currentWorkspaceId } = useWorkspaceData();
+  const { currentWorkspaceId, nodes: workspaceNodes } = useWorkspaceData();
   const { createResultDataBlocks } = useWorkspaceActions();
   const { isLoading } = useWorkspaceStatus();
 
@@ -113,6 +117,11 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     setCustomIntervalValueInput,
     customIntervalUnit,
     setCustomIntervalUnit,
+    referenceTextColumn,
+    setReference,
+    setReferenceTextColumn,
+    referenceTokenizerModel,
+    setReferenceTokenizerModel,
   } = sequentialParameters;
   const savedChartType = host.settings['sequential.chartType'];
   const [chartType, setChartTypeState] = useState<ChartTypeOption>(
@@ -126,11 +135,22 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     setChartTypeState(value);
     host.setSetting('sequential.chartType', value);
   };
-  // Kept per tab like the chart type; off by default (issue 219).
-  const [normalise, setNormaliseState] = useState(host.settings['sequential.normalise'] === 'true');
-  const setNormalise = (value: boolean) => {
-    setNormaliseState(value);
-    host.setSetting('sequential.normalise', value ? 'true' : 'false');
+  // Show as, kept per tab like the chart type; counts by default. A tab saved
+  // with the former Normalise to 100% toggle on reopens as Composition.
+  const savedScale = host.settings['sequential.scale'];
+  const [scale, setScaleState] = useState<SequentialScale>(
+    savedScale === 'composition' ||
+      savedScale === 'per-million-words' ||
+      savedScale === 'per-100k-words' ||
+      savedScale === 'percent-of-rows'
+      ? savedScale
+      : host.settings['sequential.normalise'] === 'true'
+        ? 'composition'
+        : 'count',
+  );
+  const setScale = (value: SequentialScale) => {
+    setScaleState(value);
+    host.setSetting('sequential.scale', value);
   };
   const chartControls = useSequentialChartControls(tabTaskId);
   const {
@@ -245,13 +265,22 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
           : 'datetime';
   // A Date column has no time of day, so sub-day periods do not apply (issue 187).
   const timeColumnIsDate = Boolean(activeColumnField && isArrowDateField(activeColumnField));
+  // A Data Block cannot be its own reference: when the analysed Data Block
+  // changes to the chosen reference, the reference reads as none.
+  const referenceNodeId =
+    sequentialParameters.referenceNodeId === activeNodeId
+      ? ''
+      : sequentialParameters.referenceNodeId;
   const {
     numericOriginValue,
     numericIntervalValue,
     customIntervalValue,
     customIntervalUnitValue,
     currentSequentialParams,
-  } = deriveSequentialParameterValues(sequentialParameters, derivedColumnType);
+  } = deriveSequentialParameterValues(
+    { ...sequentialParameters, referenceNodeId },
+    derivedColumnType,
+  );
 
   const lastRunRequest = serverRequest ?? null;
   const serverNodeId =
@@ -332,6 +361,9 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
         numericOriginInput,
         customIntervalValue,
         customIntervalUnit: customIntervalUnitValue,
+        referenceNodeId: currentSequentialParams.reference_node_id,
+        referenceTextColumn: currentSequentialParams.reference_text_column,
+        referenceTokenizerModel: currentSequentialParams.reference_tokenizer_model,
       },
       actions: {
         runAnalysis,
@@ -393,7 +425,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     excludedGroupIndices,
     selectedPeriodIndices,
     ungroupedLabel: resultNodeInfo?.name,
-    normalise,
+    scale,
   });
   const { summary } = chartModel;
 
@@ -421,7 +453,9 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding the Trends selection to the Project.');
     } catch (cause) {
-      toastError(cause, 'Try again.', { title: "Couldn't add the Trends selection." });
+      toastError(cause, 'Try again.', {
+        title: "Couldn't add the Trends selection.",
+      });
     } finally {
       setIsAddingToWorkspace(false);
     }
@@ -438,7 +472,10 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     }
     const nodeName =
       resultNodeInfo?.name ?? panelSelectedNodes[0]?.name ?? panelSelectedNodes[0]?.id ?? 'data';
-    const { header } = buildSequentialChartExportMetadata({ nodeName, model: chartModel });
+    const { header } = buildSequentialChartExportMetadata({
+      nodeName,
+      model: chartModel,
+    });
     try {
       await downloadChartAsHtml(chartContainerRef.current, {
         nodeName,
@@ -571,6 +608,20 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
             onAddGroupByColumn={sequentialParameters.addGroupByColumn}
             onRemoveGroupByColumn={sequentialParameters.removeGroupByColumn}
             onGroupByColumnChange={sequentialParameters.changeGroupByColumn}
+            reference={{
+              nodes: workspaceNodes,
+              referenceNodeId,
+              // A chosen Data Block starts with its document column and its
+              // tokeniser preference, as Frequency would count its words.
+              onReferenceChange: (node) => {
+                if (node) setReference(node.id, node.document ?? '', node.tokenizer_model ?? '');
+                else setReference('');
+              },
+              referenceTextColumn,
+              onReferenceTextColumnChange: setReferenceTextColumn,
+              referenceTokenizerModel,
+              onReferenceTokenizerModelChange: setReferenceTokenizerModel,
+            }}
           />
         </AnalysisCardLayout>
       }
@@ -607,7 +658,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
             handleChartTypeChange(value);
           }}
           onXAxisTypeChange={setXAxisType}
-          onNormaliseChange={setNormalise}
+          onScaleChange={setScale}
           onDownloadClick={() => {
             setDownloadDialogOpen(true);
           }}

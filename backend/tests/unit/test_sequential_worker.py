@@ -90,6 +90,7 @@ def test_sequential_worker_validates_and_executes_the_typed_request(
         "columns": ["occurred_at", "text", "group"],
         "period_count": 1,
         "group_count": 1,
+        "reference": None,
     }
 
 

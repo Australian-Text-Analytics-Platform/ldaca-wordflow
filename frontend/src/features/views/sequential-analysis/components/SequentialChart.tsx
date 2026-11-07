@@ -4,7 +4,11 @@ import React from 'react';
 import { MultiSeriesChart } from '@/features/views/common/components/MultiSeriesChart';
 import { FilterableSeriesControls } from '@/features/views/common/components/FilterableSeriesControls';
 import { Input } from '@/components/ui/input';
-import type { SequentialChartModel } from '../hooks/sequentialChartModel';
+import {
+  SEQUENTIAL_SCALE_AXIS_NAMES,
+  referenceNote,
+  type SequentialChartModel,
+} from '../hooks/sequentialChartModel';
 import { portableFormatter } from '@/lib/chartHtml/portableFormatter';
 
 interface SequentialChartProps {
@@ -96,26 +100,32 @@ export function SequentialChart({
                   yAxis={{
                     // Trends counts rows: documents for a corpus, matches for a
                     // Concordance Data Block (issue 346).
-                    name: model.normalised ? '% of rows' : 'Rows',
+                    name: SEQUENTIAL_SCALE_AXIS_NAMES[model.scale],
                     nameLocation: 'end',
                     nameGap: 8,
                     nameTextStyle: {
                       color: 'var(--vscode-charts-foreground)',
                       align: 'left',
                     },
-                    ...(model.normalised
+                    ...(model.scale === 'composition' || model.scale === 'percent-of-rows'
                       ? {
                           min: 0,
                           // Stacked areas and bars of every group reach 100%.
-                          ...(model.chartType === 'area' || model.chartType === 'stacked-bar'
+                          ...(model.scale === 'composition' &&
+                          (model.chartType === 'area' || model.chartType === 'stacked-bar')
                             ? { max: 100 }
                             : {}),
                           axisLabel: {
-                            formatter: portableFormatter({ kind: 'percent', round: false }),
+                            formatter: portableFormatter({
+                              kind: 'percent',
+                              round: false,
+                            }),
                           },
                         }
-                      : // Counts are whole numbers, so no 0.5 ticks on small counts.
-                        { minInterval: 1 }),
+                      : model.scale === 'count'
+                        ? // Counts are whole numbers, so no 0.5 ticks on small counts.
+                          { minInterval: 1 }
+                        : { min: 0 }),
                   }}
                   selection={{
                     selectedIndices: model.selection.selectedIndices,
@@ -136,10 +146,19 @@ export function SequentialChart({
           )}
         </ResultFrame>
       )}
-      {model.normalised && !allGroupsFiltered ? (
+      {model.scale === 'composition' && !allGroupsFiltered ? (
         <p className="mt-2 text-label-secondary text-description">
           Each period adds up to 100% across the groups listed below, hidden ones included, so
           hiding a group does not change the others. A period with no rows is left blank.
+        </p>
+      ) : null}
+      {model.scale !== 'composition' &&
+      model.scale !== 'count' &&
+      model.summary.reference &&
+      !allGroupsFiltered ? (
+        <p className="mt-2 text-label-secondary text-description">
+          {referenceNote(model.summary.reference, model.scale === 'percent-of-rows')} A period with
+          no reference total is left blank.
         </p>
       ) : null}
       <div className="mt-4">

@@ -18,6 +18,10 @@ import type { SequentialAnalysisRequest } from '@/api';
 import { arrowTypeDisplayName, type ArrowField } from '@/lib/arrow/arrowTable';
 import { UniqueValueCount } from '../UniqueValueCount';
 import { elapsedFrequency, elapsedUnit } from '../../trendsAxisColumns';
+import {
+  SequentialReferencePanel,
+  type SequentialReferencePanelProps,
+} from './SequentialReferencePanel';
 
 type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custom_interval_unit']>;
@@ -41,7 +45,10 @@ const FREQUENCY_LABELS: Record<SequentialFrequency, string> = {
 };
 
 /** Supported datetime buckets, ordered from finest to coarsest. */
-const DEFAULT_FREQUENCY_OPTIONS: { value: SequentialFrequency; label: string }[] = [
+const DEFAULT_FREQUENCY_OPTIONS: {
+  value: SequentialFrequency;
+  label: string;
+}[] = [
   { value: 'second', label: FREQUENCY_LABELS.second },
   { value: 'minute', label: FREQUENCY_LABELS.minute },
   { value: 'hourly', label: FREQUENCY_LABELS.hourly },
@@ -102,6 +109,9 @@ export interface SequentialAnalysisParameterPanelProps {
   onAddGroupByColumn: () => void;
   onRemoveGroupByColumn: (index: number) => void;
   onGroupByColumnChange: (index: number, value: string) => void;
+
+  // Reference Data Block for rates such as per million words
+  reference: Omit<SequentialReferencePanelProps, 'workspaceId' | 'activeNodeId' | 'disabled'>;
 }
 
 /**
@@ -135,6 +145,7 @@ export function SequentialAnalysisParameterPanel({
   onAddGroupByColumn,
   onRemoveGroupByColumn,
   onGroupByColumnChange,
+  reference,
 }: SequentialAnalysisParameterPanelProps) {
   return (
     <>
@@ -351,6 +362,13 @@ export function SequentialAnalysisParameterPanel({
             </div>
           ))}
         </div>
+
+        <SequentialReferencePanel
+          {...reference}
+          workspaceId={currentWorkspaceId ?? null}
+          activeNodeId={activeNodeId ?? ''}
+          disabled={inputsDisabled}
+        />
       </div>
     </>
   );

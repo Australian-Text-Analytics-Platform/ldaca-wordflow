@@ -56,6 +56,8 @@ class SequentialInput:
     node_id: uuid.UUID
     artifact_dir: str
     request_payload: dict[str, Any]
+    # For counting a reference Data Block's words with a model tokeniser.
+    token_cache_path: str | None = None
     kind: Literal["sequential"] = field(default="sequential", init=False)
 
 

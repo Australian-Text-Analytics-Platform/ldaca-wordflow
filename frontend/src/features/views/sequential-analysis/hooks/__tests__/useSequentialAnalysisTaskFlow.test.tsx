@@ -46,6 +46,9 @@ describe('useSequentialAnalysisTaskFlow', () => {
           numericOriginInput: '',
           customIntervalValue: null,
           customIntervalUnit: null,
+          referenceNodeId: null,
+          referenceTextColumn: null,
+          referenceTokenizerModel: null,
         },
         actions: {
           runAnalysis,
@@ -64,7 +67,9 @@ describe('useSequentialAnalysisTaskFlow', () => {
     expect(submitTabAnalysis).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
-          request: expect.not.objectContaining({ case_sensitive: expect.anything() }),
+          request: expect.not.objectContaining({
+            case_sensitive: expect.anything(),
+          }),
         }),
       }),
     );

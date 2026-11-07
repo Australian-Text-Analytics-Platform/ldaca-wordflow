@@ -91,7 +91,10 @@ describe('buildSequentialChartExportMetadata', () => {
       selectedPeriodIndices: new Set(),
     });
 
-    const metadata = buildSequentialChartExportMetadata({ nodeName: 'Interviews', model });
+    const metadata = buildSequentialChartExportMetadata({
+      nodeName: 'Interviews',
+      model,
+    });
 
     expect(metadata.header).toEqual([
       { label: 'Data Block', value: 'Interviews' },
@@ -100,7 +103,12 @@ describe('buildSequentialChartExportMetadata', () => {
       { label: 'Groups', value: 'speaker' },
     ]);
     expect(metadata.legend).toEqual([
-      { label: 'Grace (3 · 100.0% · Hidden)', color: '#16a34a', type: 'area', hidden: true },
+      {
+        label: 'Grace (3 · 100.0% · Hidden)',
+        color: '#16a34a',
+        type: 'area',
+        hidden: true,
+      },
     ]);
   });
 
@@ -133,9 +141,12 @@ describe('buildSequentialChartExportMetadata', () => {
       uncased: false,
       excludedGroupIndices: new Set(),
       selectedPeriodIndices: new Set(),
-      normalise: true,
+      scale: 'composition',
     });
-    const { header } = buildSequentialChartExportMetadata({ nodeName: 'speeches', model });
+    const { header } = buildSequentialChartExportMetadata({
+      nodeName: 'speeches',
+      model,
+    });
     expect(header.at(-1)).toEqual({
       label: 'Values',
       value: 'Percentage of all rows in each period',

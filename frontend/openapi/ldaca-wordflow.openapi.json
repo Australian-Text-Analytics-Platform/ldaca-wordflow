@@ -9561,6 +9561,44 @@
             ],
             "title": "Numeric Origin"
           },
+          "reference_node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Node Id"
+          },
+          "reference_text_column": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Text Column"
+          },
+          "reference_tokenizer_model": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Tokenizer Model"
+          },
           "sort_by_time": {
             "default": true,
             "title": "Sort By Time",
@@ -9702,6 +9740,69 @@
         "title": "SequentialDataBlockCreationSource",
         "type": "object"
       },
+      "SequentialReferenceDescriptor": {
+        "additionalProperties": false,
+        "description": "The reference Data Block a Trends Result was normalised against.\n\n``group_by_columns`` are the request's group columns the reference shares,\nwhich split its totals; ``ignored_group_by_columns`` are the rest, whose\ngroups all share the period's total. ``text_column`` and\n``tokenizer_model`` are set when words were counted.",
+        "properties": {
+          "group_by_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Group By Columns",
+            "type": "array"
+          },
+          "ignored_group_by_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ignored Group By Columns",
+            "type": "array"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "node_name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Node Name",
+            "type": "string"
+          },
+          "text_column": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Column"
+          },
+          "tokenizer_model": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenizer Model"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_name",
+          "group_by_columns",
+          "ignored_group_by_columns"
+        ],
+        "title": "SequentialReferenceDescriptor",
+        "type": "object"
+      },
       "SequentialResult": {
         "additionalProperties": false,
         "properties": {
@@ -9768,6 +9869,16 @@
             "minimum": 0.0,
             "title": "Period Count",
             "type": "integer"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SequentialReferenceDescriptor"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -14145,7 +14256,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "LDaCA Wordflow API",
-    "version": "0.7.15"
+    "version": "0.7.19"
   },
   "openapi": "3.1.0",
   "paths": {
