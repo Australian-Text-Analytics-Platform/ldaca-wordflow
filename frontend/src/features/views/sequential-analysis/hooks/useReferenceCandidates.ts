@@ -16,12 +16,14 @@ interface ReferenceCandidatesArgs {
 }
 
 /**
- * The Data Blocks the reference picker offers: the ones whose columns include
- * the time column, binnable the same way, so their rows can be counted per
- * period like the analysed ones (Chao). A Data Block whose columns are not
- * known yet stays offered, so a saved reference is not dropped while they
- * load; one known to lack the column is excluded, and a chosen one reads as
- * none. Without a time column every Data Block is offered.
+ * The Data Blocks the reference picker chooses from: the ones whose columns
+ * include the time column, binnable the same way, so their rows can be
+ * counted per period like the analysed ones (Chao). A Data Block whose
+ * columns are not known yet stays offered, so a saved reference is not
+ * dropped while they load; one known to lack the column is excluded, and a
+ * chosen one reads as none. Without a time column every Data Block is
+ * offered. The analysed Data Block stays in the list, never offered, so the
+ * picker can walk its lineage to mark the Data Blocks it was made from.
  */
 export function useReferenceCandidates({
   workspaceId,
@@ -30,19 +32,19 @@ export function useReferenceCandidates({
   timeColumn,
   columnType,
 }: ReferenceCandidatesArgs): { nodes: WorkspaceNodeInfo[]; excluded: Set<string> } {
-  const others = nodes.filter((node) => node.id !== activeNodeId);
   const schemas = useQueries({
-    queries: others.map((node) => ({
+    queries: nodes.map((node) => ({
       ...nodeSchemaQueryOptions({ workspaceId: workspaceId ?? '', nodeId: node.id }),
-      enabled: Boolean(workspaceId && timeColumn),
+      enabled: Boolean(workspaceId && timeColumn && node.id !== activeNodeId),
     })),
   });
   const excluded = new Set<string>();
   const offered: WorkspaceNodeInfo[] = [];
-  others.forEach((node, index) => {
-    const matches = timeColumn
-      ? referenceAxisMatches(schemas[index]?.data, timeColumn, columnType)
-      : true;
+  nodes.forEach((node, index) => {
+    const matches =
+      timeColumn && node.id !== activeNodeId
+        ? referenceAxisMatches(schemas[index]?.data, timeColumn, columnType)
+        : true;
     if (matches === false) excluded.add(node.id);
     else offered.push(node);
   });
