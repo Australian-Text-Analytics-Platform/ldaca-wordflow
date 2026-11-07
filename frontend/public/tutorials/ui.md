@@ -374,7 +374,10 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
     minutes: reading takes most of a first run, so **Stop**, then lower
     **Sampling** to read fewer documents;
   - a Topic Modelling input is large (from about 15,700 documents or 66,000
-    passages): a sample of documents or passages gives a faster first run.
+    passages): a sample of documents or passages gives a faster first run;
+  - a Trends rate divides by a reference Data Block that lacks one of the
+    Group By columns, so its groups share each period's total: the note under
+    the chart says which columns the totals are grouped by.
 - Clicking a disabled **Run** outlines what it is waiting for, such as an
   empty **Tokeniser model** in Frequency.
 - Suggestions are turned off, and back on, under **Settings → Guidance**

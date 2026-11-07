@@ -4,6 +4,7 @@ import {
   buildSequentialChartModel,
   type BuildSequentialChartModelInput,
   type SequentialResultSummaryFallbacks,
+  referenceNote,
 } from '../sequentialChartModel';
 
 const fallbacks: SequentialResultSummaryFallbacks = {
@@ -689,6 +690,33 @@ describe('buildSequentialChartModel', () => {
     };
     const groupId = (model: ReturnType<typeof build>, label: string) =>
       model.groups.find((group) => group.label === label)?.id ?? '';
+
+    it('notes what the rates divide by, and the Group By columns the reference lacks', () => {
+      const model = build(results, { scale: 'per-million-words' });
+      expect(model.summary.reference && referenceNote(model.summary.reference, false)).toEqual({
+        divides:
+          "Rates divide each group's rows by the words in 'text' (Plain words) of 'Corpus' in the same period and 'gender'.",
+        missing: {
+          columns: "'term' is not in the reference",
+          effect: ", so every group of it shares the period's total.",
+        },
+      });
+      const grouped = build(
+        {
+          ...results,
+          source: {
+            ...results.source,
+            reference: { ...results.source.reference, ignored_group_by_columns: [] },
+          },
+        },
+        { scale: 'percent-of-rows' },
+      );
+      expect(grouped.summary.reference && referenceNote(grouped.summary.reference, true)).toEqual({
+        divides:
+          "Rates divide each group's rows by the rows of 'Corpus' in the same period and 'gender'.",
+        missing: null,
+      });
+    });
 
     it('reads reference totals the Arrow decoder hands over as Int64 digit strings', () => {
       const decoded = {

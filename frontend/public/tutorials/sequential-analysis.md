@@ -111,7 +111,9 @@ With a reference chosen:
   column the reference also has, such as a speaker or a party column that
   Concordance copied from it. A Group By column the reference lacks, usually
   `CONC_matched_text`, cannot split its totals, so every search term shares
-  the period's total. The result says which columns were used.
+  the period's total. The note under the chart names such a column in bold,
+  and with **Suggestions** on a suggestion beside the chart points to the note
+  whenever a rate is shown that way.
 - Counting the words of a large corpus with a model tokeniser takes time on
   the first run; later runs reuse the cached tokens.
 

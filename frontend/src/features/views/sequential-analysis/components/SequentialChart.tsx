@@ -1,4 +1,6 @@
 import { ResultChartFit, ResultFrame } from '@/features/views/common/components/ResultFrame';
+import { NudgeCard } from '@/features/nudges/NudgeCard';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
 import React from 'react';
 
 import { MultiSeriesChart } from '@/features/views/common/components/MultiSeriesChart';
@@ -7,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import {
   SEQUENTIAL_SCALE_AXIS_NAMES,
   referenceNote,
+  type SequentialReferenceSummary,
   type SequentialChartModel,
 } from '../hooks/sequentialChartModel';
 import { portableFormatter } from '@/lib/chartHtml/portableFormatter';
@@ -38,6 +41,19 @@ const TRENDS_LEGEND_HELP = {
  * row/axis/series/legend shaping; this component only binds ECharts selection,
  * legend clicks, resize container identity, and chart selection controls.
  */
+
+/** The note under a rate chart, with the Group By columns the reference lacks in bold. */
+function referenceNoteText(reference: SequentialReferenceSummary, rows: boolean) {
+  const note = referenceNote(reference, rows);
+  if (!note.missing) return note.divides;
+  return (
+    <>
+      {note.divides} <strong>{note.missing.columns}</strong>
+      {note.missing.effect}
+    </>
+  );
+}
+
 export function SequentialChart({
   model,
   onToggleGroupIndices,
@@ -156,10 +172,23 @@ export function SequentialChart({
       model.scale !== 'count' &&
       model.summary.reference &&
       !allGroupsFiltered ? (
-        <p className="mt-2 text-label-secondary text-description">
-          {referenceNote(model.summary.reference, model.scale === 'percent-of-rows')} A period with
-          no reference total is left blank.
-        </p>
+        <>
+          <p
+            className="mt-2 text-label-secondary text-description"
+            data-nudge-target={NUDGE_TARGETS.trendsReferenceNote}
+          >
+            {referenceNoteText(model.summary.reference, model.scale === 'percent-of-rows')} A period
+            with no reference total is left blank.
+          </p>
+          {model.summary.reference.ignoredGroupBy.length > 0 ? (
+            <NudgeCard
+              id="trends-reference-grouping"
+              occurrence={dataResetKey}
+              detail={`${referenceNote(model.summary.reference, false).missing?.columns ?? ''}.`}
+              className="mt-2"
+            />
+          ) : null}
+        </>
       ) : null}
       <div className="mt-4">
         <FilterableSeriesControls

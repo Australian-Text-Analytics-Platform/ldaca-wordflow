@@ -20,6 +20,7 @@ export const NUDGE_TARGETS = {
   topicRemoteGpu: 'topic-remote-gpu',
   tokenizer: 'tokenizer-model',
   exportFormat: 'export-format',
+  trendsReferenceNote: 'trends-reference-note',
 } as const;
 
 /**
@@ -140,6 +141,15 @@ export const NUDGES = {
       'The English model mostly matches shared characters in these languages. The Multilingual model understands them, reading up to 128 tokens per passage.',
     help: 'analysis.topic-modeling.embedding-model',
     targets: [NUDGE_TARGETS.topicEmbeddingModel],
+  },
+  'trends-reference-grouping': {
+    title: 'Some groups share a total',
+    // Shown with a rate whose reference lacks a Group By column; the detail
+    // names the column. The note under the chart, outlined, says the rest.
+    message:
+      'The groups of that column divide by the whole period’s total rather than their own. The note under the chart says what the rates divide by.',
+    help: 'analysis.sequential-analysis.reference',
+    targets: [NUDGE_TARGETS.trendsReferenceNote],
   },
   'excel-cell-limit': {
     title: 'Too long for Excel',

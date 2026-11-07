@@ -55,18 +55,38 @@ const referenceMeasure = (reference: SequentialReferenceSummary, rows: boolean):
     : `words in '${reference.textColumn}' (${tokenizerModelLabel(reference.tokenizerModel)})`;
 
 /** The sentence under a chart that shows rates, naming what they divide by. */
-export function referenceNote(reference: SequentialReferenceSummary, rows: boolean): string {
+export interface SequentialReferenceNote {
+  /** What the rates divide by, and how the totals are grouped. */
+  divides: string;
+  /**
+   * The Group By columns the reference lacks, whose groups share a period's
+   * total: the clause to stress, then its consequence. Null when the totals
+   * are grouped like the result.
+   */
+  missing: { columns: string; effect: string } | null;
+}
+
+export function referenceNote(
+  reference: SequentialReferenceSummary,
+  rows: boolean,
+): SequentialReferenceNote {
   const by =
     reference.groupBy.length > 0
       ? `period and ${reference.groupBy.map((column) => `'${column}'`).join(', ')}`
       : 'period';
-  const ignored =
+  const missing =
     reference.ignoredGroupBy.length > 0
-      ? ` ${reference.ignoredGroupBy.map((column) => `'${column}'`).join(', ')} ${
-          reference.ignoredGroupBy.length === 1 ? 'is' : 'are'
-        } not in the reference, so every group of it shares the period's total.`
-      : '';
-  return `Rates divide each group's rows by the ${referenceMeasure(reference, rows)} of '${reference.nodeName}' in the same ${by}.${ignored}`;
+      ? {
+          columns: `${reference.ignoredGroupBy.map((column) => `'${column}'`).join(', ')} ${
+            reference.ignoredGroupBy.length === 1 ? 'is' : 'are'
+          } not in the reference`,
+          effect: ", so every group of it shares the period's total.",
+        }
+      : null;
+  return {
+    divides: `Rates divide each group's rows by the ${referenceMeasure(reference, rows)} of '${reference.nodeName}' in the same ${by}.`,
+    missing,
+  };
 }
 type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custom_interval_unit']>;
