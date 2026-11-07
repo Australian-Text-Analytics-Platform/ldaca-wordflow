@@ -44,6 +44,7 @@ import {
   type SequentialHydratedParams,
 } from './hooks/useSequentialAnalysisParameters';
 import { useSequentialChartControls } from './hooks/useSequentialChartControls';
+import { useReferenceCandidates } from './hooks/useReferenceCandidates';
 import { SequentialAnalysisParameterPanel } from './components/panels/SequentialAnalysisParameterPanel';
 import { SequentialAnalysisResultsPanel } from './components/panels/SequentialAnalysisResultsPanel';
 import { SequentialAddToWorkspaceDialog } from './components/SequentialAddToWorkspaceDialog';
@@ -265,10 +266,20 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
           : 'datetime';
   // A Date column has no time of day, so sub-day periods do not apply (issue 187).
   const timeColumnIsDate = Boolean(activeColumnField && isArrowDateField(activeColumnField));
-  // A Data Block cannot be its own reference: when the analysed Data Block
-  // changes to the chosen reference, the reference reads as none.
+  // Only a Data Block with the same time column can supply denominators.
+  const referenceCandidates = useReferenceCandidates({
+    workspaceId: currentWorkspaceId,
+    nodes: workspaceNodes,
+    activeNodeId,
+    timeColumn: activeTimeColumn,
+    columnType: derivedColumnType,
+  });
+  // A Data Block cannot be its own reference, nor can one without the time
+  // column: when the analysed Data Block or its time column changes so the
+  // chosen reference no longer qualifies, the reference reads as none.
   const referenceNodeId =
-    sequentialParameters.referenceNodeId === activeNodeId
+    sequentialParameters.referenceNodeId === activeNodeId ||
+    referenceCandidates.excluded.has(sequentialParameters.referenceNodeId)
       ? ''
       : sequentialParameters.referenceNodeId;
   const {
@@ -609,7 +620,8 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
             onRemoveGroupByColumn={sequentialParameters.removeGroupByColumn}
             onGroupByColumnChange={sequentialParameters.changeGroupByColumn}
             reference={{
-              nodes: workspaceNodes,
+              nodes: referenceCandidates.nodes,
+              timeColumn: activeTimeColumn,
               referenceNodeId,
               // A chosen Data Block starts with its document column and its
               // tokeniser preference, as Frequency would count its words.

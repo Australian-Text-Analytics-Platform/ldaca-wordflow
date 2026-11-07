@@ -17,6 +17,7 @@ vi.mock('../SequentialReferencePanel', () => ({
 
 const reference = {
   nodes: [],
+  timeColumn: 'date',
   referenceNodeId: '',
   onReferenceChange: vi.fn(),
   referenceTextColumn: '',

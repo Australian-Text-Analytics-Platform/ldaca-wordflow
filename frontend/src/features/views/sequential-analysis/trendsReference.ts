@@ -1,4 +1,22 @@
 import type { WorkspaceNodeInfo } from '@/api';
+import type { ArrowColumn } from '@/lib/arrow/arrowTable';
+import type { SequentialColumnType } from './hooks/sequentialChartModel';
+import { trendsAxisKind } from './trendsAxisColumns';
+
+/**
+ * Whether a Data Block can supply Trends denominators: it has the time column,
+ * binnable the same way (a date for a date, a number for a number, and so on).
+ * Null while its columns are not known yet. The backend checks the same.
+ */
+export function referenceAxisMatches(
+  schema: readonly ArrowColumn[] | undefined,
+  timeColumn: string,
+  columnType: SequentialColumnType,
+): boolean | null {
+  if (schema === undefined) return null;
+  const column = schema.find((candidate) => candidate.name === timeColumn);
+  return column !== undefined && trendsAxisKind(column.field) === columnType;
+}
 
 /** The Data Blocks that `nodeId` was made from, directly or further back. */
 export function ancestorIds(nodes: readonly WorkspaceNodeInfo[], nodeId: string): Set<string> {

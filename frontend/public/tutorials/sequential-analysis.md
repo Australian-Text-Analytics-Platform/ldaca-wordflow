@@ -94,9 +94,13 @@ A Data Block made by Concordance cannot supply that total: it lacks every
 document without a match and repeats a document once per match. So choose, in
 **Normalise against**, the Data Block these rows were made from. The list
 offers that Data Block (and the ones it was made from) first, marked **made
-from this**, then every other Data Block. Choosing another Data Block shows a
-warning: a rate only means something when the reference holds every text the
-rows came from, for example the whole corpus for a filtered part of it.
+from this**, then every other Data Block that has the chosen time column, of
+the same kind (a date for a date, a number for a number), since the
+reference's rows are counted per period exactly like these; a Data Block
+without that column is not listed. Choosing a Data Block that is not marked
+shows a warning: a rate only means something when the reference holds every
+text the rows came from, for example the whole corpus for a filtered part of
+it.
 
 With a reference chosen:
 

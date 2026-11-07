@@ -19,10 +19,15 @@ const ROWS_ONLY_VALUE = '__ldaca__trends_rows_only__';
 
 export interface SequentialReferencePanelProps {
   workspaceId: string | null;
-  /** Every Data Block in the Project, for the picker and its lineage. */
+  /**
+   * The Data Blocks that can be a reference (they have the time column), for
+   * the picker and its lineage; see useReferenceCandidates.
+   */
   nodes: readonly WorkspaceNodeInfo[];
   /** The analysed Data Block, which cannot be its own reference. */
   activeNodeId: string;
+  /** The analysed Data Block's time column, which a reference must share. */
+  timeColumn: string;
   disabled: boolean;
   referenceNodeId: string;
   /** Called with the chosen Data Block, or null for none. */
@@ -46,6 +51,7 @@ export function SequentialReferencePanel({
   workspaceId,
   nodes,
   activeNodeId,
+  timeColumn,
   disabled,
   referenceNodeId,
   onReferenceChange,
@@ -102,6 +108,13 @@ export function SequentialReferencePanel({
           ))}
         </SelectContent>
       </Select>
+      {timeColumn ? (
+        <p className="text-label-secondary text-description">
+          {options.length > 0
+            ? `Only Data Blocks with a '${timeColumn}' column of the same kind are listed, since the totals are counted per period like these rows.`
+            : `No other Data Block has a '${timeColumn}' column of the same kind, so none can supply totals per period.`}
+        </p>
+      ) : null}
       {chosen && !chosen.ancestor ? (
         <p className="rounded-md border border-warning bg-warning-background px-3 py-2 text-body text-foreground">
           {chosen.name} is not a Data Block this one was made from. A rate only means something when
