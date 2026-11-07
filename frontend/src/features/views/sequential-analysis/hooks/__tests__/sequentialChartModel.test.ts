@@ -690,6 +690,23 @@ describe('buildSequentialChartModel', () => {
     const groupId = (model: ReturnType<typeof build>, label: string) =>
       model.groups.find((group) => group.label === label)?.id ?? '';
 
+    it('reads reference totals the Arrow decoder hands over as Int64 digit strings', () => {
+      const decoded = {
+        ...results,
+        data: results.data.map((row) => ({
+          ...row,
+          reference_rows: row.reference_rows === null ? null : String(row.reference_rows),
+          reference_words: row.reference_words === null ? null : String(row.reference_words),
+        })),
+      };
+      const model = build(decoded, { scale: 'per-million-words' });
+      const fJobs = groupId(model, 'f - jobs');
+      expect(model.chartData[0]?.[fJobs]).toBe(200_000);
+      expect(model.tooltip.valueFormatter(fJobs, model.chartData[0] ?? {})).toBe(
+        '2 (200000.0 per million of 10 words)',
+      );
+    });
+
     it('offers every scale and divides by the reference words of the same period and group', () => {
       const model = build(results, { scale: 'per-million-words' });
       expect(model.availableScales).toEqual([

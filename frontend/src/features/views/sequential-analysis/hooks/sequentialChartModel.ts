@@ -406,9 +406,14 @@ function buildSummary(
   };
 }
 
-/** A finite non-negative number, or null when absent (no reference total). */
+/**
+ * A finite non-negative number, or null when absent (no reference total).
+ * The reference totals are Int64 columns, which the Arrow decoder hands over
+ * as digit strings; the hit count is UInt32 and arrives as a number.
+ */
 function optionalCount(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+  const count = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
+  return typeof count === 'number' && Number.isFinite(count) && count >= 0 ? count : null;
 }
 
 function isPeriodBoundary(value: unknown): value is string | number {
