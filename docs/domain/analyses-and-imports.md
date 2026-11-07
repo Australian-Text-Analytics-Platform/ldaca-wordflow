@@ -258,8 +258,8 @@ artifact still holds only the analysed rows. Submission refuses a reference
 without the time column or with one of another kind; execution refuses one
 with no rows in a period and group where the analysed Data Block has some, or
 with fewer words there than the analysed rows. The rates themselves (per
-million words, per 100,000 words, share of reference rows) and the composition
-share are display scales computed by the client from the stored counts.
+million words, share of reference rows) and the composition share are display
+scales computed by the client from the stored counts.
 
 A Topic Modelling Analysis request owns one embedding model, segmentation
 method, maximum token count, and HDBSCAN minimum cluster size for all selected

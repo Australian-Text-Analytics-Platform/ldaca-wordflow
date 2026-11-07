@@ -56,21 +56,14 @@ export function buildSequentialChartExportMetadata({
               value: 'Rows per million words of the reference in each period',
             },
           ]
-        : model.scale === 'per-100k-words'
+        : model.scale === 'percent-of-rows'
           ? [
               {
                 label: 'Values',
-                value: 'Rows per 100,000 words of the reference in each period',
+                value: "Percentage of the reference's rows in each period",
               },
             ]
-          : model.scale === 'percent-of-rows'
-            ? [
-                {
-                  label: 'Values',
-                  value: "Percentage of the reference's rows in each period",
-                },
-              ]
-            : []),
+          : []),
   ];
   return { header, legend: model.legend };
 }

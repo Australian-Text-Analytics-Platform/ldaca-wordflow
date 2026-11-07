@@ -18,17 +18,11 @@ export type SequentialColumnType = 'datetime' | 'numeric' | 'category' | 'elapse
  * its period's rows (issue 219). The other rates divide a group's rows by the
  * reference Data Block's words or rows in the same period and group.
  */
-export type SequentialScale =
-  | 'count'
-  | 'composition'
-  | 'per-million-words'
-  | 'per-100k-words'
-  | 'percent-of-rows';
+export type SequentialScale = 'count' | 'composition' | 'per-million-words' | 'percent-of-rows';
 export const SEQUENTIAL_SCALE_LABELS: Record<SequentialScale, string> = {
   count: 'Row count',
   composition: 'Composition (% of period)',
   'per-million-words': 'Per million words',
-  'per-100k-words': 'Per 100,000 words',
   'percent-of-rows': '% of reference rows',
 };
 /** The vertical axis title for each scale. */
@@ -36,12 +30,11 @@ export const SEQUENTIAL_SCALE_AXIS_NAMES: Record<SequentialScale, string> = {
   count: 'Rows',
   composition: '% of period',
   'per-million-words': 'Per million words',
-  'per-100k-words': 'Per 100,000 words',
   'percent-of-rows': '% of reference rows',
 };
 const SCALE_FACTORS: Record<Exclude<SequentialScale, 'count' | 'composition'>, number> = {
+  // Per 100,000 words is a tenth of this; one scale is enough (Chao).
   'per-million-words': 1_000_000,
-  'per-100k-words': 100_000,
   'percent-of-rows': 100,
 };
 /** "Plain words" for the native tokeniser; other models keep their id. */
@@ -792,7 +785,7 @@ export function buildSequentialChartModel({
   const availableScales: SequentialScale[] = ['count'];
   if (filterEligibleGroupBases.length >= 2) availableScales.push('composition');
   if (summary.reference?.textColumn) {
-    availableScales.push('per-million-words', 'per-100k-words');
+    availableScales.push('per-million-words');
   }
   if (summary.reference) availableScales.push('percent-of-rows');
   const scale: SequentialScale = availableScales.includes(requestedScale)
@@ -1047,7 +1040,7 @@ export function buildSequentialChartModel({
         const of = `of ${denominator.toLocaleString()} ${unit}`;
         return scale === 'percent-of-rows'
           ? `${countText} (${rate}% ${of})`
-          : `${countText} (${rate} per ${scale === 'per-million-words' ? 'million' : '100,000'} ${of})`;
+          : `${countText} (${rate} per million ${of})`;
       },
     },
     availableScales,

@@ -741,7 +741,6 @@ describe('buildSequentialChartModel', () => {
         'count',
         'composition',
         'per-million-words',
-        'per-100k-words',
         'percent-of-rows',
       ]);
       expect(model.scale).toBe('per-million-words');
@@ -770,11 +769,7 @@ describe('buildSequentialChartModel', () => {
       expect(model.overviewValue(model.chartData[0] ?? {}, fJobs)).toBe(2);
     });
 
-    it('scales per 100,000 words and as a share of the reference rows', () => {
-      const perHundredThousand = build(results, { scale: 'per-100k-words' });
-      expect(perHundredThousand.chartData[0]?.[groupId(perHundredThousand, 'f - jobs')]).toBe(
-        20_000,
-      );
+    it('scales as a share of the reference rows', () => {
       const share = build(results, { scale: 'percent-of-rows' });
       const fWork = groupId(share, 'f - work');
       expect(share.chartData[1]?.[fWork]).toBe(350);

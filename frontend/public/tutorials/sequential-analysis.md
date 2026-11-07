@@ -87,8 +87,9 @@ Trends counts rows, so a Data Block made by Concordance shows how many matches
 each period has. Periods rarely hold the same amount of text: a term can look
 more frequent in 2000 than in 1980 only because the corpus has more texts, or
 longer ones, from 2000. Corpus linguists compare periods by the rate per
-100,000 or per million words instead, dividing the matches in a period by all
-the words written in that period, in texts with a match or without.
+million words instead (or per 100,000, a tenth of it), dividing the matches in
+a period by all the words written in that period, in texts with a match or
+without.
 
 A Data Block made by Concordance cannot supply that total: it lacks every
 document without a match and repeats a document once per match. So choose, in
@@ -202,7 +203,7 @@ Periods often hold very different amounts of data, for example many more tweets 
 
 - **Row count**: the rows in each group and period, documents for a corpus or matches for a Data Block made by Concordance. The default.
 - **Composition (% of period)**: each group as a percentage of all rows in the same period, so the groups in each period add up to 100% and you can compare how the mix of groups changes over time whatever the amount of data. This was called *Normalise to 100%* in earlier versions. It is offered when at least two groups meet the [minimum group count](#help-sequential-minimum-group-count); with one group every period would read 100%. Each period's total counts every group listed in the legend, including hidden groups, so hiding a group does not change the other percentages; groups below the minimum group count are not counted, so changing that number can change the percentages. A period whose listed groups have no rows at all has no percentage: the line breaks and no bar is drawn. In **Area** charts the stacked groups fill the chart up to 100% when none are hidden. The tooltip shows the count with its percentage, for example *412 (37.5%)*.
-- **Per million words** and **Per 100,000 words**: each group's rows divided by the words of the [reference Data Block](#help-sequential-reference) in the same period and group, times a million or 100,000. This is the normalised frequency of corpus linguistics, which shows whether a term is really used more or less over time rather than following the amount of text. Offered when the result was run with a reference and a text column. The tooltip shows the count and the rate, for example *124 (413.3 per million of 300,000 words)*.
+- **Per million words**: each group's rows divided by the words of the [reference Data Block](#help-sequential-reference) in the same period and group, times a million. This is the normalised frequency of corpus linguistics, which shows whether a term is really used more or less over time rather than following the amount of text; for a rate per 100,000 words, divide by ten. Offered when the result was run with a reference and a text column. The tooltip shows the count and the rate, for example *124 (413.3 per million of 300,000 words)*.
 - **% of reference rows**: each group's rows as a percentage of the reference's rows in the same period and group, for example the share of a year's posts that mention a term when the analysed Data Block holds one row per document (**Add Concordance Documents to Project**). With one row per match the value can pass 100%, since a document can hold several matches. Offered when the result was run with a reference.
 
 For the rates, a period that has reference words but no rows reads as zero, which is a real finding, while a group with no reference total in a period (for example no texts by women that year) is left blank. A sentence under the chart says what the rates divide by. The counts themselves do not change: the legend, the overview under the chart, **Add to Project** and selected periods still use counts of rows, and a downloaded chart notes what its values are.

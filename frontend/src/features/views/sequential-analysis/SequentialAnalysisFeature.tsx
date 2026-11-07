@@ -143,7 +143,6 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   const [scale, setScaleState] = useState<SequentialScale>(
     savedScale === 'composition' ||
       savedScale === 'per-million-words' ||
-      savedScale === 'per-100k-words' ||
       savedScale === 'percent-of-rows'
       ? savedScale
       : host.settings['sequential.normalise'] === 'true'
