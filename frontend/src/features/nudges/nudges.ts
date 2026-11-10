@@ -77,6 +77,15 @@ export const NUDGES = {
     help: 'analysis.topic-modeling.max-topic-size',
     targets: [NUDGE_TARGETS.topicMaxClusterSize],
   },
+  'topic-many-topics': {
+    // The card's title gives the count ("The run found 2,238 topics"). Such a
+    // result opens merged to at most 100 topics, set by the backend.
+    title: 'The run found many topics',
+    message:
+      'They open merged into fewer, larger topics so the map stays readable. Move Number of topics to see more of them, or raise Min topic size and Run again to find fewer.',
+    help: 'analysis.topic-modeling.number-of-clusters',
+    targets: [NUDGE_TARGETS.topicMinClusterSize],
+  },
   'topic-few-topics': {
     title: 'Only a few topics',
     message: 'A slightly lower Min topic size finds more topics. Change it and Run again.',
@@ -155,16 +164,23 @@ export const NUDGES = {
 export type NudgeId = keyof typeof NUDGES;
 
 interface TopicResultShape {
+  /** Topics the result opens with. */
   clusterCount: number;
+  /** Topics the run found; more than clusterCount when the result opens merged. */
+  foundTopicCount?: number;
   largestTopicSize: number;
   clusteredSegments: number;
   /** Share of documents with no real Topic; null for runs before 0.7.12. */
   ungroupedShare?: number | null;
 }
 
-/** Which Topic Modelling result suggestion applies, if any: a giant topic, then too few, then many Ungrouped. */
+/**
+ * Which Topic Modelling result suggestion applies, if any: a giant topic, then
+ * more topics found than shown, then too few, then many Ungrouped.
+ */
 export function topicResultNudge({
   clusterCount,
+  foundTopicCount = clusterCount,
   largestTopicSize,
   clusteredSegments,
   ungroupedShare = null,
@@ -172,6 +188,7 @@ export function topicResultNudge({
   if (clusteredSegments > 0 && largestTopicSize / clusteredSegments > GIANT_TOPIC_SHARE) {
     return 'topic-giant-topic';
   }
+  if (foundTopicCount > clusterCount) return 'topic-many-topics';
   if (clusterCount > 0 && clusterCount < FEW_TOPICS) return 'topic-few-topics';
   if (ungroupedShare !== null && ungroupedShare >= MANY_UNGROUPED_SHARE) {
     return 'topic-many-ungrouped';

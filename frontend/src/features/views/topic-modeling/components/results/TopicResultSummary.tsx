@@ -7,7 +7,8 @@ interface TopicResultSummaryProps {
   /** Per Data Block, documents with no real Topic; null for runs before 0.7.12. */
   ungroupedDocuments: number[] | null | undefined;
   clusterCount: number;
-  defaultClusterCount: number;
+  /** Topics the run found, which the Topics slider merges. */
+  foundClusterCount: number;
   /** Segments Topic sampling clustered; null when every segment was. */
   clusteredSegments: number | null | undefined;
   /** The run's Sampling per Data Block (null or 1 for all documents). */
@@ -34,7 +35,7 @@ export function TopicResultSummary({
   segmentCount,
   ungroupedDocuments,
   clusterCount,
-  defaultClusterCount,
+  foundClusterCount,
   clusteredSegments,
   sampleFractions,
   nodeNames,
@@ -50,9 +51,9 @@ export function TopicResultSummary({
         ? ` (${String(Math.round(sampled[0] * 100))}% sample)`
         : ' (sampled)';
   const topics =
-    clusterCount === defaultClusterCount
+    clusterCount === foundClusterCount
       ? `${count(clusterCount)} ${clusterCount === 1 ? 'topic' : 'topics'}`
-      : `${count(clusterCount)} topics (merged from ${count(defaultClusterCount)})`;
+      : `${count(clusterCount)} topics (merged from ${count(foundClusterCount)})`;
   const parts = [
     `${count(documents)} documents${sampleNote}`,
     `${count(segmentCount)} passages`,

@@ -69,7 +69,9 @@ Topic count. Max topic size limits the largest Topic; its Auto default only step
 in when one Topic would hold more than half of all Topic Segments.
 
 The Number of topics Result control merges HDBSCAN's natural real Topics; it
-does not rerun the model and cannot split above that natural count. Topic −1 is
+does not rerun the model and cannot split above that natural count. A Result
+opens with at most 100 Topics: when the run found more, they open merged into
+100 and the control reaches up to the natural count. Topic −1 is
 never counted or merged. After each change Wordflow recalculates representative
 words, coordinates, and document assignments.
 

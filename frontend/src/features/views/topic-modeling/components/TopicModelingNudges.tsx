@@ -24,9 +24,10 @@ import {
 } from '../topicEmbeddingModels';
 
 /**
- * Suggestion on a result with one giant topic or only a few topics (issue
- * 360). Only for the topics the run found: after people merge topics with the
- * Topics slider, a few large topics are what they asked for.
+ * Suggestion on a result with one giant topic, more topics than it opens
+ * with, or only a few topics (issue 360). Only at the count the result opens
+ * with: after people merge topics with the Topics slider, a few large topics
+ * are what they asked for.
  */
 export function TopicResultNudge({
   result,
@@ -44,24 +45,21 @@ export function TopicResultNudge({
   // clustering made (of the sample, with Topic sampling).
   const id = topicResultNudge({
     clusterCount: clustering.default_cluster_count,
+    foundTopicCount: clustering.max_cluster_count,
     largestTopicSize: clustering.largest_topic_size ?? 0,
     clusteredSegments: clustering.clustered_segments ?? result.data.segment_count,
     ungroupedShare: ungroupedDocumentShare(result.data),
   });
   if (!id) return null;
   const ungroupedShare = ungroupedDocumentShare(result.data);
-  return (
-    <NudgeCard
-      id={id}
-      occurrence={`${analysisId ?? ''}\0${id}`}
-      // The share is the point of this one (Chao): "Many (37%) documents are Ungrouped".
-      title={
-        id === 'topic-many-ungrouped' && ungroupedShare !== null
-          ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are Ungrouped`
-          : undefined
-      }
-    />
-  );
+  // The numbers are the point of these (Chao): "Many (37%) documents are Ungrouped".
+  const title =
+    id === 'topic-many-ungrouped' && ungroupedShare !== null
+      ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are Ungrouped`
+      : id === 'topic-many-topics'
+        ? `The run found ${clustering.max_cluster_count.toLocaleString()} topics`
+        : undefined;
+  return <NudgeCard id={id} occurrence={`${analysisId ?? ''}\0${id}`} title={title} />;
 }
 
 /** Share of the run's documents with no real Topic (issue 362), or null. */

@@ -704,7 +704,7 @@ export function TopicModelingResultsPanel({
               segmentCount={result.data.segment_count}
               ungroupedDocuments={result.data.ungrouped_documents}
               clusterCount={clustering.cluster_count}
-              defaultClusterCount={clustering.default_cluster_count}
+              foundClusterCount={clustering.max_cluster_count}
               clusteredSegments={clustering.clustered_segments}
               sampleFractions={sampleFractions}
               nodeNames={nodeNames ?? []}

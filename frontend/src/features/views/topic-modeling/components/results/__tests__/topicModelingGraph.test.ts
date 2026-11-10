@@ -391,4 +391,30 @@ describe('relaxTopicPositions (issue 189)', () => {
 
     expect(hiddenPairs(items, relaxTopicPositions(items))).toEqual([]);
   });
+
+  it('lays out thousands of Topics quickly, hiding almost none', () => {
+    // A run with 2,238 Topics took 46 s to lay out and froze the app: every
+    // pair was compared on every one of up to 3,240 passes.
+    let seed = 11;
+    const random = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    const items = Array.from({ length: 2000 }, (_, id) => ({
+      id,
+      x: random() * 1000,
+      y: random() * 550,
+      // Mostly small Topics, as with a low Min topic size.
+      radius: 10 + 40 * Math.sqrt(random() ** 6),
+    }));
+
+    const started = performance.now();
+    const positions = relaxTopicPositions(items);
+    const elapsed = performance.now() - started;
+
+    // Generous for slow CI machines; the old layout took tens of seconds.
+    expect(elapsed).toBeLessThan(4000);
+    expect(hiddenPairs(items, positions).length).toBeLessThan(items.length / 100);
+    expect(relaxTopicPositions(items)).toEqual(positions);
+  });
 });
