@@ -78,6 +78,30 @@ describe('Topic Modelling suggestions (issue 360)', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
+  it('names how many topics the run found when the result opens merged', () => {
+    const manyFound = (shown: number): TopicClustering => ({
+      ...clustering(100, shown, 40),
+      max_cluster_count: 2238,
+    });
+    const view = render(
+      <TopicResultNudge
+        result={result(Array.from({ length: 100 }, () => 10))}
+        clustering={manyFound(100)}
+        analysisId="a"
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('The run found 2,238 topics');
+    // Moved with the Topics slider: what people asked for.
+    view.rerender(
+      <TopicResultNudge
+        result={result(Array.from({ length: 300 }, () => 10))}
+        clustering={manyFound(300)}
+        analysisId="a"
+      />,
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('suggests a smaller Min topic size when many documents are Ungrouped (issue 362)', () => {
     const withUngrouped = (ungrouped: number) =>
       ({

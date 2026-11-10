@@ -314,8 +314,12 @@ resize grip, like the chart itself.
 
 <h3 id="help-topic-modeling-number-of-clusters">Topics (number of topics)</h3>
 
-The Result starts with the number of Topics the run found. Use **Number of
-topics** to merge them, down to one Topic, without running the analysis again.
+The Result starts with the number of Topics the run found, up to 100. A run
+that finds more, for example with a low Min topic size on a large corpus, opens
+with them merged into 100, so the chart stays readable, and a suggestion names
+how many the run found. Use **Number of topics** to merge them, down to one
+Topic, or to show more, up to every Topic the run found, without running the
+analysis again.
 Passages that fit no Topic are **Ungrouped**; they stay as they are and
 do not count toward the number shown. Results with zero or one real Topic
 show a fixed disabled control.
@@ -334,7 +338,7 @@ stop words, and Words per topic remain in place.
 
 A changed topic count is remembered with the result. If a lower cluster count cannot support the current Top topics per
 row, Wordflow sends one update with that value clamped to the new count.
-Running again starts from the natural count and Top 2. Export and Add to
+Running again starts from the natural count (at most 100) and Top 2. Export and Add to
 Project use the topics on screen and are unavailable while an update is
 pending.
 

@@ -56,6 +56,27 @@ describe('Suggestions rules (issue 360)', () => {
     ).toBeNull();
   });
 
+  it('says when a result opens with fewer topics than the run found', () => {
+    expect(
+      topicResultNudge({
+        clusterCount: 100,
+        foundTopicCount: 2238,
+        largestTopicSize: 40,
+        clusteredSegments: 100,
+        // Before many Ungrouped: it explains why the count is not the one found.
+        ungroupedShare: 0.5,
+      }),
+    ).toBe('topic-many-topics');
+    expect(
+      topicResultNudge({
+        clusterCount: 100,
+        foundTopicCount: 100,
+        largestTopicSize: 40,
+        clusteredSegments: 100,
+      }),
+    ).toBeNull();
+  });
+
   it('calls an input large from 60% of the Obesity corpus', () => {
     expect(
       isLargeTopicInput({ documents: LARGE_INPUT_DOCUMENTS, segments: null, topicSampling: false }),

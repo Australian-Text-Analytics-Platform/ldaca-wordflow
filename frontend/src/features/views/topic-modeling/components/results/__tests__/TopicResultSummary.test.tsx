@@ -9,7 +9,7 @@ const base = {
   segmentCount: 107_551,
   ungroupedDocuments: [9_650],
   clusterCount: 782,
-  defaultClusterCount: 782,
+  foundClusterCount: 782,
   clusteredSegments: null,
   sampleFractions: null,
   nodeNames: ['Obesity'],

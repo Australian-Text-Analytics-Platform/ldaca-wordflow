@@ -1225,8 +1225,10 @@ def _query_topics(
     analysis_id: uuid.UUID,
 ) -> dict[str, JsonData]:
     requested_count = query.cluster_count
+    # The stored Result holds every Topic the run found.
     natural_count = stored.clustering.default_cluster_count
-    applied_count = natural_count if requested_count is None else requested_count
+    starting_count = _starting_topic_count(natural_count, context_path)
+    applied_count = starting_count if requested_count is None else requested_count
     minimum = stored.clustering.min_cluster_count
     maximum = stored.clustering.max_cluster_count
     if applied_count < minimum or applied_count > maximum:
@@ -1235,7 +1237,7 @@ def _query_topics(
             details={
                 "min_cluster_count": minimum,
                 "max_cluster_count": maximum,
-                "default_cluster_count": natural_count,
+                "default_cluster_count": starting_count,
             },
         )
     requested_top_n = query.top_n_topics
@@ -1333,6 +1335,10 @@ def _query_topics(
     leaves = _topic_leaves(context_path, applied_count, natural_count)
     effective = effective.model_copy(
         update={
+            # The count a Result opens at, which the client treats as the default.
+            "clustering": effective.clustering.model_copy(
+                update={"default_cluster_count": starting_count}
+            ),
             "topics": [
                 topic.model_copy(
                     update={"leaves": None if leaves is None else leaves.get(topic.id)}
@@ -1434,6 +1440,27 @@ def _topic_sources(
             )
         )
     return sources
+
+
+# Most Topics a Result opens with. A run with a low Min topic size can find
+# thousands (2,238 in one case), which no bubble map shows legibly and which
+# froze the desktop app while it laid them out. Larger runs open merged to
+# this many; the Topics slider still reaches every Topic the run found.
+TOPIC_STARTING_COUNT_LIMIT = 100
+
+
+def _starting_topic_count(natural_count: int, context_path: Path | None) -> int:
+    """The Topic count a Result opens at when the client names none.
+
+    Every Topic the run found, up to TOPIC_STARTING_COUNT_LIMIT. Merging needs
+    the clustering context, so without it the Result opens with every Topic.
+    """
+
+    if natural_count <= TOPIC_STARTING_COUNT_LIMIT:
+        return natural_count
+    if context_path is None or not context_path.is_file():
+        return natural_count
+    return TOPIC_STARTING_COUNT_LIMIT
 
 
 def _topic_leaves(
