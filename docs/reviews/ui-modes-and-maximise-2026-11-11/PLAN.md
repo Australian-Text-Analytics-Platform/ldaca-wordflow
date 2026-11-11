@@ -30,10 +30,9 @@ written for whoever implements next, with no memory of the design discussion.
 |---|---|---|
 | A1 | Mode mechanism, applied to Trends | None. Do first: it finishes the feature under review on this branch. |
 | B1 to B4 | Maximised results for analysis tools and the Data Editor | None. |
-| A2 | Topic Modelling and Annotation | **Chao confirms the tables in DESIGN.md.** |
-| A3 | Concordance | **Chao confirms, or drops it.** |
-
-Stop after A1 and B4 and report, unless Chao has already answered.
+| A2 | Annotation | Agreed 11 November 2026. |
+| A3 | Concordance | Agreed 11 November 2026, as changed in DESIGN.md. |
+| A4 | Topic Modelling | **Not confirmed. Do not build until Chao answers.** |
 
 ## Facts already established (do not re-derive)
 
@@ -186,7 +185,7 @@ no reference (network tab). Turn Advanced on: parent selected. Run, switch to
 running it gives a result without the rate. Turn Advanced on again: the
 reference is still chosen. Reload: the tab reopens in the mode it had.
 
-### A2. Topic Modelling and Annotation (after confirmation)
+### A4. Topic Modelling (not confirmed; listed here ahead of A2 for history)
 
 **Topic Modelling** (`topic-modeling/components/panels/TopicModelingParameterPanel.tsx`,
 `hooks/topicModelingParameterState.ts`, `hooks/useTopicModelingParameters.ts`).
@@ -205,6 +204,8 @@ reference is still chosen. Reload: the tab reopens in the mode it had.
   `basicTopicParams` of itself.
 - Reword the `topic-modeling.run` hint and bump its version; update
   `topic-modeling.md` and the Suggestions list in `ui.md`.
+
+### A2. Annotation
 
 **Annotation** (`annotation/AnnotationFeature.tsx`,
 `components/AnnotationAiSettings.tsx`, `annotationTabSettings.ts`).
@@ -225,13 +226,20 @@ reference is still chosen. Reload: the tab reopens in the mode it had.
   it still reads correctly.
 - Manual mode has no advanced settings. Show the switch only in AI mode.
 
-### A3. Concordance (after confirmation)
+### A3. Concordance
 
 `concordance/components/ConcordanceParameterPanel.tsx`,
-`hooks/concordanceParameterState.ts`, `hooks/useConcordanceTokenizerMode.ts`.
-`basicConcordanceParams`: Text mode, context 10 and 10, Ignore punctuation
-on, regular expression off. Hide the per-Data-Block tokeniser add-on in
-Basic. Reword the `concordance.search` hint.
+`hooks/concordanceParameterState.ts`, `hooks/useConcordanceTokenizerMode.ts`,
+`components/ConcordanceResultsPanel.tsx`.
+
+- `basicConcordanceParams`: Text mode, Ignore punctuation on. Context sizes,
+  Case sensitive, Whole word and the regular expression option stay Basic.
+- Hide the Search mode tabs and the per-Data-Block tokeniser add-on in Basic.
+- Rename **Use regular expression** to **Regular expression** (Concordance
+  only; the Data Editor tools keep their label).
+- Results: the **Separated** / **Combined** tabs render only in Advanced; in
+  Basic the layout is Separated whatever the remembered choice.
+- Reword the `concordance.search` hint if it names Tokens mode.
 
 ## Part B. Maximised results
 
@@ -285,8 +293,10 @@ Tests: `stores/__tests__/layoutFocusStore.test.ts`;
    - Move focus to Restore on maximise and back to Maximise on restore.
 2. `common/tabs/AnalysisTabbedPanel.tsx`: skip `EditorTabs` while
    `maximised === 'analysis'`, and provide the title context.
-3. `common/components/ResultFrame.tsx`: while `maximised` is set, treat the
-   stored height as null and do not write a dragged height to storage.
+3. `common/components/ResultFrame.tsx`: no change. Chao: every resizable
+   pane keeps its behaviour while maximised, and every hand-set size or ratio
+   is the same after restoring. Do not write to any layout storage key when
+   maximising or restoring.
 4. `features/nudges/NudgeCard.tsx`: while `maximised === 'analysis'` and the
    nudge has targets, render **Show settings**, which calls `restore()`.
 5. Contextual Hints: check that a hint whose target is inside the hidden
@@ -296,8 +306,8 @@ Tests: `stores/__tests__/layoutFocusStore.test.ts`;
 
 Tests: extend `common/components/__tests__/AnalysisSplitLayout.test.tsx`
 (button only with results; maximise hides parameters and the handle; restore;
-auto-restore when results vanish); `ResultFrame.test.tsx` (remembered height
-ignored, nothing written); `AnalysisTabbedPanel.test.tsx` (strip hidden);
+auto-restore when results vanish; the stored parameters height is unchanged
+after a maximise and restore); `AnalysisTabbedPanel.test.tsx` (strip hidden);
 `nudges.test.tsx` (**Show settings**).
 
 ### B3. Data Editor

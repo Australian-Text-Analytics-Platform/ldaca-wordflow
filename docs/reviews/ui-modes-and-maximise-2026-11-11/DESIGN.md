@@ -1,8 +1,10 @@
 # Basic and Advanced tool modes, and maximised results: design
 
 Prepared on 11 November 2026 for Chao Sun, after his discussion with Monika.
-**Status: proposal for review.** No application code has changed for it. The
-build order and file-level steps are in [PLAN.md](PLAN.md).
+**Status: accepted by Chao on 11 November 2026, with the changes recorded
+under [Decisions](#decisions-11-november-2026); Topic Modelling's table is
+still to be confirmed.** The build order and file-level steps are in
+[PLAN.md](PLAN.md).
 
 Branch: `research/v0.7-trends-normalisation` (from `v0.7`, release 0.7.19, plus
 the Trends reference work and the Topic Modelling fix V07-373).
@@ -115,7 +117,7 @@ In Basic the tool is the 0.7.19 Trends plus the renamed **Show as** list (**Row
 count**, **Composition**). The parent Data Block is offered as the reference
 when Advanced is turned on, not before, so Basic sends no reference.
 
-**Topic Modelling (phase A2, proposed, needs Chao's confirmation).**
+**Topic Modelling (proposed, not yet confirmed, not built).**
 
 | Basic | Advanced |
 |---|---|
@@ -131,7 +133,7 @@ Four Suggestions point at advanced settings here (`topic-large-input`,
 `topic-modeling.run` hint copy mentions passages, sampling and the seed and
 needs rewording with a version bump.
 
-**Annotation (phase A2, proposed).**
+**Annotation (agreed).**
 
 Annotation already folds Prompt, Temperature, Thinking and the run controls
 under a local **Advanced settings** fold that forgets its state. The switch
@@ -148,16 +150,19 @@ replaces that fold, so one control means the same thing in every tool.
 settings, and keeps its own control for **Which rows to annotate**. The
 `annotation.ai.advanced` hint is reached when the switch turns on in AI mode.
 
-**Concordance (phase A3, proposed, least certain).**
+**Concordance (agreed, as changed by Chao).**
 
 | Basic | Advanced |
 |---|---|
 | Data Blocks, Text column, Colour | Search mode (Text or Tokens) and the Tokeniser model |
-| Search word or phrase | Left context, Right context |
-| Case sensitive, Whole word | Ignore punctuation, Use regular expression |
+| Search word or phrase | Ignore punctuation |
+| Left context, Right context | In the results: **Separated** or **Combined** (two Data Blocks) |
+| Case sensitive, Whole word, **Regular expression** | |
 
-Corpus linguists use regular expressions and Tokens mode often. If Chao or
-Monika prefer, Concordance keeps everything in Basic and shows no switch.
+Basic searches in Text mode only and keeps the results of two Data Blocks
+separated. **Use regular expression** is shortened to **Regular expression**.
+Separated or Combined is the one result control that follows the switch: it
+changes how the same matches are laid out, not what was run.
 
 **No switch for now.** Frequency (Data Blocks, column, tokeniser, colour,
 Study corpus), Quotation, Data Builder, Loader and Export have few settings or
@@ -219,7 +224,7 @@ beside its form.
 | Whole results pane or one result? | The whole pane. | One behaviour for every tool. Each result keeps its own resize grip inside. |
 | Where is the button? | The parameters and results bar (analysis tools); the Data Editor title row. | Result headers differ per tool (three kinds). These two rows exist in one place each. |
 | Remembered across a reload? | No. | Nobody reopens Wordflow into a view with no navigation. |
-| Remembered result heights | Ignored while maximised: results fill the pane. A size dragged while maximised lasts until restore and is not remembered. | A chart fixed at 400 px would defeat the point. |
+| Resizable panes and remembered sizes | Unchanged. Every grip and divider works as before while maximised, and every size or ratio set by hand (parameters and results, the Project column, graph and Data Editor, each result) is the same after restoring. | Chao: one behaviour, nothing to relearn. |
 | When does it restore by itself? | When the view changes (sidebar, back and forward, a handoff to another tool), the Project changes, the results are cleared, or the Data Editor has no Data Block. | The control that restores must never be the only way out. |
 | The right panel's own collapse | Unchanged and independent. Maximise does not use it. | Collapse unmounts the graph and Data Editor; maximise must not. |
 | Suggestions that point at a hidden setting | The card offers **Show settings**, which restores the layout. | Same idea as **Show advanced settings**. |
@@ -241,19 +246,23 @@ field.
 - `AnalysisTabbedPanel`: hides the tab strip while maximised.
 - `WorkspaceSelectionTabs`, `WorkspaceView`, `DataEditorToolPanel`: the Data
   Editor button, the hidden graph, and the tool panel above the table.
-- `ResultFrame`: ignores remembered heights while maximised.
 - `NudgeCard`: **Show settings** while maximised.
 
-## Questions for Chao
+## Decisions (11 November 2026)
 
-Each has a default, so the first phases are not blocked.
+Chao's answers to the questions this proposal asked:
 
-1. **Composition in Basic?** Default: yes. It shipped in 0.7.19 as *Normalise
-   to 100%* and needs no extra input.
-2. **The Topic Modelling, Annotation and Concordance tables above.** Phases A2
-   and A3 wait for a yes or corrections. A1 (Trends) and Part B do not.
-3. **Hide the analysis tab strip while maximised?** Default: yes, for height
-   and so a tab without results cannot be opened into an empty window.
-4. **Issues and ledger.** Nothing is filed. If these are kept, each part
-   needs a GitHub issue, a `V07-nnn` record, and this folder moves to
-   `specs/active/<issue>-<slug>/` as `spec.md`, `plan.md` and `tasks.md`.
+1. **Composition stays in Basic.**
+2. **Annotation's table is agreed. Concordance's is agreed as changed above**
+   (context sizes and the regular expression option are Basic; Separated or
+   Combined is Advanced). **Topic Modelling's table was not answered** and is
+   not built.
+3. **The analysis tab strip is hidden while maximised.** Maximising means the
+   screen is too small for the normal layout, or the person wants to
+   concentrate: the goal is as much of the screen as possible, and switching
+   tabs is not needed.
+4. **Issues and the ledger wait** until the implementation is accepted and
+   ready to merge back to `v0.7`. Then each part gets a GitHub issue and a
+   `V07-nnn` record, and this folder moves to `specs/active/<issue>-<slug>/`.
+5. **Maximised results keep every resizable pane's behaviour** and every
+   ratio set by hand after restoring.
