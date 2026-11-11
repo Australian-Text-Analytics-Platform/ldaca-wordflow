@@ -176,12 +176,12 @@ const UNGROUPED_PASSAGES_CHOICES: readonly {
   {
     value: 'fit',
     label: 'Join a topic they fit',
-    note: 'A passage joins the topic it is most similar to, when it is as similar as that topic’s own least similar passage. The rest stay Ungrouped.',
+    note: 'A passage joins the topic it is most similar to, when it is as similar as that topic’s own least similar passage. The rest stay Ungrouped. The topics found do not change.',
   },
   {
     value: 'nearest',
     label: 'Always join the nearest topic',
-    note: 'Every passage joins the topic it is most similar to, however loosely. Nothing stays Ungrouped.',
+    note: 'Every passage joins the topic it is most similar to, however loosely, so topics take in passages that fit none well. Not recommended unless every passage must be in a topic.',
   },
 ];
 

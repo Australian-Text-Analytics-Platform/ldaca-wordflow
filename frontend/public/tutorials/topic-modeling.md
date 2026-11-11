@@ -301,16 +301,23 @@ This setting says what happens to them once the topics are found.
 | --- | --- | --- |
 | **Stay Ungrouped** (the default) | A passage is in a topic only when grouping put it there. | You want each topic to hold only its clearest passages, and do not read topic sizes as shares of the corpus. |
 | **Join a topic they fit** | Each Ungrouped passage is compared with the topic it is most similar to, and joins it when it is at least as similar to that topic as the topic's own least similar passage. The rest stay Ungrouped. | Much of the corpus is Ungrouped and you want topic sizes that describe most of it. No topic becomes looser than it already was. |
-| **Always join the nearest topic** | Every Ungrouped passage joins the topic it is most similar to, however loosely. Nothing stays Ungrouped. | Every passage must be in a topic. Topics then include passages that are only loosely about them. |
+| **Always join the nearest topic** | Every Ungrouped passage joins the topic it is most similar to, however loosely. Nothing stays Ungrouped. | Not recommended for most work. Use it only when every passage must be in a topic, and read the topics knowing they include passages that are only loosely about them. |
 
-The topics are found before any passage joins, so neither choice adds a topic
-or allows a smaller one, and each topic's words stay those of the passages
-grouping put in it. Similarity is measured between a passage and the centre of
+Neither choice finds different topics. The topics are found first, exactly as
+with **Stay Ungrouped**, and each topic's words stay those of the passages
+grouping put in it. Joining only adds passages to topics that already exist,
+so every passage that joins makes its topic a little less tightly about one
+thing: slightly with **Join a topic they fit**, where a passage must be as
+similar as the topic's own passages, and more with **Always join the nearest
+topic**, which takes in passages that fit no topic well. It is unlike methods
+that put every text in a group from the start, where the groups themselves
+shift to make room. Similarity is measured between a passage and the centre of
 a topic, which is the average of the passages grouping put in it. After a run,
 the line under the settings says how many Ungrouped passages joined a topic
 and how many stayed, for example *35,666 Ungrouped passages joined their most
-similar topic; 15,550 (18%) are Ungrouped*. In a topic's examples, the passages
-that joined rank after the ones closest to its centre.
+similar topic; 15,550 (18%) are Ungrouped*. In a topic's examples, passages
+that joined are listed with the others and are not marked: every passage is
+ranked by its similarity to the centre of all the passages now in the topic.
 
 With **Suggestions** on, a result in which 30% or more of the documents are
 Ungrouped suggests **Join a topic they fit**, and, if that was already chosen,
@@ -464,14 +471,16 @@ search term, such as *obesity*, that term is the background of every document;
 the Topics are the many settings it appears in (sleep, school canteens, a sugar
 tax, a sports doping case).
 
-**Fewer Ungrouped documents.** How much is Ungrouped mostly comes from the
-text itself, which no setting changes, so settings make only a small
-difference. A slightly smaller **Min topic size** may group a few more
+**Fewer Ungrouped documents.** **Min topic size** and **Max topic size** are
+not the way: they decide which topics are found, and change how much is
+Ungrouped only a little. A slightly smaller Min topic size may group a few more
 documents, but makes many more, smaller Topics; in the benchmark, 37% fell to
 30% at 5, with 2,848 Topics instead of 782, and on other corpora the change
 can be about one percentage point. A larger size can put almost everything into
-one Topic. With **Suggestions** on, a result with many Ungrouped documents
-suggests trying a smaller Min topic size.
+one Topic. To place Ungrouped text in the topics already found, use
+[Ungrouped passages](#help-topic-modeling-ungrouped-passages) under
+**Advanced**. With **Suggestions** on, a result with 30% or more of its
+documents Ungrouped suggests that setting.
 
 <h3 id="help-topic-modeling-top-topics-per-row">Topics per doc (top topics per document)</h3>
 
@@ -758,7 +767,6 @@ available for the next run.
 | Representative words describe formatting rather than subject matter | Clean boilerplate or choose a **Passages** setting that better matches the document structure |
 | A structural unit becomes many passages | Increase Maximum tokens per passage or choose a coarser **Passages** setting |
 | Run time is very long | Reading the text takes most of a first run and depends on how much text there is, so reduce the per-Data-Block sampling percentage. A larger Max tokens and [Topic sampling](#help-topic-modeling-topic-sampling) shorten only the later grouping step |
-| Many documents are Ungrouped | Expected on varied text; see [Ungrouped](#help-topic-modeling-ungrouped). A slightly smaller Min topic size may group a few more |
 
 <h2 id="help-topic-modeling-defaults">Quick-reference defaults</h2>
 
