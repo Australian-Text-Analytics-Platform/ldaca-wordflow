@@ -74,7 +74,9 @@ describe('AiProvidersPreferencesPanel', () => {
     expect(
       screen.getByText(/saved in this web browser, not on the Wordflow server/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Another account signed in on this browser can't see/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Another account signed in on this browser can't see/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/private \(incognito\) window/)).toBeInTheDocument();
     view.unmount();
 

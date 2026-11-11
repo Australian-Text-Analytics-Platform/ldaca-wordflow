@@ -179,7 +179,9 @@ describe('providerCredentialsStore', () => {
       provider: 'openrouter',
       apiKey: 'saved-before-reload',
     });
-    useProviderCredentialsStore.getState().setDataPortalCredential('user-a', 'portal-before-reload');
+    useProviderCredentialsStore
+      .getState()
+      .setDataPortalCredential('user-a', 'portal-before-reload');
 
     // A page refresh evaluates the module again, and persist hydrates inside create().
     vi.resetModules();
