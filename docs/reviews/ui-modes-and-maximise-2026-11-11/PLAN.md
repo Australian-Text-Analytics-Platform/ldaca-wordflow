@@ -14,7 +14,8 @@ remaining jobs. Known downgrade case to decide on: a Topic Modelling request wit
 Auto leaves the field out of the saved Project, and 0.7.16 to 0.7.19 read a
 missing field as 256. With the Multilingual model (limit 128) those releases
 then refuse the request, so a Project with such a run does not open in them.
-English runs and runs with a size set by hand are unaffected. Places: GitHub issues, `V07-nnn` rows in
+English runs and runs with a size set by hand are unaffected. Chao, 11
+November 2026: not a concern for now; leave it as is. Places: GitHub issues, `V07-nnn` rows in
 `docs/releases/v0.7-branch-changes.md` and
 `docs/releases/v0.7-to-v0.8-migration-instructions.md`, release notes, the
 domain doc for Topic Modelling requests, an ADR for "Auto is decided by the
