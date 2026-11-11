@@ -355,8 +355,8 @@ told apart. You can change the name before adding.
 
 Two of the columns are easy to confuse. `CONC_matched_text` is the text the
 search found, as written in the document: with one plain search term it is
-that term on every row, and with a regular expression or several terms it
-differs from row to row. `CONC_extraction` is the same match inside the text
+that term on every row (with the capitals the document has), and with a
+regular expression or several terms it differs from row to row. `CONC_extraction` is the same match inside the text
 around it: the text before, the text found and the text after, as one passage.
 
 From Table view, **Add Concordance Matches to Project** creates a Data
