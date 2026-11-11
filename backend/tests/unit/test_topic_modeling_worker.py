@@ -686,12 +686,68 @@ def test__compute_topic_modeling_writes_only_projection_context(tmp_path, monkey
     # A run that names no model (saved before 0.7.16) uses English (issue 413).
     assert seen_run_kwargs["embedder_model"] == "sentence-transformers/all-MiniLM-L6-v2"
     assert result["segment_count"] == 7
+    # A size set by hand is used and recorded as set.
+    assert result["max_segment_tokens"] == 64
     # Both documents have a real Topic, so none is Ungrouped (issue 362).
     assert result["ungrouped_documents"] == [0]
     assert any("engine=rust backend=ort" in message for message in messages)
     assert progress[0][1].startswith("Loading the topic model")
     assert progress[-1] == (0.9, "Saving the topics…")
     assert all(0.0 <= fraction < 1.0 for fraction, _message in progress)
+
+
+def test__compute_topic_modeling_auto_max_tokens_measures_every_text_once(
+    tmp_path, monkeypatch
+):
+    """Auto measures the units of every text the run reads, before segmenting.
+
+    The counts never split a unit, so they do not depend on the size chosen:
+    the run picks once, segments once, and records the size (Chao, 2026-11-11).
+    """
+
+    from ldaca_wordflow.analysis import topic_segment_lengths as lengths_module
+
+    measured: list[tuple[str, int]] = []
+
+    def fake_counts(texts, column, unit, model):
+        frame = texts.collect()
+        measured.append((unit, frame.height))
+        # Short sentences: 9 in 10 fit in 64 tokens, none needs 128.
+        return [[20, 30, 60] for _ in range(frame.height)]
+
+    monkeypatch.setattr(lengths_module, "_unit_counts", fake_counts)
+    seen_run_kwargs: dict[str, Any] = {}
+
+    def fake_run(**kwargs):
+        seen_run_kwargs.update(kwargs)
+        return _canned_rust_result(
+            documents=[
+                {
+                    "doc_index": index,
+                    "dominant_topic": 0,
+                    "topic_coverage": [{"topic_id": 0, "coverage": 1.0}],
+                }
+                for index in range(3)
+            ],
+            topics=[{"id": 0, "representative_words": _terms("alpha"), "x": 0.0, "y": 0.0}],
+        )
+
+    monkeypatch.setattr(topic_modeling, "_run_rust_topic_modeling", fake_run)
+
+    result = topic_modeling._compute_topic_modeling(
+        # Two Data Blocks: Auto reads every text of both.
+        corpora=[["one. two.", "three."], ["four."]],
+        node_infos=[_node_info("node-1"), _node_info("node-2")],
+        artifact_dir=str(tmp_path),
+        artifact_prefix="tm_auto",
+        segmentation_method="sentence",
+        max_segment_tokens=None,
+        embedding_cache_path=str(tmp_path / "embeddings.duckdb"),
+    )
+
+    assert measured == [("sentence", 3)]
+    assert seen_run_kwargs["max_segment_tokens"] == 64
+    assert result["max_segment_tokens"] == 64
 
 
 def test__compute_topic_modeling_payload_keeps_all_ranked_candidates(

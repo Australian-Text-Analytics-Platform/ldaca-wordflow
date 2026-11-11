@@ -342,6 +342,9 @@ class _TopicModelingBody(_StrictModel):
     clustering: TopicClustering
     topic_inclusion: TopicInclusion
     segment_count: int = Field(ge=0)
+    # Max tokens per passage the run used: as set, or what Auto chose. None for
+    # results made before Auto, and when there was nothing to segment.
+    max_segment_tokens: int | None = Field(default=None, ge=1)
     # Per source, documents with no real Topic at all: the Ungrouped bubble
     # (issue 362). Merging Topics does not change it. None for results made
     # before 0.7.12.

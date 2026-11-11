@@ -60,6 +60,11 @@ export interface NudgeDefinition {
    * are only named in the message (Chao, issue 360).
    */
   targets: readonly string[];
+  /**
+   * Some targets are advanced settings: in a tool's Basic mode they are
+   * hidden, so the card offers Show advanced settings.
+   */
+  advanced?: true;
 }
 
 export const NUDGES = {
@@ -119,6 +124,8 @@ export const NUDGES = {
     targets: [],
   },
   'topic-large-input': {
+    // Topic sampling is an advanced setting; Sampling is not.
+    advanced: true,
     title: 'A large input',
     message:
       'For a faster first run, use a sample: fewer documents with Sampling, or fewer passages with Topic sampling.',
@@ -126,6 +133,8 @@ export const NUDGES = {
     targets: [NUDGE_TARGETS.topicDocumentSampling, NUDGE_TARGETS.topicClusterSample],
   },
   'topic-segment-length': {
+    // Shown only for a Max tokens set by hand, an advanced setting.
+    advanced: true,
     // The card's title gives the numbers ("Your sentences are short: 64
     // tokens per segment is plenty"); Apply sets Max tokens (issue 414).
     title: 'Shorter passages are enough',
@@ -218,6 +227,17 @@ export function isLargeTopicInput({
 }): boolean {
   if (documents >= LARGE_INPUT_DOCUMENTS) return true;
   return !topicSampling && segments !== null && segments >= LARGE_INPUT_SEGMENTS;
+}
+
+/**
+ * The passage size Max tokens Auto chooses from measured units: the smallest
+ * GPU length within the model's limit that holds 9 in 10 of them, or the
+ * limit when none does. The run decides with the same rule from every text it
+ * reads (backend `segment_token_cap`); from a sample this is an estimate.
+ */
+export function autoSegmentTokens(p90: number | null, limit: number): number {
+  if (p90 === null) return limit;
+  return SEGMENT_TOKEN_BUCKETS.find((tokens) => tokens <= limit && tokens >= p90) ?? limit;
 }
 
 /**

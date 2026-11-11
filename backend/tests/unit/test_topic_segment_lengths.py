@@ -6,9 +6,10 @@ import polars as pl
 import pytest
 
 from ldaca_wordflow.domain.workspace import TopicEmbeddingModel, TopicSegmentationMethod
-from ldaca_wordflow.services import topic_segment_lengths as module
-from ldaca_wordflow.services.topic_segment_lengths import (
+from ldaca_wordflow.analysis import topic_segment_lengths as module
+from ldaca_wordflow.analysis.topic_segment_lengths import (
     SAMPLE_DOCUMENTS,
+    segment_token_cap,
     topic_segment_lengths,
 )
 from ldaca_wordflow.shared.errors import InvalidInputError
@@ -131,3 +132,33 @@ def test_counts_real_units_with_the_model_tokenizer() -> None:
     )
 
     assert (lengths.unit, lengths.units, lengths.p50, lengths.p95) == ("line", 2, 5, 6)
+
+
+def test_every_text_is_read_when_no_sample_size_is_given(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _fake_counts(monkeypatch, {"sentence": [[10]] * (SAMPLE_DOCUMENTS + 5)})
+    frame = pl.LazyFrame({"text": ["a."] * (SAMPLE_DOCUMENTS + 5)})
+
+    lengths = topic_segment_lengths(
+        frame,
+        "text",
+        TopicSegmentationMethod.SENTENCE,
+        TopicEmbeddingModel.ENGLISH,
+        sample_documents=None,
+    )
+
+    assert calls == [("sentence", SAMPLE_DOCUMENTS + 5)]
+    assert lengths.sampled_documents == SAMPLE_DOCUMENTS + 5
+
+
+def test_segment_token_cap_takes_the_smallest_size_that_keeps_nine_in_ten_whole() -> None:
+    assert segment_token_cap(20, 256) == 32
+    assert segment_token_cap(64, 256) == 64
+    assert segment_token_cap(65, 256) == 128
+    assert segment_token_cap(200, 256) == 256
+    # Longer than the model reads: its limit, the largest window.
+    assert segment_token_cap(900, 256) == 256
+    assert segment_token_cap(129, 128) == 128
+    # Nothing measured.
+    assert segment_token_cap(None, 128) == 128

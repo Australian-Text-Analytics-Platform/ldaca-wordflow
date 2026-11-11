@@ -39,6 +39,14 @@ Block's colour in the bubble chart and topic lists.
 
 <h3 id="help-topic-modeling-options">Step 3: Configure the model</h3>
 
+**Model**, **Topic size** and, when you have a Topic Modelling server,
+**Remote GPU** are always shown. **Passages**, **Max tokens**, **Seed** and
+**Topic sampling** are advanced settings: turn on
+[**Advanced**](./ui.md#help-ui-tool-mode) at the top right of the Topic Modelling
+parameters to see them. With **Advanced** off, a run uses Automatic passages,
+Max tokens **Auto**, seed 0 and no Topic sampling, which suit most corpora;
+what you set under **Advanced settings** is kept for when you turn it on again.
+
 <h4 id="help-topic-modeling-embedding-model">Model (embedding model)</h4>
 
 The model reads each passage and turns it into numbers, so that passages
@@ -122,10 +130,24 @@ algorithm, so abbreviations may occasionally form a short passage.
 
 <h4 id="help-topic-modeling-max-segment-tokens">Max tokens (maximum tokens per passage)</h4>
 
-Sets the maximum size of a passage in model tokens: **32**, **64**,
-**128** or **256** (the default), or up to 128 with the **Multilingual** model.
-These are the fixed lengths the model is prepared for, so every passage fits
-one exactly. A run saved with another value opens at the size below it.
+Sets the maximum size of a passage in model tokens: **Auto** (the default),
+or **32**, **64**, **128** or **256**, up to 128 with the **Multilingual**
+model. These are the fixed lengths the model is prepared for, so every passage
+fits one exactly. A run saved with another value opens at the size below it.
+
+<span id="help-topic-modeling-max-tokens-auto"></span>**Auto** chooses the size
+when the run starts. Before splitting anything, the run counts the tokens of
+every unit **Passages** keeps whole, in every text it reads (of both Data Blocks
+when there are two): the sentences for **Sentence**, the paragraphs for
+**Paragraph**, and for **Automatic** whole texts, or their paragraphs when
+nearly every text is longer than the model reads. It then takes the smallest of
+32, 64, 128 and 256 that holds at least 9 in 10 of those units whole, or the
+model's limit when none does, and splits the text once with it. Counting units
+never splits them, so the choice does not depend on the size chosen and nothing
+is split twice. The run records the size, and **Max tokens** then shows it, for
+example **Auto (64)**, as **Max topic size** shows what its Auto did. Before a
+run it may show an estimate from the first 200 texts, such as **Auto (about
+64)**. Choosing a size fixes it; choose **Auto** again to go back.
 Tokens may be complete words or parts of words, and the cap includes special tokens added by the embedding model. A
 smaller cap gives more local observations; a larger cap gives each observation
 more context. With **Automatic**, the cap is also how far short paragraphs are
@@ -137,13 +159,12 @@ Very small caps (such as 32 tokens) produce many short, fragment-like passages,
 which can make the number of topics unstable; 128–256 tokens usually gives more
 stable topics.
 
-With **Suggestions** on, Wordflow measures the first 200 documents of the first
-selected Data Block in the model's tokens: the sentences for **Sentence**, the
-paragraphs for **Paragraph**, and for **Automatic** whole texts (or their
-paragraphs, when nearly every text is longer than the model reads). When at
-least 9 in 10 of them fit whole in a smaller cap of 32, 64 or 128 tokens, a
+With **Suggestions** on and a size chosen by hand, Wordflow measures the first
+200 documents of each selected Data Block in the same way. When at least 9 in
+10 of their units fit whole in a smaller cap of 32, 64 or 128 tokens, a
 suggestion such as "Your sentences are short: 64 tokens per passage is plenty"
-offers to set it. Most passages then stay as they are, and the few longer ones
+offers to set it. Under **Auto** there is no suggestion: Auto already takes
+that size. Most passages then stay as they are, and the few longer ones
 are split into pieces of about that size. It only ever suggests a smaller cap.
 
 <h4 id="help-topic-modeling-remote-gpu">Remote GPU</h4>
@@ -704,7 +725,7 @@ available for the next run.
 | --- | --- |
 | Sampling | 100% per Data Block |
 | Passages | Automatic |
-| Max tokens | 256 |
+| Max tokens | Auto |
 | Topic size | 10 to Auto |
 | Seed | 0 |
 | Topic sampling | Off; suggested for very large corpora |

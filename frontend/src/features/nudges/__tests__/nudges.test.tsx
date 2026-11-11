@@ -7,6 +7,7 @@ import { GuidanceContext } from '@/features/guidance/GuidanceContext';
 import { NudgeCard } from '../NudgeCard';
 import { outlineMissingInputs, outlineNudgeTargets } from '../nudgeHighlight';
 import {
+  autoSegmentTokens,
   isLargeTopicInput,
   LARGE_INPUT_DOCUMENTS,
   LARGE_INPUT_SEGMENTS,
@@ -15,6 +16,7 @@ import {
 } from '../nudges';
 import { useNudgeStore } from '../nudgeStore';
 import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
+import { ToolModeContext } from '@/features/views/common/toolMode/ToolModeContext';
 import { useUIStore } from '@/stores/uiStore';
 
 /** Lets the outline and card start listening (they wait a tick). */
@@ -275,6 +277,53 @@ describe('NudgeCard', () => {
     renderCard('run-1');
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Max topic size')).not.toHaveAttribute('data-nudge-active');
+  });
+});
+
+describe('autoSegmentTokens (Max tokens Auto)', () => {
+  it('takes the smallest GPU length that holds 9 in 10 units, or the model limit', () => {
+    expect(autoSegmentTokens(20, 256)).toBe(32);
+    expect(autoSegmentTokens(64, 256)).toBe(64);
+    expect(autoSegmentTokens(65, 256)).toBe(128);
+    expect(autoSegmentTokens(900, 256)).toBe(256);
+    expect(autoSegmentTokens(129, 128)).toBe(128);
+    expect(autoSegmentTokens(null, 128)).toBe(128);
+  });
+});
+
+describe('Show advanced settings', () => {
+  it('turns Advanced on for a suggestion about an advanced setting, only in Basic', async () => {
+    useNudgeStore.setState({ enabled: true });
+    const setAdvanced = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ToolModeContext value={{ advanced: false, setAdvanced }}>
+        <NudgeCard id="topic-large-input" occurrence="run-1" />
+      </ToolModeContext>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Show advanced settings' }));
+    expect(setAdvanced).toHaveBeenCalledWith(true);
+
+    rerender(
+      <ToolModeContext value={{ advanced: true, setAdvanced }}>
+        <NudgeCard id="topic-large-input" occurrence="run-1" />
+      </ToolModeContext>,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Show advanced settings' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('is not offered for a suggestion about a Basic setting', () => {
+    useNudgeStore.setState({ enabled: true });
+    render(
+      <ToolModeContext value={{ advanced: false, setAdvanced: vi.fn() }}>
+        <NudgeCard id="topic-slow-start" occurrence="run-1" />
+      </ToolModeContext>,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Show advanced settings' }),
+    ).not.toBeInTheDocument();
   });
 });
 

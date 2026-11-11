@@ -22,8 +22,12 @@ export interface TopicModelingParameterState {
   randomSeed: number;
   randomSeedUserSet: boolean;
   segmentationMethod: TopicSegmentationMethod;
-  /** As set, up to 256; the model's limit applies on top (useTopicModelingParameters). */
-  maxSegmentTokens: number;
+  /**
+   * As set, up to 256; the model's limit applies on top
+   * (useTopicModelingParameters). `null` is Auto: the run measures the texts
+   * and chooses (Chao, 2026-11-11).
+   */
+  maxSegmentTokens: number | null;
   /**
    * The model someone chose or a saved run used; `null` follows the selected
    * Data Blocks' tokeniser (issue 413).
@@ -48,7 +52,7 @@ type TopicModelingParameterAction =
   | { type: 'setMaxClusterSize'; value: number | null }
   | { type: 'setRandomSeedFromUser'; value: number }
   | { type: 'setSegmentationMethod'; value: TopicSegmentationMethod }
-  | { type: 'setMaxSegmentTokens'; value: number }
+  | { type: 'setMaxSegmentTokens'; value: number | null }
   | { type: 'setEmbeddingModel'; value: TopicEmbeddingModel }
   | { type: 'setRemoteEmbedding'; value: boolean }
   | { type: 'setEmbeddingEndpointId'; value: string }
@@ -70,7 +74,7 @@ export const createTopicModelingParameterState = (): TopicModelingParameterState
   randomSeed: 0,
   randomSeedUserSet: false,
   segmentationMethod: 'automatic',
-  maxSegmentTokens: DEFAULT_MAX_SEGMENT_TOKENS,
+  maxSegmentTokens: null,
   embeddingModel: null,
   remoteEmbedding: null,
   embeddingEndpointId: null,
@@ -210,7 +214,10 @@ export const topicModelingParameterReducer = (
     case 'setSegmentationMethod':
       return { ...state, segmentationMethod: action.value };
     case 'setMaxSegmentTokens':
-      return { ...state, maxSegmentTokens: sanitizeMaxSegmentTokens(action.value) };
+      return {
+        ...state,
+        maxSegmentTokens: action.value === null ? null : sanitizeMaxSegmentTokens(action.value),
+      };
     case 'setEmbeddingModel':
       return { ...state, embeddingModel: action.value };
     case 'setRemoteEmbedding':
@@ -233,7 +240,11 @@ export const topicModelingParameterReducer = (
         randomSeed: action.request.random_seed ?? 0,
         randomSeedUserSet: true,
         segmentationMethod: normalizeSegmentationMethod(action.request.segmentation_method),
-        maxSegmentTokens: sanitizeMaxSegmentTokens(action.request.max_segment_tokens),
+        // A run saved without one used Auto.
+        maxSegmentTokens:
+          action.request.max_segment_tokens == null
+            ? null
+            : sanitizeMaxSegmentTokens(action.request.max_segment_tokens),
         // Runs saved before 0.7.16 name no model: they used English.
         embeddingModel: isTopicEmbeddingModel(action.request.embedding_model)
           ? action.request.embedding_model

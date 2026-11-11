@@ -6129,7 +6129,7 @@ export type TopicModelingAnalysisRequest = {
     /**
      * Max Segment Tokens
      */
-    max_segment_tokens?: number;
+    max_segment_tokens?: number | null;
     /**
      * Min Cluster Size
      */
@@ -6310,6 +6310,10 @@ export type TopicModelingResult = {
      * Kind
      */
     kind?: 'topic_modeling';
+    /**
+     * Max Segment Tokens
+     */
+    max_segment_tokens?: number | null;
     query: TopicModelingResultQuery;
     /**
      * Segment Count

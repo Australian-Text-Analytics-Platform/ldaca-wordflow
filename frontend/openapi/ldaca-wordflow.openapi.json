@@ -11755,11 +11755,17 @@
             "title": "Max Cluster Size"
           },
           "max_segment_tokens": {
-            "default": 256,
-            "maximum": 256.0,
-            "minimum": 32.0,
-            "title": "Max Segment Tokens",
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 256.0,
+                "minimum": 32.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Segment Tokens"
           },
           "min_cluster_size": {
             "default": 10,
@@ -12099,6 +12105,18 @@
             "default": "topic_modeling",
             "title": "Kind",
             "type": "string"
+          },
+          "max_segment_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Segment Tokens"
           },
           "query": {
             "$ref": "#/components/schemas/TopicModelingResultQuery"

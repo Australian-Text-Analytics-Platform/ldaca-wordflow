@@ -41,7 +41,8 @@ class TopicModelingInput:
     max_cluster_size: int | None
     random_seed: int
     segmentation_method: str
-    max_segment_tokens: int
+    # None is Auto: the worker measures the texts and chooses (Chao, 2026-11-11).
+    max_segment_tokens: int | None
     sample_fractions: list[float | None] | None
     cluster_sample_size: int | None = None
     embedding_model: str | None = None

@@ -33,7 +33,6 @@ import {
   type TopicModelingAddToWorkspaceSource,
 } from './components/TopicModelingAddToWorkspaceDialog';
 import {
-  DEFAULT_MAX_SEGMENT_TOKENS,
   DEFAULT_MIN_CLUSTER_SIZE,
   normalizeTopicSampleFractions,
   useTopicModelingParameters,
@@ -57,14 +56,17 @@ import {
 } from './topicModelingAdapters';
 import { toastError } from '@/lib/toastError';
 import { isUngrouped, ungroupedTopic } from './ungrouped';
-import { ENGLISH_EMBEDDING_MODEL } from './topicEmbeddingModels';
+import { ENGLISH_EMBEDDING_MODEL, embeddingModelTokenLimit } from './topicEmbeddingModels';
 import { useTopicSegmentLengths } from './hooks/useTopicSegmentLengths';
+import { topicRunUsedAdvanced } from './topicModelingAdvanced';
+import { ToolModeContext } from '../common/toolMode/ToolModeContext';
+import { useToolMode } from '../common/toolMode/useToolMode';
 import {
   endpointsServing,
   useEmbeddingEndpoints,
 } from '@/features/embedding-endpoints/embeddingEndpoints';
 import { remoteEmbeddingChoice } from './remoteEmbedding';
-import { shouldSuggestRemoteGpu } from '@/features/nudges/nudges';
+import { autoSegmentTokens, shouldSuggestRemoteGpu } from '@/features/nudges/nudges';
 import { useDetectedColumnLanguage } from '@/features/views/common/hooks/useDetectedColumnLanguage';
 import { TopicNamesContext } from './components/results/topicNamesContext';
 import type { TopicChartLayout } from './components/results/topicChartLayout';
@@ -291,6 +293,33 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     return !selection?.column;
   });
 
+  const toolMode = useToolMode({
+    host,
+    viewId: 'topic-modeling',
+    lastRunUsedAdvanced: topicRunUsedAdvanced(
+      latestRunAll?.request.kind === 'topic_modeling' ? latestRunAll.request : null,
+    ),
+  });
+  // Passages, Max tokens, the seed and Topic sampling are advanced: in Basic
+  // they are hidden and a run uses Automatic passages, Auto Max tokens, seed
+  // 0 and no Topic sampling, whatever the hidden draft holds.
+  const sentSegmentationMethod = toolMode.advanced ? segmentationMethod : 'automatic';
+  const sentMaxSegmentTokens = toolMode.advanced ? maxSegmentTokens : null;
+  const sentRandomSeed = toolMode.advanced ? randomSeed : 0;
+  // The segment-length sample reads every selected Data Block (issue 414).
+  const segmentLengths = useTopicSegmentLengths({
+    workspaceId: currentWorkspaceId,
+    sources: panelNodeIds.map((nodeId) => ({
+      nodeId,
+      column: nodeColumnSelections.find((selection) => selection.nodeId === nodeId)?.column ?? '',
+    })),
+    segmentationMethod: sentSegmentationMethod,
+    embeddingModel,
+  });
+  // Auto Max tokens before a run: the sample's estimate. The run decides.
+  const estimatedAutoSegmentTokens = segmentLengths
+    ? autoSegmentTokens(segmentLengths.p90, embeddingModelTokenLimit(embeddingModel))
+    : null;
   // Topic sampling (issue 330) is off by default; the estimate feeds its
   // suggestion note and the grey Segments to sample suggestion.
   const segmentEstimates = useQueries({
@@ -299,8 +328,11 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
         currentWorkspaceId ?? '',
         nodeId,
         nodeColumnSelections.find((selection) => selection.nodeId === nodeId)?.column ?? '',
-        segmentationMethod,
-        maxSegmentTokens,
+        sentSegmentationMethod,
+        // Auto: the estimate, or the model's limit until it is known.
+        sentMaxSegmentTokens ??
+          estimatedAutoSegmentTokens ??
+          embeddingModelTokenLimit(embeddingModel),
       ),
     ),
   });
@@ -348,19 +380,9 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     endpointId: embeddingEndpointId,
     serving: endpointsServing(embeddingEndpoints.endpoints, embeddingModel),
   });
-  // The segment-length suggestion samples the first selected Data Block (issue 414).
-  const segmentLengths = useTopicSegmentLengths({
-    workspaceId: currentWorkspaceId,
-    nodeId: panelNodeIds[0] ?? null,
-    column:
-      nodeColumnSelections.find((selection) => selection.nodeId === panelNodeIds[0])?.column ?? '',
-    segmentationMethod,
-    embeddingModel,
-  });
   // An empty Segments to sample field runs with the grey suggestion.
-  const clusterSampleSizeForRequest = clusterSample
-    ? (clusterSampleSize ?? suggestedSampleSize)
-    : null;
+  const clusterSampleSizeForRequest =
+    toolMode.advanced && clusterSample ? (clusterSampleSize ?? suggestedSampleSize) : null;
 
   const currentTopicParams = {
     node_ids: panelNodeIds,
@@ -371,10 +393,10 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     ),
     min_cluster_size: minClusterSize,
     max_cluster_size: maxClusterSize,
-    random_seed: randomSeed,
+    random_seed: sentRandomSeed,
     sample_fractions: sampleFractionsForRequest,
-    segmentation_method: segmentationMethod,
-    max_segment_tokens: maxSegmentTokens,
+    segmentation_method: sentSegmentationMethod,
+    max_segment_tokens: sentMaxSegmentTokens,
     embedding_model: embeddingModel,
     embedding_endpoint_id: remoteChoice.endpointId,
     cluster_sample_size: clusterSampleSizeForRequest,
@@ -393,7 +415,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       request.segmentation_method === 'line' || request.segmentation_method === 'sentence'
         ? request.segmentation_method
         : 'automatic',
-    max_segment_tokens: request.max_segment_tokens ?? DEFAULT_MAX_SEGMENT_TOKENS,
+    // Left out of the request when Auto.
+    max_segment_tokens: request.max_segment_tokens ?? null,
     // Runs saved before 0.7.16 name no model: they used English (issue 413).
     embedding_model: request.embedding_model ?? ENGLISH_EMBEDDING_MODEL,
     embedding_endpoint_id: request.embedding_endpoint_id ?? null,
@@ -542,10 +565,10 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       effectiveNodeColumnSelections: nodeColumnSelections,
       minClusterSize,
       maxClusterSize,
-      randomSeed,
+      randomSeed: sentRandomSeed,
       sampleFractions: hasAnySampling ? sampleFractionsForRequest : null,
-      segmentationMethod,
-      maxSegmentTokens,
+      segmentationMethod: sentSegmentationMethod,
+      maxSegmentTokens: sentMaxSegmentTokens,
       embeddingModel,
       embeddingEndpointId: remoteChoice.endpointId,
       clusterSampleSize: clusterSampleSizeForRequest,
@@ -628,203 +651,214 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
   ]);
 
   return (
-    <AnalysisSplitLayout
-      viewId="topic-modeling"
-      parameters={
-        <TopicModelingParameterPanel
-          nodeInputs={nodeInputs}
-          onColumnChange={handleColumnChange}
-          actionState={actionState}
-          parametersLocked={parametersLocked}
-          corpusSamples={corpusSamples}
-          nodeDocCounts={nodeDocCounts}
-          onCorpusSampleChange={updateCorpusSample}
-          minClusterSize={minClusterSize}
-          onMinClusterSizeChange={setMinClusterSize}
-          maxClusterSize={maxClusterSize}
-          onMaxClusterSizeChange={setMaxClusterSize}
-          lastRunClustering={
-            result
-              ? {
-                  segmentCount: result.segment_count,
-                  appliedMaxTopicSize: result.clustering.max_topic_size ?? null,
-                  requestedMaxTopicSize: serverRequest?.max_cluster_size ?? null,
-                  clusteredSegments: result.clustering.clustered_segments ?? null,
-                  autoDecision: result.clustering.auto_decision ?? null,
-                  autoDocumentShare: result.clustering.auto_document_share ?? null,
-                  largestTopicSize: result.clustering.largest_topic_size ?? null,
-                  randomSeed: resultRandomSeed,
-                }
-              : null
-          }
-          clusterSample={clusterSample}
-          onClusterSampleChange={setClusterSample}
-          clusterSampleSize={clusterSampleSize}
-          onClusterSampleSizeChange={setClusterSampleSize}
-          suggestedSampleSize={suggestedSampleSize}
-          estimatedSegmentCount={estimatedSegmentCount}
-          estimatedTokenCount={estimatedTokenCount}
-          randomSeed={randomSeed}
-          randomSeedUserSet={randomSeedUserSet}
-          onRandomSeedChange={setRandomSeedFromUser}
-          segmentationMethod={segmentationMethod}
-          onSegmentationMethodChange={setSegmentationMethod}
-          maxSegmentTokens={maxSegmentTokens}
-          onMaxSegmentTokensChange={setMaxSegmentTokens}
-          embeddingModel={embeddingModel}
-          onEmbeddingModelChange={setEmbeddingModel}
-          embeddingModelReason={embeddingModelReason}
-          multilingualReason={multilingualReason}
-          segmentLengths={segmentLengths}
-          remoteEmbedding={{
-            ...remoteChoice,
-            anyEndpoints: (embeddingEndpoints.endpoints ?? []).length > 0,
-            canAdd: embeddingEndpoints.canAdd,
-          }}
-          onRemoteEmbeddingChange={setRemoteEmbedding}
-          onEmbeddingEndpointChange={setEmbeddingEndpointId}
-          isRunning={isRunning}
-          isStopping={isStopping}
-          isClearing={isClearing}
-          onRun={handleRun}
-          onStop={
-            activeAnalysis
-              ? () => {
-                  void stopTask();
-                }
-              : undefined
-          }
-          onClear={handleClear}
-          hasMissingColumns={panelHasMissingColumns}
-          nodeColors={nodeColors}
-          onNodeColorChange={(nodeId, color) => {
-            setNodeColor(nodeId, color);
-          }}
-          defaultPalette={defaultPalette}
-        />
-      }
-    >
-      {shouldShowResultsPanel && (
-        <TopicNamesContext.Provider value={topicNamesValue}>
-          <TopicModelingResultsPanel
-            topicWaitingBanner={topicWaitingBanner}
-            runningTask={topicRunningTask}
-            error={error ?? analysisFailure}
-            result={result}
-            analysisId={tabTaskId}
-            suggestRemoteGpu={suggestRemoteGpu}
-            topics={topics}
-            exportTopics={exportTopics}
-            sampleFractions={serverRequest?.sample_fractions ?? null}
-            containerRef={containerRef}
-            selectedTopicIds={selectedTopicIds}
-            onToggleTopicSelection={handleToggleTopicSelection}
-            onClearSelection={handleClearTopicSelection}
-            topicSearchQuery={topicSearchQuery}
-            onTopicSearchQueryChange={setTopicSearchQuery}
-            settingsCollapsed={host.settings[RESULT_SETTINGS_COLLAPSED_SETTING] === 'true'}
-            onSettingsCollapsedChange={(collapsed) => {
-              host.setSetting(RESULT_SETTINGS_COLLAPSED_SETTING, String(collapsed));
+    <ToolModeContext value={toolMode}>
+      <AnalysisSplitLayout
+        viewId="topic-modeling"
+        parameters={
+          <TopicModelingParameterPanel
+            nodeInputs={nodeInputs}
+            onColumnChange={handleColumnChange}
+            actionState={actionState}
+            parametersLocked={parametersLocked}
+            corpusSamples={corpusSamples}
+            nodeDocCounts={nodeDocCounts}
+            onCorpusSampleChange={updateCorpusSample}
+            minClusterSize={minClusterSize}
+            onMinClusterSizeChange={setMinClusterSize}
+            maxClusterSize={maxClusterSize}
+            onMaxClusterSizeChange={setMaxClusterSize}
+            lastRunClustering={
+              result
+                ? {
+                    segmentCount: result.segment_count,
+                    appliedMaxTopicSize: result.clustering.max_topic_size ?? null,
+                    requestedMaxTopicSize: serverRequest?.max_cluster_size ?? null,
+                    clusteredSegments: result.clustering.clustered_segments ?? null,
+                    autoDecision: result.clustering.auto_decision ?? null,
+                    autoDocumentShare: result.clustering.auto_document_share ?? null,
+                    largestTopicSize: result.clustering.largest_topic_size ?? null,
+                    randomSeed: resultRandomSeed,
+                  }
+                : null
+            }
+            clusterSample={clusterSample}
+            onClusterSampleChange={setClusterSample}
+            clusterSampleSize={clusterSampleSize}
+            onClusterSampleSizeChange={setClusterSampleSize}
+            suggestedSampleSize={suggestedSampleSize}
+            estimatedSegmentCount={estimatedSegmentCount}
+            estimatedTokenCount={estimatedTokenCount}
+            randomSeed={randomSeed}
+            randomSeedUserSet={randomSeedUserSet}
+            onRandomSeedChange={setRandomSeedFromUser}
+            segmentationMethod={segmentationMethod}
+            onSegmentationMethodChange={setSegmentationMethod}
+            maxSegmentTokens={maxSegmentTokens}
+            onMaxSegmentTokensChange={setMaxSegmentTokens}
+            sentMaxSegmentTokens={sentMaxSegmentTokens}
+            autoMaxSegmentTokens={{
+              // What Auto chose in the last run, when that run used Auto.
+              lastRun:
+                result && serverRequest && serverRequest.max_segment_tokens == null
+                  ? (result.max_segment_tokens ?? null)
+                  : null,
+              estimate: estimatedAutoSegmentTokens,
             }}
-            chartLayout={readChartLayout(host.settings)}
-            onChartLayoutChange={(layout) => {
-              host.setSetting(CHART_PLACEMENT_SETTING, layout.placement);
-              host.setSetting(
-                CHART_SHARE_SETTING,
-                layout.chartShare === null ? '' : layout.chartShare.toFixed(3),
-              );
+            embeddingModel={embeddingModel}
+            onEmbeddingModelChange={setEmbeddingModel}
+            embeddingModelReason={embeddingModelReason}
+            multilingualReason={multilingualReason}
+            segmentLengths={segmentLengths}
+            remoteEmbedding={{
+              ...remoteChoice,
+              anyEndpoints: (embeddingEndpoints.endpoints ?? []).length > 0,
+              canAdd: embeddingEndpoints.canAdd,
             }}
-            panelNodeIds={colorNodeIds}
-            nodeColors={nodeColors}
-            defaultPalette={defaultPalette}
-            graphProjectionKey={graphProjectionKey}
-            onGraphViewReady={setReadyGraphProjectionKey}
-            nodeNames={resultNodeNames}
-            randomSeed={resultRandomSeed}
-            onAddToWorkspace={openAddToWorkspaceDialog}
-            isAddingToWorkspace={isAddingToWorkspace}
-            projectionPending={projectionPending}
-            projectionError={projectionError}
-            clustering={result?.clustering ?? null}
-            topicInclusion={result?.topic_inclusion ?? null}
-            onClusterCountCommit={(value) => {
-              const appliedTopN = result?.topic_inclusion.top_n_topics ?? 0;
-              startProjection(value, Math.min(value, appliedTopN));
-            }}
-            onTopNTopicsCommit={(value) => {
-              const appliedClusterCount = result?.clustering.cluster_count ?? 0;
-              startProjection(appliedClusterCount, value);
-            }}
-            onProjectionRetry={
-              projectionError && currentProjectionRequest
+            onRemoteEmbeddingChange={setRemoteEmbedding}
+            onEmbeddingEndpointChange={setEmbeddingEndpointId}
+            isRunning={isRunning}
+            isStopping={isStopping}
+            isClearing={isClearing}
+            onRun={handleRun}
+            onStop={
+              activeAnalysis
                 ? () => {
-                    startProjection(
-                      currentProjectionRequest.clusterCount,
-                      currentProjectionRequest.topNTopics,
-                    );
+                    void stopTask();
                   }
                 : undefined
             }
-            projectionControlResetKey={controlResetKey}
-            wordsPerTopic={representativeWordsCount}
-            onWordsPerTopicChange={(value) => {
-              void host.setPresentationSettings({ wordsPerTopic: value });
+            onClear={handleClear}
+            hasMissingColumns={panelHasMissingColumns}
+            nodeColors={nodeColors}
+            onNodeColorChange={(nodeId, color) => {
+              setNodeColor(nodeId, color);
             }}
-            stopWordsEnabled={stopWordsEnabled}
-            onStopWordsEnabledChange={(enabled) => {
-              if (!resultKey) return;
-              host.setSetting(STOP_WORDS_ENABLED_SETTINGS.topicModeling, String(enabled));
-            }}
-            stopWords={host.stopWords}
-            stopWordsDetectionTarget={{
-              workspaceId: currentWorkspaceId,
-              nodeId: firstResultNodeId,
-              column: firstResultColumn,
-            }}
-            stopWordListSources={stopWordListSources}
-            onStopWordsChange={(words) => {
-              return host.setPresentationSettings({ stopWords: words });
-            }}
-            colorBy={
-              resultSources.length === 1
-                ? {
-                    columns: colorBy.columns,
-                    loaded: colorBy.columnsLoaded,
-                    valueCounts: colorBy.columnValueCounts,
-                    column: colorBy.activeColumn,
-                    scheme: colorBy.scheme,
-                    pending: colorBy.pending,
-                    error: colorBy.error,
-                    onColumnChange: (column) => {
-                      setColorBySelection({ analysisId: tabTaskId, column });
-                    },
-                  }
-                : // Shown disabled with its reason, not hidden (issue 365).
-                  {
-                    ...NO_COLOR_BY,
-                    unavailableReason:
-                      'With two Data Blocks, bubble colours show which Data Block each Topic comes from.',
-                  }
-            }
+            defaultPalette={defaultPalette}
           />
-        </TopicNamesContext.Provider>
-      )}
-      {addToWorkspaceDialogOpen ? (
-        <TopicModelingAddToWorkspaceDialog
-          open
-          onOpenChange={setAddToWorkspaceDialogOpen}
-          sources={addToWorkspaceSources}
-          selectedTopicIds={selectedTopicIds.size > 0 ? [...selectedTopicIds] : null}
-          topicNames={Object.fromEntries(
-            topicNamesById(exportTopics).map((item) => [item.topic_id, item.name]),
-          )}
-          isSubmitting={isAddingToWorkspace}
-          onSubmit={(selections, rowUnit) => {
-            void handleAddToWorkspace(selections, rowUnit);
-          }}
-        />
-      ) : null}
-    </AnalysisSplitLayout>
+        }
+      >
+        {shouldShowResultsPanel && (
+          <TopicNamesContext.Provider value={topicNamesValue}>
+            <TopicModelingResultsPanel
+              topicWaitingBanner={topicWaitingBanner}
+              runningTask={topicRunningTask}
+              error={error ?? analysisFailure}
+              result={result}
+              analysisId={tabTaskId}
+              suggestRemoteGpu={suggestRemoteGpu}
+              topics={topics}
+              exportTopics={exportTopics}
+              sampleFractions={serverRequest?.sample_fractions ?? null}
+              containerRef={containerRef}
+              selectedTopicIds={selectedTopicIds}
+              onToggleTopicSelection={handleToggleTopicSelection}
+              onClearSelection={handleClearTopicSelection}
+              topicSearchQuery={topicSearchQuery}
+              onTopicSearchQueryChange={setTopicSearchQuery}
+              settingsCollapsed={host.settings[RESULT_SETTINGS_COLLAPSED_SETTING] === 'true'}
+              onSettingsCollapsedChange={(collapsed) => {
+                host.setSetting(RESULT_SETTINGS_COLLAPSED_SETTING, String(collapsed));
+              }}
+              chartLayout={readChartLayout(host.settings)}
+              onChartLayoutChange={(layout) => {
+                host.setSetting(CHART_PLACEMENT_SETTING, layout.placement);
+                host.setSetting(
+                  CHART_SHARE_SETTING,
+                  layout.chartShare === null ? '' : layout.chartShare.toFixed(3),
+                );
+              }}
+              panelNodeIds={colorNodeIds}
+              nodeColors={nodeColors}
+              defaultPalette={defaultPalette}
+              graphProjectionKey={graphProjectionKey}
+              onGraphViewReady={setReadyGraphProjectionKey}
+              nodeNames={resultNodeNames}
+              randomSeed={resultRandomSeed}
+              onAddToWorkspace={openAddToWorkspaceDialog}
+              isAddingToWorkspace={isAddingToWorkspace}
+              projectionPending={projectionPending}
+              projectionError={projectionError}
+              clustering={result?.clustering ?? null}
+              topicInclusion={result?.topic_inclusion ?? null}
+              onClusterCountCommit={(value) => {
+                const appliedTopN = result?.topic_inclusion.top_n_topics ?? 0;
+                startProjection(value, Math.min(value, appliedTopN));
+              }}
+              onTopNTopicsCommit={(value) => {
+                const appliedClusterCount = result?.clustering.cluster_count ?? 0;
+                startProjection(appliedClusterCount, value);
+              }}
+              onProjectionRetry={
+                projectionError && currentProjectionRequest
+                  ? () => {
+                      startProjection(
+                        currentProjectionRequest.clusterCount,
+                        currentProjectionRequest.topNTopics,
+                      );
+                    }
+                  : undefined
+              }
+              projectionControlResetKey={controlResetKey}
+              wordsPerTopic={representativeWordsCount}
+              onWordsPerTopicChange={(value) => {
+                void host.setPresentationSettings({ wordsPerTopic: value });
+              }}
+              stopWordsEnabled={stopWordsEnabled}
+              onStopWordsEnabledChange={(enabled) => {
+                if (!resultKey) return;
+                host.setSetting(STOP_WORDS_ENABLED_SETTINGS.topicModeling, String(enabled));
+              }}
+              stopWords={host.stopWords}
+              stopWordsDetectionTarget={{
+                workspaceId: currentWorkspaceId,
+                nodeId: firstResultNodeId,
+                column: firstResultColumn,
+              }}
+              stopWordListSources={stopWordListSources}
+              onStopWordsChange={(words) => {
+                return host.setPresentationSettings({ stopWords: words });
+              }}
+              colorBy={
+                resultSources.length === 1
+                  ? {
+                      columns: colorBy.columns,
+                      loaded: colorBy.columnsLoaded,
+                      valueCounts: colorBy.columnValueCounts,
+                      column: colorBy.activeColumn,
+                      scheme: colorBy.scheme,
+                      pending: colorBy.pending,
+                      error: colorBy.error,
+                      onColumnChange: (column) => {
+                        setColorBySelection({ analysisId: tabTaskId, column });
+                      },
+                    }
+                  : // Shown disabled with its reason, not hidden (issue 365).
+                    {
+                      ...NO_COLOR_BY,
+                      unavailableReason:
+                        'With two Data Blocks, bubble colours show which Data Block each Topic comes from.',
+                    }
+              }
+            />
+          </TopicNamesContext.Provider>
+        )}
+        {addToWorkspaceDialogOpen ? (
+          <TopicModelingAddToWorkspaceDialog
+            open
+            onOpenChange={setAddToWorkspaceDialogOpen}
+            sources={addToWorkspaceSources}
+            selectedTopicIds={selectedTopicIds.size > 0 ? [...selectedTopicIds] : null}
+            topicNames={Object.fromEntries(
+              topicNamesById(exportTopics).map((item) => [item.topic_id, item.name]),
+            )}
+            isSubmitting={isAddingToWorkspace}
+            onSubmit={(selections, rowUnit) => {
+              void handleAddToWorkspace(selections, rowUnit);
+            }}
+          />
+        ) : null}
+      </AnalysisSplitLayout>
+    </ToolModeContext>
   );
 }
 

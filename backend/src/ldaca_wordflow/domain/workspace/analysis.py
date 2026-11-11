@@ -156,7 +156,13 @@ class TopicModelingAnalysisRequest(_StrictModel):
     random_seed: int = 0
     sample_fractions: list[float | None] | None = None
     segmentation_method: TopicSegmentationMethod = TopicSegmentationMethod.AUTOMATIC
-    max_segment_tokens: int = Field(default=256, ge=32, le=256)
+    # Max tokens per passage. None means Auto: the run measures every text it
+    # reads and takes the smallest offered size that keeps 9 in 10 units whole
+    # (Chao, 2026-11-11), recorded in the Result. Left out of saved Projects
+    # when Auto, so they stay readable by releases that require a number.
+    max_segment_tokens: int | None = Field(
+        default=None, ge=32, le=256, exclude_if=lambda value: value is None
+    )
     # Left out of saved Projects when English, so they stay readable by 0.7.15,
     # which refuses keys it does not know; a record without it means English.
     embedding_model: TopicEmbeddingModel = Field(
@@ -184,7 +190,7 @@ class TopicModelingAnalysisRequest(_StrictModel):
         ):
             raise ValueError("Max topic size must be larger than Min topic size")
         token_limit = TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS[self.embedding_model]
-        if self.max_segment_tokens > token_limit:
+        if self.max_segment_tokens is not None and self.max_segment_tokens > token_limit:
             raise ValueError(
                 f"Max tokens per passage must be at most {token_limit} "
                 "for this embedding model"

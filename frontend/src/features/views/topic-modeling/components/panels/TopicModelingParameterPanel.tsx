@@ -16,6 +16,8 @@ import type {
   TopicSegmentLengthsResource,
 } from '@/api';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
+import { AdvancedSection } from '@/features/views/common/toolMode/AdvancedSection';
+import { AdvancedSwitch } from '@/features/views/common/toolMode/AdvancedSwitch';
 import {
   NodeInputsPanel,
   type NodeInputColumnAddonArgs,
@@ -117,8 +119,14 @@ interface Props {
   onRandomSeedChange: (value: number) => void;
   segmentationMethod: TopicSegmentationMethod;
   onSegmentationMethodChange: (value: TopicSegmentationMethod) => void;
-  maxSegmentTokens: number;
-  onMaxSegmentTokensChange: (value: number) => void;
+  /** As set; `null` is Auto. */
+  maxSegmentTokens: number | null;
+  /** Sets a fixed size, or `null` for Auto. */
+  onMaxSegmentTokensChange: (value: number | null) => void;
+  /** What the next run sends: Auto (`null`) in Basic, whatever is set. */
+  sentMaxSegmentTokens: number | null;
+  /** The size Auto chose in the last run, and the sample's estimate before it. */
+  autoMaxSegmentTokens: { lastRun: number | null; estimate: number | null };
   /** The embedding model for the run (issue 413). */
   embeddingModel: TopicEmbeddingModel;
   onEmbeddingModelChange: (value: TopicEmbeddingModel) => void;
@@ -142,6 +150,8 @@ interface Props {
   hasMissingColumns: boolean;
   parametersLocked: boolean;
 }
+/** The Max tokens choice that means Auto. */
+const AUTO_MAX_SEGMENT_TOKENS = 'auto';
 const INTEGER_INPUT = 'h-8 w-20 px-2 text-right text-body tabular-nums';
 
 const NO_REMOTE_EMBEDDING = {
@@ -229,6 +239,8 @@ export function TopicModelingParameterPanel({
   onSegmentationMethodChange,
   maxSegmentTokens,
   onMaxSegmentTokensChange,
+  sentMaxSegmentTokens,
+  autoMaxSegmentTokens,
   embeddingModel,
   onEmbeddingModelChange,
   embeddingModelReason,
@@ -439,6 +451,14 @@ export function TopicModelingParameterPanel({
   // The sizes follow the model: up to 256, or 128 for Multilingual.
   const segmentTokenLimit = embeddingModelTokenLimit(embeddingModel);
   const segmentTokenSizes = SEGMENT_TOKEN_SIZES.filter((size) => size <= segmentTokenLimit);
+  // Auto shows the size it chose in the last run, like Max topic size, or the
+  // sample's estimate before a run (Chao, 2026-11-11).
+  const autoMaxSegmentTokensLabel =
+    autoMaxSegmentTokens.lastRun !== null
+      ? `Auto (${String(autoMaxSegmentTokens.lastRun)})`
+      : autoMaxSegmentTokens.estimate !== null
+        ? `Auto (about ${String(autoMaxSegmentTokens.estimate)})`
+        : 'Auto';
 
   // Called by: NodeInputsPanel to place topic sampling next to each selected node's text column because sampling is per-corpus input context rather than a separate global option.
   const renderSamplingInput = ({ index, nodeId }: NodeInputColumnAddonArgs) => {
@@ -514,6 +534,7 @@ export function TopicModelingParameterPanel({
       actionsGuidanceTarget="topic-modeling-actions"
       nudgeScope="topic-modeling"
       parametersLocked={parametersLocked}
+      headerAction={<AdvancedSwitch />}
     >
       <NodeInputsPanel
         guidanceTarget="topic-modeling-inputs"
@@ -584,67 +605,6 @@ export function TopicModelingParameterPanel({
                 <SelectItem value={MULTILINGUAL_EMBEDDING_MODEL}>
                   {EMBEDDING_MODEL_LABELS[MULTILINGUAL_EMBEDDING_MODEL]}
                 </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <ParameterLabel
-              helpKey="analysis.topic-modeling.segmentation-method"
-              htmlFor="topic-segmentation-method"
-              help="How text is split into passages. Automatic packs paragraphs up to Max tokens; Paragraph and Sentence keep one each."
-            >
-              Passages
-            </ParameterLabel>
-            <Select
-              value={segmentationMethod}
-              onValueChange={(value) => {
-                onSegmentationMethodChange(value as TopicSegmentationMethod);
-              }}
-            >
-              <SelectTrigger
-                id="topic-segmentation-method"
-                aria-label="Passages"
-                className="h-8 w-32"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="automatic">Automatic</SelectItem>
-                <SelectItem value="line">Paragraph</SelectItem>
-                <SelectItem value="sentence">Sentence</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <ParameterLabel
-              helpKey="analysis.topic-modeling.max-segment-tokens"
-              htmlFor="topic-max-segment-tokens"
-              help={`Largest passage: ${segmentTokenSizes.join(', ')} tokens (words or parts of words).`}
-            >
-              Max tokens
-            </ParameterLabel>
-            <Select
-              value={String(sanitizeMaxSegmentTokens(maxSegmentTokens, segmentTokenLimit))}
-              onValueChange={(value) => {
-                onMaxSegmentTokensChange(sanitizeMaxSegmentTokens(value, segmentTokenLimit));
-              }}
-            >
-              <SelectTrigger
-                {...nudgeTargetProps(NUDGE_TARGETS.topicMaxSegmentTokens)}
-                id="topic-max-segment-tokens"
-                aria-label="Maximum tokens per passage"
-                className="h-8 w-20"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {segmentTokenSizes.map((size) => (
-                  <SelectItem key={size} value={String(size)}>
-                    {size}
-                  </SelectItem>
-                ))}
               </SelectContent>
             </Select>
           </div>
@@ -723,27 +683,6 @@ export function TopicModelingParameterPanel({
             ) : null}
           </fieldset>
 
-          <div className="space-y-1">
-            <ParameterLabel
-              helpKey="analysis.topic-modeling.random-seed"
-              htmlFor="random-seed"
-              help="Picks the samples. The same seed gives very similar topics, not always identical."
-            >
-              Seed
-            </ParameterLabel>
-            <Input
-              id="random-seed"
-              aria-label="Random seed"
-              type="number"
-              min={0}
-              step={1}
-              value={randomSeed}
-              className={`${INTEGER_INPUT}${!randomSeedUserSet ? ' text-description' : ''}`}
-              onChange={(e) => {
-                onRandomSeedChange(Math.max(0, Number(e.target.value) || 0));
-              }}
-            />
-          </div>
           {remoteEmbedding.anyEndpoints ? (
             // A device choice, not a parameter (Chao): at the row's right end.
             <div className="ml-auto space-y-1">
@@ -821,93 +760,192 @@ export function TopicModelingParameterPanel({
             />
             <TopicSegmentLengthNudge
               lengths={segmentLengths}
-              maxSegmentTokens={maxSegmentTokens}
+              maxSegmentTokens={sentMaxSegmentTokens}
               onApply={onMaxSegmentTokensChange}
               className="mt-3"
             />
           </>
         )}
-        <div className="mt-3 space-y-1">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div
-              {...nudgeTargetProps(NUDGE_TARGETS.topicClusterSample)}
-              className="flex items-center gap-2"
-            >
-              <Checkbox
-                id="topic-cluster-sample"
-                checked={clusterSample}
-                aria-describedby={topicSamplingNote ? 'topic-cluster-sample-note' : undefined}
-                onCheckedChange={(checked) => {
-                  onClusterSampleChange(checked === true);
+        {/* Advanced (Chao, 2026-11-11): Passages and Max tokens work as a
+            pair and default to Automatic and Auto; the seed; Topic sampling. */}
+        <AdvancedSection className="mt-3">
+          <div className="flex flex-wrap items-start gap-x-5 gap-y-3">
+            <div className="space-y-1">
+              <ParameterLabel
+                helpKey="analysis.topic-modeling.segmentation-method"
+                htmlFor="topic-segmentation-method"
+                help="How text is split into passages. Automatic packs paragraphs up to Max tokens; Paragraph and Sentence keep one each."
+              >
+                Passages
+              </ParameterLabel>
+              <Select
+                value={segmentationMethod}
+                onValueChange={(value) => {
+                  onSegmentationMethodChange(value as TopicSegmentationMethod);
+                }}
+              >
+                <SelectTrigger
+                  id="topic-segmentation-method"
+                  aria-label="Passages"
+                  className="h-8 w-32"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="automatic">Automatic</SelectItem>
+                  <SelectItem value="line">Paragraph</SelectItem>
+                  <SelectItem value="sentence">Sentence</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <ParameterLabel
+                helpKey="analysis.topic-modeling.max-segment-tokens"
+                htmlFor="topic-max-segment-tokens"
+                help={`Largest passage: ${segmentTokenSizes.join(', ')} tokens (words or parts of words). Auto picks the smallest that keeps 9 in 10 passages whole, measured when the run starts.`}
+              >
+                Max tokens
+              </ParameterLabel>
+              <Select
+                value={
+                  maxSegmentTokens === null
+                    ? AUTO_MAX_SEGMENT_TOKENS
+                    : String(sanitizeMaxSegmentTokens(maxSegmentTokens, segmentTokenLimit))
+                }
+                onValueChange={(value) => {
+                  onMaxSegmentTokensChange(
+                    value === AUTO_MAX_SEGMENT_TOKENS
+                      ? null
+                      : sanitizeMaxSegmentTokens(value, segmentTokenLimit),
+                  );
+                }}
+              >
+                <SelectTrigger
+                  {...nudgeTargetProps(NUDGE_TARGETS.topicMaxSegmentTokens)}
+                  id="topic-max-segment-tokens"
+                  aria-label="Maximum tokens per passage"
+                  className="h-8 w-36"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={AUTO_MAX_SEGMENT_TOKENS}>
+                    {autoMaxSegmentTokensLabel}
+                  </SelectItem>
+                  {segmentTokenSizes.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <ParameterLabel
+                helpKey="analysis.topic-modeling.random-seed"
+                htmlFor="random-seed"
+                help="Picks the samples. The same seed gives very similar topics, not always identical."
+              >
+                Seed
+              </ParameterLabel>
+              <Input
+                id="random-seed"
+                aria-label="Random seed"
+                type="number"
+                min={0}
+                step={1}
+                value={randomSeed}
+                className={`${INTEGER_INPUT}${!randomSeedUserSet ? ' text-description' : ''}`}
+                onChange={(e) => {
+                  onRandomSeedChange(Math.max(0, Number(e.target.value) || 0));
                 }}
               />
-              <ParameterLabel
-                helpKey="analysis.topic-modeling.topic-sampling"
-                htmlFor="topic-cluster-sample"
-                help="Find topics from a sample of passages, then assign the rest. Faster on very large corpora; may miss small topics."
-              >
-                Topic sampling
-              </ParameterLabel>
             </div>
-            {clusterSample ? (
-              <div className="flex items-center gap-2">
-                <Label htmlFor="topic-cluster-sample-size" className={LABEL_TEXT}>
-                  Passages to sample
-                </Label>
-                <Input
-                  id="topic-cluster-sample-size"
-                  type="text"
-                  inputMode="numeric"
-                  value={sampleSizeValueDraft}
-                  placeholder={suggestedSampleSize.toLocaleString()}
-                  className="h-8 w-28 px-2 text-right text-body tabular-nums"
-                  onChange={(event) => {
-                    setSampleSizeDraft({ source: clusterSampleSize, value: event.target.value });
-                  }}
-                  onBlur={(event) => {
-                    commitSampleSize(event.currentTarget.value);
-                  }}
-                  // Tab takes the grey suggestion so it can be edited (issue 156).
-                  onKeyDown={(event) => {
-                    acceptPlaceholderOnTab({
-                      event,
-                      value: sampleSizeValueDraft,
-                      setValue: (value) => {
-                        setSampleSizeDraft({ source: clusterSampleSize, value });
-                      },
-                    });
+          </div>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div
+                {...nudgeTargetProps(NUDGE_TARGETS.topicClusterSample)}
+                className="flex items-center gap-2"
+              >
+                <Checkbox
+                  id="topic-cluster-sample"
+                  checked={clusterSample}
+                  aria-describedby={topicSamplingNote ? 'topic-cluster-sample-note' : undefined}
+                  onCheckedChange={(checked) => {
+                    onClusterSampleChange(checked === true);
                   }}
                 />
+                <ParameterLabel
+                  helpKey="analysis.topic-modeling.topic-sampling"
+                  htmlFor="topic-cluster-sample"
+                  help="Find topics from a sample of passages, then assign the rest. Faster on very large corpora; may miss small topics."
+                >
+                  Topic sampling
+                </ParameterLabel>
               </div>
-            ) : null}
-          </div>
-          {topicSamplingNote ? (
-            <p
-              id="topic-cluster-sample-note"
-              className={`text-label-secondary ${topicSamplingNote.warning ? 'text-warning' : 'text-description'}`}
-            >
-              {topicSamplingNote.lines.join(' ')}{' '}
-              {/* A link, so it still opens help while a run locks the panel. */}
-              <a
-                href="#help-topic-modeling-topic-sampling"
-                role="button"
-                className="text-link underline underline-offset-2"
-                onClick={(event) => {
-                  event.preventDefault();
-                  openTopicSamplingHelp();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === ' ') {
+              {clusterSample ? (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="topic-cluster-sample-size" className={LABEL_TEXT}>
+                    Passages to sample
+                  </Label>
+                  <Input
+                    id="topic-cluster-sample-size"
+                    type="text"
+                    inputMode="numeric"
+                    value={sampleSizeValueDraft}
+                    placeholder={suggestedSampleSize.toLocaleString()}
+                    className="h-8 w-28 px-2 text-right text-body tabular-nums"
+                    onChange={(event) => {
+                      setSampleSizeDraft({ source: clusterSampleSize, value: event.target.value });
+                    }}
+                    onBlur={(event) => {
+                      commitSampleSize(event.currentTarget.value);
+                    }}
+                    // Tab takes the grey suggestion so it can be edited (issue 156).
+                    onKeyDown={(event) => {
+                      acceptPlaceholderOnTab({
+                        event,
+                        value: sampleSizeValueDraft,
+                        setValue: (value) => {
+                          setSampleSizeDraft({ source: clusterSampleSize, value });
+                        },
+                      });
+                    }}
+                  />
+                </div>
+              ) : null}
+            </div>
+            {topicSamplingNote ? (
+              <p
+                id="topic-cluster-sample-note"
+                className={`text-label-secondary ${topicSamplingNote.warning ? 'text-warning' : 'text-description'}`}
+              >
+                {topicSamplingNote.lines.join(' ')}{' '}
+                {/* A link, so it still opens help while a run locks the panel. */}
+                <a
+                  href="#help-topic-modeling-topic-sampling"
+                  role="button"
+                  className="text-link underline underline-offset-2"
+                  onClick={(event) => {
                     event.preventDefault();
                     openTopicSamplingHelp();
-                  }
-                }}
-              >
-                Learn more
-              </a>
-            </p>
-          ) : null}
-        </div>
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === ' ') {
+                      event.preventDefault();
+                      openTopicSamplingHelp();
+                    }
+                  }}
+                >
+                  Learn more
+                </a>
+              </p>
+            ) : null}
+          </div>
+        </AdvancedSection>
         {/* The passage count depends on every setting in the row (Passages and
             Max tokens make the passages; Topic size groups them), so it spans
             the row instead of sitting under Topic size. */}

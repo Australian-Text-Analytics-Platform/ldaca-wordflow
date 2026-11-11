@@ -21,7 +21,8 @@ interface TopicModelingState {
   randomSeed: number;
   sampleFractions?: (number | null)[] | null;
   segmentationMethod: TopicSegmentationMethod;
-  maxSegmentTokens: number;
+  /** `null` is Auto: the run chooses. */
+  maxSegmentTokens: number | null;
   embeddingModel: TopicEmbeddingModel;
   /** The remote embedding endpoint, or `null` to embed on this computer. */
   embeddingEndpointId: string | null;
