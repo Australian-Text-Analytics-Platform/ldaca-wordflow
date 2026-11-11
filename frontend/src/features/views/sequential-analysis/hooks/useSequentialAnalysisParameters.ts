@@ -264,6 +264,21 @@ export function readSequentialServerParams(request: SequentialAnalysisRequest) {
 }
 
 /**
+ * The draft as Basic mode sends it: every advanced setting at its default.
+ * Trends' advanced settings are the reference Data Block, its text column
+ * and its tokeniser; without them a run counts rows only.
+ */
+export function basicSequentialParameters<
+  State extends {
+    referenceNodeId: string;
+    referenceTextColumn: string;
+    referenceTokenizerModel: string;
+  },
+>(state: State): State {
+  return { ...state, referenceNodeId: '', referenceTextColumn: '', referenceTokenizerModel: '' };
+}
+
+/**
  * Converts a fetched task request into parameter state and hydration metadata.
  * Used by: useSequentialAnalysisParameters so stored task requests restore the
  * form and the result summary from one normalization path.

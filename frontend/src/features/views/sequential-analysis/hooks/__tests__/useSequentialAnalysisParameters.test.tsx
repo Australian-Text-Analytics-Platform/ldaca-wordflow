@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
+  basicSequentialParameters,
   deriveSequentialParameterValues,
   readSequentialServerParams,
   useSequentialAnalysisParameters,
@@ -80,6 +81,35 @@ describe('sequential analysis parameter helpers', () => {
       reference_text_column: null,
       reference_tokenizer_model: null,
     });
+  });
+
+  it('sends no reference in Basic, whatever the hidden draft holds, and keeps the rest', () => {
+    const draft = {
+      frequency: 'yearly' as const,
+      groupByColumns: ['term'],
+      numericOriginInput: '',
+      numericIntervalInput: '1',
+      customIntervalValueInput: '1',
+      customIntervalUnit: 'minutes' as const,
+      referenceNodeId: 'corpus',
+      referenceTextColumn: 'text',
+      referenceTokenizerModel: 'native:plain_words_en',
+    };
+    const basic = basicSequentialParameters(draft);
+    expect(basic).toEqual({
+      ...draft,
+      referenceNodeId: '',
+      referenceTextColumn: '',
+      referenceTokenizerModel: '',
+    });
+    expect(deriveSequentialParameterValues(basic, 'datetime').currentSequentialParams).toEqual({
+      ...deriveSequentialParameterValues(draft, 'datetime').currentSequentialParams,
+      reference_node_id: null,
+      reference_text_column: null,
+      reference_tokenizer_model: null,
+    });
+    // The draft itself is untouched, so Advanced brings the reference back.
+    expect(draft.referenceNodeId).toBe('corpus');
   });
 
   it('derives custom datetime interval values only for custom datetime runs', () => {

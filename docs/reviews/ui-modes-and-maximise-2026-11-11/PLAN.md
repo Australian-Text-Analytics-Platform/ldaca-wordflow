@@ -142,10 +142,12 @@ written for whoever implements next, with no memory of the design discussion.
    `SequentialReferencePanel` inside `AdvancedSection`.
 4. Results are untouched: **Show as** keeps deriving from the result.
 
-**Suggestions.** Add `advanced?: true` to `NudgeDefinition`. In `NudgeCard`,
-when the definition is advanced and the context says Basic, render a
-**Show advanced settings** link button that calls `setAdvanced(true)`. No
-Trends nudge needs it; the mechanism lands here so A2 only tags definitions.
+**Suggestions.** Nothing in A1 to A3: no Suggestion points at an advanced
+setting of Trends, Annotation or Concordance. The **Show advanced settings**
+link is built with Topic Modelling (A4): add `advanced?: true` to
+`NudgeDefinition`, and in `NudgeCard`, when the definition is advanced and
+`ToolModeContext` says Basic, render a link button that calls
+`setAdvanced(true)`.
 
 **Help.**
 
@@ -176,8 +178,6 @@ Trends nudge needs it; the mechanism lands here so A2 only tags definitions.
   only in Advanced (the test already mocks `SequentialReferencePanel`).
 - `AnalysisCardLayout` test (create if missing): `headerAction` renders and
   stays enabled when `parametersLocked`.
-- `features/nudges/__tests__/nudges.test.tsx`: an advanced nudge in Basic
-  shows **Show advanced settings** and calls the context.
 
 **Manual check (dev build).** New Trends tab: no reference panel, Run sends
 no reference (network tab). Turn Advanced on: parent selected. Run, switch to

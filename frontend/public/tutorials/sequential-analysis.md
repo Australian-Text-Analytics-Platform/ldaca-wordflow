@@ -92,11 +92,13 @@ a period by all the words written in that period, in texts with a match or
 without.
 
 A Data Block made by Concordance cannot supply that total: it lacks every
-document without a match and repeats a document once per match. So choose, in
-**Normalise against**, the Data Block these rows were made from. When you
-choose a Data Block to analyse, the one it was made from starts selected,
-with its document column and tokeniser; change any of them, or choose
-**None** for counts only. The list
+document without a match and repeats a document once per match. So turn on
+[**Advanced**](./ui.md#help-ui-tool-mode) at the top right of the parameters
+and choose, in **Normalise against**, the Data Block these rows were made
+from. With **Advanced** off, Trends counts rows and sends no reference. When
+you turn it on, or choose a Data Block to analyse while it is on, the one it
+was made from starts selected, with its document column and tokeniser; change
+any of them, or choose **None** for counts only. The list
 offers that Data Block (and the ones it was made from) first, marked **made
 from this**, then every other Data Block that has the chosen time column, of
 the same kind (a date for a date, a number for a number), since the
@@ -212,7 +214,7 @@ The setting is kept for the tab while the Project is open, like **Chart**, and s
 
 <h3 id="help-sequential-download">Download chart</h3>
 
-Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, JPEG or **Interactive HTML**. An image download has a header with the Data Block name, time column, period, groups and reference Data Block, plus a legend; long headers wrap onto a second line. When **Show as** is not Count, the header also says what the values are, for example percentages of all rows in each period.
+Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, JPEG or **Interactive HTML**. An image download has a header with the Data Block name, time column, period, groups and reference Data Block, plus a legend; long headers wrap onto a second line. When **Show as** is not Row count, the header also says what the values are, for example percentages of all rows in each period.
 
 **Interactive HTML** saves the chart as one web page that opens in any browser, offline: it shows the chart exactly as it is on screen (the same groups, selected periods, zoom and theme colours), and keeps its tooltips, a legend whose entries hide or show groups, and the zoom slider (hold Command on a Mac or Control on Windows while scrolling to zoom; plain scrolling moves the page). Its last line links to the Wordflow home page. It is a picture you can explore, not a copy of Wordflow: it cannot change the Period, stop words or groups, or add anything to a Project.
 

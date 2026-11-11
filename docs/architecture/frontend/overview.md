@@ -101,6 +101,17 @@ through intrinsic wrapping and named container queries. Viewport breakpoints
 remain appropriate for viewport-owned surfaces such as mobile navigation and
 dialogs, but do not determine the layout of nested feature content.
 
+An analysis tool with advanced settings has a Basic and an Advanced mode
+(`features/views/common/toolMode/`). The mode is Tab presentation state on the
+device, like the chart type, with the tool's last choice as the default for a
+new Tab; a Tab with no choice opens in Advanced when its last run used an
+advanced setting. The mode also shapes the request on the client: each tool
+owns one pure function that returns its draft with every advanced setting at
+its default, and builds the request from that view in Basic. A hidden setting
+therefore never affects a run, and the hidden draft is kept for when Advanced
+is turned on again. Settings that decide where text is processed are never
+advanced.
+
 The contextual-guidance master switch is unresolved until the authenticated
 preference query succeeds, so automatic guidance remains off during bootstrap.
 Hint acknowledgments use `user ID -> hint ID -> highest version` in local

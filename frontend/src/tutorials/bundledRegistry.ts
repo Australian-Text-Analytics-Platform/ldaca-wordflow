@@ -86,6 +86,11 @@ const tutorial = {
     anchor: 'help-ui-analysis-layout',
     label: 'Parameters and results layout',
   },
+  'ui.tool-mode': {
+    file: 'tutorials/ui.md',
+    anchor: 'help-ui-tool-mode',
+    label: 'Basic and Advanced',
+  },
   'ui.preview-run-clear': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-preview-run-clear',

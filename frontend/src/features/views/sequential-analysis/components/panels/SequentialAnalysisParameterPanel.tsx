@@ -18,6 +18,7 @@ import type { SequentialAnalysisRequest } from '@/api';
 import { arrowTypeDisplayName, type ArrowField } from '@/lib/arrow/arrowTable';
 import { UniqueValueCount } from '../UniqueValueCount';
 import { elapsedFrequency, elapsedUnit } from '../../trendsAxisColumns';
+import { AdvancedSection } from '@/features/views/common/toolMode/AdvancedSection';
 import {
   SequentialReferencePanel,
   type SequentialReferencePanelProps,
@@ -363,12 +364,14 @@ export function SequentialAnalysisParameterPanel({
           ))}
         </div>
 
-        <SequentialReferencePanel
-          {...reference}
-          workspaceId={currentWorkspaceId ?? null}
-          activeNodeId={activeNodeId ?? ''}
-          disabled={inputsDisabled}
-        />
+        <AdvancedSection>
+          <SequentialReferencePanel
+            {...reference}
+            workspaceId={currentWorkspaceId ?? null}
+            activeNodeId={activeNodeId ?? ''}
+            disabled={inputsDisabled}
+          />
+        </AdvancedSection>
       </div>
     </>
   );
