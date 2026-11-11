@@ -101,6 +101,17 @@ through intrinsic wrapping and named container queries. Viewport breakpoints
 remain appropriate for viewport-owned surfaces such as mobile navigation and
 dialogs, but do not determine the layout of nested feature content.
 
+One surface can be maximised to the window: an analysis tool's results, or
+the Data Editor. `stores/layoutFocusStore.ts` owns which one; it is not
+persisted. `WorkspaceShell` hides the other regions with CSS and never
+unmounts them, and no split ratio or stored size is written, so restoring
+gives back the same charts, selections, drafts and pane sizes.
+`AnalysisSplitLayout` owns the Maximise results control and hides the
+parameters pane; `AnalysisTabbedPanel` hides the tab strip. `LayoutFocusGuard`
+restores the layout when the view or Project changes and on an Escape that
+nothing else handled, and each surface restores it when it has nothing to
+show. Contextual Hints wait while a surface is maximised.
+
 An analysis tool with advanced settings has a Basic and an Advanced mode
 (`features/views/common/toolMode/`). The mode is Tab presentation state on the
 device, like the chart type, with the tool's last choice as the default for a

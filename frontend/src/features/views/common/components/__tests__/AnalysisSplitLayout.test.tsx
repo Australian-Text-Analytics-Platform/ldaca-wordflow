@@ -1,7 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { AnalysisTabTitleContext } from '@/features/views/common/tabs/analysisTabTitleContext';
+import { useUIStore } from '@/stores';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import { AnalysisSplitLayout } from '../AnalysisSplitLayout';
 
 // The help icon needs the app's TooltipProvider; these tests do not cover it.
@@ -37,6 +40,58 @@ describe('AnalysisSplitLayout', () => {
 
   afterEach(() => {
     window.localStorage.clear();
+    useLayoutFocusStore.setState({ maximised: null });
+  });
+
+  describe('maximised results', () => {
+    it('offers Maximise results only once there are results', async () => {
+      render(<Harness initialResults={false} />);
+      expect(screen.queryByTestId('analysis-split-maximise')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'toggle results' }));
+      expect(await screen.findByRole('button', { name: 'Maximise results' })).toBeInTheDocument();
+    });
+
+    it('hides the parameters and the handle under a bar that names the tool and tab, and restores', () => {
+      useUIStore.getState().setCurrentView('topic-modeling');
+      window.localStorage.setItem(STORAGE_KEY, '240');
+      render(
+        <AnalysisTabTitleContext value="T-2">
+          <Harness />
+        </AnalysisTabTitleContext>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Maximise results' }));
+
+      expect(useLayoutFocusStore.getState().maximised).toBe('analysis');
+      // Hidden, not unmounted, so the draft survives.
+      expect(screen.getByTestId('analysis-split-parameters')).toHaveClass('hidden');
+      expect(screen.getByTestId('analysis-split-parameters')).toHaveTextContent('Parameters card');
+      expect(screen.queryByTestId('analysis-split-handle')).not.toBeInTheDocument();
+      expect(screen.getByTestId('analysis-split-maximised-bar')).toHaveTextContent(
+        'Topic Modelling · T-2',
+      );
+      expect(screen.getByTestId('analysis-split-results')).toHaveTextContent('Results card');
+      const restore = screen.getByRole('button', { name: 'Restore layout' });
+      expect(restore).toHaveFocus();
+
+      fireEvent.click(restore);
+      expect(useLayoutFocusStore.getState().maximised).toBeNull();
+      const parameters = screen.getByTestId('analysis-split-parameters');
+      expect(parameters).not.toHaveClass('hidden');
+      // The height set by hand is the same after restoring (Chao).
+      expect(parameters.style.height).toBe('240px');
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe('240');
+      expect(screen.getByRole('button', { name: 'Maximise results' })).toHaveFocus();
+    });
+
+    it('restores the layout by itself when the results disappear', async () => {
+      render(<Harness />);
+      fireEvent.click(screen.getByRole('button', { name: 'Maximise results' }));
+      fireEvent.click(screen.getByRole('button', { name: 'toggle results' }));
+      await waitFor(() => {
+        expect(useLayoutFocusStore.getState().maximised).toBeNull();
+      });
+      expect(screen.getByTestId('analysis-split-parameters')).not.toHaveClass('hidden');
+    });
   });
 
   it('shows the handle only once the results pane has content', async () => {

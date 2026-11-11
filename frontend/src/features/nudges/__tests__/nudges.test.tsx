@@ -14,6 +14,7 @@ import {
   topicResultNudge,
 } from '../nudges';
 import { useNudgeStore } from '../nudgeStore';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import { useUIStore } from '@/stores/uiStore';
 
 /** Lets the outline and card start listening (they wait a tick). */
@@ -225,6 +226,36 @@ describe('NudgeCard', () => {
       </GuidanceContext.Provider>,
     );
     expect(screen.getByRole('status')).toHaveTextContent('One topic holds most passages');
+  });
+
+  it('offers Show settings while maximised results hide what it points at', async () => {
+    const user = userEvent.setup();
+    renderCard('run-1');
+    // Not maximised: the settings are on screen, so there is nothing to show.
+    expect(screen.queryByRole('button', { name: 'Show settings' })).not.toBeInTheDocument();
+
+    act(() => {
+      useLayoutFocusStore.getState().maximise('analysis');
+    });
+    // jsdom draws nothing, so every target reads as hidden, as the
+    // parameters are while the results are maximised.
+    await user.click(screen.getByRole('button', { name: 'Show settings' }));
+    expect(useLayoutFocusStore.getState().maximised).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show settings' })).not.toBeInTheDocument();
+  });
+
+  it('does not offer Show settings for a target that is still drawn, such as a note in the results', () => {
+    const drawn = vi
+      .spyOn(Element.prototype, 'getClientRects')
+      .mockReturnValue([{}] as unknown as DOMRectList);
+    try {
+      useLayoutFocusStore.setState({ maximised: 'analysis' });
+      renderCard('run-1');
+      expect(screen.queryByRole('button', { name: 'Show settings' })).not.toBeInTheDocument();
+    } finally {
+      drawn.mockRestore();
+      useLayoutFocusStore.setState({ maximised: null });
+    }
   });
 
   it('closes on Dismiss, with its outline (Chao)', async () => {

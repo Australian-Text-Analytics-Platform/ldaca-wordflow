@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { AnalysisTab } from '../tabStateOps';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import { AnalysisTabbedPanel } from '../AnalysisTabbedPanel';
 
 const baseTab: AnalysisTab = {
@@ -64,6 +65,17 @@ describe('AnalysisTabbedPanel', () => {
 
     expect(screen.getByRole('tab')).toHaveTextContent('Analysis 1');
     expect(screen.getByText('Analysis panel')).toBeInTheDocument();
+  });
+
+  it('hides the tab strip while the results are maximised, keeping the panel', () => {
+    useLayoutFocusStore.setState({ maximised: 'analysis' });
+    try {
+      renderPanel(undefined, { multiTabEnabled: true });
+      expect(screen.queryByRole('tablist', { name: /analysis tabs/i })).not.toBeInTheDocument();
+      expect(screen.getByText('Analysis panel')).toBeInTheDocument();
+    } finally {
+      useLayoutFocusStore.setState({ maximised: null });
+    }
   });
 
   it('hides the tab controls when multi-tab UI is disabled', () => {
