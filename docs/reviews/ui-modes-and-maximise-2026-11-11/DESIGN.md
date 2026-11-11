@@ -126,14 +126,17 @@ when Advanced is turned on, not before, so Basic sends no reference.
 | Topic size, Min and Max (the settings most results need) | Topic sampling, Passages to sample |
 | Remote GPU and its server (where text is processed) | |
 
-**Max tokens sets itself.** Passages and Max tokens work as a pair, so both
-are advanced, with Passages on Automatic. Until someone changes either of
-them by hand, Max tokens follows the size Wordflow measures from the text:
-the smallest size that keeps at least 9 in 10 passages whole, which today is
-only offered as a suggestion. Once either is changed by hand, Max tokens
-stays as set and the suggestion appears again when a smaller size would do.
-A run uses the measured size in Basic too, and the last-run summary says
-which size was used.
+**Max tokens has an Auto mode.** Passages and Max tokens work as a pair, so
+both are advanced, with Passages on Automatic and Max tokens on **Auto**. The
+control works like **Max topic size**: Auto is the default, it shows the size
+it chose after a run, a size chosen by hand stays fixed, and choosing Auto
+again returns to it. Auto takes the size Wordflow measures from the text: the
+smallest that keeps at least 9 in 10 passages whole, from the first 200 texts
+of each selected Data Block, and the larger of the two when there are two.
+The suggestion that offers a smaller size remains, but only for a size set
+by hand, so someone who never opens Advanced neither sets these nor sees it.
+What Auto should do when that first estimate proves too small for the whole
+corpus is still open.
 
 Two Suggestions point at advanced settings here: `topic-segment-length` (Max
 tokens) and the Topic sampling half of `topic-large-input`. In Basic they

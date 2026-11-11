@@ -227,32 +227,43 @@ Data Block**, Model, Topic size, Remote GPU and its server. Advanced:
 Passages, Max tokens, Seed, Topic sampling with Passages to sample. Move the
 advanced ones into `AdvancedSection`.
 
-**Max tokens sets itself (Chao).** Today `TopicSegmentLengthNudge` offers a
-smaller Max tokens when `suggestedSegmentTokenCap` (in `nudges.ts`) finds one
-from `useTopicSegmentLengths`. Change that to:
+**Max tokens has an Auto mode (Chao, decided 11 November 2026).** Today
+`TopicSegmentLengthNudge` offers a smaller Max tokens when
+`suggestedSegmentTokenCap` (in `nudges.ts`) finds one from
+`useTopicSegmentLengths`. Change that to:
 
-1. State: make Max tokens "automatic until set", like `embeddingModel: null`
-   and `remoteEmbedding: null` already are. For example
-   `maxSegmentTokens: number | null`, where `null` follows the measurement.
-2. Resolved value while automatic: `suggestedSegmentTokenCap({ p90, current:
-   the model's limit, limit: the model's limit })`, or the model's default
-   (256, 128 for Multilingual) while the measurement is unknown or finds
-   nothing smaller.
-3. It stops being automatic when someone changes **Max tokens** or
-   **Passages** by hand: Max tokens is then fixed at the value it had
-   (changing Passages) or the value chosen. Hydrating a saved run also fixes
-   it at the run's value, as the other "follows" fields do.
-4. While automatic, show no `topic-segment-length` card: the size is already
-   applied. Say so beside the control, for example the Select showing
-   "64 (automatic)". Once fixed by hand, the card appears as it does today.
-5. `useTopicSegmentLengths` reads only while Suggestions are on. The
-   automatic value must not depend on that preference: read whenever Max
-   tokens is automatic, and keep the Suggestions condition for the card.
-6. Basic sends Passages Automatic and the automatic Max tokens. A run
-   submitted before the measurement arrives uses the model's default; that is
-   acceptable, but check the last-run summary then states the size used.
-7. Check which Data Block the measurement reads when two are selected, and
-   keep that behaviour.
+1. The control works like **Max topic size**: **Auto** is the default, the
+   control shows the value Auto chose after a run (for example "Auto (64)"),
+   a size chosen by hand stays fixed, and choosing **Auto** again returns to
+   it. Changing **Passages** does not fix Max tokens: Auto follows the
+   measurement for the chosen Passages.
+2. State: `maxSegmentTokens: number | null`, where `null` is Auto, like
+   `maxClusterSize`. Hydrating a saved run restores what that run was set to.
+3. Auto's value: the size today's suggestion would offer, that is
+   `suggestedSegmentTokenCap` against the model's limit, or the model's
+   default (256, 128 for Multilingual) while nothing is measured.
+4. **Two Data Blocks:** measure the first 200 texts of each, and under Auto
+   use the larger of the two sizes. `useTopicSegmentLengths` reads one Data
+   Block today; make it read every selected one.
+5. `useTopicSegmentLengths` reads only while Suggestions are on. Auto must
+   not depend on that preference: read whenever Max tokens is Auto, and keep
+   the Suggestions condition for the card.
+6. The `topic-segment-length` card shows only when there is something to
+   fix: Max tokens was set by hand and a smaller size would do. With
+   Passages and Max tokens both on their defaults, hidden in Basic, nobody
+   sets them and nobody sees the suggestion.
+7. Basic sends Passages Automatic and Max tokens Auto.
+
+**Open, do not build yet: what Auto does when the 200-text estimate turns
+out too small for the whole corpus.** Chao asked for advice; the
+recommendation given was to decide Auto during the run, from every text the
+run reads, in the worker, and to record the chosen size in the result the
+way `max_topic_size` is recorded. That needs a backend change (a nullable
+`max_segment_tokens` on the request, a token-count pass before the native
+call in `workers/topic_pipeline.py`, a result field, a regenerated client),
+which the rest of this plan does not. Build items 1 to 7 only once Chao has
+answered, because the answer decides whether the client or the worker
+resolves Auto.
 
 `basicTopicParams(draft)`: Passages Automatic, Max tokens automatic, Seed 0,
 Topic sampling off. Sampling per Data Block is Basic, so it is kept.
