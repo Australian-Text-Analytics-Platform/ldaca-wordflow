@@ -135,8 +135,13 @@ smallest that keeps at least 9 in 10 passages whole, from the first 200 texts
 of each selected Data Block, and the larger of the two when there are two.
 The suggestion that offers a smaller size remains, but only for a size set
 by hand, so someone who never opens Advanced neither sets these nor sees it.
-What Auto should do when that first estimate proves too small for the whole
-corpus is still open.
+Auto is decided by the run, not by the sample: after Run is clicked, the
+run counts the tokens of the natural units of every text it reads (whole
+texts, paragraphs, sentences or lines, counted without splitting), picks the
+size by the same rule, segments once, and records the size in the result.
+The measured units do not depend on the window, so there is nothing to
+re-segment and no loop. The 200-text sample remains for the suggestion and an
+estimate before the first run.
 
 Two Suggestions point at advanced settings here: `topic-segment-length` (Max
 tokens) and the Topic sampling half of `topic-large-input`. In Basic they

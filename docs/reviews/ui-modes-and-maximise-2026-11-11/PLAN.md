@@ -4,6 +4,19 @@ Read [DESIGN.md](DESIGN.md) first. It holds what people see and why. This file
 holds the order of work, the files, the traps, and how to verify. It is
 written for whoever implements next, with no memory of the design discussion.
 
+## At merge to `v0.7` (Chao, 11 November 2026)
+
+Issues and ledger records wait until the work is accepted. When it is, the
+documentation must cover all of it, including the Topic Modelling Max tokens
+Auto design: what is measured (natural units, counted without splitting), the
+9 in 10 rule, that the run decides and records it, and the 200-text sample's
+remaining jobs. Places: GitHub issues, `V07-nnn` rows in
+`docs/releases/v0.7-branch-changes.md` and
+`docs/releases/v0.7-to-v0.8-migration-instructions.md`, release notes, the
+domain doc for Topic Modelling requests, an ADR for "Auto is decided by the
+run" (it changes a request field to nullable), and this folder moved to
+`specs/active/<issue>-<slug>/` then archived.
+
 ## Ground rules for this work
 
 - Branch: stay on `research/v0.7-trends-normalisation`. Commits are local
@@ -239,31 +252,32 @@ advanced ones into `AdvancedSection`.
    measurement for the chosen Passages.
 2. State: `maxSegmentTokens: number | null`, where `null` is Auto, like
    `maxClusterSize`. Hydrating a saved run restores what that run was set to.
-3. Auto's value: the size today's suggestion would offer, that is
-   `suggestedSegmentTokenCap` against the model's limit, or the model's
-   default (256, 128 for Multilingual) while nothing is measured.
-4. **Two Data Blocks:** measure the first 200 texts of each, and under Auto
-   use the larger of the two sizes. `useTopicSegmentLengths` reads one Data
-   Block today; make it read every selected one.
-5. `useTopicSegmentLengths` reads only while Suggestions are on. Auto must
-   not depend on that preference: read whenever Max tokens is Auto, and keep
-   the Suggestions condition for the card.
+3. Auto's value is decided by the run (below). Before a run the control
+   may show the sample's estimate.
+4. `useTopicSegmentLengths` reads one Data Block today; make it read every
+   selected one and take the larger suggested size.
+5. Keep the Suggestions condition on the sample: nothing else needs it now.
 6. The `topic-segment-length` card shows only when there is something to
    fix: Max tokens was set by hand and a smaller size would do. With
    Passages and Max tokens both on their defaults, hidden in Basic, nobody
    sets them and nobody sees the suggestion.
 7. Basic sends Passages Automatic and Max tokens Auto.
 
-**Open, do not build yet: what Auto does when the 200-text estimate turns
-out too small for the whole corpus.** Chao asked for advice; the
-recommendation given was to decide Auto during the run, from every text the
-run reads, in the worker, and to record the chosen size in the result the
-way `max_topic_size` is recorded. That needs a backend change (a nullable
-`max_segment_tokens` on the request, a token-count pass before the native
-call in `workers/topic_pipeline.py`, a result field, a regenerated client),
-which the rest of this plan does not. Build items 1 to 7 only once Chao has
-answered, because the answer decides whether the client or the worker
-resolves Auto.
+**Auto is decided by the run (Chao, decided 11 November 2026).** Not by the
+client from the 200-text sample. The request carries `max_segment_tokens:
+null` for Auto. Before segmenting, the worker counts the tokens of every
+natural unit of every text it is about to read (the same
+`.text.segment_token_counts` the sample uses, which counts without
+splitting), applies the same rule (smallest of 32, 64, 128, 256 within the
+model's limit that holds 9 in 10 units; the model's limit when none does),
+segments once with that size, and records it in the result, as
+`max_topic_size` is recorded for Max topic size. Nothing is re-segmented and
+there is no feedback loop: the measured units do not depend on the window.
+Two Data Blocks need no special case: the run measures all their texts.
+
+The client's 200-text sample keeps two jobs: the `topic-segment-length`
+suggestion for a size fixed by hand (measure every selected Data Block and
+take the larger suggested size), and an estimate shown before the first run.
 
 `basicTopicParams(draft)`: Passages Automatic, Max tokens automatic, Seed 0,
 Topic sampling off. Sampling per Data Block is Basic, so it is kept.
