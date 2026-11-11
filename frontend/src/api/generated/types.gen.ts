@@ -6467,6 +6467,10 @@ export type TopicSegmentItem = {
      */
     end: number;
     /**
+     * Joined
+     */
+    joined?: boolean;
+    /**
      * Metadata
      */
     metadata: {
@@ -6476,6 +6480,10 @@ export type TopicSegmentItem = {
      * Node Id
      */
     node_id: string;
+    /**
+     * Outside Topic Range
+     */
+    outside_topic_range?: boolean;
     /**
      * Row Index
      */

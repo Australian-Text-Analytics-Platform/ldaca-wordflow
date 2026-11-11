@@ -315,9 +315,19 @@ shift to make room. Similarity is measured between a passage and the centre of
 a topic, which is the average of the passages grouping put in it. After a run,
 the line under the settings says how many Ungrouped passages joined a topic
 and how many stayed, for example *35,666 Ungrouped passages joined their most
-similar topic; 15,550 (18%) are Ungrouped*. In a topic's examples, passages
-that joined are listed with the others and are not marked: every passage is
-ranked by its similarity to the centre of all the passages now in the topic.
+similar topic; 15,550 (18%) are Ungrouped*.
+
+A topic stays defined by the passages grouping put in it. Its words, its
+centre, its place on the map and the way topics merge when you lower
+**Topics** all come from those passages only, so they are the same with any
+choice here. Passages that join are counted in the topic, in its bubble and in
+**Add to Project**, and each is marked **Joined** in the topic's
+[examples](#help-topic-modeling-examples).
+
+Joining is decided once, during the run, against the topics the run found. It
+is not decided again when topics are merged with **Topics**: a passage that
+joined a topic stays with it when that topic merges into a broader one, so the
+number Ungrouped is the same at every number of topics.
 
 With **Suggestions** on, a result in which 30% or more of the documents are
 Ungrouped suggests **Join a topic they fit**, and, if that was already chosen,
@@ -658,7 +668,7 @@ they leave out the shown topic, a note says so, with **Clear filters**.
 ![The topic list, with two selected topics, beside the most typical examples of Topic 8](tutorials/assets/topic_modelling/topic_examples.png)
 
 - **Most typical** lists the passages closest to the centre of the topic
-  first. **Random** lists them in a random order set by the run's seed, so the
+  first. The centre is the average of the passages grouping put in the topic. **Random** lists them in a random order set by the run's seed, so the
   same run always gives the same examples.
 - **One per document** (on by default) shows only the most typical (or first
   random) passage of each document.
@@ -675,7 +685,21 @@ the topic's words in the bubble's colour, and a badge such as
 passages. Green marks the top quarter, amber the middle half and grey the
 bottom quarter. Hover over the badge for the passage's similarity to the
 topic's centre. The badge ranks passages within one topic; it is not the
-chance that the passage belongs to the topic. Runs from Wordflow 0.7.10 or
+chance that the passage belongs to the topic. For a topic merged from several,
+the centre and the rank are those of all its grouped passages together, so a
+passage's badge changes as you change **Topics**.
+
+<span id="help-topic-modeling-joined-examples"></span>With
+[Ungrouped passages](#help-topic-modeling-ungrouped-passages) set to let
+passages join, an example that joined after grouping is marked, for example
+**Joined · Top 60%**. Its rank is on the same scale as the others: where it
+falls among the passages grouping put in the topic, measured from their
+centre. Grouped passages therefore keep the badge they would have had with
+**Stay Ungrouped**. **Joined · Outside** marks a passage that is less similar
+to the centre than every grouped passage. With **Join a topic they fit** that
+is uncommon and happens in a merged topic, because the passage was admitted
+against the topic it joined, not against the broader one; with **Always join
+the nearest topic** it is common. Runs from Wordflow 0.7.10 or
 earlier list their examples without a badge; run Topic Modelling again to rank
 them.
 

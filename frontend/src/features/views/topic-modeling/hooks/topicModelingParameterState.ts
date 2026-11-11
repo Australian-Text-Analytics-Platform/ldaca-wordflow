@@ -6,7 +6,7 @@ import type {
 } from '@/api';
 import { ENGLISH_EMBEDDING_MODEL, isTopicEmbeddingModel } from '../topicEmbeddingModels';
 
-export const DEFAULT_MAX_SEGMENT_TOKENS = 256;
+const DEFAULT_MAX_SEGMENT_TOKENS = 256;
 export const DEFAULT_MIN_CLUSTER_SIZE = 10;
 const DEFAULT_TOPIC_SAMPLE_PERCENT = 100;
 

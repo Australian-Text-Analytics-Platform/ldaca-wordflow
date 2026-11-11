@@ -93,8 +93,14 @@ class TopicSegmentItem(_StrictModel):
     end: int = Field(ge=0)
     text: str
     similarity: float | None
-    # Share (0-100) of the Topic's segments less similar to its centre.
+    # Share (0-100) of the Topic's grouped segments less similar to its centre.
+    # The centre and the scale are those of the segments grouping put in the
+    # Topic, so neither moves when Ungrouped passages join.
     typicality: int | None = Field(default=None, ge=0, le=100)
+    # An Ungrouped passage that joined the Topic after grouping, and whether it
+    # is less similar to the centre than every grouped segment of the Topic.
+    joined: bool = False
+    outside_topic_range: bool = False
     metadata: dict[str, str | None]
 
 

@@ -97,6 +97,11 @@ same for every topic (`-1` admits every one). `outlier_member_quantile` sets
 the bar per topic: at least as similar as that share of the topic's own
 members are (`0` is the least similar member). Give one or neither. Topic
 words still come from the segments clustering put in each topic.
+A topic's centre stays that of the segments clustering put in it: joined
+segments are stored with a `joined` mark, count towards the topic's coverage,
+and are left out of the centre used for the merge tree, the map and
+`topic_segment_similarities`, whose rows are `[segment_index, document_index,
+start_char, end_char, similarity, joined]`.
 `outlier_segments` is the number of segments in no topic at the end;
 `assigned_segments` is how many joined one, or null when neither option was
 given. With `cluster_sample_size`, joining follows the nearest-neighbour step.

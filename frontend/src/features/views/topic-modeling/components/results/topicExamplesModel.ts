@@ -57,6 +57,52 @@ export function typicalityBand(typicality: number): TypicalityBand {
   return 'low';
 }
 
+interface TypicalityBadge {
+  text: string;
+  band: TypicalityBand;
+  /** What the badge means, before the similarity figure. */
+  explanation: string;
+}
+
+/**
+ * The badge of one example. The rank is among the passages grouping put in
+ * the topic, measured from their centre, so it is the same whether or not
+ * Ungrouped passages joined. A passage that joined afterwards says so and is
+ * placed on that scale; one less similar than every grouped passage is
+ * outside it, which a merged topic or Always join the nearest topic can give.
+ */
+export function typicalityBadge({
+  typicality,
+  joined = false,
+  outsideTopicRange = false,
+}: {
+  typicality: number;
+  joined?: boolean;
+  outsideTopicRange?: boolean;
+}): TypicalityBadge {
+  if (!joined) {
+    return {
+      text: typicalityLabel(typicality),
+      band: typicalityBand(typicality),
+      explanation: 'How typical of this topic: similarity to its centre',
+    };
+  }
+  if (outsideTopicRange) {
+    return {
+      text: 'Joined · Outside',
+      band: 'low',
+      explanation:
+        'Joined this topic by similarity, after grouping left it Ungrouped. Less similar to the topic’s centre than any passage grouping put here: similarity',
+    };
+  }
+  return {
+    text: `Joined · ${typicalityLabel(typicality)}`,
+    band: typicalityBand(typicality),
+    explanation:
+      'Joined this topic by similarity, after grouping left it Ungrouped. Ranked among the passages grouping put here: similarity to their centre',
+  };
+}
+
 /** JavaScript string offset of each code point offset in `text` (0..length). */
 export function codePointOffsets(text: string): number[] {
   const offsets = [0];

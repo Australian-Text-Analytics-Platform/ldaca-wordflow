@@ -358,7 +358,11 @@ representative words come from the passages grouping put in each Topic. A saved
 request leaves the field out when `keep`. The Result's
 `clustering.ungrouped_segments` is the number of passages in no Topic when the
 run finished and `clustering.assigned_segments` how many joined one this way
-(null when the run kept them); both are absent from earlier Results.
+(null when the run kept them); both are absent from earlier Results. In a
+Topic's example passages, `joined` marks a passage that joined after
+grouping; `typicality` ranks every passage among the Topic's grouped passages,
+measured from their centre, and `outside_topic_range` marks a joined passage
+less similar to that centre than every grouped one.
 
 `get_topic_segment_lengths` takes `column`, `segmentation_method` and
 `embedding_model`. It counts tokens with that model's tokenizer, special tokens

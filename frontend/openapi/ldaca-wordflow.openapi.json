@@ -12447,6 +12447,11 @@
             "title": "End",
             "type": "integer"
           },
+          "joined": {
+            "default": false,
+            "title": "Joined",
+            "type": "boolean"
+          },
           "metadata": {
             "additionalProperties": {
               "anyOf": [
@@ -12465,6 +12470,11 @@
             "format": "uuid",
             "title": "Node Id",
             "type": "string"
+          },
+          "outside_topic_range": {
+            "default": false,
+            "title": "Outside Topic Range",
+            "type": "boolean"
           },
           "row_index": {
             "minimum": 0.0,

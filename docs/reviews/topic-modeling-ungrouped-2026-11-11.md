@@ -131,8 +131,17 @@ measurable time.
   topic they fit** (the per-topic bar above), and **Always join the nearest
   topic**. The request field is `ungrouped_passages`: `keep`, `fit`,
   `nearest`.
-- Topic words stay those of the passages grouping put in each topic, so a
-  topic's description does not shift with what joins it.
+- A topic stays defined by the passages grouping put in it: its words, its
+  centre, its map position and the merge tree behind the Topics slider come
+  from those passages only. A run with joining therefore shows the same
+  natural and merged topics as one without (checked on 3,000 comments at 31,
+  12 and 5 topics: identical words, positions and grouped similarities).
+- Joining is decided once, against the natural topics, and saved per passage.
+  It is not decided again when topics are merged: a merged topic is broader,
+  so re-deciding would change who joins as the slider moves.
+- In a topic's examples a joined passage is marked and ranked on the grouped
+  passages' scale; one less similar than every grouped passage reads as
+  outside the topic.
 - The run reports how many passages joined and how many stayed Ungrouped.
 - The suggestion shown when 30% or more of the documents are Ungrouped now
   points to this setting instead of Min and Max topic size.
