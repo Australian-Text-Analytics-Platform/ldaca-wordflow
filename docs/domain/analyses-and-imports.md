@@ -273,6 +273,17 @@ records the total Topic Segment count. Automatic, Line, and Sentence modes
 produce non-overlapping source spans; oversized semantic units are subdivided
 without discarding their tail.
 
+A request with no maximum token count asks for Auto, the default
+([ADR 0033](../adr/0033-topic-max-tokens-auto-is-decided-by-the-run.md)). The
+run decides the size, not the client: before segmenting, it counts the tokens
+of every unit the segmentation method keeps whole, in every text it reads,
+without splitting any, and takes the smallest of 32, 64, 128 and 256 within
+the model's limit that keeps at least 9 in 10 of those units whole. It then
+segments once at that size, and the Result records the size the run used,
+whether set or chosen. The client's estimate from the first 200 texts of each
+selected Data Block only labels the control before a run and supports the
+suggestion shown for a size set by hand.
+
 Every segmentation method then uses the same embedding, reduction, clustering,
 c-TF-IDF, and Result-construction pipeline. HDBSCAN uses the request's minimum
 cluster size and treats each Topic Segment as one equal observation. Its
@@ -286,6 +297,20 @@ integer row-membership counts: a positive real Topic counts when its share is
 among the row's Top N real-topic shares. Zero shares and outlier `-1` are
 excluded, while every cutoff tie is included, so totals across bubbles may
 exceed the number of source rows.
+
+A request also says what happens to the Topic Segments HDBSCAN leaves out
+(`ungrouped_passages`): they stay Ungrouped (`keep`, the default), join the
+Topic whose centre they are most similar to when they are at least as similar
+as that Topic's own least similar segment (`fit`), or always join the nearest
+Topic (`nearest`). Joining is decided once, after clustering and against the
+natural Topics, and each joined segment is stored with a mark. A Topic stays
+defined by the segments clustering put in it
+([ADR 0034](../adr/0034-topics-are-defined-by-their-grouped-passages.md)): its
+Representative Words, its centre, its map position and the merge tree come
+from those segments only, so the same run with and without joining has the
+same natural and merged Topics. A joined segment counts towards its Topic's
+Document Topic Coverage and bubble size like any other, and the Result records
+how many segments joined and how many stayed Ungrouped.
 
 If fewer than `max(3, min_cluster_size)` Topic Segments are available, or
 HDBSCAN finds only noise, the Result has no real Topics or projection Artifact.
