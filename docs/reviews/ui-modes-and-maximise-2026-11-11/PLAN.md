@@ -24,15 +24,45 @@ written for whoever implements next, with no memory of the design discussion.
   spelling ("Maximise", "Colour", "Tokeniser"), `Data Block` and `Project` as
   product terms.
 
-## Order
+## Status (11 November 2026, end of the session that wrote this plan)
 
-| Step | What | Gate |
+| Step | State | Commit |
 |---|---|---|
-| A1 | Mode mechanism, applied to Trends | None. Do first: it finishes the feature under review on this branch. |
-| B1 to B4 | Maximised results for analysis tools and the Data Editor | None. |
-| A2 | Annotation | Agreed 11 November 2026. |
-| A3 | Concordance | Agreed 11 November 2026, as changed in DESIGN.md. |
-| A4 | Topic Modelling | **Not confirmed. Do not build until Chao answers.** |
+| A1 Mode mechanism and Trends | **Done**, tests and checks pass | `5162d29f` |
+| B1 Store, shell regions, guard | **Done** | `fc9ef106` |
+| B2 Analysis tools | **Done**: button, bar, tab strip, hints wait, Show settings | `fc9ef106` |
+| B3 Data Editor | **To do.** The shell already lays out `maximised === 'data-editor'`; nothing sets it yet. | |
+| B4 Help and docs | **Partly done**: `ui.md` (`help-ui-maximise`) and the architecture overview cover analysis tools. Add the Data Editor sentences with B3. | |
+| A2 Annotation | **To do**, agreed | |
+| A3 Concordance | **To do**, agreed as changed | |
+| A4 Topic Modelling | **To do**, agreed as changed (see A4) | |
+
+Do the remaining steps in this order: B3 with B4, A2, A3, A4. One commit each.
+
+**Nobody has run the app yet.** Every check so far is tsc, eslint, Biome,
+vitest (jsdom), knip and the docs checks. The manual pass under Verification
+is still owed for A1 and B1/B2, and matters most for the maximise layout
+(chart and graph resizing, the sidebar hiding, stacked narrow layout).
+
+**Learned while building, keep in mind.**
+
+- `frontend/scripts/desktop-contract.test.mjs` reads source files as text and
+  pins class literals: `p-2 pt-0 pl-0` in `WorkspaceShell.tsx` and
+  `p-2 pt-0 pb-0 pl-0` in `WorkspaceView.tsx`. Add classes beside them
+  (`pl-2!`), never split them. Run the whole vitest suite, not only the
+  folders you touched.
+- The mode switch is a header slot: `AnalysisCardLayout` takes
+  `headerAction`, `AnalysisFeatureHeader` (Concordance) takes `action`.
+- `useToolMode` derives the mode on every render; a tab with no choice of its
+  own follows the tool's last choice on this device, so it can flip when the
+  person switches the mode in another tab of the same tool. That is intended.
+- The **Show advanced settings** link on Suggestions was written and taken
+  out again, because nothing in A1 to A3 uses it. It belongs to A4.
+- `hasHiddenNudgeTarget` (`nudgeHighlight.ts`) tells a hidden target from a
+  drawn one by `getClientRects()`. jsdom draws nothing, so tests that need a
+  drawn target mock `Element.prototype.getClientRects`.
+- ESLint's fast-refresh rule refuses a component file that also exports a
+  function. Keep helpers unexported or in their own file.
 
 ## Facts already established (do not re-derive)
 
@@ -185,25 +215,66 @@ no reference (network tab). Turn Advanced on: parent selected. Run, switch to
 running it gives a result without the rate. Turn Advanced on again: the
 reference is still chosen. Reload: the tab reopens in the mode it had.
 
-### A4. Topic Modelling (not confirmed; listed here ahead of A2 for history)
+### A4. Topic Modelling (agreed 11 November 2026; do last)
 
-**Topic Modelling** (`topic-modeling/components/panels/TopicModelingParameterPanel.tsx`,
-`hooks/topicModelingParameterState.ts`, `hooks/useTopicModelingParameters.ts`).
+Files: `topic-modeling/components/panels/TopicModelingParameterPanel.tsx`,
+`hooks/topicModelingParameterState.ts`, `hooks/useTopicModelingParameters.ts`,
+`hooks/useTopicSegmentLengths.ts`, `components/TopicModelingNudges.tsx`,
+`TopicModelingFeature.tsx`, `features/nudges/nudges.ts`, `NudgeCard.tsx`.
 
-- `basicTopicParams(draft)`: Sampling 100 for every Data Block, Passages
-  Automatic, Max tokens the default for the model (256, 128 for
-  Multilingual), Seed 0, Topic sampling off.
-- Move Passages, Max tokens, Seed and Topic sampling into `AdvancedSection`;
-  render the per-Data-Block Sampling add-on only in Advanced. Model, Topic
-  size and Remote GPU stay.
-- Tag `topic-slow-start`, `topic-large-input` and `topic-segment-length` as
-  `advanced: true`. `TopicSegmentLengthNudge`'s Apply sets Max tokens: it
-  must call `setAdvanced(true)` first (rule 2 in DESIGN.md).
-- The last-run summary paragraph keeps listing what the run used.
-- `lastRunUsedAdvanced`: the last request differs from
-  `basicTopicParams` of itself.
-- Reword the `topic-modeling.run` hint and bump its version; update
-  `topic-modeling.md` and the Suggestions list in `ui.md`.
+**Which settings.** Basic: Data Blocks, Text column, Colour, **Sampling per
+Data Block**, Model, Topic size, Remote GPU and its server. Advanced:
+Passages, Max tokens, Seed, Topic sampling with Passages to sample. Move the
+advanced ones into `AdvancedSection`.
+
+**Max tokens sets itself (Chao).** Today `TopicSegmentLengthNudge` offers a
+smaller Max tokens when `suggestedSegmentTokenCap` (in `nudges.ts`) finds one
+from `useTopicSegmentLengths`. Change that to:
+
+1. State: make Max tokens "automatic until set", like `embeddingModel: null`
+   and `remoteEmbedding: null` already are. For example
+   `maxSegmentTokens: number | null`, where `null` follows the measurement.
+2. Resolved value while automatic: `suggestedSegmentTokenCap({ p90, current:
+   the model's limit, limit: the model's limit })`, or the model's default
+   (256, 128 for Multilingual) while the measurement is unknown or finds
+   nothing smaller.
+3. It stops being automatic when someone changes **Max tokens** or
+   **Passages** by hand: Max tokens is then fixed at the value it had
+   (changing Passages) or the value chosen. Hydrating a saved run also fixes
+   it at the run's value, as the other "follows" fields do.
+4. While automatic, show no `topic-segment-length` card: the size is already
+   applied. Say so beside the control, for example the Select showing
+   "64 (automatic)". Once fixed by hand, the card appears as it does today.
+5. `useTopicSegmentLengths` reads only while Suggestions are on. The
+   automatic value must not depend on that preference: read whenever Max
+   tokens is automatic, and keep the Suggestions condition for the card.
+6. Basic sends Passages Automatic and the automatic Max tokens. A run
+   submitted before the measurement arrives uses the model's default; that is
+   acceptable, but check the last-run summary then states the size used.
+7. Check which Data Block the measurement reads when two are selected, and
+   keep that behaviour.
+
+`basicTopicParams(draft)`: Passages Automatic, Max tokens automatic, Seed 0,
+Topic sampling off. Sampling per Data Block is Basic, so it is kept.
+`lastRunUsedAdvanced`: the last request differs from `basicTopicParams` of
+itself in Passages, Seed or Topic sampling. Max tokens alone does not count,
+since Basic sets it too.
+
+**Suggestions.** Add `advanced?: true` to `NudgeDefinition` and the **Show
+advanced settings** link to `NudgeCard` (see A1, Suggestions). Tag
+`topic-segment-length` and `topic-large-input`. `topic-slow-start` points at
+Sampling, which is Basic, so it is not tagged. `TopicSegmentLengthNudge`'s
+Apply calls `setAdvanced(true)` before setting Max tokens.
+
+Reword the `topic-modeling.run` hint and bump its version (the hint count
+test stays 47). Update `topic-modeling.md` (parameters, the Max tokens
+passage near `help-topic-modeling-max-segment-tokens`, the Suggestions it
+mentions) and the Suggestions list in `ui.md`. The last-run summary keeps
+listing what the run used.
+
+Tests: reducer tests for the automatic state and its two exits;
+`basicTopicParams`; the panel in Basic and Advanced; the card absent while
+automatic and present once fixed; **Show advanced settings**.
 
 ### A2. Annotation
 
@@ -316,16 +387,23 @@ after a maximise and restore); `AnalysisTabbedPanel.test.tsx` (strip hidden);
    icon button before the **All Data Block tabs** dropdown,
    `aria-label="Maximise Data Editor"` or `"Restore layout"`.
 2. `components/layout/WorkspaceView.tsx` while `maximised === 'data-editor'`:
-   - Hide the graph/table `ResizeHandle`.
-   - Top `InsetCard`: `hidden` when no column tool is open. With a tool open,
-     show only `DataEditorToolPanel`, at its natural height capped at about
-     45% with its own scroll; never the graph or the **Back to** bar.
-   - Bottom `InsetCard`: `flex-1`, ignoring the stored ratio.
+   - No column tool open: top `InsetCard` and the graph/table `ResizeHandle`
+     `hidden`; the bottom card takes the full height (drop its inline height;
+     React restores the ratio-based height from the hook's value on restore).
+   - A column tool open: the normal top and bottom split, at the remembered
+     ratio and with its handle, so it resizes as usual (Chao: every resizable
+     pane keeps its behaviour). The top card shows only
+     `DataEditorToolPanel`, never the graph or the **Back to** bar: treat
+     `showingTool` as `tool !== null && (!graphVisible || maximised)`.
+   - Add `pl-2!` to both cards (the sidebar is hidden); keep the pinned
+     literal `p-2 pt-0 pb-0 pl-0`.
 3. `features/workspace/data-view/dataEditorToolStore.ts` and
    `DataEditorToolPanel.tsx`: while maximised, hide **Show Project Graph**,
    and set `graphVisible` to false when maximising with a tool open.
-4. Restore when the Data Editor has no selected Data Block
-   (`WorkspaceDataTableFeature` empty state).
+4. Restore when the Data Editor has no selected Data Block: an effect in
+   `WorkspaceDataTableFeature` on `!loading.nodeData && !selectedNode`. Do
+   not restore on unmount of the title row: it unmounts during every load
+   (`LoadingState`), for example when switching Data Block tabs.
 
 Tests: `WorkspaceSelectionTabs.test.tsx` (button, label flips);
 a `WorkspaceView` test for the maximised arrangement, next to

@@ -2,8 +2,7 @@
 
 Prepared on 11 November 2026 for Chao Sun, after his discussion with Monika.
 **Status: accepted by Chao on 11 November 2026, with the changes recorded
-under [Decisions](#decisions-11-november-2026); Topic Modelling's table is
-still to be confirmed.** The build order and file-level steps are in
+under [Decisions](#decisions-11-november-2026).** The build order and file-level steps are in
 [PLAN.md](PLAN.md).
 
 Branch: `research/v0.7-trends-normalisation` (from `v0.7`, release 0.7.19, plus
@@ -117,21 +116,29 @@ In Basic the tool is the 0.7.19 Trends plus the renamed **Show as** list (**Row
 count**, **Composition**). The parent Data Block is offered as the reference
 when Advanced is turned on, not before, so Basic sends no reference.
 
-**Topic Modelling (proposed, not yet confirmed, not built).**
+**Topic Modelling (agreed, as changed by Chao).**
 
 | Basic | Advanced |
 |---|---|
-| Data Blocks, Text column, Colour | Sampling (per Data Block) |
-| Model (chosen automatically, and wrong for other languages) | Passages |
-| Topic size, Min and Max (the settings most results need) | Max tokens |
-| Remote GPU and its server (where text is processed) | Seed |
-| | Topic sampling, Passages to sample |
+| Data Blocks, Text column, Colour | Passages |
+| Sampling (per Data Block) | Max tokens |
+| Model (chosen automatically, and wrong for other languages) | Seed |
+| Topic size, Min and Max (the settings most results need) | Topic sampling, Passages to sample |
+| Remote GPU and its server (where text is processed) | |
 
-Four Suggestions point at advanced settings here (`topic-large-input`,
-`topic-slow-start`, `topic-segment-length`, and the sampling half of
-`topic-large-input`). They get **Show advanced settings**. The
-`topic-modeling.run` hint copy mentions passages, sampling and the seed and
-needs rewording with a version bump.
+**Max tokens sets itself.** Passages and Max tokens work as a pair, so both
+are advanced, with Passages on Automatic. Until someone changes either of
+them by hand, Max tokens follows the size Wordflow measures from the text:
+the smallest size that keeps at least 9 in 10 passages whole, which today is
+only offered as a suggestion. Once either is changed by hand, Max tokens
+stays as set and the suggestion appears again when a smaller size would do.
+A run uses the measured size in Basic too, and the last-run summary says
+which size was used.
+
+Two Suggestions point at advanced settings here: `topic-segment-length` (Max
+tokens) and the Topic sampling half of `topic-large-input`. In Basic they
+offer **Show advanced settings**. The `topic-modeling.run` hint copy mentions
+passages, sampling and the seed and needs rewording with a version bump.
 
 **Annotation (agreed).**
 
@@ -255,8 +262,9 @@ Chao's answers to the questions this proposal asked:
 1. **Composition stays in Basic.**
 2. **Annotation's table is agreed. Concordance's is agreed as changed above**
    (context sizes and the regular expression option are Basic; Separated or
-   Combined is Advanced). **Topic Modelling's table was not answered** and is
-   not built.
+   Combined is Advanced). **Topic Modelling's is agreed as changed above**
+   (Sampling per Data Block is Basic; Max tokens sets itself from the
+   measured passage length until Passages or Max tokens is changed by hand).
 3. **The analysis tab strip is hidden while maximised.** Maximising means the
    screen is too small for the normal layout, or the person wants to
    concentrate: the goal is as much of the screen as possible, and switching
