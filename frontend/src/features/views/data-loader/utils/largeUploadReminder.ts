@@ -27,3 +27,14 @@ export const needsLargeUploadReminder = (
   totalBytes: number,
   location?: Pick<Location, 'hostname' | 'protocol'>,
 ): boolean => totalBytes > LARGE_UPLOAD_REMINDER_BYTES && isSharedServer(location);
+
+/**
+ * An upload of more files than this gets a reminder first, on the desktop app
+ * too (issue 447). Each file is sent and stored separately, so 26,163 text
+ * files took 75 minutes on a Windows desktop and slowed the file list and
+ * later starts, where the same folder as one ZIP is one file.
+ */
+export const MANY_FILES_REMINDER_COUNT = 1000;
+
+export const needsManyFilesReminder = (fileCount: number): boolean =>
+  fileCount > MANY_FILES_REMINDER_COUNT;

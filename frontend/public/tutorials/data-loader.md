@@ -86,6 +86,15 @@ large corpora, install the [desktop app](https://sih.tools/wordflow) and work
 on your own computer; or choose **Upload anyway** and expect some tools to run
 slowly.
 
+Before an upload of more than 1,000 files, in the desktop app too, Wordflow
+advises a ZIP. Each file is sent and stored separately, so thousands of files
+take a long time (about 26,000 small text files took more than an hour), and
+the file list is slow to show them afterwards. Compress the folder into a ZIP
+file and upload that: it uploads as one file, and **Add** makes the same Data
+Block from it, with one row per text file. The ZIP shows as one file in the
+list, so its documents cannot be previewed or added one by one. **Upload
+anyway** sends the files as they are.
+
 Each upload appears in the **Tasks** panel as **L - Upload**, with how much has
 been sent, the speed, and the time left; for several files it also shows which
 file is being sent. It keeps going while you work in other views. **Stop** (in

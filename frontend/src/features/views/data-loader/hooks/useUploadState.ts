@@ -4,7 +4,7 @@ import { isExternalFileDrag } from '@/lib/externalFileDropGuard';
 import { isUploadCancelled, type UploadOptions } from '@/lib/backend/uploadTransport';
 import { useFreshItemsStore } from '@/stores/freshItemsStore';
 import { useUploadTasksStore } from '@/stores/uploadTasksStore';
-import { needsLargeUploadReminder } from '../utils/largeUploadReminder';
+import { needsLargeUploadReminder, needsManyFilesReminder } from '../utils/largeUploadReminder';
 import type { FileTreeNode } from '../types';
 import {
   collectDroppedSelection,
@@ -28,6 +28,10 @@ type Notify = (
 export interface LargeUploadReminder {
   totalBytes: number;
   fileCount: number;
+  /** Too large for a shared server (issue 260). */
+  large: boolean;
+  /** So many files that a ZIP would be much faster (issue 447). */
+  manyFiles: boolean;
 }
 
 export type UploadActivity =
@@ -168,11 +172,16 @@ export function useUploadState({
 
     const totalBytes = selection.files.reduce((sum, candidate) => sum + candidate.file.size, 0);
     // A shared server reminds the user before a large upload instead of
-    // refusing it with a fixed limit (issue 260).
-    if (needsLargeUploadReminder(totalBytes)) {
+    // refusing it with a fixed limit (issue 260). Anywhere, thousands of
+    // files get the advice to upload one ZIP instead (issue 447).
+    const large = needsLargeUploadReminder(totalBytes);
+    const manyFiles = needsManyFilesReminder(selection.files.length);
+    if (large || manyFiles) {
       const accepted = await askAboutLargeUpload({
         totalBytes,
         fileCount: selection.files.length,
+        large,
+        manyFiles,
       });
       if (!accepted) {
         notify('info', 'Upload cancelled. Nothing was uploaded.');
