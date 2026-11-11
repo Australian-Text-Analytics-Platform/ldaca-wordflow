@@ -229,7 +229,10 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.tokenFrequency.run,
     '[data-guidance="token-frequency-actions"]',
     'Count consistent tokens',
-    'The tokeniser defines what counts as a token, while stop words remove terms you do not want counted. Check the settings, then choose Run.',
+    // Stop words are offered with the results, not before the first Run, and
+    // only hide rows (issue 459).
+    'The tokeniser decides what counts as a token, for example whether “high-school” is one token or two. Check each Data Block’s tokeniser, then choose Run. After the run you can hide stop words from the results.',
+    2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.tokenFrequency.results,
