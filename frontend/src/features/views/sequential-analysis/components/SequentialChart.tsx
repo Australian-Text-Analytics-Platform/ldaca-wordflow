@@ -1,6 +1,7 @@
 import { ResultChartFit, ResultFrame } from '@/features/views/common/components/ResultFrame';
 import { NudgeCard } from '@/features/nudges/NudgeCard';
 import { NUDGE_TARGETS } from '@/features/nudges/nudges';
+import HelpIcon from '@/components/help/HelpIcon';
 import React from 'react';
 
 import { MultiSeriesChart } from '@/features/views/common/components/MultiSeriesChart';
@@ -66,6 +67,7 @@ export function SequentialChart({
   toolbarStart,
   containerRef,
 }: SequentialChartProps) {
+  const minimumGroupCountId = React.useId();
   // A refreshed result can invalidate indices held by the interaction hook.
   // Keep Clear enabled for that stale state even though the model deliberately
   // excludes invalid indices from rendering.
@@ -207,20 +209,30 @@ export function SequentialChart({
           onUncasedChange={model.supportsUncased ? onUncasedChange : undefined}
           controlsAfterUncased={
             model.summary.groupBy.length > 0 ? (
-              <label className="flex items-center gap-2 text-label-secondary text-foreground">
-                <span className="shrink-0">Minimum group count</span>
+              <div className="flex items-center gap-2 text-label-secondary text-foreground">
+                <span className="flex shrink-0 items-center gap-1">
+                  <label htmlFor={minimumGroupCountId}>Minimum group count</label>
+                  {/* Beside the label, not inside it, so a click on the icon
+                      opens help and does not move focus to the number. */}
+                  <HelpIcon
+                    targetKey="analysis.sequential-analysis.minimum-group-count"
+                    label="About Minimum group count"
+                    tooltip="Hides groups with fewer rows than this across all periods. Enter 0 to show every group."
+                    className="size-5 shrink-0 text-description"
+                  />
+                </span>
                 <Input
+                  id={minimumGroupCountId}
                   type="number"
                   min="0"
                   step="1"
                   value={minimumGroupCount}
-                  aria-label="Minimum group count"
                   className="w-20"
                   onChange={(event) => {
                     onMinimumGroupCountChange(event.currentTarget.valueAsNumber);
                   }}
                 />
-              </label>
+              </div>
             ) : null
           }
           onClearSelection={onClearSelection}

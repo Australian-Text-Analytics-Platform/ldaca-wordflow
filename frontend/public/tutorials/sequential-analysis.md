@@ -160,9 +160,17 @@ repeated in the result.
 <h3 id="help-sequential-minimum-group-count">Minimum group count</h3>
 
 For grouped results, **Minimum group count** hides any group whose total count
-across the complete result is below the entered value. The default is **10**;
-enter **0** to show every group. A group whose count equals the threshold remains
-visible. The control appears in the legend card immediately after **Ignore capitals**.
+across the complete result is below the entered value. The total is the number
+of rows in the group over all periods, the first figure beside its name in the
+legend. The default is **10**; enter **0** to show every group. A group whose
+count equals the threshold remains visible. The control appears in the legend
+card immediately after **Ignore capitals**, and the **?** beside it opens this
+section.
+
+Use it when a Group By column has many values, such as account names. Most of
+them appear in only a few rows, and each would add its own line and legend
+entry. A higher number leaves the larger groups; a lower number brings the
+smaller ones back.
 
 The filter removes small groups from the chart, legend, chart export, displayed
 counts, and Add to Project. It does not change manual legend visibility: if a

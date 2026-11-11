@@ -195,6 +195,12 @@ describe('SequentialChart', () => {
     );
     fireEvent.change(minimumCount, { target: { value: '4' } });
     expect(onMinimumGroupCountChange).toHaveBeenCalledWith(4);
+    // Issue 465: the setting explains itself beside its label.
+    fireEvent.click(controls.getByRole('button', { name: 'About Minimum group count' }));
+    expect(useUIStore.getState().documentTarget).toMatchObject({
+      file: 'tutorials/sequential-analysis.md',
+      anchor: 'help-sequential-minimum-group-count',
+    });
     fireEvent.click(screen.getByRole('button', { name: 'jobs/Jobs (3 · 100.0%)' }));
     expect(onToggleGroupIndices).toHaveBeenCalledWith([0, 1]);
   });

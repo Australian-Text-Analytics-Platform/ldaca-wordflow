@@ -521,6 +521,11 @@ const tutorial = {
     anchor: 'help-sequential-legend',
     label: 'Legend',
   },
+  'analysis.sequential-analysis.minimum-group-count': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-minimum-group-count',
+    label: 'Minimum group count',
+  },
   'analysis.sequential-analysis.reference': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-reference',
