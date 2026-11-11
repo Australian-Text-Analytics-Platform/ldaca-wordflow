@@ -128,7 +128,7 @@ The **Keyword Analysis** table summarises token-level differences between the St
 | OR / OS      | Observed frequency in the Reference and Study corpora                                        |
 | %R / %S      | The token's share of all tokens in each Data Block, as a percentage (relative frequency)         |
 | LL           | Log-likelihood (G²): how sure we can be the difference is real. Above 3.84 is significant (p < 0.05) |
-| Overuse      | **Study** when the token is relatively more frequent in the Study corpus, otherwise **Reference** |
+| Overuse      | **Study** when the token is relatively more frequent in the Study corpus, otherwise **Reference**. Sorting by this column orders by Signed LL: the token most overused in Study first, or the one most overused in Reference |
 | Signed LL    | LL, positive for study overuse and negative for study underuse                                   |
 | %DIFF        | How much more (or less) frequent the token is in the Study corpus, as a percentage                |
 | Bayes        | Bayes factor (BIC): above 2 is positive evidence, above 6 strong, above 10 very strong           |
