@@ -192,7 +192,11 @@ function TokenizerModelSelector({
             disabled={isDisabled}
           >
             <SelectTrigger
-              className="w-full text-body"
+              // min-w-0 lets a long model name shrink and clip. Without it the
+              // trigger kept the row's full width in a narrow card (two Data
+              // Blocks side by side) and pushed the About link out of sight
+              // (issue 455).
+              className="w-full min-w-0 flex-1 text-body"
               aria-label="Tokeniser model"
               // A disabled Run outlines an empty tokeniser (Suggestions, issue 360).
               {...(value ? {} : nudgeTargetProps(NUDGE_TARGETS.tokenizer))}
