@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
+import { ToolModeContext } from '@/features/views/common/toolMode/ToolModeContext';
 import { AnnotationAiSettings } from '../components/AnnotationAiSettings';
 
 vi.mock('../components/AddAnnotationProviderDialog', () => ({
@@ -56,24 +57,23 @@ const configurations: AnnotationProviderConfigurationView[] = [
   },
 ];
 
-const renderSettings = (
-  onProviderChange = vi.fn(),
-  advanced?: ReactNode,
-  onAdvancedOpenChange?: (open: boolean) => void,
-) => {
+const renderSettings = (onProviderChange = vi.fn(), advanced?: ReactNode, advancedMode = false) => {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <AnnotationAiSettings
-        configurations={configurations}
-        selectedConfigurationId={configurations[0]!.id}
-        onProviderChange={onProviderChange}
-        onModelChange={vi.fn()}
-        onModelCommit={vi.fn()}
-        providerModels={{ [configurations[1]!.id]: 'model-2' }}
-        model="model-1"
-        advanced={advanced}
-        onAdvancedOpenChange={onAdvancedOpenChange}
-      />
+      <ToolModeContext value={{ advanced: advancedMode, setAdvanced: vi.fn() }}>
+        <AnnotationAiSettings
+          configurations={configurations}
+          selectedConfigurationId={configurations[0]!.id}
+          onProviderChange={onProviderChange}
+          onModelChange={vi.fn()}
+          onModelCommit={vi.fn()}
+          providerModels={{ [configurations[1]!.id]: 'model-2' }}
+          model="model-1"
+          advanced={advanced}
+        >
+          <div>Example Data Block</div>
+        </AnnotationAiSettings>
+      </ToolModeContext>
     </QueryClientProvider>,
   );
   return onProviderChange;
@@ -105,49 +105,23 @@ describe('AnnotationAiSettings', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Add provider form');
   });
 
-  it('keeps Provider and Model in view while Advanced settings is collapsed (issue 205)', async () => {
-    const user = userEvent.setup();
-    renderSettings(vi.fn(), <div>Example, prompt, and inference settings</div>);
+  it('keeps Provider and Model in view and hides the advanced settings in Basic (issue 205)', () => {
+    renderSettings(vi.fn(), <div>Prompt and inference settings</div>);
 
     const provider = screen.getByRole('button', { name: 'Provider' });
     expect(within(provider).getByText('OpenRouter personal')).toHaveClass('font-medium');
     expect(screen.getByTestId('annotation-ai-provider-model-controls')).toHaveClass('grid-cols-2');
-    const advanced = screen.getByRole('button', { name: 'Advanced settings' });
-    expect(advanced).toHaveAttribute('aria-expanded', 'false');
-
-    await user.click(advanced);
-    expect(screen.getByRole('button', { name: 'Advanced settings' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
-    expect(screen.getByText('Example, prompt, and inference settings')).toBeInTheDocument();
+    expect(screen.queryByText('Example Data Block')).not.toBeInTheDocument();
+    expect(screen.queryByText('Prompt and inference settings')).not.toBeInTheDocument();
   });
 
-  it('collapses Advanced settings again from its control', async () => {
-    const user = userEvent.setup();
-    renderSettings();
+  it('lists the example, prompt and inference settings together in Advanced', () => {
+    renderSettings(vi.fn(), <div>Prompt and inference settings</div>, true);
 
-    await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
-    await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
-
-    expect(screen.getByRole('button', { name: 'Advanced settings' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
-    // Provider stays in view either way (issue 205).
+    const group = screen.getByRole('group', { name: 'Advanced settings' });
+    expect(group).toHaveTextContent('Example Data Block');
+    expect(group).toHaveTextContent('Prompt and inference settings');
     expect(screen.getByRole('button', { name: 'Provider' })).toBeInTheDocument();
-  });
-
-  it('reports only actual Advanced expansion state changes', async () => {
-    const user = userEvent.setup();
-    const onAdvancedOpenChange = vi.fn();
-    renderSettings(vi.fn(), undefined, onAdvancedOpenChange);
-
-    await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
-    expect(onAdvancedOpenChange).toHaveBeenLastCalledWith(true);
-
-    await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
-    expect(onAdvancedOpenChange).toHaveBeenLastCalledWith(false);
   });
 
   it('retains an incomplete selected provider but disables using it', async () => {
@@ -168,7 +142,6 @@ describe('AnnotationAiSettings', () => {
     );
 
     expect(screen.getAllByText('Needs API key')).not.toHaveLength(0);
-    await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
     expect(screen.getByText(/Settings → Servers/)).toBeInTheDocument();
     expect(screen.getByLabelText('Model')).toBeDisabled();
 
@@ -181,7 +154,6 @@ describe('AnnotationAiSettings', () => {
     const onProviderChange = vi.fn();
     renderSettings(onProviderChange);
 
-    await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
     await user.click(screen.getByRole('button', { name: 'Provider' }));
     await user.click(screen.getByRole('button', { name: 'Add provider' }));
     await user.click(screen.getByRole('button', { name: 'Finish keyless provider' }));

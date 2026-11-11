@@ -25,6 +25,10 @@ interface SequentialAnalysisState {
   numericOriginInput: string;
   customIntervalValue: number | null;
   customIntervalUnit: SequentialCustomIntervalUnit | null;
+  /** Normalise against this Data Block; its text column's words count when set. */
+  referenceNodeId: string | null;
+  referenceTextColumn: string | null;
+  referenceTokenizerModel: string | null;
 }
 
 interface SequentialAnalysisActions {
@@ -64,6 +68,9 @@ export function useSequentialAnalysisTaskFlow({
     numericOriginInput,
     customIntervalValue,
     customIntervalUnit,
+    referenceNodeId,
+    referenceTextColumn,
+    referenceTokenizerModel,
   },
   actions: {
     runAnalysis,
@@ -134,6 +141,17 @@ export function useSequentialAnalysisTaskFlow({
       }
     }
 
+    if (referenceNodeId === nodeIdForAnalysis) {
+      toast.error(
+        'Choose a different Data Block as the reference, usually the one this was made from.',
+      );
+      return;
+    }
+    if (referenceNodeId && referenceTextColumn && !referenceTokenizerModel) {
+      toast.error("Choose a tokeniser to count the reference's words, or choose Rows only.");
+      return;
+    }
+
     const request: SequentialAnalysisRequest = {
       node_id: nodeIdForAnalysis,
       time_column: picked,
@@ -145,6 +163,10 @@ export function useSequentialAnalysisTaskFlow({
       numeric_interval: derivedColumnType === 'numeric' ? numericIntervalValue : undefined,
       custom_interval_value: isCustomDatetime ? customIntervalValue : undefined,
       custom_interval_unit: isCustomDatetime ? (runUnit ?? undefined) : undefined,
+      reference_node_id: referenceNodeId ?? undefined,
+      reference_text_column: referenceNodeId ? (referenceTextColumn ?? undefined) : undefined,
+      reference_tokenizer_model:
+        referenceNodeId && referenceTextColumn ? (referenceTokenizerModel ?? undefined) : undefined,
     };
 
     await runAnalysis<Analysis>({
@@ -165,7 +187,9 @@ export function useSequentialAnalysisTaskFlow({
       },
       onError: (error) => {
         console.error('Sequential analysis error:', error);
-        toastError(error, 'Try again.', { title: "Couldn't run Trends Analysis." });
+        toastError(error, 'Try again.', {
+          title: "Couldn't run Trends Analysis.",
+        });
       },
     });
   };

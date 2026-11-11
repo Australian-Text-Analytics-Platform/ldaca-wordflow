@@ -41,9 +41,12 @@ class TopicModelingInput:
     max_cluster_size: int | None
     random_seed: int
     segmentation_method: str
-    max_segment_tokens: int
+    # None is Auto: the worker measures the texts and chooses (Chao, 2026-11-11).
+    max_segment_tokens: int | None
     sample_fractions: list[float | None] | None
     cluster_sample_size: int | None = None
+    # "keep", "fit" or "nearest" (TopicUngroupedPassages).
+    ungrouped_passages: str = "keep"
     embedding_model: str | None = None
     # Embed on this remote endpoint instead of this computer (never saved).
     remote_embedding: RemoteEmbeddingRun | None = None
@@ -56,6 +59,8 @@ class SequentialInput:
     node_id: uuid.UUID
     artifact_dir: str
     request_payload: dict[str, Any]
+    # For counting a reference Data Block's words with a model tokeniser.
+    token_cache_path: str | None = None
     kind: Literal["sequential"] = field(default="sequential", init=False)
 
 

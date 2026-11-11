@@ -18,8 +18,10 @@ export const NUDGE_TARGETS = {
   topicEmbeddingModel: 'topic-embedding-model',
   topicMaxSegmentTokens: 'topic-max-segment-tokens',
   topicRemoteGpu: 'topic-remote-gpu',
+  topicUngroupedPassages: 'topic-ungrouped-passages',
   tokenizer: 'tokenizer-model',
   exportFormat: 'export-format',
+  trendsReferenceNote: 'trends-reference-note',
 } as const;
 
 /**
@@ -59,6 +61,11 @@ export interface NudgeDefinition {
    * are only named in the message (Chao, issue 360).
    */
   targets: readonly string[];
+  /**
+   * Some targets are advanced settings: in a tool's Basic mode they are
+   * hidden, so the card offers Show advanced settings.
+   */
+  advanced?: true;
 }
 
 export const NUDGES = {
@@ -94,11 +101,24 @@ export const NUDGES = {
   },
   'topic-many-ungrouped': {
     title: 'Many documents are Ungrouped',
-    // What to do, plainly; why it helps only a little is in Learn more (Chao, 2026-10-10).
+    // From 30% of the documents (Chao, 2026-11). Ungrouped passages mostly
+    // sit between topics; letting them join the topic they fit took a
+    // comments corpus from 58% to 18% Ungrouped without adding a topic, where
+    // a smaller Min topic size only made thousands of tiny topics.
     message:
-      'To place more documents in topics, lower Min topic size or raise Max topic size, then Run again. The change is usually small.',
-    help: 'analysis.topic-modeling.ungrouped',
-    targets: [NUDGE_TARGETS.topicMinClusterSize, NUDGE_TARGETS.topicMaxClusterSize],
+      'Ungrouped passages can join the topic they are most similar to. Under Advanced, set Ungrouped passages to Join a topic they fit, then Run again.',
+    help: 'analysis.topic-modeling.ungrouped-passages',
+    targets: [NUDGE_TARGETS.topicUngroupedPassages],
+    advanced: true,
+  },
+  'topic-many-ungrouped-after-fit': {
+    title: 'Many documents are still Ungrouped',
+    // The run already let passages join a topic they fit.
+    message:
+      'They are less similar to any topic than its own passages are. If every passage should be in a topic, set Ungrouped passages to Always join the nearest topic under Advanced, then Run again.',
+    help: 'analysis.topic-modeling.ungrouped-passages',
+    targets: [NUDGE_TARGETS.topicUngroupedPassages],
+    advanced: true,
   },
   'topic-slow-start': {
     title: 'This run is taking a while',
@@ -118,6 +138,8 @@ export const NUDGES = {
     targets: [],
   },
   'topic-large-input': {
+    // Topic sampling is an advanced setting; Sampling is not.
+    advanced: true,
     title: 'A large input',
     message:
       'For a faster first run, use a sample: fewer documents with Sampling, or fewer passages with Topic sampling.',
@@ -125,6 +147,8 @@ export const NUDGES = {
     targets: [NUDGE_TARGETS.topicDocumentSampling, NUDGE_TARGETS.topicClusterSample],
   },
   'topic-segment-length': {
+    // Shown only for a Max tokens set by hand, an advanced setting.
+    advanced: true,
     // The card's title gives the numbers ("Your sentences are short: 64
     // tokens per segment is plenty"); Apply sets Max tokens (issue 414).
     title: 'Shorter passages are enough',
@@ -150,6 +174,15 @@ export const NUDGES = {
     help: 'analysis.topic-modeling.embedding-model',
     targets: [NUDGE_TARGETS.topicEmbeddingModel],
   },
+  'trends-reference-grouping': {
+    title: 'Some groups share a total',
+    // Shown with a rate whose reference lacks a Group By column; the detail
+    // names the column. The note under the chart, outlined, says the rest.
+    message:
+      'The groups of that column divide by the whole period’s total rather than their own. The note under the chart says what the rates divide by.',
+    help: 'analysis.sequential-analysis.reference',
+    targets: [NUDGE_TARGETS.trendsReferenceNote],
+  },
   'excel-cell-limit': {
     title: 'Too long for Excel',
     // Shown after an Excel download or export is refused (issue 397); the
@@ -172,6 +205,8 @@ interface TopicResultShape {
   clusteredSegments: number;
   /** Share of documents with no real Topic; null for runs before 0.7.12. */
   ungroupedShare?: number | null;
+  /** The run already let Ungrouped passages join a topic they fit. */
+  joinedByFit?: boolean;
 }
 
 /**
@@ -184,6 +219,7 @@ export function topicResultNudge({
   largestTopicSize,
   clusteredSegments,
   ungroupedShare = null,
+  joinedByFit = false,
 }: TopicResultShape): NudgeId | null {
   if (clusteredSegments > 0 && largestTopicSize / clusteredSegments > GIANT_TOPIC_SHARE) {
     return 'topic-giant-topic';
@@ -191,7 +227,7 @@ export function topicResultNudge({
   if (foundTopicCount > clusterCount) return 'topic-many-topics';
   if (clusterCount > 0 && clusterCount < FEW_TOPICS) return 'topic-few-topics';
   if (ungroupedShare !== null && ungroupedShare >= MANY_UNGROUPED_SHARE) {
-    return 'topic-many-ungrouped';
+    return joinedByFit ? 'topic-many-ungrouped-after-fit' : 'topic-many-ungrouped';
   }
   return null;
 }
@@ -208,6 +244,17 @@ export function isLargeTopicInput({
 }): boolean {
   if (documents >= LARGE_INPUT_DOCUMENTS) return true;
   return !topicSampling && segments !== null && segments >= LARGE_INPUT_SEGMENTS;
+}
+
+/**
+ * The passage size Max tokens Auto chooses from measured units: the smallest
+ * GPU length within the model's limit that holds 9 in 10 of them, or the
+ * limit when none does. The run decides with the same rule from every text it
+ * reads (backend `segment_token_cap`); from a sample this is an estimate.
+ */
+export function autoSegmentTokens(p90: number | null, limit: number): number {
+  if (p90 === null) return limit;
+  return SEGMENT_TOKEN_BUCKETS.find((tokens) => tokens <= limit && tokens >= p90) ?? limit;
 }
 
 /**

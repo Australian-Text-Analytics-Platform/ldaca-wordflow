@@ -150,6 +150,10 @@ describe('TokenizerModelSelector', () => {
     const link = screen.getByRole('link', { name: 'About IPADIC (opens in a new tab)' });
     expect(link).toHaveAttribute('href', 'https://taku910.github.io/mecab/');
     expect(link).toHaveAttribute('target', '_blank');
+    // The trigger may shrink, so the link keeps its place in a narrow card
+    // (issue 455). jsdom lays nothing out; the class is the contract.
+    expect(trigger).toHaveClass('min-w-0', 'flex-1');
+    expect(link).toHaveClass('shrink-0');
 
     await user.click(trigger);
     expect(

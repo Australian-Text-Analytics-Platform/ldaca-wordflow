@@ -79,6 +79,28 @@ describe('FilePreviewPanel pagination', () => {
     expect(header.style.width).toBe('');
   });
 
+  it('maximises the window so the table fills it, and restores it (issue 460)', async () => {
+    const user = userEvent.setup();
+    window.localStorage.removeItem('ldaca.filePreview.maximised');
+    const view = renderPreviewPanel();
+    await screen.findByText('page-1-row-10');
+
+    // jsdom lays nothing out, so the classes are the contract.
+    expect(screen.getByTestId('file-preview-table-box')).toHaveClass('max-h-60');
+    await user.click(screen.getByRole('button', { name: 'Maximise preview' }));
+    expect(screen.getByTestId('file-preview-table-box')).toHaveClass('min-h-0', 'flex-1');
+    expect(screen.getByTestId('file-preview-table-box')).not.toHaveClass('max-h-60');
+    expect(screen.getByRole('dialog').getAttribute('style')).toContain('calc(100vw - 2rem)');
+
+    // The next preview opens the way this one was left.
+    view.unmount();
+    renderPreviewPanel();
+    await screen.findByText('page-1-row-10');
+    await user.click(screen.getByRole('button', { name: 'Restore size' }));
+    expect(screen.getByTestId('file-preview-table-box')).toHaveClass('max-h-60');
+    expect(window.localStorage.getItem('ldaca.filePreview.maximised')).toBe('false');
+  });
+
   it('returns to page 1 when the page size changes', async () => {
     const user = userEvent.setup();
     renderPreviewPanel();

@@ -131,6 +131,24 @@ class TopicSegmentationMethod(StrEnum):
     SENTENCE = "sentence"
 
 
+class TopicUngroupedPassages(StrEnum):
+    """What happens to passages the grouping leaves out (2026-11).
+
+    Grouping by density leaves a passage Ungrouped when it sits in a sparse
+    area as a Topic separates from its neighbours: often more than half of
+    the passages, most of them between or beside Topics. KEEP leaves them.
+    FIT gives each one the Topic whose centre it is most similar to, when it
+    is at least as similar as that Topic's own least similar passage, so no
+    Topic becomes looser than it was. NEAREST gives every one its most
+    similar Topic. Topics are found before any passage joins, so neither adds
+    a Topic nor allows a smaller one.
+    """
+
+    KEEP = "keep"
+    FIT = "fit"
+    NEAREST = "nearest"
+
+
 class TopicEmbeddingModel(StrEnum):
     """The sentence models Topic Modelling offers (issue 413)."""
 
@@ -156,7 +174,13 @@ class TopicModelingAnalysisRequest(_StrictModel):
     random_seed: int = 0
     sample_fractions: list[float | None] | None = None
     segmentation_method: TopicSegmentationMethod = TopicSegmentationMethod.AUTOMATIC
-    max_segment_tokens: int = Field(default=256, ge=32, le=256)
+    # Max tokens per passage. None means Auto: the run measures every text it
+    # reads and takes the smallest offered size that keeps 9 in 10 units whole
+    # (Chao, 2026-11-11), recorded in the Result. Left out of saved Projects
+    # when Auto, so they stay readable by releases that require a number.
+    max_segment_tokens: int | None = Field(
+        default=None, ge=32, le=256, exclude_if=lambda value: value is None
+    )
     # Left out of saved Projects when English, so they stay readable by 0.7.15,
     # which refuses keys it does not know; a record without it means English.
     embedding_model: TopicEmbeddingModel = Field(
@@ -174,6 +198,11 @@ class TopicModelingAnalysisRequest(_StrictModel):
     # None clusters every segment. Clustering time grows with the square of the
     # segment count; a smaller sample misses smaller topics.
     cluster_sample_size: int | None = Field(default=None, ge=1_000)
+    # Left out of saved Projects when KEEP, so earlier releases can read them.
+    ungrouped_passages: TopicUngroupedPassages = Field(
+        default=TopicUngroupedPassages.KEEP,
+        exclude_if=lambda value: value == TopicUngroupedPassages.KEEP,
+    )
 
     @model_validator(mode="after")
     def validate_nodes_and_sampling(self) -> TopicModelingAnalysisRequest:
@@ -184,7 +213,7 @@ class TopicModelingAnalysisRequest(_StrictModel):
         ):
             raise ValueError("Max topic size must be larger than Min topic size")
         token_limit = TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS[self.embedding_model]
-        if self.max_segment_tokens > token_limit:
+        if self.max_segment_tokens is not None and self.max_segment_tokens > token_limit:
             raise ValueError(
                 f"Max tokens per passage must be at most {token_limit} "
                 "for this embedding model"
@@ -267,6 +296,13 @@ class SequentialAnalysisRequest(_StrictModel):
     custom_interval_unit: (
         Literal["seconds", "minutes", "hours", "days", "weeks"] | None
     ) = None
+    # Normalisation against a reference Data Block, usually the corpus the
+    # analysed Data Block was made from: its rows per period and group, and
+    # the words of ``reference_text_column`` counted with
+    # ``reference_tokenizer_model``, give rates such as per million words.
+    reference_node_id: uuid.UUID | None = None
+    reference_text_column: ColumnName | None = Field(default=None, max_length=500)
+    reference_tokenizer_model: ColumnName | None = Field(default=None, max_length=500)
 
     @field_validator("group_by_columns")
     @classmethod
@@ -275,6 +311,25 @@ class SequentialAnalysisRequest(_StrictModel):
         if len(set(columns)) != len(columns):
             raise ValueError("choose each column only once")
         return columns
+
+    @model_validator(mode="after")
+    def validate_reference(self) -> SequentialAnalysisRequest:
+        if self.reference_node_id is None:
+            if self.reference_text_column is not None:
+                raise ValueError("A reference text column needs a reference Data Block")
+            if self.reference_tokenizer_model is not None:
+                raise ValueError("A reference tokeniser needs a reference Data Block")
+            return self
+        if self.reference_node_id == self.node_id:
+            raise ValueError(
+                "The reference must be a different Data Block, usually the one "
+                "this Data Block was made from"
+            )
+        if self.reference_text_column is None and self.reference_tokenizer_model:
+            raise ValueError("A reference tokeniser needs a reference text column")
+        if self.reference_text_column is not None and not self.reference_tokenizer_model:
+            raise ValueError("Choose a tokeniser to count the reference's words")
+        return self
 
     @model_validator(mode="after")
     def validate_interval(self) -> SequentialAnalysisRequest:
@@ -759,6 +814,9 @@ def analysis_input_ids(request: AnalysisRequest) -> tuple[uuid.UUID, ...]:
         ids.append(request.class_node_id)
         if request.example_node_id is not None:
             ids.append(request.example_node_id)
+    if isinstance(request, SequentialAnalysisRequest) and request.reference_node_id:
+        # The reference Data Block's rows and words are the denominators.
+        ids.append(request.reference_node_id)
     return tuple(dict.fromkeys(ids))
 
 
@@ -1097,6 +1155,7 @@ __all__ = [
     "TokenFrequencyAnalysisRequest",
     "TopicModelingAnalysisRequest",
     "TopicSegmentationMethod",
+    "TopicUngroupedPassages",
     "TopicEmbeddingModel",
     "TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS",
     "TopicModelingDataBlockCreationAnalysisRequest",

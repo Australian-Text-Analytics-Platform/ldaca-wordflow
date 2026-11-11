@@ -36,7 +36,7 @@ The Study corpus is the collection whose key words you want to find. The Referen
 
 ![Stop words screenshot](tutorials/assets/token_frequency/stop_words.png)
 
-Stop words are terms you want to exclude from the frequency count: commonly words like _the_, _and_, or domain-specific filler that would otherwise dominate the results.
+Stop words are terms you want to hide from the results: commonly words like _the_, _and_, or domain-specific filler that would otherwise dominate them. The stop-word controls appear with the results, after the first **Run** (Step 4); every token is still counted, and the filter only changes what is shown.
 
 - Turn on **Enable stop words**, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
 - Pick a list from the dropdown below the switch (**Select language**, shown as **Saved list (N words)** once the tab has a list) to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modelling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a list switches the filter on if it was off.
@@ -128,7 +128,7 @@ The **Keyword Analysis** table summarises token-level differences between the St
 | OR / OS      | Observed frequency in the Reference and Study corpora                                        |
 | %R / %S      | The token's share of all tokens in each Data Block, as a percentage (relative frequency)         |
 | LL           | Log-likelihood (G²): how sure we can be the difference is real. Above 3.84 is significant (p < 0.05) |
-| Overuse      | **Study** when the token is relatively more frequent in the Study corpus, otherwise **Reference** |
+| Overuse      | **Study** when the token is relatively more frequent in the Study corpus, otherwise **Reference**. Sorting by this column orders by Signed LL: the token most overused in Study first, or the one most overused in Reference |
 | Signed LL    | LL, positive for study overuse and negative for study underuse                                   |
 | %DIFF        | How much more (or less) frequent the token is in the Study corpus, as a percentage                |
 | Bayes        | Bayes factor (BIC): above 2 is positive evidence, above 6 strong, above 10 very strong           |

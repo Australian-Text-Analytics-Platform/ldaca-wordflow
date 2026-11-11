@@ -15,6 +15,8 @@ import type { RerunActionState } from '@/features/views/common/rerunActionState'
 import type { UseTabNodeInputsResult } from '@/features/views/common/nodeInputs';
 import { nudgeTargetProps } from '@/features/nudges/nudgeHighlight';
 import { NUDGE_TARGETS } from '@/features/nudges/nudges';
+import { AdvancedSection } from '@/features/views/common/toolMode/AdvancedSection';
+import { AdvancedSwitch } from '@/features/views/common/toolMode/AdvancedSwitch';
 
 export interface ConcordanceParameterPanelProps {
   // Selection (add-node-as-needed)
@@ -140,6 +142,7 @@ export function ConcordanceParameterPanel({
         helpKey="analysis.concordance.parameters"
         helpLabel="Concordance parameters"
         helpTooltip="Select Data Blocks, choose the search term, and set context options before running."
+        action={<AdvancedSwitch />}
       />
       <fieldset disabled={parametersLocked} className="contents">
         <CardContent className="space-y-4 pt-0">
@@ -219,68 +222,108 @@ export function ConcordanceParameterPanel({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-body">
-              {/* Search mode picker. Text is the default; Tokens becomes selectable
-              after every selected Data Block has a source column, then exposes the
-              required tokenizer selectors. The regex / whole-word / case
-              checkboxes apply only to Text mode. */}
-              <div className="flex items-center gap-1">
-                <span className="text-body font-medium text-foreground">Search mode:</span>
-                <Tabs
-                  value={searchMode}
-                  onValueChange={(next) => {
-                    if (next === 'tokens' && !tokensModeAvailable) return;
-                    setSearchMode(next as 'regex' | 'tokens');
-                  }}
-                >
-                  <TabsList className="h-8">
-                    <TabsTrigger value="regex" className="text-label-secondary">
-                      Text
-                    </TabsTrigger>
-                    <DisabledReasonTooltip
-                      reason={
-                        tokensModeAvailable
-                          ? 'Finds each term as one whole token, exactly as written. A space, comma or | means any of them, not a phrase: 猫|犬 or cat dog finds every hit of either. For a phrase or other word forms, use Text with a regular expression.'
-                          : 'Select a source text column for every Data Block first.'
-                      }
-                    >
-                      <TabsTrigger
-                        value="tokens"
-                        disabled={!tokensModeAvailable}
-                        className="text-label-secondary"
-                      >
-                        Tokens
-                      </TabsTrigger>
-                    </DisabledReasonTooltip>
-                  </TabsList>
-                </Tabs>
-                <HelpIcon
-                  targetKey="analysis.concordance.search-mode"
-                  label="Search mode (text vs tokens)"
-                />
-              </div>
-
-              {searchMode === 'regex' && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={caseSensitive}
-                        onChange={(e) => {
-                          setCaseSensitive(e.target.checked);
-                        }}
-                        className="h-4 w-4"
-                      />
-                      <span className="text-body text-foreground">Case sensitive</span>
-                    </label>
-                    <HelpIcon
-                      targetKey="analysis.concordance.regex-toggle"
-                      label="About Case sensitive"
-                      tooltip="Keep capitals distinct, so The and the count as different words."
-                      className="size-5 shrink-0 text-description"
+            {searchMode === 'regex' && (
+              <div className="flex flex-wrap items-center gap-4 text-body">
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={caseSensitive}
+                      onChange={(e) => {
+                        setCaseSensitive(e.target.checked);
+                      }}
+                      className="h-4 w-4"
                     />
-                  </div>
+                    <span className="text-body text-foreground">Case sensitive</span>
+                  </label>
+                  <HelpIcon
+                    targetKey="analysis.concordance.regex-toggle"
+                    label="About Case sensitive"
+                    tooltip="Keep capitals distinct, so The and the count as different words."
+                    className="size-5 shrink-0 text-description"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={wholeWord}
+                      onChange={(e) => {
+                        setWholeWord(e.target.checked);
+                      }}
+                      disabled={regex}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-body text-foreground">Whole word</span>
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={regex}
+                      onChange={(e) => {
+                        const nextRegex = e.target.checked;
+                        setRegex(nextRegex);
+                        if (nextRegex) {
+                          setWholeWord(false);
+                        }
+                      }}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-body text-foreground">Regular expression</span>
+                  </label>
+                  <HelpIcon
+                    targetKey="ui.regular-expressions"
+                    label="About regular expressions"
+                    tooltip="Match a pattern instead of the exact text. Examples and a cheat sheet in Help."
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Advanced: the search mode, and Ignore punctuation in Text mode.
+                Text is the default; Tokens becomes selectable after every
+                selected Data Block has a source column, then exposes the
+                required tokeniser selectors beside each Data Block. */}
+            <AdvancedSection>
+              <div className="flex flex-wrap items-center gap-4 text-body">
+                <div className="flex items-center gap-1">
+                  <span className="text-body font-medium text-foreground">Search mode:</span>
+                  <Tabs
+                    value={searchMode}
+                    onValueChange={(next) => {
+                      if (next === 'tokens' && !tokensModeAvailable) return;
+                      setSearchMode(next as 'regex' | 'tokens');
+                    }}
+                  >
+                    <TabsList className="h-8">
+                      <TabsTrigger value="regex" className="text-label-secondary">
+                        Text
+                      </TabsTrigger>
+                      <DisabledReasonTooltip
+                        reason={
+                          tokensModeAvailable
+                            ? 'Finds each term as one whole token, exactly as written. A space, comma or | means any of them, not a phrase: 猫|犬 or cat dog finds every hit of either. For a phrase or other word forms, use Text with a regular expression.'
+                            : 'Select a source text column for every Data Block first.'
+                        }
+                      >
+                        <TabsTrigger
+                          value="tokens"
+                          disabled={!tokensModeAvailable}
+                          className="text-label-secondary"
+                        >
+                          Tokens
+                        </TabsTrigger>
+                      </DisabledReasonTooltip>
+                    </TabsList>
+                  </Tabs>
+                  <HelpIcon
+                    targetKey="analysis.concordance.search-mode"
+                    label="Search mode (text vs tokens)"
+                  />
+                </div>
+                {searchMode === 'regex' && (
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -292,45 +335,9 @@ export function ConcordanceParameterPanel({
                     />
                     <span className="text-body text-foreground">Ignore punctuation</span>
                   </label>
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={wholeWord}
-                        onChange={(e) => {
-                          setWholeWord(e.target.checked);
-                        }}
-                        disabled={regex}
-                        className="h-4 w-4"
-                      />
-                      <span className="text-body text-foreground">Whole word</span>
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={regex}
-                        onChange={(e) => {
-                          const nextRegex = e.target.checked;
-                          setRegex(nextRegex);
-                          if (nextRegex) {
-                            setWholeWord(false);
-                          }
-                        }}
-                        className="h-4 w-4"
-                      />
-                      <span className="text-body text-foreground">Use regular expression</span>
-                    </label>
-                    <HelpIcon
-                      targetKey="ui.regular-expressions"
-                      label="About regular expressions"
-                      tooltip="Match a pattern instead of the exact text. Examples and a cheat sheet in Help."
-                    />
-                  </div>
-                </>
-              )}
-            </div>
+                )}
+              </div>
+            </AdvancedSection>
           </div>
         </CardContent>
       </fieldset>

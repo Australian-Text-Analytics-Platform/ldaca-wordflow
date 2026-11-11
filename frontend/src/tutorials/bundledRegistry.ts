@@ -86,6 +86,11 @@ const tutorial = {
     anchor: 'help-ui-analysis-layout',
     label: 'Parameters and results layout',
   },
+  'ui.tool-mode': {
+    file: 'tutorials/ui.md',
+    anchor: 'help-ui-tool-mode',
+    label: 'Basic and Advanced',
+  },
   'ui.preview-run-clear': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-preview-run-clear',
@@ -411,6 +416,11 @@ const tutorial = {
     anchor: 'help-topic-modeling-segmentation-method',
     label: 'Passages',
   },
+  'analysis.topic-modeling.ungrouped-passages': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-ungrouped-passages',
+    label: 'Ungrouped passages',
+  },
   'analysis.topic-modeling.max-segment-tokens': {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-max-segment-tokens',
@@ -510,6 +520,21 @@ const tutorial = {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-legend',
     label: 'Legend',
+  },
+  'analysis.sequential-analysis.minimum-group-count': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-minimum-group-count',
+    label: 'Minimum group count',
+  },
+  'analysis.sequential-analysis.reference': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-reference',
+    label: 'Reference Data Block',
+  },
+  'analysis.sequential-analysis.show-as': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-show-as',
+    label: 'Show as',
   },
   'analysis.quotation.tab': {
     file: 'tutorials/quotation.md',

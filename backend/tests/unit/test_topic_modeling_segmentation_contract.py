@@ -7,6 +7,7 @@ from ldaca_wordflow.domain.workspace import (
     TopicEmbeddingModel,
     TopicModelingAnalysisRequest,
     TopicSegmentationMethod,
+    TopicUngroupedPassages,
 )
 from pydantic import ValidationError
 
@@ -22,14 +23,22 @@ def _request(**overrides: object) -> TopicModelingAnalysisRequest:
     )
 
 
-def test_legacy_topic_modeling_request_defaults_to_automatic_segments() -> None:
+def test_topic_modeling_request_defaults_to_automatic_segments_and_auto_max_tokens() -> None:
     request = _request()
 
+    # Max tokens None is Auto: the run measures the texts and chooses.
     assert (request.segmentation_method, request.max_segment_tokens) == (
         TopicSegmentationMethod.AUTOMATIC,
-        256,
+        None,
     )
     assert request.min_cluster_size == 10
+
+
+def test_auto_max_tokens_is_left_out_of_saved_projects() -> None:
+    # Releases before Auto require a number; leaving the key out lets them read
+    # the request (as their default, 256). A size set by hand is kept.
+    assert "max_segment_tokens" not in _request().model_dump(mode="json")
+    assert _request(max_segment_tokens=64).model_dump(mode="json")["max_segment_tokens"] == 64
 
 
 def test_topic_modeling_request_accepts_custom_minimum_cluster_size() -> None:
@@ -90,8 +99,8 @@ def test_multilingual_model_caps_segments_at_its_128_token_limit() -> None:
         _request(embedding_model=multilingual, max_segment_tokens=128).max_segment_tokens
         == 128
     )
-    with pytest.raises(ValidationError, match="at most 128"):
-        _request(embedding_model=multilingual)
+    # Auto chooses within the model's limit when the run measures the texts.
+    assert _request(embedding_model=multilingual).max_segment_tokens is None
     with pytest.raises(ValidationError, match="at most 128"):
         _request(embedding_model=multilingual, max_segment_tokens=129)
 
@@ -111,3 +120,22 @@ def test_saved_requests_name_the_model_only_when_it_is_not_english() -> None:
     assert TopicModelingAnalysisRequest.model_validate(saved).embedding_model is (
         TopicEmbeddingModel.MULTILINGUAL
     )
+
+
+def test_ungrouped_passages_stay_ungrouped_by_default_and_out_of_saved_projects() -> None:
+    request = _request()
+    assert request.ungrouped_passages is TopicUngroupedPassages.KEEP
+    assert "ungrouped_passages" not in request.model_dump(mode="json")
+
+    chosen = _request(ungrouped_passages="fit")
+    saved = chosen.model_dump(mode="json")
+    assert saved["ungrouped_passages"] == "fit"
+    assert TopicModelingAnalysisRequest.model_validate(saved) == chosen
+    assert _request(ungrouped_passages="nearest").ungrouped_passages is (
+        TopicUngroupedPassages.NEAREST
+    )
+
+
+def test_ungrouped_passages_rejects_an_unknown_choice() -> None:
+    with pytest.raises(ValidationError):
+        _request(ungrouped_passages="similar")

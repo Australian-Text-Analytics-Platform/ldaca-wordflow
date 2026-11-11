@@ -145,6 +145,7 @@ To switch Projects without going to the Data Loader, use **Switch Project** at t
 The **Data Editor** fills the bottom-right area. It shows the contents of the selected Data Blocks as a table, and it is where you change a Data Block in place: its columns and their values. Tools that make new Data Blocks or change which rows are present (Filter, Group, Join, Segment, Aggregate, Sample, Deduplicate, Stack) are in the [Data Builder](./preprocessing.md).
 
 - Each selected Data Block has a tab in the Data Editor title bar. Click a tab to show that Data Block; the **×** on a tab deselects it, and you can drag tabs to reorder them. When the tabs do not fit, scroll the strip or use the arrow buttons at its ends.
+- To give the table the whole window, click **Maximise Data Editor** at the right end of the title bar, before the list of tabs. The sidebar, the analysis tool and the Project Graph are hidden; click **Restore layout** in the same place, or press **Esc**, to go back with every size you set as it was. The layout also comes back by itself when no Data Block is selected, or when you go to another tool.
 - To rename a Data Block, click its tab to make it the current one, then double-click the tab name, type the new name, and press Enter (Esc cancels). Analysis tool tabs are renamed the same way.
 - Every rename box (tabs, columns, the Project name, Data Blocks) works the same way. Enter saves and Esc cancels. Clicking elsewhere saves an edited name. If a rename fails, for example because the name is already used, a message explains why and the box stays open with the name selected so you can fix it. Press Enter to try again, or click elsewhere without changing it to keep the original name.
 - With many tabs, click the arrow at the right end of the title bar for a list of every tab in alphabetical order, and choose one to switch to it. A very long name shows its start and end, with the middle faded.
@@ -169,7 +170,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   - The same tools are in each column's settings menu, with that column already chosen.
   - Column names are used exactly as written, including any spaces at the start or end (for example, a CSV header `ID, text` names the second column ` text`).
   - Column choices in every tool can be filtered by typing, so long column lists never need scrolling.
-- A tool opens in a panel above the table, in place of the Project Graph (use **Show Project Graph** to look at the graph, and **Back to** *tool* to return; **Close**, or the **×**, closes the tool). While you set it up, the table previews the result with the affected columns highlighted, and the panel reports how many rows change across the whole Data Block. The table scrolls so the column you are editing sits at the left edge, with any new column beside it; for **Combine columns**, whose new column is added at the end, it scrolls to the end. Scrolling or clicking in the table yourself stops this for the current preview. **Apply** makes the change as one step, so **Undo** reverses it. When **Find & replace** or **Clean text** saves its result to the same column of a category, number or date column, that column becomes a text column; the panel says so before you apply, and **Undo** restores the column's type and values together. The tool stays open on the same column with fresh settings, so you can make the next change straight away, on that column or another. **Cancel** discards settings you have not applied.
+- A tool opens in a panel above the table, in place of the Project Graph (use **Show Project Graph** to look at the graph, and **Back to** *tool* to return; **Close**, or the **×**, closes the tool). While the Data Editor is maximised, the tool opens above the table in the same way, with no **Show Project Graph**, and the line between them resizes as usual. While you set it up, the table previews the result with the affected columns highlighted, and the panel reports how many rows change across the whole Data Block. The table scrolls so the column you are editing sits at the left edge, with any new column beside it; for **Combine columns**, whose new column is added at the end, it scrolls to the end. Scrolling or clicking in the table yourself stops this for the current preview. **Apply** makes the change as one step, so **Undo** reverses it. When **Find & replace** or **Clean text** saves its result to the same column of a category, number or date column, that column becomes a text column; the panel says so before you apply, and **Undo** restores the column's type and values together. The tool stays open on the same column with fresh settings, so you can make the next change straight away, on that column or another. **Cancel** discards settings you have not applied.
 
 ![Clean text open above the table: the text column is highlighted and the panel reports 1,779 rows changed](tutorials/assets/ui/column_tool_panel.png)
 
@@ -194,7 +195,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   | list | List (of text, or of other values) |
   | pie chart | Topic coverage |
 
-  Use the pin button to keep a column at the left edge, click the sort button (the up and down arrows) to sort the table by that column (empty cells stay at the bottom either way), and expand or collapse a wide text column. These operations update the selected Data Block without creating a new one.
+  Use the pin button to keep a column at the left edge, click the sort button (the up and down arrows) to sort the table by that column (empty cells stay at the bottom either way), and expand or collapse a wide column. Any column whose values are too long for about 45 characters, a text column or a metadata column such as a file address, is shown at a limited width with its values cut short; the expand button in its header shows more, and resting the pointer on a cell shows the whole value. These operations update the selected Data Block without creating a new one.
 
 ![Column headers: pin, name, sort, data type, and settings](tutorials/assets/ui/column_header.png)
 
@@ -248,6 +249,8 @@ The centre column is the main working area and shows the interface of whichever 
 - Each analysis tool can hold several tabs, so you can keep several analyses side by side: **+** in the tab strip opens another. Tabs are on by default; to keep one tab in each tool, turn off **Enable multi-tab** under **Settings → General** (the **+** button's tooltip says so too). A hint at **+** offers **Turn off tabs…**, which shows the way there step by step.
 - Most tools follow a common workflow: configure parameters → review a preview → create the result. Data Builder tools always create new Data Blocks and leave their sources unchanged; the Data Editor's column tools always update the selected Data Block in place without changing its rows.
 - <span id="help-ui-analysis-layout"></span>In the analysis tools (Frequency, Concordance, Trends, Topic Modelling, Quotation, Annotation), the parameters sit above the results, and each part scrolls on its own. Once there are results, drag the bar between them to give either part more height, or use the arrow keys when the bar is focused; double-click the bar to go back to the default. Each tool remembers its own setting.
+- <span id="help-ui-maximise"></span>To read results on a small screen, or to concentrate on them, click **Maximise results** at the right end of the bar between the parameters and the results. The results take the whole window: the sidebar, the Project Graph and Data Editor, the tab strip and the parameters are hidden, and a line at the top names the tool and tab. Everything in the results works as before, including resizing each result. Click **Restore layout**, or press **Esc**, to go back: the parameters, your selections and every size you set by hand are as you left them. The layout also comes back by itself when you go to another tool or Project, or when the results are cleared. Contextual hints wait until the layout is restored, and a suggestion that points at a parameter offers **Show settings**, which restores the layout. Maximising is not remembered when Wordflow is reopened.
+- <span id="help-ui-tool-mode"></span>Some tools have an **Advanced** switch at the top right of their parameters. Off, the tool is in its Basic mode: it shows the settings a first analysis needs and uses the defaults for the rest. Turn **Advanced** on to see and change the rest, listed together under **Advanced settings**. Turning it off again hides those settings and goes back to their defaults for the next run; what you had set is kept and returns when you turn **Advanced** on. A result already on screen stays as it was run. Each tab remembers its mode on this computer, and a new tab starts in the mode you last chose for that tool. Trends keeps **Normalise against** there.
 - The main results (tables, lists, and charts) fill the space below the bar, sharing it when there are several, so the bar makes them taller or shorter. To size one result on its own, drag its bottom-right corner, as with the Stop words box; the others share the space that is left. Double-click the corner to let it fill the space again. For example, in Topic Modelling make the bubble chart shorter to give the topic lists more room. Word clouds keep their width-based height until you resize them.
 - Help icons (**?**) are placed next to individual controls. Hover one for a short reminder of what the control does; click it to open the matching Help section with more detail. A blue **i** opens the **About** page for a tool, and a quote mark opens a reference (how to cite, or a source and its licence).
 - The arrows at the top of the window go back and forward between the tools you have visited. The search box beside them (**Open quick access**) lists the analysis tabs of the open Project, for example **Frequency: F-1**: type to filter them, and choose one to open it.
@@ -366,15 +369,19 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
     while the Data Block has more: show more **Documents per page**, or
     **Run** to search them all;
   - Topic Modelling puts most passages in one topic (try a lower **Max topic
-    size**), finds only a few topics, or leaves many documents
-    [Ungrouped](./topic-modeling.md#help-topic-modeling-ungrouped) (try a
-    slightly lower **Min topic size**, which may help only a little), then
-    **Run** again;
+    size**), finds only a few topics, or leaves 30% or more of the documents
+    [Ungrouped](./topic-modeling.md#help-topic-modeling-ungrouped) (under
+    **Advanced**, set
+    [Ungrouped passages](./topic-modeling.md#help-topic-modeling-ungrouped-passages)
+    to **Join a topic they fit**), then **Run** again;
   - a Topic Modelling run is still splitting or reading the text after five
     minutes: reading takes most of a first run, so **Stop**, then lower
     **Sampling** to read fewer documents;
   - a Topic Modelling input is large (from about 15,700 documents or 66,000
-    passages): a sample of documents or passages gives a faster first run.
+    passages): a sample of documents or passages gives a faster first run;
+  - a Trends rate divides by a reference Data Block that lacks one of the
+    Group By columns, so its groups share each period's total: the note under
+    the chart says which columns the totals are grouped by.
 - Clicking a disabled **Run** outlines what it is waiting for, such as an
   empty **Tokeniser model** in Frequency.
 - Suggestions are turned off, and back on, under **Settings → Guidance**

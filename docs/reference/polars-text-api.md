@@ -20,7 +20,9 @@ expr.text.segment_token_counts(unit="automatic", *, model=None)
 expr.text.topic_modeling(
     *, embedding_model=None, embedding_cache=None,
     segmentation="automatic", max_tokens=256, seed=42,
-    min_topic_size=10, tokenizer_model=None, lowercase=True
+    min_topic_size=10, max_topic_size=None, tokenizer_model=None,
+    lowercase=True, cluster_sample_size=None, min_samples=None,
+    outlier_similarity=None, outlier_member_quantile=None
 )
 expr.text.clean_text()
 expr.text.word_count()
@@ -75,9 +77,34 @@ The scalar topic result is:
   documents: [{doc_index, dominant_topic, topic_coverage}],
   topics: [{id, representative_words, x, y}],
   n_segments,
+  outlier_segments,
+  assigned_segments,
   projection_context
 }
 ```
+
+`min_samples` is HDBSCAN's density setting: how many neighbours a segment
+needs close by to count as inside a dense region. `None` ties it to
+`min_topic_size`. A smaller value leaves fewer outliers but finds many more,
+smaller topics; Wordflow does not use it (see the
+[Ungrouped measurement](../reviews/topic-modeling-ungrouped-2026-11-11.md)).
+
+After clustering, outlier segments can join the topic whose centre they are
+most similar to. A centre is the unit-length mean of the embeddings of the
+segments clustering put in the topic, taken before any segment joins.
+`outlier_similarity` admits a segment at or above that cosine similarity, the
+same for every topic (`-1` admits every one). `outlier_member_quantile` sets
+the bar per topic: at least as similar as that share of the topic's own
+members are (`0` is the least similar member). Give one or neither. Topic
+words still come from the segments clustering put in each topic.
+A topic's centre stays that of the segments clustering put in it: joined
+segments are stored with a `joined` mark, count towards the topic's coverage,
+and are left out of the centre used for the merge tree, the map and
+`topic_segment_similarities`, whose rows are `[segment_index, document_index,
+start_char, end_char, similarity, joined]`.
+`outlier_segments` is the number of segments in no topic at the end;
+`assigned_segments` is how many joined one, or null when neither option was
+given. With `cluster_sample_size`, joining follows the nearest-neighbour step.
 
 Topic Coverage is weighted by the source-character length owned by each Topic
 Segment. Outlier `-1` competes normally for dominance. Clustering still treats

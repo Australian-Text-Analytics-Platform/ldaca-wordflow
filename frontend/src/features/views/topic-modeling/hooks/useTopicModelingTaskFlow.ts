@@ -5,6 +5,7 @@ import type {
   TopicEmbeddingModel,
   TopicModelingRequest,
   TopicSegmentationMethod,
+  TopicUngroupedPassages,
 } from '@/api';
 import type { RunAnalysis } from '@/features/views/common/hooks/useAnalysisFeature';
 import type { NodeColumnSelection } from '@/features/views/common/nodeSelectionTypes';
@@ -21,12 +22,15 @@ interface TopicModelingState {
   randomSeed: number;
   sampleFractions?: (number | null)[] | null;
   segmentationMethod: TopicSegmentationMethod;
-  maxSegmentTokens: number;
+  /** `null` is Auto: the run chooses. */
+  maxSegmentTokens: number | null;
   embeddingModel: TopicEmbeddingModel;
   /** The remote embedding endpoint, or `null` to embed on this computer. */
   embeddingEndpointId: string | null;
   /** Segments to sample for Topic sampling, or `null` to cluster every segment. */
   clusterSampleSize: number | null;
+  /** What happens to passages the grouping leaves out. */
+  ungroupedPassages: TopicUngroupedPassages;
 }
 
 interface TopicModelingActions {
@@ -57,6 +61,7 @@ export function useTopicModelingTaskFlow({
     embeddingModel,
     embeddingEndpointId,
     clusterSampleSize,
+    ungroupedPassages,
   },
   actions: { runAnalysis, setError, prepareBeforeRun },
 }: Params) {
@@ -86,6 +91,8 @@ export function useTopicModelingTaskFlow({
       embedding_model: embeddingModel,
       ...(embeddingEndpointId ? { embedding_endpoint_id: embeddingEndpointId } : {}),
       cluster_sample_size: clusterSampleSize,
+      // Left out when they stay Ungrouped, as the saved request leaves it out.
+      ...(ungroupedPassages === 'keep' ? {} : { ungrouped_passages: ungroupedPassages }),
       ...(sampleFractions != null ? { sample_fractions: sampleFractions } : {}),
     };
 

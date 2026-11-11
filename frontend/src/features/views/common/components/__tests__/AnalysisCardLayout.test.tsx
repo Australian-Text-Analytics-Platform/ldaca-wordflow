@@ -115,4 +115,19 @@ describe('AnalysisCardLayout', () => {
     await user.tab();
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Choose a Data Block first');
   });
+
+  it('keeps the header action usable while the parameters are locked', () => {
+    render(
+      <AnalysisCardLayout
+        title="Example Analysis"
+        parametersLocked
+        headerAction={<button type="button">Advanced</button>}
+      >
+        <input aria-label="Parameter" />
+      </AnalysisCardLayout>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Advanced' })).toBeEnabled();
+    expect(screen.getByLabelText('Parameter')).toBeDisabled();
+  });
 });

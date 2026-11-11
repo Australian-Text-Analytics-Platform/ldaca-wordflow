@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
+  basicSequentialParameters,
   deriveSequentialParameterValues,
   readSequentialServerParams,
   useSequentialAnalysisParameters,
@@ -17,6 +18,9 @@ describe('sequential analysis parameter helpers', () => {
         numericIntervalInput: '10',
         customIntervalValueInput: '30',
         customIntervalUnit: 'minutes',
+        referenceNodeId: '',
+        referenceTextColumn: 'text',
+        referenceTokenizerModel: 'native:plain_words_en',
       },
       'numeric',
     );
@@ -31,7 +35,81 @@ describe('sequential analysis parameter helpers', () => {
       numeric_interval: 10,
       custom_interval_value: null,
       custom_interval_unit: null,
+      // No reference: its column and tokeniser are not sent.
+      reference_node_id: null,
+      reference_text_column: null,
+      reference_tokenizer_model: null,
     });
+  });
+
+  it('sends the reference with its text column and tokeniser', () => {
+    const values = deriveSequentialParameterValues(
+      {
+        frequency: 'yearly',
+        groupByColumns: ['term'],
+        numericOriginInput: '',
+        numericIntervalInput: '1',
+        customIntervalValueInput: '1',
+        customIntervalUnit: 'minutes',
+        referenceNodeId: 'corpus',
+        referenceTextColumn: 'text',
+        referenceTokenizerModel: ' native:plain_words_en ',
+      },
+      'datetime',
+    );
+    expect(values.currentSequentialParams).toMatchObject({
+      reference_node_id: 'corpus',
+      reference_text_column: 'text',
+      reference_tokenizer_model: 'native:plain_words_en',
+    });
+    const rowsOnly = deriveSequentialParameterValues(
+      {
+        frequency: 'yearly',
+        groupByColumns: [],
+        numericOriginInput: '',
+        numericIntervalInput: '1',
+        customIntervalValueInput: '1',
+        customIntervalUnit: 'minutes',
+        referenceNodeId: 'corpus',
+        referenceTextColumn: '',
+        referenceTokenizerModel: 'native:plain_words_en',
+      },
+      'datetime',
+    );
+    expect(rowsOnly.currentSequentialParams).toMatchObject({
+      reference_node_id: 'corpus',
+      reference_text_column: null,
+      reference_tokenizer_model: null,
+    });
+  });
+
+  it('sends no reference in Basic, whatever the hidden draft holds, and keeps the rest', () => {
+    const draft = {
+      frequency: 'yearly' as const,
+      groupByColumns: ['term'],
+      numericOriginInput: '',
+      numericIntervalInput: '1',
+      customIntervalValueInput: '1',
+      customIntervalUnit: 'minutes' as const,
+      referenceNodeId: 'corpus',
+      referenceTextColumn: 'text',
+      referenceTokenizerModel: 'native:plain_words_en',
+    };
+    const basic = basicSequentialParameters(draft);
+    expect(basic).toEqual({
+      ...draft,
+      referenceNodeId: '',
+      referenceTextColumn: '',
+      referenceTokenizerModel: '',
+    });
+    expect(deriveSequentialParameterValues(basic, 'datetime').currentSequentialParams).toEqual({
+      ...deriveSequentialParameterValues(draft, 'datetime').currentSequentialParams,
+      reference_node_id: null,
+      reference_text_column: null,
+      reference_tokenizer_model: null,
+    });
+    // The draft itself is untouched, so Advanced brings the reference back.
+    expect(draft.referenceNodeId).toBe('corpus');
   });
 
   it('derives custom datetime interval values only for custom datetime runs', () => {
@@ -43,6 +121,9 @@ describe('sequential analysis parameter helpers', () => {
         numericIntervalInput: '1',
         customIntervalValueInput: '15',
         customIntervalUnit: 'minutes',
+        referenceNodeId: '',
+        referenceTextColumn: '',
+        referenceTokenizerModel: '',
       },
       'datetime',
     );
@@ -70,6 +151,9 @@ describe('sequential analysis parameter helpers', () => {
       numeric_interval: null,
       custom_interval_value: 2,
       custom_interval_unit: 'hours',
+      reference_node_id: null,
+      reference_text_column: null,
+      reference_tokenizer_model: null,
     });
   });
 });
@@ -121,7 +205,36 @@ describe('useSequentialAnalysisParameters', () => {
       columnType: 'numeric',
       numericOrigin: 1800,
       numericInterval: 25,
+      referenceNodeId: null,
     });
+  });
+
+  it('restores the reference Data Block, text column and tokeniser', () => {
+    const { result } = renderHook(() => useSequentialAnalysisParameters());
+
+    act(() => {
+      result.current.applyHydratedRequest({
+        node_id: 'matches',
+        time_column: 'year',
+        reference_node_id: 'corpus',
+        reference_text_column: 'text',
+        reference_tokenizer_model: 'native:plain_words_en',
+      });
+    });
+
+    expect(result.current.referenceNodeId).toBe('corpus');
+    expect(result.current.referenceTextColumn).toBe('text');
+    expect(result.current.referenceTokenizerModel).toBe('native:plain_words_en');
+
+    // A new text column means a new tokeniser; none means rows only.
+    act(() => {
+      result.current.setReferenceTextColumn('body');
+    });
+    expect(result.current.referenceTokenizerModel).toBe('');
+    act(() => {
+      result.current.setReference('');
+    });
+    expect(result.current.referenceNodeId).toBe('');
   });
 
   it('hydrates selection from the canonical node_id request field', () => {

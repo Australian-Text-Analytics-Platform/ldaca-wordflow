@@ -9561,6 +9561,44 @@
             ],
             "title": "Numeric Origin"
           },
+          "reference_node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Node Id"
+          },
+          "reference_text_column": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Text Column"
+          },
+          "reference_tokenizer_model": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Tokenizer Model"
+          },
           "sort_by_time": {
             "default": true,
             "title": "Sort By Time",
@@ -9702,6 +9740,69 @@
         "title": "SequentialDataBlockCreationSource",
         "type": "object"
       },
+      "SequentialReferenceDescriptor": {
+        "additionalProperties": false,
+        "description": "The reference Data Block a Trends Result was normalised against.\n\n``group_by_columns`` are the request's group columns the reference shares,\nwhich split its totals; ``ignored_group_by_columns`` are the rest, whose\ngroups all share the period's total. ``text_column`` and\n``tokenizer_model`` are set when words were counted.",
+        "properties": {
+          "group_by_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Group By Columns",
+            "type": "array"
+          },
+          "ignored_group_by_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ignored Group By Columns",
+            "type": "array"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "node_name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Node Name",
+            "type": "string"
+          },
+          "text_column": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Column"
+          },
+          "tokenizer_model": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenizer Model"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_name",
+          "group_by_columns",
+          "ignored_group_by_columns"
+        ],
+        "title": "SequentialReferenceDescriptor",
+        "type": "object"
+      },
       "SequentialResult": {
         "additionalProperties": false,
         "properties": {
@@ -9768,6 +9869,16 @@
             "minimum": 0.0,
             "title": "Period Count",
             "type": "integer"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SequentialReferenceDescriptor"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -11117,6 +11228,18 @@
             "title": "Adjustable",
             "type": "boolean"
           },
+          "assigned_segments": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Segments"
+          },
           "auto_decision": {
             "anyOf": [
               {
@@ -11201,6 +11324,18 @@
             "minimum": 0.0,
             "title": "Min Cluster Count",
             "type": "integer"
+          },
+          "ungrouped_segments": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ungrouped Segments"
           }
         },
         "required": [
@@ -11644,11 +11779,17 @@
             "title": "Max Cluster Size"
           },
           "max_segment_tokens": {
-            "default": 256,
-            "maximum": 256.0,
-            "minimum": 32.0,
-            "title": "Max Segment Tokens",
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 256.0,
+                "minimum": 32.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Segment Tokens"
           },
           "min_cluster_size": {
             "default": 10,
@@ -11706,6 +11847,10 @@
           "segmentation_method": {
             "$ref": "#/components/schemas/TopicSegmentationMethod",
             "default": "automatic"
+          },
+          "ungrouped_passages": {
+            "$ref": "#/components/schemas/TopicUngroupedPassages",
+            "default": "keep"
           }
         },
         "required": [
@@ -11988,6 +12133,18 @@
             "default": "topic_modeling",
             "title": "Kind",
             "type": "string"
+          },
+          "max_segment_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Segment Tokens"
           },
           "query": {
             "$ref": "#/components/schemas/TopicModelingResultQuery"
@@ -12290,6 +12447,11 @@
             "title": "End",
             "type": "integer"
           },
+          "joined": {
+            "default": false,
+            "title": "Joined",
+            "type": "boolean"
+          },
           "metadata": {
             "additionalProperties": {
               "anyOf": [
@@ -12308,6 +12470,11 @@
             "format": "uuid",
             "title": "Node Id",
             "type": "string"
+          },
+          "outside_topic_range": {
+            "default": false,
+            "title": "Outside Topic Range",
+            "type": "boolean"
           },
           "row_index": {
             "minimum": 0.0,
@@ -12672,6 +12839,16 @@
         ],
         "title": "TopicSource",
         "type": "object"
+      },
+      "TopicUngroupedPassages": {
+        "description": "What happens to passages the grouping leaves out (2026-11).\n\nGrouping by density leaves a passage Ungrouped when it sits in a sparse\narea as a Topic separates from its neighbours: often more than half of\nthe passages, most of them between or beside Topics. KEEP leaves them.\nFIT gives each one the Topic whose centre it is most similar to, when it\nis at least as similar as that Topic's own least similar passage, so no\nTopic becomes looser than it was. NEAREST gives every one its most\nsimilar Topic. Topics are found before any passage joins, so neither adds\na Topic nor allows a smaller one.",
+        "enum": [
+          "keep",
+          "fit",
+          "nearest"
+        ],
+        "title": "TopicUngroupedPassages",
+        "type": "string"
       },
       "UnaryExpression-Input": {
         "additionalProperties": false,
@@ -14145,7 +14322,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "LDaCA Wordflow API",
-    "version": "0.7.15"
+    "version": "0.7.19"
   },
   "openapi": "3.1.0",
   "paths": {

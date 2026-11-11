@@ -28,6 +28,12 @@ from typing import Any, cast
 
 from ..shared.remote_embedding import RemoteEmbeddingRun
 from ..analysis.topic_inclusion import topic_inclusion_descriptor
+from ..analysis.topic_segment_lengths import segment_token_cap, topic_segment_lengths
+from ..domain.workspace import (
+    TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS,
+    TopicEmbeddingModel,
+    TopicSegmentationMethod,
+)
 from ..analysis.topic_projection import (
     TopicNodeInfo,
     build_topic_projection_basis,
@@ -639,8 +645,9 @@ def _compute_topic_payload(
     max_cluster_size: int | None = None,
     sample_fractions: list[float | None] | None,
     segmentation_method: str,
-    max_segment_tokens: int,
+    max_segment_tokens: int | None,
     cluster_sample_size: int | None = None,
+    ungrouped_passages: str = "keep",
     embedding_model: str | None = None,
     remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict[str, Any]:
@@ -672,6 +679,12 @@ def _compute_topic_payload(
     random_state = int(random_seed)
     vectorizer_model = _resolve_vectorizer_model(sampled.all_docs)
     embedder_model = embedding_model or _DEFAULT_EMBEDDER_MODEL
+    if max_segment_tokens is None:
+        if progress_callback:
+            progress_callback(TOPIC_PROGRESS_BAND[0], "Measuring the passages…")
+        max_segment_tokens = _auto_segment_tokens(
+            sampled.all_docs, segmentation_method, embedder_model
+        )
 
     logger.info(
         "[Worker %d] Running Rust topic-modeling pipeline (%d docs, min_cluster_size=%d)",
@@ -692,6 +705,7 @@ def _compute_topic_payload(
             segmentation_method=segmentation_method,
             max_segment_tokens=max_segment_tokens,
             cluster_sample_size=cluster_sample_size,
+            ungrouped_passages=ungrouped_passages,
             progress_path=progress_path,
         )
 
@@ -742,6 +756,8 @@ def _compute_topic_payload(
         "auto_decision": rust_result.get("auto_decision"),
         "auto_document_share": rust_result.get("auto_document_share"),
         "largest_topic_size": rust_result.get("largest_topic_size"),
+        "ungrouped_segments": rust_result.get("outlier_segments"),
+        "assigned_segments": rust_result.get("assigned_segments"),
     }
     payload["projection_context"] = {
         "version": 2,
@@ -752,6 +768,7 @@ def _compute_topic_payload(
         ],
     }
     payload["segment_count"] = int(rust_result.get("n_segments") or 0)
+    payload["max_segment_tokens"] = max_segment_tokens
     payload["ungrouped_documents"] = ungrouped_document_counts(
         list(rust_result.get("documents") or []), sampled.corpus_sizes
     )
@@ -767,6 +784,30 @@ def _compute_topic_payload(
     return payload
 
 
+def _auto_segment_tokens(
+    docs: list[str], segmentation_method: str, embedder_model: str
+) -> int:
+    """Max tokens per passage for Auto, from every text the run reads.
+
+    Counts the units the segmentation mode keeps whole (never split, so the
+    counts do not depend on the size chosen) and takes the smallest offered
+    size that keeps 9 in 10 of them whole, within the model's limit. One
+    tokenizer pass; the run then segments once with that size.
+    """
+
+    import polars as pl
+
+    model = TopicEmbeddingModel(embedder_model)
+    lengths = topic_segment_lengths(
+        pl.LazyFrame({"text": docs}),
+        "text",
+        TopicSegmentationMethod(segmentation_method),
+        model,
+        sample_documents=None,
+    )
+    return segment_token_cap(lengths.p90, TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS[model])
+
+
 def _compute_topic_modeling(
     node_infos: list[TopicNodeInfo],
     artifact_dir: str,
@@ -777,10 +818,11 @@ def _compute_topic_modeling(
     max_cluster_size: int | None = None,
     random_seed: int = 0,
     segmentation_method: str = "automatic",
-    max_segment_tokens: int = 256,
+    max_segment_tokens: int | None = 256,
     progress_callback: ProgressCallback | None = None,
     sample_fractions: list[float | None] | None = None,
     cluster_sample_size: int | None = None,
+    ungrouped_passages: str = "keep",
     embedding_model: str | None = None,
     remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict[str, Any]:
@@ -834,6 +876,7 @@ def _compute_topic_modeling(
             segmentation_method=segmentation_method,
             max_segment_tokens=max_segment_tokens,
             cluster_sample_size=cluster_sample_size,
+            ungrouped_passages=ungrouped_passages,
             embedding_model=embedding_model,
             remote_embedding=remote_embedding,
         )
@@ -849,6 +892,7 @@ def _compute_topic_modeling(
             "topic_inclusion": topic_payload["topic_inclusion"],
             "projection_context": topic_payload["projection_context"],
             "segment_count": topic_payload["segment_count"],
+            "max_segment_tokens": topic_payload.get("max_segment_tokens"),
             "ungrouped_documents": topic_payload.get("ungrouped_documents"),
         }
 
@@ -870,11 +914,12 @@ def run_topic_modeling_analysis(
     min_cluster_size: int,
     random_seed: int,
     segmentation_method: str,
-    max_segment_tokens: int,
+    max_segment_tokens: int | None,
     sample_fractions: list[float | None] | None,
     progress_callback: ProgressCallback | None = None,
     max_cluster_size: int | None = None,
     cluster_sample_size: int | None = None,
+    ungrouped_passages: str = "keep",
     embedding_model: str | None = None,
     remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict[str, Any]:
@@ -899,6 +944,7 @@ def run_topic_modeling_analysis(
         progress_callback=progress_callback,
         sample_fractions=sample_fractions,
         cluster_sample_size=cluster_sample_size,
+        ungrouped_passages=ungrouped_passages,
         embedding_cache_path=embedding_cache_path,
         embedding_model=embedding_model,
         remote_embedding=remote_embedding,

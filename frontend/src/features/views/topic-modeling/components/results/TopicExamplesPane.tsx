@@ -16,12 +16,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { TopicDocumentDialog } from './TopicDocumentDialog';
-import {
-  splitTopicWords,
-  typicalityBand,
-  typicalityLabel,
-  type TypicalityBand,
-} from './topicExamplesModel';
+import { splitTopicWords, typicalityBadge, type TypicalityBand } from './topicExamplesModel';
 import type { TopicColorScheme } from './topicModelingGraph';
 import { topicGroupKey, topicNameDisplay } from '../../topicNames';
 import { isUngrouped, topicLabel, topicShortLabel } from '../../ungrouped';
@@ -76,6 +71,15 @@ function SegmentCard({
   onOpen: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  // Runs before 0.7.11 kept no similarities, so they rank nothing.
+  const badge =
+    item.typicality === null || item.typicality === undefined
+      ? null
+      : typicalityBadge({
+          typicality: item.typicality,
+          joined: item.joined,
+          outsideTopicRange: item.outside_topic_range,
+        });
   return (
     <li className="rounded-lg border border-surface-border bg-surface p-2.5">
       <p
@@ -97,21 +101,20 @@ function SegmentCard({
       </p>
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-label-secondary text-description">
         <span className="min-w-0 truncate">{label}</span>
-        {item.typicality !== null && item.typicality !== undefined ? (
+        {badge ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <span
                 className={cn(
                   'rounded-sm border px-1.5 py-0.5 tabular-nums',
-                  BAND_CLASS[typicalityBand(item.typicality)],
+                  BAND_CLASS[badge.band],
                 )}
               >
-                {typicalityLabel(item.typicality)}
+                {badge.text}
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              How typical of this topic: similarity to its centre{' '}
-              {item.similarity?.toFixed(2) ?? '—'}
+              {badge.explanation} {item.similarity?.toFixed(2) ?? '—'}
             </TooltipContent>
           </Tooltip>
         ) : null}

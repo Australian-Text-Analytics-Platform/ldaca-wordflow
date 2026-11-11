@@ -1,10 +1,18 @@
 import { ResultChartFit, ResultFrame } from '@/features/views/common/components/ResultFrame';
+import { NudgeCard } from '@/features/nudges/NudgeCard';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
+import HelpIcon from '@/components/help/HelpIcon';
 import React from 'react';
 
 import { MultiSeriesChart } from '@/features/views/common/components/MultiSeriesChart';
 import { FilterableSeriesControls } from '@/features/views/common/components/FilterableSeriesControls';
 import { Input } from '@/components/ui/input';
-import type { SequentialChartModel } from '../hooks/sequentialChartModel';
+import {
+  SEQUENTIAL_SCALE_AXIS_NAMES,
+  referenceNote,
+  type SequentialReferenceSummary,
+  type SequentialChartModel,
+} from '../hooks/sequentialChartModel';
 import { portableFormatter } from '@/lib/chartHtml/portableFormatter';
 
 interface SequentialChartProps {
@@ -34,6 +42,19 @@ const TRENDS_LEGEND_HELP = {
  * row/axis/series/legend shaping; this component only binds ECharts selection,
  * legend clicks, resize container identity, and chart selection controls.
  */
+
+/** The note under a rate chart, with the Group By columns the reference lacks in bold. */
+function referenceNoteText(reference: SequentialReferenceSummary, rows: boolean) {
+  const note = referenceNote(reference, rows);
+  if (!note.missing) return note.divides;
+  return (
+    <>
+      {note.divides} <strong>{note.missing.columns}</strong>
+      {note.missing.effect}
+    </>
+  );
+}
+
 export function SequentialChart({
   model,
   onToggleGroupIndices,
@@ -46,6 +67,7 @@ export function SequentialChart({
   toolbarStart,
   containerRef,
 }: SequentialChartProps) {
+  const minimumGroupCountId = React.useId();
   // A refreshed result can invalidate indices held by the interaction hook.
   // Keep Clear enabled for that stale state even though the model deliberately
   // excludes invalid indices from rendering.
@@ -96,26 +118,32 @@ export function SequentialChart({
                   yAxis={{
                     // Trends counts rows: documents for a corpus, matches for a
                     // Concordance Data Block (issue 346).
-                    name: model.normalised ? '% of rows' : 'Rows',
+                    name: SEQUENTIAL_SCALE_AXIS_NAMES[model.scale],
                     nameLocation: 'end',
                     nameGap: 8,
                     nameTextStyle: {
                       color: 'var(--vscode-charts-foreground)',
                       align: 'left',
                     },
-                    ...(model.normalised
+                    ...(model.scale === 'composition' || model.scale === 'percent-of-rows'
                       ? {
                           min: 0,
                           // Stacked areas and bars of every group reach 100%.
-                          ...(model.chartType === 'area' || model.chartType === 'stacked-bar'
+                          ...(model.scale === 'composition' &&
+                          (model.chartType === 'area' || model.chartType === 'stacked-bar')
                             ? { max: 100 }
                             : {}),
                           axisLabel: {
-                            formatter: portableFormatter({ kind: 'percent', round: false }),
+                            formatter: portableFormatter({
+                              kind: 'percent',
+                              round: false,
+                            }),
                           },
                         }
-                      : // Counts are whole numbers, so no 0.5 ticks on small counts.
-                        { minInterval: 1 }),
+                      : model.scale === 'count'
+                        ? // Counts are whole numbers, so no 0.5 ticks on small counts.
+                          { minInterval: 1 }
+                        : { min: 0 }),
                   }}
                   selection={{
                     selectedIndices: model.selection.selectedIndices,
@@ -136,11 +164,33 @@ export function SequentialChart({
           )}
         </ResultFrame>
       )}
-      {model.normalised && !allGroupsFiltered ? (
+      {model.scale === 'composition' && !allGroupsFiltered ? (
         <p className="mt-2 text-label-secondary text-description">
           Each period adds up to 100% across the groups listed below, hidden ones included, so
           hiding a group does not change the others. A period with no rows is left blank.
         </p>
+      ) : null}
+      {model.scale !== 'composition' &&
+      model.scale !== 'count' &&
+      model.summary.reference &&
+      !allGroupsFiltered ? (
+        <>
+          <p
+            className="mt-2 text-label-secondary text-description"
+            data-nudge-target={NUDGE_TARGETS.trendsReferenceNote}
+          >
+            {referenceNoteText(model.summary.reference, model.scale === 'percent-of-rows')} A period
+            with no reference total is left blank.
+          </p>
+          {model.summary.reference.ignoredGroupBy.length > 0 ? (
+            <NudgeCard
+              id="trends-reference-grouping"
+              occurrence={dataResetKey}
+              detail={`${referenceNote(model.summary.reference, false).missing?.columns ?? ''}.`}
+              className="mt-2"
+            />
+          ) : null}
+        </>
       ) : null}
       <div className="mt-4">
         <FilterableSeriesControls
@@ -159,20 +209,30 @@ export function SequentialChart({
           onUncasedChange={model.supportsUncased ? onUncasedChange : undefined}
           controlsAfterUncased={
             model.summary.groupBy.length > 0 ? (
-              <label className="flex items-center gap-2 text-label-secondary text-foreground">
-                <span className="shrink-0">Minimum group count</span>
+              <div className="flex items-center gap-2 text-label-secondary text-foreground">
+                <span className="flex shrink-0 items-center gap-1">
+                  <label htmlFor={minimumGroupCountId}>Minimum group count</label>
+                  {/* Beside the label, not inside it, so a click on the icon
+                      opens help and does not move focus to the number. */}
+                  <HelpIcon
+                    targetKey="analysis.sequential-analysis.minimum-group-count"
+                    label="About Minimum group count"
+                    tooltip="Hides groups with fewer rows than this across all periods. Enter 0 to show every group."
+                    className="size-5 shrink-0 text-description"
+                  />
+                </span>
                 <Input
+                  id={minimumGroupCountId}
                   type="number"
                   min="0"
                   step="1"
                   value={minimumGroupCount}
-                  aria-label="Minimum group count"
                   className="w-20"
                   onChange={(event) => {
                     onMinimumGroupCountChange(event.currentTarget.valueAsNumber);
                   }}
                 />
-              </label>
+              </div>
             ) : null
           }
           onClearSelection={onClearSelection}

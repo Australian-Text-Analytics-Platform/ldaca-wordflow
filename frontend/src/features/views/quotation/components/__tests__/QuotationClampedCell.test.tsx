@@ -14,11 +14,15 @@ describe('QuotationClampedCell', () => {
     vi.restoreAllMocks();
   });
 
-  it('bounds the cell width and clamps it to three lines', () => {
+  it('keeps a 42rem minimum, fills spare width, and clamps to three lines', () => {
     render(<QuotationClampedCell>Alice said hello.</QuotationClampedCell>);
 
+    // jsdom lays nothing out, so the classes are the contract: the text
+    // reports no width of its own (issue 111) and fills a box that is at
+    // least 42rem and as wide as the column (issue 449).
     const cell = screen.getByTestId('quotation-clamped-cell');
-    expect(cell).toHaveClass('w-[42rem]', 'line-clamp-3', 'whitespace-normal');
+    expect(cell).toHaveClass('w-0', 'min-w-full', 'line-clamp-3', 'whitespace-normal');
+    expect(screen.getByTestId('quotation-clamped-cell-box')).toHaveClass('min-w-[42rem]');
   });
 
   it('shows the full content on hover when the clamp hides some of it', async () => {

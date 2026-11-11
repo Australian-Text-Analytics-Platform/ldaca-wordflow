@@ -4943,6 +4943,18 @@ export type SequentialAnalysisRequest = {
      */
     numeric_origin?: number | null;
     /**
+     * Reference Node Id
+     */
+    reference_node_id?: string | null;
+    /**
+     * Reference Text Column
+     */
+    reference_text_column?: string | null;
+    /**
+     * Reference Tokenizer Model
+     */
+    reference_tokenizer_model?: string | null;
+    /**
      * Sort By Time
      */
     sort_by_time?: boolean;
@@ -5020,6 +5032,43 @@ export type SequentialDataBlockCreationSource = {
 };
 
 /**
+ * SequentialReferenceDescriptor
+ *
+ * The reference Data Block a Trends Result was normalised against.
+ *
+ * ``group_by_columns`` are the request's group columns the reference shares,
+ * which split its totals; ``ignored_group_by_columns`` are the rest, whose
+ * groups all share the period's total. ``text_column`` and
+ * ``tokenizer_model`` are set when words were counted.
+ */
+export type SequentialReferenceDescriptor = {
+    /**
+     * Group By Columns
+     */
+    group_by_columns: Array<string>;
+    /**
+     * Ignored Group By Columns
+     */
+    ignored_group_by_columns: Array<string>;
+    /**
+     * Node Id
+     */
+    node_id: string;
+    /**
+     * Node Name
+     */
+    node_name: string;
+    /**
+     * Text Column
+     */
+    text_column?: string | null;
+    /**
+     * Tokenizer Model
+     */
+    tokenizer_model?: string | null;
+};
+
+/**
  * SequentialResult
  */
 export type SequentialResult = {
@@ -5059,6 +5108,7 @@ export type SequentialSourceDescriptor = {
      * Period Count
      */
     period_count: number;
+    reference?: SequentialReferenceDescriptor | null;
 };
 
 /**
@@ -5790,6 +5840,10 @@ export type TopicClustering = {
      */
     adjustable: boolean;
     /**
+     * Assigned Segments
+     */
+    assigned_segments?: number | null;
+    /**
      * Auto Decision
      */
     auto_decision?: 'not_needed' | 'split' | 'kept' | null;
@@ -5825,6 +5879,10 @@ export type TopicClustering = {
      * Min Cluster Count
      */
     min_cluster_count: number;
+    /**
+     * Ungrouped Segments
+     */
+    ungrouped_segments?: number | null;
 };
 
 /**
@@ -6079,7 +6137,7 @@ export type TopicModelingAnalysisRequest = {
     /**
      * Max Segment Tokens
      */
-    max_segment_tokens?: number;
+    max_segment_tokens?: number | null;
     /**
      * Min Cluster Size
      */
@@ -6103,6 +6161,7 @@ export type TopicModelingAnalysisRequest = {
      */
     sample_fractions?: Array<number | null> | null;
     segmentation_method?: TopicSegmentationMethod;
+    ungrouped_passages?: TopicUngroupedPassages;
 };
 
 /**
@@ -6260,6 +6319,10 @@ export type TopicModelingResult = {
      * Kind
      */
     kind?: 'topic_modeling';
+    /**
+     * Max Segment Tokens
+     */
+    max_segment_tokens?: number | null;
     query: TopicModelingResultQuery;
     /**
      * Segment Count
@@ -6404,6 +6467,10 @@ export type TopicSegmentItem = {
      */
     end: number;
     /**
+     * Joined
+     */
+    joined?: boolean;
+    /**
      * Metadata
      */
     metadata: {
@@ -6413,6 +6480,10 @@ export type TopicSegmentItem = {
      * Node Id
      */
     node_id: string;
+    /**
+     * Outside Topic Range
+     */
+    outside_topic_range?: boolean;
     /**
      * Row Index
      */
@@ -6611,6 +6682,22 @@ export type TopicSource = {
      */
     text_column: string;
 };
+
+/**
+ * TopicUngroupedPassages
+ *
+ * What happens to passages the grouping leaves out (2026-11).
+ *
+ * Grouping by density leaves a passage Ungrouped when it sits in a sparse
+ * area as a Topic separates from its neighbours: often more than half of
+ * the passages, most of them between or beside Topics. KEEP leaves them.
+ * FIT gives each one the Topic whose centre it is most similar to, when it
+ * is at least as similar as that Topic's own least similar passage, so no
+ * Topic becomes looser than it was. NEAREST gives every one its most
+ * similar Topic. Topics are found before any passage joins, so neither adds
+ * a Topic nor allows a smaller one.
+ */
+export type TopicUngroupedPassages = 'keep' | 'fit' | 'nearest';
 
 /**
  * UnaryExpression

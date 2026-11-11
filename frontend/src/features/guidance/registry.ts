@@ -229,7 +229,10 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.tokenFrequency.run,
     '[data-guidance="token-frequency-actions"]',
     'Count consistent tokens',
-    'The tokeniser defines what counts as a token, while stop words remove terms you do not want counted. Check the settings, then choose Run.',
+    // Stop words are offered with the results, not before the first Run, and
+    // only hide rows (issue 459).
+    'The tokeniser decides what counts as a token, for example whether “high-school” is one token or two. Check each Data Block’s tokeniser, then choose Run. After the run you can hide stop words from the results.',
+    2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.tokenFrequency.results,
@@ -248,7 +251,8 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.concordance.search,
     '[data-guidance="concordance-actions"]',
     'Define the match and context',
-    'Enter a search term, choose Text or Tokens mode, and set the surrounding context. Choose Preview for a page or Run for the complete search.',
+    'Enter a search term and set the surrounding context. Choose Preview for a page or Run for the complete search. Advanced offers Tokens mode.',
+    2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.concordance.previewResults,
@@ -298,7 +302,8 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.topicModeling.run,
     '[data-guidance="topic-modeling-actions"]',
     'Control what becomes a topic',
-    'Passages and their size, sampling, and the random seed shape the model. Check the settings, then choose Run.',
+    'Sampling and Topic size shape the model. Advanced adds the passages and their size, the seed and Topic sampling. Check the settings, then choose Run.',
+    2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.topicModeling.results,
@@ -378,7 +383,8 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.annotation.aiSetup,
     resolveAnnotationAiSetupTarget,
     'Configure an AI annotation run',
-    'Expand AI settings to choose a provider and model; an Example Data Block is optional. Check the setup, then choose Preview before Run.',
+    'Choose a provider and model. Turn on Advanced for an optional Example Data Block, the prompt and the Run settings. Check the setup, then choose Preview before Run.',
+    2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.annotation.aiAdvanced,

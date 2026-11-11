@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import { WorkspaceSelectionTabs } from '../WorkspaceSelectionTabs';
 
 vi.mock('@/components/help/HelpIcon', () => ({
@@ -97,5 +98,14 @@ describe('WorkspaceSelectionTabs', () => {
     await user.click(items[1]!);
 
     expect(onTabChange).toHaveBeenCalledWith('node-3');
+  });
+
+  it('maximises the Data Editor and restores the layout from its title row', async () => {
+    const user = userEvent.setup();
+    renderSelectionTabs();
+    await user.click(screen.getByRole('button', { name: 'Maximise Data Editor' }));
+    expect(useLayoutFocusStore.getState().maximised).toBe('data-editor');
+    await user.click(screen.getByRole('button', { name: 'Restore layout' }));
+    expect(useLayoutFocusStore.getState().maximised).toBeNull();
   });
 });

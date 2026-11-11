@@ -81,11 +81,66 @@ Trends retains exact group values in its result. After the analysis finishes,
 use **Ignore capitals** beside the result legend when values that differ only in
 capitalisation should be displayed and filtered as one group.
 
+<h3 id="help-sequential-reference">Step 5: Normalise against a reference Data Block (optional)</h3>
+
+Trends counts rows, so a Data Block made by Concordance shows how many matches
+each period has. Periods rarely hold the same amount of text: a term can look
+more frequent in 2000 than in 1980 only because the corpus has more texts, or
+longer ones, from 2000. Corpus linguists compare periods by the rate per
+million words instead (or per 100,000, a tenth of it), dividing the matches in
+a period by all the words written in that period, in texts with a match or
+without.
+
+A Data Block made by Concordance cannot supply that total: it lacks every
+document without a match and repeats a document once per match. So turn on
+[**Advanced**](./ui.md#help-ui-tool-mode) at the top right of the parameters
+and choose, in **Normalise against**, the Data Block these rows were made
+from. With **Advanced** off, Trends counts rows and sends no reference. When
+you turn it on, or choose a Data Block to analyse while it is on, the one it
+was made from starts selected, with its document column and tokeniser; change
+any of them, or choose **None** for counts only. The list
+offers that Data Block (and the ones it was made from) first, marked **made
+from this**, then every other Data Block that has the chosen time column, of
+the same kind (a date for a date, a number for a number), since the
+reference's rows are counted per period exactly like these; a Data Block
+without that column is not listed. Choosing a Data Block that is not marked
+shows a warning: a rate only means something when the reference holds every
+text the rows came from, for example the whole corpus for a filtered part of
+it.
+
+With a reference chosen:
+
+- **Count words in** names the reference's text column, so the run counts the
+  words in every text of each period. The reference's document column starts
+  selected. The words are counted with the **Tokeniser model** beside it, as
+  Frequency's **Per million** counts them; the reference's saved tokeniser
+  preference starts selected, or the one recommended for its language. Choose
+  **Rows only** to skip the words and count only the reference's rows
+  (documents, posts or speakers' turns).
+- The totals are grouped like the result: by period, and by each Group By
+  column the reference also has, such as a speaker or a party column that
+  Concordance copied from it. A Group By column the reference lacks, usually
+  `CONC_matched_text`, cannot split its totals, so every search term shares
+  the period's total. The note under the chart names such a column in bold,
+  and with **Suggestions** on a suggestion beside the chart points to the note
+  whenever a rate is shown that way.
+- Counting the words of a large corpus with a model tokeniser takes time on
+  the first run; later runs reuse the cached tokens.
+
+Run refuses a reference that cannot work: one without the time column, with a
+time column of another kind, or with no rows in a period and group where the
+analysed Data Block has some, which means it is not the Data Block these rows
+were made from. It also refuses a reference with fewer words than the analysed
+rows in a period, which points to the wrong Data Block or text column.
+
+The result itself still counts rows. Choose a rate in [Show as](#help-sequential-show-as)
+to see it.
+
 <h2 id="help-sequential-run">Step 5: Run the analysis</h2>
 
 Choose **Run** to start. Settings are locked while it works. After it finishes,
 Run turns on again only when you change a setting that affects the counts.
-Minimum group count, Chart, Spacing, Normalise to 100%, selection, visibility, and
+Minimum group count, Chart, Spacing, Show as, selection, visibility, and
 Ignore capitals only change what is shown, so they do not turn Run on. See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
@@ -105,9 +160,17 @@ repeated in the result.
 <h3 id="help-sequential-minimum-group-count">Minimum group count</h3>
 
 For grouped results, **Minimum group count** hides any group whose total count
-across the complete result is below the entered value. The default is **10**;
-enter **0** to show every group. A group whose count equals the threshold remains
-visible. The control appears in the legend card immediately after **Ignore capitals**.
+across the complete result is below the entered value. The total is the number
+of rows in the group over all periods, the first figure beside its name in the
+legend. The default is **10**; enter **0** to show every group. A group whose
+count equals the threshold remains visible. The control appears in the legend
+card immediately after **Ignore capitals**, and the **?** beside it opens this
+section.
+
+Use it when a Group By column has many values, such as account names. Most of
+them appear in only a few rows, and each would add its own line and legend
+entry. A higher number leaves the larger groups; a lower number brings the
+smaller ones back.
 
 The filter removes small groups from the chart, legend, chart export, displayed
 counts, and Add to Project. It does not change manual legend visibility: if a
@@ -124,7 +187,7 @@ Four plot modes are available in the **Chart** list:
 
 - **Line**: best for continuous trends across time, especially when groups overlap or you want to compare rates of change.
 - **Bars**: best for highlighting contrast between groups at each period. Each period's groups sit side by side, and every other period has a light background so its bars read as one group.
-- **Stacked bars**: stacks each period's groups into one bar. Shows the total per period and its make-up, and fits many more periods than side-by-side bars. With **Normalise to 100%** every bar reaches 100%. The first group in the legend is at the top of each bar, so the bar, the legend and the tooltip read in the same order.
+- **Stacked bars**: stacks each period's groups into one bar. Shows the total per period and its make-up, and fits many more periods than side-by-side bars. With **Show as** set to Composition every bar reaches 100%. The first group in the legend is at the top of each bar, so the bar, the legend and the tooltip read in the same order.
 
 When there are too many periods to draw bars at a readable width (side-by-side bars need more room than stacked ones), the chart shows only as many periods as fit and says so: drag the slider under the chart to move through the rest, or choose **Line** or **Area** to see every period at once.
 - **Area**: stacks all groups on top of each other. Works best when groups emerge or disappear over time and you want to see total volume alongside composition.
@@ -142,24 +205,24 @@ Dates on the chart and in its tooltip read the same in both spacings, in the tim
 
 **Empty periods.** A period with no rows at all is hidden in Even spacing and leaves a gap on the axis in To scale spacing. Within a period that is shown, a group with no rows counts as zero, so its line dips to zero rather than breaking: "no occurrences" is genuinely zero, not unknown.
 
-The vertical axis, titled **Rows**, counts the rows in each period: documents for a corpus, or matches for a Data Block made by Concordance. With **Normalise to 100%** on it is titled **% of rows**. When nothing is grouped, the single series is named after the Data Block.
+The vertical axis, titled **Rows**, counts the rows in each period: documents for a corpus, or matches for a Data Block made by Concordance. **Show as** changes the values and the title. When nothing is grouped, the single series is named after the Data Block.
 
-<h3 id="help-sequential-normalise">Normalise to 100%</h3>
+<h3 id="help-sequential-show-as">Show as</h3>
 
-Periods often hold very different amounts of data, for example many more tweets in an election week than in the month before. Select **Normalise to 100%** next to **Spacing** to show each group as a percentage of all rows in the same period instead of as a count. The groups in each period then add up to 100%, so you can compare how the mix of groups changes over time whatever the amount of data. Hover the checkbox for a short reminder.
+Periods often hold very different amounts of data, for example many more tweets in an election week than in the month before, or more and longer texts from recent years. The **Show as** list next to **Spacing** chooses what the chart's values are. Hover the **?** beside it for a short reminder.
 
-- The option appears when at least two groups meet the [minimum group count](#help-sequential-minimum-group-count). With one group every period would read 100%.
-- Each period's total counts every group listed in the legend, including hidden groups. Hiding a group therefore does not change the other percentages. Groups below the minimum group count are not counted, so changing that number can change the percentages.
-- A period whose listed groups have no rows at all has no percentage: the line breaks and no bar is drawn.
-- The tooltip shows each group's colour, and its count with its percentage, for example *412 (37.5%)*.
-- In **Area** charts the stacked groups fill the chart up to 100% when none are hidden. **Bars** stay side by side.
-- The counts themselves do not change: the legend, **Add to Project** and selected periods still use counts of rows. A downloaded chart notes that its values are percentages.
+- **Row count**: the rows in each group and period, documents for a corpus or matches for a Data Block made by Concordance. The default.
+- **Composition (% of period)**: each group as a percentage of all rows in the same period, so the groups in each period add up to 100% and you can compare how the mix of groups changes over time whatever the amount of data. This was called *Normalise to 100%* in earlier versions. It is offered when at least two groups meet the [minimum group count](#help-sequential-minimum-group-count); with one group every period would read 100%. Each period's total counts every group listed in the legend, including hidden groups, so hiding a group does not change the other percentages; groups below the minimum group count are not counted, so changing that number can change the percentages. A period whose listed groups have no rows at all has no percentage: the line breaks and no bar is drawn. In **Area** charts the stacked groups fill the chart up to 100% when none are hidden. The tooltip shows the count with its percentage, for example *412 (37.5%)*.
+- **Per million words**: each group's rows divided by the words of the [reference Data Block](#help-sequential-reference) in the same period and group, times a million. This is the normalised frequency of corpus linguistics, which shows whether a term is really used more or less over time rather than following the amount of text; for a rate per 100,000 words, divide by ten. Offered when the result was run with a reference and a text column. The tooltip shows the count and the rate, for example *124 (413.3 per million of 300,000 words)*.
+- **% of reference rows**: each group's rows as a percentage of the reference's rows in the same period and group, for example the share of a year's posts that mention a term when the analysed Data Block holds one row per document (**Add Concordance Documents to Project**). With one row per match the value can pass 100%, since a document can hold several matches. Offered when the result was run with a reference.
 
-The setting is kept for the tab while the Project is open, like **Chart**, and is off by default.
+For the rates, a period that has reference words but no rows reads as zero, which is a real finding, while a group with no reference total in a period (for example no texts by women that year) is left blank. A sentence under the chart says what the rates divide by. The counts themselves do not change: the legend, the overview under the chart, **Add to Project** and selected periods still use counts of rows, and a downloaded chart notes what its values are.
+
+The setting is kept for the tab while the Project is open, like **Chart**, and shows row counts by default.
 
 <h3 id="help-sequential-download">Download chart</h3>
 
-Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, JPEG or **Interactive HTML**. An image download has a header with the Data Block name, time column, period and groups, plus a legend; long headers wrap onto a second line. When **Normalise to 100%** is on, the header also says the values are percentages of all rows in each period.
+Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, JPEG or **Interactive HTML**. An image download has a header with the Data Block name, time column, period, groups and reference Data Block, plus a legend; long headers wrap onto a second line. When **Show as** is not Row count, the header also says what the values are, for example percentages of all rows in each period.
 
 **Interactive HTML** saves the chart as one web page that opens in any browser, offline: it shows the chart exactly as it is on screen (the same groups, selected periods, zoom and theme colours), and keeps its tooltips, a legend whose entries hide or show groups, and the zoom slider (hold Command on a Mac or Control on Windows while scrolling to zoom; plain scrolling moves the page). Its last line links to the Wordflow home page. It is a picture you can explore, not a copy of Wordflow: it cannot change the Period, stop words or groups, or add anything to a Project.
 
@@ -196,7 +259,7 @@ selected periods, zoom, chart type, and axis mode.
 
 <h3 id="help-sequential-zoom">Zoom and navigation</h3>
 
-Drag the ends of the slider under the chart to zoom along the horizontal axis, or drag its middle to move the zoomed range. The shape inside the slider is an overview of the whole result: the total of the groups shown, for each period, laid out like the chart, so with **To scale** spacing empty periods show as gaps there too. With **Normalise to 100%** on, the overview still shows counts. The toolbar also provides keyboard-accessible **Zoom in**, **Zoom out**, and **Reset zoom** buttons. A plain scroll with the mouse wheel or trackpad scrolls the page, even over the chart. To zoom with the wheel, hold ⌘ on a Mac (Ctrl elsewhere) while scrolling over the chart. Zoom changes only the viewport: it does not change the analysis result or clear selected periods.
+Drag the ends of the slider under the chart to zoom along the horizontal axis, or drag its middle to move the zoomed range. The shape inside the slider is an overview of the whole result: the total of the groups shown, for each period, laid out like the chart, so with **To scale** spacing empty periods show as gaps there too. Whatever **Show as** shows, the overview still shows counts. The toolbar also provides keyboard-accessible **Zoom in**, **Zoom out**, and **Reset zoom** buttons. A plain scroll with the mouse wheel or trackpad scrolls the page, even over the chart. To zoom with the wheel, hold ⌘ on a Mac (Ctrl elsewhere) while scrolling over the chart. Zoom changes only the viewport: it does not change the analysis result or clear selected periods.
 
 <h3 id="help-sequential-period-selection">Period selection</h3>
 

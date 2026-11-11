@@ -25,9 +25,11 @@ matched term occurs over time. To count case variants such as *Jobs* and *jobs*
 together, tick **Ignore capitals** beside the result legend.
 
 Note that these trends are based on **raw (absolute) frequencies**: each point
-counts rows. When the amount of data differs a lot between periods, tick
-**Normalise to 100%** to show each group as a percentage of all rows in the same
-period instead.
+counts rows. To see the normalised frequency corpus linguists use, hits per
+million words of all the texts in each period, turn on **Advanced**, keep the
+corpus the matches were made from under **Normalise against** (it starts
+selected) and run, then set **Show as** to **Per million words**. **Composition (% of period)** instead shows each
+group as a percentage of all rows in the same period.
 
 - **Can I change any of the settings/parameters?**
 You can change the frequency (e.g. daily vs monthly), you can change the chart type for the visualisation, and you can add parameters (based on metadata) for the comparison (Add Group). You can change which parameters are visible and which are not visible in the timeline. When numerical data is selected, you can decide the interval where the origin to start for the X-axis (not necessarily starting from Zero).

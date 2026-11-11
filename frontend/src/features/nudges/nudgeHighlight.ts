@@ -73,6 +73,18 @@ export function fadeAfterOtherActions({
 
 const targetSelector = (name: string) => `[${NUDGE_TARGET_ATTRIBUTE}~="${CSS.escape(name)}"]`;
 
+/**
+ * Whether a suggestion points at something that exists but is not drawn,
+ * such as a setting in the parameters while the results are maximised.
+ */
+export function hasHiddenNudgeTarget(names: readonly string[]): boolean {
+  return names.some((name) =>
+    Array.from(document.querySelectorAll<HTMLElement>(targetSelector(name))).some(
+      (element) => element.getClientRects().length === 0,
+    ),
+  );
+}
+
 /** Elements whose tops are this close (px) share a row. */
 const ROW_TOLERANCE_PX = 12;
 

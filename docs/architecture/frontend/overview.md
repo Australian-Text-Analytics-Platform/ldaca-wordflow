@@ -101,6 +101,31 @@ through intrinsic wrapping and named container queries. Viewport breakpoints
 remain appropriate for viewport-owned surfaces such as mobile navigation and
 dialogs, but do not determine the layout of nested feature content.
 
+One surface can be maximised to the window: an analysis tool's results, or
+the Data Editor. `stores/layoutFocusStore.ts` owns which one; it is not
+persisted. `WorkspaceShell` hides the other regions with CSS and never
+unmounts them, and no split ratio or stored size is written, so restoring
+gives back the same charts, selections, drafts and pane sizes.
+`AnalysisSplitLayout` owns the Maximise results control and hides the
+parameters pane; `AnalysisTabbedPanel` hides the tab strip. The Data Editor's
+title row owns its control; `WorkspaceView` then hides the Project Graph, or
+keeps an open column tool in its place so the tool stays beside the table it
+previews. `LayoutFocusGuard`
+restores the layout when the view or Project changes and on an Escape that
+nothing else handled, and each surface restores it when it has nothing to
+show. Contextual Hints wait while a surface is maximised.
+
+An analysis tool with advanced settings has a Basic and an Advanced mode
+(`features/views/common/toolMode/`). The mode is Tab presentation state on the
+device, like the chart type, with the tool's last choice as the default for a
+new Tab; a Tab with no choice opens in Advanced when its last run used an
+advanced setting. The mode also shapes the request on the client: each tool
+owns one pure function that returns its draft with every advanced setting at
+its default, and builds the request from that view in Basic. A hidden setting
+therefore never affects a run, and the hidden draft is kept for when Advanced
+is turned on again. Settings that decide where text is processed are never
+advanced.
+
 The contextual-guidance master switch is unresolved until the authenticated
 preference query succeeds, so automatic guidance remains off during bootstrap.
 Hint acknowledgments use `user ID -> hint ID -> highest version` in local

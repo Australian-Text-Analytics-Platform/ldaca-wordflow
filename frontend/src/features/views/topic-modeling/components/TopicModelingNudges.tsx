@@ -49,6 +49,9 @@ export function TopicResultNudge({
     largestTopicSize: clustering.largest_topic_size ?? 0,
     clusteredSegments: clustering.clustered_segments ?? result.data.segment_count,
     ungroupedShare: ungroupedDocumentShare(result.data),
+    // Passages only join during a run that asked for it; with Always join
+    // the nearest topic nothing is left Ungrouped, so this means "fit".
+    joinedByFit: clustering.assigned_segments != null,
   });
   if (!id) return null;
   const ungroupedShare = ungroupedDocumentShare(result.data);
@@ -56,9 +59,11 @@ export function TopicResultNudge({
   const title =
     id === 'topic-many-ungrouped' && ungroupedShare !== null
       ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are Ungrouped`
-      : id === 'topic-many-topics'
-        ? `The run found ${clustering.max_cluster_count.toLocaleString()} topics`
-        : undefined;
+      : id === 'topic-many-ungrouped-after-fit' && ungroupedShare !== null
+        ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are still Ungrouped`
+        : id === 'topic-many-topics'
+          ? `The run found ${clustering.max_cluster_count.toLocaleString()} topics`
+          : undefined;
   return <NudgeCard id={id} occurrence={`${analysisId ?? ''}\0${id}`} title={title} />;
 }
 
@@ -160,7 +165,8 @@ const SEGMENT_UNIT_NAMES: Record<TopicSegmentLengthsResource['unit'], string> = 
 /**
  * Suggestion before a run when the units the segmentation mode keeps whole are
  * short: a smaller Max tokens holds at least 9 in 10 of them whole (issue
- * 414). Only ever suggests a smaller cap; Apply sets it.
+ * 414). Only ever suggests a smaller cap; Apply sets it. Only for a Max
+ * tokens set by hand: Auto already takes that size (Chao, 2026-11-11).
  */
 export function TopicSegmentLengthNudge({
   lengths,
@@ -169,11 +175,12 @@ export function TopicSegmentLengthNudge({
   className = 'mx-3 mt-2',
 }: {
   lengths: TopicSegmentLengthsResource | null;
-  maxSegmentTokens: number;
+  /** `null` is Auto. */
+  maxSegmentTokens: number | null;
   onApply: (tokens: number) => void;
   className?: string;
 }) {
-  if (!lengths) return null;
+  if (!lengths || maxSegmentTokens === null) return null;
   const tokens = suggestedSegmentTokenCap({
     p90: lengths.p90,
     current: maxSegmentTokens,

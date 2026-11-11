@@ -35,6 +35,7 @@ from ..analysis.topic_examples import (
     TopicSegment,
     corpus_position,
     order_topic_segments,
+    segments_outside_topic_range,
     shared_columns,
     typicality_percentiles,
 )
@@ -636,6 +637,7 @@ class AnalysisResultService:
                 sorted({segment.document_index for segment in page_segments}),
             )
         percentiles = typicality_percentiles(segments)
+        outside = segments_outside_topic_range(segments)
         items = []
         for segment in page_segments:
             document = documents[segment.document_index]
@@ -651,6 +653,8 @@ class AnalysisResultService:
                     text=document.text[segment.start : segment.end],
                     similarity=segment.similarity,
                     typicality=percentiles.get(segment.segment_index),
+                    joined=segment.joined,
+                    outside_topic_range=segment.segment_index in outside,
                     metadata=document.metadata,
                 )
             )

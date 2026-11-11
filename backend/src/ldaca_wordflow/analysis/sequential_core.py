@@ -7,6 +7,7 @@ import polars as pl
 
 from ..shared.elapsed_time import MICROSECONDS, elapsed_to_text
 from ..shared.empty_values import empty_value_expression
+from ..shared.errors import InvalidInputError
 from ..shared.unsupported_columns import supported_metadata_columns
 
 SEQUENTIAL_PERIOD_INDEX_COLUMN = "period_index"
@@ -14,6 +15,13 @@ SEQUENTIAL_GROUP_INDEX_COLUMN = "group_index"
 SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN = "__wordflow_trends_period_index"
 SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN = "__wordflow_trends_group_index"
 _SEQUENTIAL_ROW_INDEX_COLUMN = "__wordflow_trends_row_index"
+# Denominators from the reference Data Block, per period and shared group
+# column: its rows, and the words of its text column when one was chosen.
+SEQUENTIAL_REFERENCE_ROWS_COLUMN = "reference_rows"
+SEQUENTIAL_REFERENCE_WORDS_COLUMN = "reference_words"
+# With a reference the result holds every period and group, so a period with
+# words but no rows reads as zero, not as missing; this bounds that grid.
+MAX_TRENDS_CELLS = 2_000_000
 # Elapsed-time steps in microseconds (issue 324).
 _ELAPSED_STEPS = {"second": "s", "minute": "min", "hourly": "h"}
 _ELAPSED_CUSTOM_UNITS = {"seconds": "s", "minutes": "min", "hours": "h"}
@@ -26,53 +34,45 @@ _CUSTOM_UNIT_SPEC: dict[str, tuple[str, str]] = {
 }
 
 
-def _build_sequential_result_frames(
-    lf: pl.LazyFrame,
-    *,
-    time_column: str,
-    group_by_columns: list[str] | None = None,
-    frequency: str = "monthly",
-    sort_by_time: bool = True,
-    column_type: str = "datetime",
-    numeric_origin: float | None = None,
-    numeric_interval: float | None = None,
-    custom_interval_value: int | None = None,
-    custom_interval_unit: str | None = None,
-) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Pure-Polars implementation of sequential analysis.
+def reference_group_columns(
+    group_by_columns: list[str] | None, reference_columns: list[str] | pl.Schema
+) -> tuple[list[str], list[str]]:
+    """Split the group columns into those the reference has and those it lacks.
 
-    Groups records by time period (datetime truncation or numeric binning),
-    counts occurrences per group, and returns a DataFrame with aggregated
-    results.  No text-processing dependency required.
+    The reference's totals are grouped by the columns it shares with the
+    analysed Data Block, usually metadata such as a speaker or a year. A
+    column it lacks, such as a Concordance search term, cannot split its
+    totals, so every group of that column shares the same denominator.
     """
 
-    normalized_column_type = (column_type or "datetime").lower()
-    if normalized_column_type not in {"datetime", "numeric", "category", "elapsed"}:
-        raise ValueError(
-            "Unsupported column_type. Use 'datetime', 'numeric', 'category' or "
-            "'elapsed' for sequential analysis"
-        )
+    names = set(reference_columns.names() if isinstance(reference_columns, pl.Schema) else reference_columns)
+    shared = [column for column in (group_by_columns or []) if column in names]
+    missing = [column for column in (group_by_columns or []) if column not in names]
+    return shared, missing
 
-    # The worker writes both outputs immediately after this computation, so the
-    # shared collect is the explicit artifact boundary for both frames.
-    source_df = lf.collect()
-    reserved_columns = {
-        SEQUENTIAL_PERIOD_INDEX_COLUMN,
-        SEQUENTIAL_GROUP_INDEX_COLUMN,
-        SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN,
-        SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN,
-        _SEQUENTIAL_ROW_INDEX_COLUMN,
-    }
-    collision = reserved_columns.intersection(source_df.columns)
-    if collision:
-        raise ValueError(f"Source column name is reserved: {sorted(collision)[0]}")
-    df = source_df.with_row_index(_SEQUENTIAL_ROW_INDEX_COLUMN)
+
+def _assign_time_period(
+    df: pl.DataFrame,
+    *,
+    time_column: str,
+    column_type: str,
+    frequency: str,
+    numeric_origin: float | None,
+    numeric_interval: float | None,
+    custom_interval_value: int | None,
+    custom_interval_unit: str | None,
+) -> tuple[pl.DataFrame, str, float | None, float | None]:
+    """Add ``time_period`` to every row, dropping rows without an axis value.
+
+    Returns the frame, the datetime label format, and the numeric origin and
+    interval it used, so a reference frame bins exactly like the analysed one.
+    """
 
     time_format = ""
     numeric_interval_value: float | None = None
     numeric_origin_value: float | None = None
 
-    if normalized_column_type == "datetime":
+    if column_type == "datetime":
         sub_day = frequency in {"second", "minute", "hourly"} or (
             frequency == "custom"
             and custom_interval_unit in {"hours", "minutes", "seconds"}
@@ -131,7 +131,7 @@ def _build_sequential_result_frames(
             raise ValueError("Unsupported datetime frequency")
 
         df = df.filter(pl.col(time_column).is_not_null()).with_columns(time_expr)
-    elif normalized_column_type == "elapsed":
+    elif column_type == "elapsed":
         # Time into a recording, binned from zero by a fixed step; the period
         # is the step's start in seconds, labelled like 7:58 (issue 324).
         if frequency == "custom":
@@ -150,7 +150,7 @@ def _build_sequential_result_frames(
         df = df.filter(pl.col(time_column).is_not_null()).with_columns(
             ((micros // step) * step / 1_000_000).alias("time_period")
         )
-    elif normalized_column_type == "category":
+    elif column_type == "category":
         # One position per category value, in the column's order; empty values
         # are kept and become the last position, "(empty)" (issue 318).
         df = df.with_columns(
@@ -199,18 +199,272 @@ def _build_sequential_result_frames(
                 * pl.lit(numeric_interval_value)
             ).alias("time_period"),
         )
+    return df, time_format, numeric_origin_value, numeric_interval_value
+
+
+def _cast_like(
+    frame: pl.DataFrame, columns: list[str], schema: pl.Schema, *, what: str
+) -> pl.DataFrame:
+    """Cast the reference's columns to the analysed Data Block's types."""
+
+    for column in columns:
+        if column not in frame.columns:
+            raise InvalidInputError(
+                f"The reference Data Block has no column '{column}'. Choose as the "
+                "reference the Data Block this one was made from."
+            )
+        target = schema[column]
+        if frame.schema[column] == target:
+            continue
+        try:
+            if frame.schema[column] == pl.String and (
+                target.is_temporal() or target.is_numeric()
+            ):
+                # Text never reads as a date or number here (Polars would
+                # parse it, with a deprecation warning).
+                raise TypeError("text is not a date or number")
+            frame = frame.with_columns(pl.col(column).cast(target, strict=True))
+        except Exception as exc:
+            raise InvalidInputError(
+                f"The reference's '{column}' column holds a different kind of value "
+                f"from the analysed Data Block's, so it can't be used {what}. Choose "
+                "as the reference the Data Block this one was made from."
+            ) from exc
+    return frame
+
+
+def _group_text(row: dict[str, object], group_by_columns: list[str]) -> str:
+    values = [str(row[column]) if row[column] is not None else "(empty)" for column in group_by_columns]
+    return ", ".join(values)
+
+
+def _normalise_against_reference(
+    result_df: pl.DataFrame,
+    *,
+    df: pl.DataFrame,
+    reference_df: pl.DataFrame,
+    period_indices: pl.DataFrame,
+    group_indices: pl.DataFrame | None,
+    group_by_columns: list[str],
+    time_column: str,
+    column_type: str,
+    reference_word_count_column: str | None,
+) -> pl.DataFrame:
+    """Give every period and group its row, with the reference's totals beside it.
+
+    The totals are grouped by the period and the group columns the reference
+    shares; a group column it lacks shares the period's total. A period or
+    group the analysed Data Block has rows in must also exist in the
+    reference, and never with fewer words than those rows: otherwise the
+    reference is not the Data Block this one was made from.
+    """
+
+    shared, _missing = reference_group_columns(group_by_columns, reference_df.schema)
+    reference_df = _cast_like(reference_df, shared, df.schema, what="to group the totals")
+    aggregations = [pl.len().cast(pl.Int64).alias(SEQUENTIAL_REFERENCE_ROWS_COLUMN)]
+    if reference_word_count_column is not None:
+        aggregations.append(
+            pl.col(reference_word_count_column)
+            .sum()
+            .cast(pl.Int64)
+            .alias(SEQUENTIAL_REFERENCE_WORDS_COLUMN)
+        )
+    totals = reference_df.group_by(["time_period", *shared]).agg(aggregations)
+
+    groups = (
+        group_indices
+        if group_indices is not None
+        else pl.DataFrame({SEQUENTIAL_GROUP_INDEX_COLUMN: [0]}).with_columns(
+            pl.col(SEQUENTIAL_GROUP_INDEX_COLUMN).cast(pl.UInt32)
+        )
+    )
+    if period_indices.height * groups.height > MAX_TRENDS_CELLS:
+        raise InvalidInputError(
+            f"Normalising gives {period_indices.height:,} periods for each of "
+            f"{groups.height:,} groups, too many to draw. Choose a longer period "
+            "or group columns with fewer different values."
+        )
+    cells = period_indices.join(groups, how="cross")
+    joined = cells.join(
+        result_df.drop(["time_period", *group_by_columns]),
+        on=[SEQUENTIAL_PERIOD_INDEX_COLUMN, SEQUENTIAL_GROUP_INDEX_COLUMN],
+        how="left",
+    ).with_columns(pl.col("sequential_count").fill_null(0))
+
+    # A period the analysed Data Block has no rows in takes its bounds from
+    # the reference, so the chart can place it.
+    if column_type == "category":
+        bounds = period_indices.select(
+            "time_period",
+            pl.col("time_period").cast(pl.String).alias("__bound_start__"),
+            pl.col("time_period").cast(pl.String).alias("__bound_end__"),
+        )
+    else:
+        bounds = (
+            pl.concat(
+                [
+                    df.select("time_period", time_column),
+                    reference_df.select("time_period", time_column),
+                ]
+            )
+            .group_by("time_period")
+            .agg(
+                pl.col(time_column).min().alias("__bound_start__"),
+                pl.col(time_column).max().alias("__bound_end__"),
+            )
+        )
+    joined = (
+        joined.join(bounds, on="time_period", how="left", nulls_equal=True)
+        .with_columns(
+            pl.coalesce("period_start", "__bound_start__").alias("period_start"),
+            pl.coalesce("period_end", "__bound_end__").alias("period_end"),
+        )
+        .drop(["__bound_start__", "__bound_end__"])
+    )
+    joined = joined.join(totals, on=["time_period", *shared], how="left", nulls_equal=True)
+
+    uncovered = joined.filter(
+        (pl.col("sequential_count") > 0)
+        & pl.col(SEQUENTIAL_REFERENCE_ROWS_COLUMN).is_null()
+    )
+    if uncovered.height > 0:
+        first = uncovered.row(0, named=True)
+        where = f"period {first['time_period']}"
+        if shared:
+            where += f" for {_group_text(first, shared)}"
+        raise InvalidInputError(
+            f"The reference Data Block has no rows in {where}, but the analysed "
+            f"Data Block has {first['sequential_count']:,}. Choose as the reference "
+            "the Data Block this one was made from."
+        )
+    if reference_word_count_column is not None:
+        over = joined.filter(
+            pl.col("sequential_count") > pl.col(SEQUENTIAL_REFERENCE_WORDS_COLUMN)
+        )
+        if over.height > 0:
+            first = over.row(0, named=True)
+            where = f"period {first['time_period']}"
+            if shared:
+                where += f" for {_group_text(first, shared)}"
+            raise InvalidInputError(
+                f"The analysed Data Block has {first['sequential_count']:,} rows in "
+                f"{where}, more than the reference has words there "
+                f"({first[SEQUENTIAL_REFERENCE_WORDS_COLUMN]:,}). Check the "
+                "reference Data Block and its text column."
+            )
+    return joined.select(
+        [
+            *result_df.columns,
+            SEQUENTIAL_REFERENCE_ROWS_COLUMN,
+            *(
+                [SEQUENTIAL_REFERENCE_WORDS_COLUMN]
+                if reference_word_count_column is not None
+                else []
+            ),
+        ]
+    )
+
+
+def _build_sequential_result_frames(
+    lf: pl.LazyFrame,
+    *,
+    time_column: str,
+    group_by_columns: list[str] | None = None,
+    frequency: str = "monthly",
+    sort_by_time: bool = True,
+    column_type: str = "datetime",
+    numeric_origin: float | None = None,
+    numeric_interval: float | None = None,
+    custom_interval_value: int | None = None,
+    custom_interval_unit: str | None = None,
+    reference: pl.LazyFrame | None = None,
+    reference_word_count_column: str | None = None,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Pure-Polars implementation of sequential analysis.
+
+    Groups records by time period (datetime truncation or numeric binning),
+    counts occurrences per group, and returns a DataFrame with aggregated
+    results.  No text-processing dependency required.
+
+    With a ``reference`` frame (the Data Block the analysed one was made
+    from), every period and group gets a row carrying the reference's rows
+    and, when ``reference_word_count_column`` names a per-row word count,
+    its words, grouped by the period and the group columns the reference
+    shares. The reference bins with the analysed frame's own settings,
+    including its numeric origin.
+    """
+
+    normalized_column_type = (column_type or "datetime").lower()
+    if normalized_column_type not in {"datetime", "numeric", "category", "elapsed"}:
+        raise ValueError(
+            "Unsupported column_type. Use 'datetime', 'numeric', 'category' or "
+            "'elapsed' for sequential analysis"
+        )
+
+    # The worker writes both outputs immediately after this computation, so the
+    # shared collect is the explicit artifact boundary for both frames.
+    source_df = lf.collect()
+    reserved_columns = {
+        SEQUENTIAL_PERIOD_INDEX_COLUMN,
+        SEQUENTIAL_GROUP_INDEX_COLUMN,
+        SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN,
+        SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN,
+        _SEQUENTIAL_ROW_INDEX_COLUMN,
+    }
+    if reference is not None:
+        reserved_columns |= {
+            SEQUENTIAL_REFERENCE_ROWS_COLUMN,
+            SEQUENTIAL_REFERENCE_WORDS_COLUMN,
+        }
+    collision = reserved_columns.intersection(source_df.columns)
+    if collision:
+        raise ValueError(f"Source column name is reserved: {sorted(collision)[0]}")
+    df = source_df.with_row_index(_SEQUENTIAL_ROW_INDEX_COLUMN)
+
+    df, time_format, numeric_origin_value, numeric_interval_value = _assign_time_period(
+        df,
+        time_column=time_column,
+        column_type=normalized_column_type,
+        frequency=frequency,
+        numeric_origin=numeric_origin,
+        numeric_interval=numeric_interval,
+        custom_interval_value=custom_interval_value,
+        custom_interval_unit=custom_interval_unit,
+    )
+
+    reference_df: pl.DataFrame | None = None
+    if reference is not None:
+        reference_df = _cast_like(
+            reference.collect(), [time_column], source_df.schema, what="as the time axis"
+        )
+        reference_df, _format, _origin, _interval = _assign_time_period(
+            reference_df,
+            time_column=time_column,
+            column_type=normalized_column_type,
+            frequency=frequency,
+            # The analysed frame's origin, so both bin alike.
+            numeric_origin=numeric_origin_value,
+            numeric_interval=numeric_interval,
+            custom_interval_value=custom_interval_value,
+            custom_interval_unit=custom_interval_unit,
+        )
 
     # Determine grouping columns
     group_cols = ["time_period"] + (group_by_columns or [])
 
+    period_frames = [df.select("time_period")]
+    if reference_df is not None:
+        # A period with reference rows but none here is a real zero.
+        period_frames.append(reference_df.select("time_period"))
     period_indices = (
-        df.select("time_period")
+        pl.concat(period_frames)
         .unique()
         .sort("time_period", nulls_last=True)
         .with_row_index(SEQUENTIAL_PERIOD_INDEX_COLUMN)
     )
     # nulls_equal: the "(empty)" category position is a real period (issue 318).
     df = df.join(period_indices, on="time_period", how="left", nulls_equal=True)
+    group_indices: pl.DataFrame | None = None
     if group_by_columns:
         group_indices = (
             df.select(group_by_columns)
@@ -246,6 +500,19 @@ def _build_sequential_result_frames(
             pl.col(time_column).max().alias("period_end"),
         ]
     )
+
+    if reference_df is not None:
+        result_df = _normalise_against_reference(
+            result_df,
+            df=df,
+            reference_df=reference_df,
+            period_indices=period_indices,
+            group_indices=group_indices,
+            group_by_columns=list(group_by_columns or []),
+            time_column=time_column,
+            column_type=normalized_column_type,
+            reference_word_count_column=reference_word_count_column,
+        )
 
     # Add formatted time period for display
     if normalized_column_type == "category":
@@ -404,10 +671,14 @@ def _run_sequential_analysis(
 
 
 __all__ = [
+    "MAX_TRENDS_CELLS",
     "SEQUENTIAL_GROUP_INDEX_COLUMN",
     "SEQUENTIAL_PERIOD_INDEX_COLUMN",
     "SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN",
     "SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN",
+    "SEQUENTIAL_REFERENCE_ROWS_COLUMN",
+    "SEQUENTIAL_REFERENCE_WORDS_COLUMN",
     "_build_sequential_result_frames",
     "_run_sequential_analysis",
+    "reference_group_columns",
 ]

@@ -15,8 +15,8 @@ analysis without loading a whole-corpus result into the browser.
   **Text** supports whole-word, regular-expression, and case-sensitive search
   over the selected source column. **Tokens** performs exact-token matching and
   requires a tokeniser for every selected Data Block before running. Fresh
-  Concordance Analyses start in Text mode; selecting Tokens enables the
-  tokeniser controls.
+  Concordance Analyses start in Text mode; to choose Tokens, turn on
+  **Advanced**, then selecting Tokens enables the tokeniser controls.
 
 - **How does punctuation affect context?**
   Text mode starts with **Ignore punctuation** on. Punctuation and symbol-only

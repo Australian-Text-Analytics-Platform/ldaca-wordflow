@@ -11,9 +11,9 @@ interface QuotationClampedCellProps {
 const TOOLTIP_ALIGN_OFFSET_PX = 48;
 
 /**
- * Bounds the Quote Extraction cell to a fixed width and three lines, and shows
- * the complete cell content in a hover tooltip only when the clamp hides some
- * of it. The tooltip is tinted, outlined, shifted right, and points back at
+ * Bounds the Quote Extraction cell to three lines in a column of at least
+ * 42rem that takes the table's spare width, and shows the complete cell
+ * content in a hover tooltip only when the clamp hides some of it. The tooltip is tinted, outlined, shifted right, and points back at
  * the cell so it stands apart from the table cells it overlays.
  *
  * Rendered by: `QuotationNodeBlock` around the document pseudo-column so the
@@ -38,15 +38,21 @@ export function QuotationClampedCell({ children }: QuotationClampedCellProps) {
           setOpen(next && isClamped());
         }}
       >
-        <TooltipTrigger asChild>
-          <div
-            ref={contentRef}
-            data-testid="quotation-clamped-cell"
-            className="w-[42rem] line-clamp-3 whitespace-normal break-words"
-          >
-            {children}
-          </div>
-        </TooltipTrigger>
+        {/* The column is at least 42rem and takes the table's spare width
+            (issue 449). The text itself reports no width (w-0, then
+            min-w-full fills the box), so a long passage cannot stretch the
+            table as it did in issue 111. */}
+        <div data-testid="quotation-clamped-cell-box" className="min-w-[42rem]">
+          <TooltipTrigger asChild>
+            <div
+              ref={contentRef}
+              data-testid="quotation-clamped-cell"
+              className="w-0 min-w-full line-clamp-3 whitespace-normal break-words"
+            >
+              {children}
+            </div>
+          </TooltipTrigger>
+        </div>
         <TooltipContent
           side="bottom"
           align="start"
