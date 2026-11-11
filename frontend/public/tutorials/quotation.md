@@ -132,8 +132,12 @@ See [Excel's cell limit](./export.md#help-export-excel-limit).
 Use **Add to Project** to publish selected Result columns as a new Data
 Block. The document column and the analysis columns start selected, and
 metadata columns start unselected; unticking the document column also leaves
-out its character positions. You can run Quotation on that Data Block again:
-the new run replaces its Quotation columns (`QUOTE_extraction`, `QUOTE_speaker`,
+out its character positions. `QUOTE_extraction` is not offered: in the Result
+table it is the document with its quotes highlighted, and in a Data Block or a
+file it would only repeat the document column. You can run Quotation on that
+Data Block again:
+the new run replaces its Quotation columns (`QUOTE_extraction` in a Data Block
+made by an earlier version, `QUOTE_speaker`,
 `QUOTE_quote`, `QUOTE_verb`, `QUOTE_quote_type` and the other `QUOTE_` fields)
 with its own, so it keeps one set; a column of yours with one of these names is
 treated the same way. If the text you search is itself one of them, for example

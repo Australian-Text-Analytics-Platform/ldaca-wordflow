@@ -8,6 +8,7 @@ import type {
 import HelpIcon from '@/components/help/HelpIcon';
 import { Label } from '@/components/ui/label';
 import { NUDGE_TARGETS } from '@/features/nudges/nudges';
+import { QUOTATION_DOCUMENT_COLUMN } from '../generatedColumns';
 import {
   Select,
   SelectContent,
@@ -119,6 +120,11 @@ const createResultSource = (
 
   if (mode === 'match') {
     for (const column of source.analysis_columns) {
+      // A Quotation Result stores the whole document a second time under
+      // this name, for the Result table's highlighted column. In a Data Block
+      // or file it was a plain copy of the document column, and it kept the
+      // long text in a file whose document column was unticked (issue 448).
+      if (column === QUOTATION_DOCUMENT_COLUMN) continue;
       addColumn(columns, {
         name: column,
         defaultSelected: true,
