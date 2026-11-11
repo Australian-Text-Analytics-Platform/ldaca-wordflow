@@ -11,6 +11,7 @@ import {
 } from '@/features/workspace/data-view/dataEditorToolStore';
 import { WorkspaceGraphFeature } from '@/features/workspace/graph-view';
 import { ResizeHandle } from './ResizeHandle';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 
 /**
  * Stacked workspace view used by the main app shell: graph above, data table
@@ -18,6 +19,12 @@ import { ResizeHandle } from './ResizeHandle';
  * and TanStack Table panes avoid per-frame React rerenders during resizing.
  * Why: graph and table panes need resize feedback without rerendering expensive children on every pointer move.
  * Flow: connect split refs to graph/table panes, imperatively resize during drag, then render controls, graph, splitter, and data table.
+ *
+ * Maximised (layoutFocusStore, ``data-editor``): the Data Editor takes the
+ * column. With no column tool open the graph and its handle are hidden; with
+ * one open the split stays at its remembered ratio, and the tool replaces the
+ * graph without the Show Project Graph way back, so its form stays beside the
+ * table it previews. Nothing is unmounted and no ratio is written.
  *
  * ``collapsed`` (from WorkspaceShell): when true, the panel is completely
  * collapsed into an expand button on the right. When the shell stacks the
@@ -37,7 +44,10 @@ function WorkspaceView({
   const formKey = useDataEditorToolStore((state) => state.formKey);
   const graphVisible = useDataEditorToolStore((state) => state.graphVisible);
   const setGraphVisible = useDataEditorToolStore((state) => state.setGraphVisible);
-  const showingTool = tool !== null && !graphVisible;
+  const maximised = useLayoutFocusStore((state) => state.maximised === 'data-editor');
+  const showingTool = tool !== null && (!graphVisible || maximised);
+  // Maximised without a tool: the table alone fills the column.
+  const tableOnly = maximised && tool === null;
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const {
     containerRef,
@@ -87,7 +97,11 @@ function WorkspaceView({
     <div className="flex flex-col h-full bg-transparent" ref={containerRef}>
       <InsetCard
         ref={topRef}
-        className="min-h-30 p-2 pt-0 pb-0 pl-0 max-md:pl-2 @max-[639px]/workspace-shell:pl-2"
+        data-testid="workspace-graph-card"
+        className={`min-h-30 p-2 pt-0 pb-0 pl-0 max-md:pl-2 @max-[639px]/workspace-shell:pl-2 ${
+          // The sidebar is hidden while maximised, so keep a left gap.
+          maximised ? 'pl-2!' : ''
+        } ${tableOnly ? 'hidden!' : ''}`}
         style={{ height: `calc(${String(ratio * 100)}% - 0.125rem)` }}
       >
         {tool ? (
@@ -95,7 +109,7 @@ function WorkspaceView({
             <DataEditorToolPanel key={`${tool}-${String(formKey)}`} />
           </div>
         ) : null}
-        <div className={showingTool ? 'hidden' : 'contents'}>
+        <div data-testid="workspace-graph-pane" className={showingTool ? 'hidden' : 'contents'}>
           <div className="p-2 bg-panel border-b border-surface-border shrink-0">
             <WorkspaceControls onToggleCollapse={onToggleCollapse} />
           </div>
@@ -120,15 +134,18 @@ function WorkspaceView({
       <ResizeHandle
         orientation="horizontal"
         isDragging={isDragging}
-        className="-my-0.5 mr-2"
+        className={`-my-0.5 mr-2 ${tableOnly ? 'hidden!' : ''}`}
         aria-label="Resize graph and data panels"
         {...splitterProps}
       />
 
       <InsetCard
         ref={bottomRef}
-        className="min-h-30 p-2 pt-0 pl-0 max-md:pl-2 @max-[639px]/workspace-shell:pl-2"
-        style={{ height: `calc(${String((1 - ratio) * 100)}% - 0.125rem)` }}
+        data-testid="workspace-table-card"
+        className={`min-h-30 p-2 pt-0 pl-0 max-md:pl-2 @max-[639px]/workspace-shell:pl-2 ${
+          maximised ? 'pl-2!' : ''
+        } ${tableOnly ? 'flex-1' : ''}`}
+        style={tableOnly ? undefined : { height: `calc(${String((1 - ratio) * 100)}% - 0.125rem)` }}
       >
         <div className="flex-1 min-h-0">
           <WorkspaceDataTableFeature />

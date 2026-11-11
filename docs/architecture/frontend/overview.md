@@ -107,7 +107,10 @@ persisted. `WorkspaceShell` hides the other regions with CSS and never
 unmounts them, and no split ratio or stored size is written, so restoring
 gives back the same charts, selections, drafts and pane sizes.
 `AnalysisSplitLayout` owns the Maximise results control and hides the
-parameters pane; `AnalysisTabbedPanel` hides the tab strip. `LayoutFocusGuard`
+parameters pane; `AnalysisTabbedPanel` hides the tab strip. The Data Editor's
+title row owns its control; `WorkspaceView` then hides the Project Graph, or
+keeps an open column tool in its place so the tool stays beside the table it
+previews. `LayoutFocusGuard`
 restores the layout when the view or Project changes and on an Escape that
 nothing else handled, and each surface restores it when it has nothing to
 show. Contextual Hints wait while a surface is maximised.
