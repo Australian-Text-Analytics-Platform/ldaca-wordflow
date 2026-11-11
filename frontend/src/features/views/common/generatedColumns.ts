@@ -96,7 +96,7 @@ export const GENERATED_COLUMN_EXPLANATIONS: Readonly<Record<string, string>> = {
   CONC_source: 'Searched text',
   QUOTE_source: 'Searched text',
   CONC_left_context: 'Text before',
-  CONC_matched_text: 'The match',
+  CONC_matched_text: 'Text found',
   CONC_right_context: 'Text after',
   CONC_start_idx: 'Match start',
   CONC_end_idx: 'Match end',
@@ -105,7 +105,7 @@ export const GENERATED_COLUMN_EXPLANATIONS: Readonly<Record<string, string>> = {
   CONC_l1_freq: 'L1 frequency',
   CONC_r1_freq: 'R1 frequency',
   CONC_dispersion: 'Match positions',
-  CONC_extraction: 'Matches found',
+  CONC_extraction: 'Match in context',
   QUOTE_extraction: 'Quotes highlighted',
   QUOTE_speaker: 'Who is quoted',
   QUOTE_speaker_start_idx: 'Speaker start',
@@ -137,7 +137,11 @@ export const GENERATED_COLUMN_DETAILS: Readonly<Record<string, string>> = {
   CONC_r1_freq:
     'How often that R1 word occurs (ignoring capitals unless the search was case sensitive)',
   CONC_dispersion: 'Where the matches occur in the document',
-  CONC_extraction: 'The matches found in this document',
+  // The two are easily confused (issue 461): one is the found text alone,
+  // the other the found text inside the text around it.
+  CONC_matched_text:
+    'The text the search found, as written in the document. With a regular expression or several search terms it differs from row to row',
+  CONC_extraction: 'The text before, the text found and the text after, as one passage',
   QUOTE_extraction: 'The document, with its quotes highlighted',
   QUOTE_speaker_start_idx: 'Where the speaker starts, in characters',
   QUOTE_speaker_end_idx: 'Where the speaker ends, in characters',

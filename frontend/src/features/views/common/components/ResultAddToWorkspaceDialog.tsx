@@ -113,6 +113,8 @@ const createResultSource = (
       name: 'CONC_extraction',
       required: true,
       requiredDescription: 'required',
+      // One row per document holds every match of the document (issue 461).
+      title: 'CONC_extraction: Every match in this document with the text around it, one per line',
     });
   }
 
