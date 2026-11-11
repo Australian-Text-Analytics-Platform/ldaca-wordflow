@@ -117,6 +117,12 @@ hidden until you reveal that column, and the viewer is read-only; use
 
 Choose a **Provider** (a connection you set up) and a **Model**; both are always shown above **Advanced settings**. Provider
 credentials stay in Settings and are attached only when the request is sent.
+On a Wordflow server, your connections and keys are saved in your web browser,
+not on the server, and only for the account you're signed in with: they stay
+after you sign out or close the browser, another account signed in on the same
+browser can't see or use them, and in a different browser or a private
+(incognito) window you need to enter them again. On a shared computer, delete
+them when you finish.
 Create or edit connections under **Settings → Servers**, in **Generative AI**
 (the **AI** tab before 0.7.16). API keys are optional when
 saving, but a built-in provider marked **Needs API key** cannot list models,

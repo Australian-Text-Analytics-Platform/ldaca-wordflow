@@ -10,11 +10,12 @@ const mocks = vi.hoisted(() => ({
   retry: vi.fn(),
   isLoading: false,
   error: null as Error | null,
+  storage: 'browser' as 'browser' | 'backend',
 }));
 
 vi.mock('@/features/provider-credentials/useProviderCredentials', () => ({
   useProviderCredentials: () => ({
-    storage: 'browser',
+    storage: mocks.storage,
     isLoading: mocks.isLoading,
     error: mocks.error,
     annotationProviders: [
@@ -65,6 +66,22 @@ describe('AiProvidersPreferencesPanel', () => {
     mocks.retry.mockResolvedValue(undefined);
     mocks.isLoading = false;
     mocks.error = null;
+    mocks.storage = 'browser';
+  });
+
+  it('tells server users their keys are kept in this browser, for this account only', () => {
+    const view = renderPanel();
+    expect(
+      screen.getByText(/saved in this web browser, not on the Wordflow server/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Another account signed in on this browser can't see/)).toBeInTheDocument();
+    expect(screen.getByText(/private \(incognito\) window/)).toBeInTheDocument();
+    view.unmount();
+
+    mocks.storage = 'backend';
+    renderPanel();
+    expect(screen.queryByText(/saved in this web browser/)).not.toBeInTheDocument();
+    expect(screen.getByText(/stored by the local backend/)).toBeInTheDocument();
   });
 
   it('shows ordered named configurations and opens the shared Add dialog', async () => {

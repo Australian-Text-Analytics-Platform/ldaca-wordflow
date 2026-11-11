@@ -173,6 +173,35 @@ describe('providerCredentialsStore', () => {
     expect(providerCredentialPresence('user-a').annotationProviders).toHaveLength(1);
   });
 
+  it('restores saved configurations when the page loads, only for their own account', async () => {
+    useProviderCredentialsStore.getState().addAnnotationProvider('user-a', {
+      name: 'OpenRouter',
+      provider: 'openrouter',
+      apiKey: 'saved-before-reload',
+    });
+    useProviderCredentialsStore.getState().setDataPortalCredential('user-a', 'portal-before-reload');
+
+    // A page refresh evaluates the module again, and persist hydrates inside create().
+    vi.resetModules();
+    const reloaded = await import('../providerCredentialsStore');
+
+    expect(reloaded.providerCredentialPresence('user-a').annotationProviders).toEqual([
+      expect.objectContaining({ id: FIRST_ID, name: 'OpenRouter', has_api_key: true }),
+    ]);
+    expect(reloaded.getBrowserAnnotationProviderCredential('user-a', FIRST_ID)).toBe(
+      'saved-before-reload',
+    );
+    expect(reloaded.getBrowserDataPortalCredential('user-a')).toBe('portal-before-reload');
+    // Another account signing in on the same browser sees and uses none of it.
+    expect(reloaded.providerCredentialPresence('user-b')).toEqual({
+      annotationProviders: [],
+      dataPortal: false,
+      revision: 0,
+    });
+    expect(reloaded.getBrowserAnnotationProviderCredential('user-b', FIRST_ID)).toBeUndefined();
+    expect(reloaded.getBrowserDataPortalCredential('user-b')).toBeUndefined();
+  });
+
   it('rejects incomplete version 2 partitions instead of defaulting legacy fields', () => {
     useProviderCredentialsStore.getState().addAnnotationProvider('user-a', {
       name: 'OpenRouter',

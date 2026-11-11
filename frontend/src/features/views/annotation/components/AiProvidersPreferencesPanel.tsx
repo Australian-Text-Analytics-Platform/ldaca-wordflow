@@ -149,11 +149,26 @@ export function AiProvidersPreferencesPanel() {
           <p className="text-body text-description">
             Used by Annotation. Without one, Annotation can only be done by hand.
           </p>
-          <p className="mt-1 text-body text-description">
-            {credentials.storage === 'browser'
-              ? 'Configurations stay in this browser for the current account. Secrets are sent only with provider requests.'
-              : 'Configurations are stored by the local backend. Saved secrets are never returned to the browser.'}
-          </p>
+          {credentials.storage === 'browser' ? (
+            <div className="mt-2 space-y-1 rounded-md border border-surface-border/70 px-3 py-2">
+              <p className="text-body text-description">
+                Your providers and API keys are saved in this web browser, not on the Wordflow
+                server. They belong to the account you're signed in with and stay after you sign
+                out or close the browser. Another account signed in on this browser can't see or
+                use them.
+              </p>
+              <p className="text-body text-description">
+                In a different browser, or a private (incognito) window, you'll need to enter your
+                keys again. A key is sent only with the requests that use it. On a shared computer,
+                delete your providers when you finish.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-body text-description">
+              Configurations are stored by the local backend. Saved secrets are never returned to
+              the browser.
+            </p>
+          )}
           <p className="mt-1 text-label-secondary text-description">
             Names, saved keys and default models can be edited. Provider type and Custom Base URL
             stay fixed.
