@@ -10,7 +10,11 @@ Issues and ledger records wait until the work is accepted. When it is, the
 documentation must cover all of it, including the Topic Modelling Max tokens
 Auto design: what is measured (natural units, counted without splitting), the
 9 in 10 rule, that the run decides and records it, and the 200-text sample's
-remaining jobs. Places: GitHub issues, `V07-nnn` rows in
+remaining jobs. Known downgrade case to decide on: a Topic Modelling request with Max tokens
+Auto leaves the field out of the saved Project, and 0.7.16 to 0.7.19 read a
+missing field as 256. With the Multilingual model (limit 128) those releases
+then refuse the request, so a Project with such a run does not open in them.
+English runs and runs with a size set by hand are unaffected. Places: GitHub issues, `V07-nnn` rows in
 `docs/releases/v0.7-branch-changes.md` and
 `docs/releases/v0.7-to-v0.8-migration-instructions.md`, release notes, the
 domain doc for Topic Modelling requests, an ADR for "Auto is decided by the
@@ -37,20 +41,16 @@ run" (it changes a request field to nullable), and this folder moved to
   spelling ("Maximise", "Colour", "Tokeniser"), `Data Block` and `Project` as
   product terms.
 
-## Status (11 November 2026, end of the session that wrote this plan)
+## Status (11 November 2026, all steps built)
 
 | Step | State | Commit |
 |---|---|---|
-| A1 Mode mechanism and Trends | **Done**, tests and checks pass | `5162d29f` |
-| B1 Store, shell regions, guard | **Done** | `fc9ef106` |
-| B2 Analysis tools | **Done**: button, bar, tab strip, hints wait, Show settings | `fc9ef106` |
-| B3 Data Editor | **To do.** The shell already lays out `maximised === 'data-editor'`; nothing sets it yet. | |
-| B4 Help and docs | **Partly done**: `ui.md` (`help-ui-maximise`) and the architecture overview cover analysis tools. Add the Data Editor sentences with B3. | |
-| A2 Annotation | **To do**, agreed | |
-| A3 Concordance | **To do**, agreed as changed | |
-| A4 Topic Modelling | **To do**, agreed as changed (see A4) | |
-
-Do the remaining steps in this order: B3 with B4, A2, A3, A4. One commit each.
+| A1 Mode mechanism and Trends | Done | `5162d29f` |
+| B1, B2 Maximise for analysis tools | Done | `fc9ef106` |
+| B3, B4 Maximise for the Data Editor, help | Done | `ed97d62f` |
+| A2 Annotation | Done | `b7593784` |
+| A3 Concordance | Done | `2c00ab39` |
+| A4 Topic Modelling, with Max tokens Auto decided by the run (backend) | Done | `6f4655d1` |
 
 **Nobody has run the app yet.** Every check so far is tsc, eslint, Biome,
 vitest (jsdom), knip and the docs checks. The manual pass under Verification
