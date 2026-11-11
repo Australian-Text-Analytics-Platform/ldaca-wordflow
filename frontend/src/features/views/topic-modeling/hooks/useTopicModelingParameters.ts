@@ -3,6 +3,7 @@ import type {
   TopicEmbeddingModel,
   TopicModelingAnalysisRequest,
   TopicSegmentationMethod,
+  TopicUngroupedPassages,
   WorkspaceNodeInfo,
 } from '@/api';
 import {
@@ -90,6 +91,9 @@ export interface UseTopicModelingParametersResult {
   /** Segments to sample; `null` (an empty field) means the grey suggestion. */
   clusterSampleSize: number | null;
   setClusterSampleSize: (value: number | null) => void;
+  /** What happens to passages the grouping leaves out. */
+  ungroupedPassages: TopicUngroupedPassages;
+  setUngroupedPassages: (value: TopicUngroupedPassages) => void;
   nodeDocCounts: number[];
   effectiveDocCounts: number[];
   sampleFractionsForRequest: (number | null)[];
@@ -139,6 +143,7 @@ export function useTopicModelingParameters({
     embeddingEndpointId,
     clusterSample,
     clusterSampleSize,
+    ungroupedPassages,
   } = parameterState;
 
   const activeNodeIds = panelNodeIds.slice(0, 2);
@@ -273,6 +278,10 @@ export function useTopicModelingParameters({
     setClusterSample,
     clusterSampleSize,
     setClusterSampleSize,
+    ungroupedPassages,
+    setUngroupedPassages: (value: TopicUngroupedPassages) => {
+      dispatchParameters({ type: 'setUngroupedPassages', value });
+    },
     nodeDocCounts,
     effectiveDocCounts,
     sampleFractionsForRequest,

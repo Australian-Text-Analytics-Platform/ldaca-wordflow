@@ -59,6 +59,16 @@ describe('Suggestions rules (issue 360)', () => {
     ).toBeNull();
   });
 
+  it('suggests letting Ungrouped passages join a topic from 30% of documents, then the stronger choice', () => {
+    const result = { clusterCount: 12, largestTopicSize: 40, clusteredSegments: 100 };
+    expect(topicResultNudge({ ...result, ungroupedShare: 0.29 })).toBeNull();
+    expect(topicResultNudge({ ...result, ungroupedShare: 0.3 })).toBe('topic-many-ungrouped');
+    // A run that already let them join a topic they fit.
+    expect(topicResultNudge({ ...result, ungroupedShare: 0.4, joinedByFit: true })).toBe(
+      'topic-many-ungrouped-after-fit',
+    );
+  });
+
   it('says when a result opens with fewer topics than the run found', () => {
     expect(
       topicResultNudge({

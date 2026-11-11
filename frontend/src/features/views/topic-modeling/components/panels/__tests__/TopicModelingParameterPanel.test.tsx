@@ -138,6 +138,8 @@ const baseProps = {
   onSegmentationMethodChange: vi.fn(),
   maxSegmentTokens: 256 as number | null,
   onMaxSegmentTokensChange: vi.fn(),
+  ungroupedPassages: 'keep' as 'keep' | 'fit' | 'nearest',
+  onUngroupedPassagesChange: vi.fn(),
   sentMaxSegmentTokens: 256 as number | null,
   autoMaxSegmentTokens: { lastRun: null, estimate: null } as {
     lastRun: number | null;
@@ -275,6 +277,7 @@ describe('TopicModelingParameterPanel', () => {
     expect(screen.queryByLabelText('Maximum tokens per passage')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Random seed')).not.toBeInTheDocument();
     expect(screen.queryByText('Topic sampling')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Ungrouped passages')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Embedding model')).toBeInTheDocument();
     expect(screen.getByLabelText('Min topic size')).toBeInTheDocument();
   });
@@ -514,6 +517,69 @@ describe('TopicModelingParameterPanel', () => {
     expect(
       screen.getByText(/main topic of 90% of documents, but splitting it did not give more topics/),
     ).toHaveTextContent('so it was kept. Try a fixed Max topic size');
+  });
+
+  it('offers what happens to Ungrouped passages, with a line on what each choice does', async () => {
+    allowSelectMenus();
+    const user = userEvent.setup();
+    const onUngroupedPassagesChange = vi.fn();
+    const { rerender } = render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        onUngroupedPassagesChange={onUngroupedPassagesChange}
+      />,
+    );
+    expect(screen.getByLabelText('Ungrouped passages')).toHaveTextContent('Stay Ungrouped');
+    await user.click(screen.getByLabelText('Ungrouped passages'));
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      'Stay Ungrouped',
+      'Join a topic they fit',
+      'Always join the nearest topic',
+    ]);
+    await user.click(screen.getByRole('option', { name: 'Join a topic they fit' }));
+    expect(onUngroupedPassagesChange).toHaveBeenLastCalledWith('fit');
+
+    rerender(<TopicModelingParameterPanel {...baseProps} ungroupedPassages="fit" />);
+    expect(
+      screen.getByText(/as similar as that topic’s own least similar passage/),
+    ).toBeInTheDocument();
+  });
+
+  it('reports how many Ungrouped passages joined a topic and how many stayed', () => {
+    const run = {
+      segmentCount: 87_116,
+      appliedMaxTopicSize: null,
+      requestedMaxTopicSize: null,
+      clusteredSegments: null,
+      randomSeed: 0,
+      autoDecision: null,
+      autoDocumentShare: null,
+      largestTopicSize: null,
+    };
+    const { rerender } = render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{ ...run, ungroupedSegments: 15_550, assignedSegments: 35_666 }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Last run: 87,116 passages; no topic needed splitting. 35,666 Ungrouped passages joined their most similar topic; 15,550 (18%) are Ungrouped',
+      ),
+    ).toBeInTheDocument();
+
+    // A run that left them as they were says only how many there are.
+    rerender(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{ ...run, ungroupedSegments: 51_216, assignedSegments: null }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Last run: 87,116 passages; no topic needed splitting. 51,216 (59%) are Ungrouped',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('reports a last run whose topics came from a sample', () => {

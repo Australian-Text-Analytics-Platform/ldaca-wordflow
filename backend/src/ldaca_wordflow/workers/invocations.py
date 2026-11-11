@@ -45,6 +45,8 @@ class TopicModelingInput:
     max_segment_tokens: int | None
     sample_fractions: list[float | None] | None
     cluster_sample_size: int | None = None
+    # "keep", "fit" or "nearest" (TopicUngroupedPassages).
+    ungrouped_passages: str = "keep"
     embedding_model: str | None = None
     # Embed on this remote endpoint instead of this computer (never saved).
     remote_embedding: RemoteEmbeddingRun | None = None

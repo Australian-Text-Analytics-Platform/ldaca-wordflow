@@ -369,10 +369,11 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
     while the Data Block has more: show more **Documents per page**, or
     **Run** to search them all;
   - Topic Modelling puts most passages in one topic (try a lower **Max topic
-    size**), finds only a few topics, or leaves many documents
-    [Ungrouped](./topic-modeling.md#help-topic-modeling-ungrouped) (try a
-    slightly lower **Min topic size**, which may help only a little), then
-    **Run** again;
+    size**), finds only a few topics, or leaves 30% or more of the documents
+    [Ungrouped](./topic-modeling.md#help-topic-modeling-ungrouped) (under
+    **Advanced**, set
+    [Ungrouped passages](./topic-modeling.md#help-topic-modeling-ungrouped-passages)
+    to **Join a topic they fit**), then **Run** again;
   - a Topic Modelling run is still splitting or reading the text after five
     minutes: reading takes most of a first run, so **Stop**, then lower
     **Sampling** to read fewer documents;

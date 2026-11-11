@@ -7,6 +7,7 @@ from ldaca_wordflow.domain.workspace import (
     TopicEmbeddingModel,
     TopicModelingAnalysisRequest,
     TopicSegmentationMethod,
+    TopicUngroupedPassages,
 )
 from pydantic import ValidationError
 
@@ -119,3 +120,22 @@ def test_saved_requests_name_the_model_only_when_it_is_not_english() -> None:
     assert TopicModelingAnalysisRequest.model_validate(saved).embedding_model is (
         TopicEmbeddingModel.MULTILINGUAL
     )
+
+
+def test_ungrouped_passages_stay_ungrouped_by_default_and_out_of_saved_projects() -> None:
+    request = _request()
+    assert request.ungrouped_passages is TopicUngroupedPassages.KEEP
+    assert "ungrouped_passages" not in request.model_dump(mode="json")
+
+    chosen = _request(ungrouped_passages="fit")
+    saved = chosen.model_dump(mode="json")
+    assert saved["ungrouped_passages"] == "fit"
+    assert TopicModelingAnalysisRequest.model_validate(saved) == chosen
+    assert _request(ungrouped_passages="nearest").ungrouped_passages is (
+        TopicUngroupedPassages.NEAREST
+    )
+
+
+def test_ungrouped_passages_rejects_an_unknown_choice() -> None:
+    with pytest.raises(ValidationError):
+        _request(ungrouped_passages="similar")

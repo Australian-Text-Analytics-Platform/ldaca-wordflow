@@ -160,6 +160,8 @@ def _fake_topic_modeling_expr_factory(
     auto_decision: str | None = None,
     auto_document_share: float | None = None,
     largest_topic_size: int | None = None,
+    outlier_segments: int | None = None,
+    assigned_segments: int | None = None,
 ):
     """Build a fake ``.text.topic_modeling`` method returning a canned struct.
 
@@ -235,6 +237,8 @@ def _fake_topic_modeling_expr_factory(
             pl.lit(auto_decision, dtype=pl.String).alias("auto_decision"),
             pl.lit(auto_document_share, dtype=pl.Float64).alias("auto_document_share"),
             pl.lit(largest_topic_size, dtype=pl.UInt32).alias("largest_topic_size"),
+            pl.lit(outlier_segments, dtype=pl.UInt32).alias("outlier_segments"),
+            pl.lit(assigned_segments, dtype=pl.UInt32).alias("assigned_segments"),
             pl.lit(b"context", dtype=pl.Binary).alias("projection_context"),
         )
 
@@ -447,6 +451,65 @@ def test_run_rust_topic_modeling_forwards_and_reports_topic_sampling(
     assert ("cluster_sample_size" in seen_kwargs) == (cluster_sample_size is not None)
     assert seen_kwargs.get("cluster_sample_size") == cluster_sample_size
     assert result["clustered_segments"] == cluster_sample_size
+
+
+@pytest.mark.parametrize(
+    ("ungrouped_passages", "expected"),
+    [
+        ("keep", {}),
+        # As similar as the topic's own least similar passage.
+        ("fit", {"outlier_member_quantile": 0.0}),
+        # Every one joins its most similar topic.
+        ("nearest", {"outlier_similarity": -1.0}),
+    ],
+)
+def test_run_rust_topic_modeling_forwards_what_happens_to_ungrouped_passages(
+    monkeypatch, ungrouped_passages: str, expected: dict[str, float]
+) -> None:
+    from polars_text.namespace import TextNamespace
+
+    seen_kwargs: dict[str, Any] = {}
+    assigned = None if ungrouped_passages == "keep" else 4_000
+    monkeypatch.setattr(
+        TextNamespace,
+        "topic_modeling",
+        _fake_topic_modeling_expr_factory(
+            documents=[{"doc_index": 0, "dominant_topic": 0}],
+            topics=[{"id": 0, "representative_words": _terms("alpha"), "x": 0.0, "y": 0.0}],
+            n_segments=10_000,
+            seen_kwargs=seen_kwargs,
+            outlier_segments=1_500,
+            assigned_segments=assigned,
+        ),
+    )
+
+    result = topic_pipeline._run_rust_topic_modeling(
+        all_docs=["one document"],
+        seed=0,
+        min_cluster_size=10,
+        vectorizer_model="native:plain_words_en",
+        ungrouped_passages=ungrouped_passages,
+    )
+
+    # Keeping them is the native default, so nothing is passed for it.
+    assert {
+        key: seen_kwargs[key]
+        for key in ("outlier_member_quantile", "outlier_similarity")
+        if key in seen_kwargs
+    } == expected
+    assert result["outlier_segments"] == 1_500
+    assert result["assigned_segments"] == assigned
+
+
+def test_run_rust_topic_modeling_refuses_an_unknown_ungrouped_choice() -> None:
+    with pytest.raises(ValueError, match="unknown Ungrouped passages choice"):
+        topic_pipeline._run_rust_topic_modeling(
+            all_docs=["one document"],
+            seed=0,
+            min_cluster_size=10,
+            vectorizer_model="native:plain_words_en",
+            ungrouped_passages="similar",
+        )
 
 
 @pytest.mark.parametrize("segmentation_method", ["automatic", "line", "sentence"])

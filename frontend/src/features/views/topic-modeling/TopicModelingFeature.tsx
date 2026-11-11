@@ -172,6 +172,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     setClusterSample,
     clusterSampleSize,
     setClusterSampleSize,
+    ungroupedPassages,
+    setUngroupedPassages,
     nodeDocCounts,
     sampleFractionsForRequest,
     hasAnySampling,
@@ -306,6 +308,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
   const sentSegmentationMethod = toolMode.advanced ? segmentationMethod : 'automatic';
   const sentMaxSegmentTokens = toolMode.advanced ? maxSegmentTokens : null;
   const sentRandomSeed = toolMode.advanced ? randomSeed : 0;
+  // In Basic, passages the grouping leaves out stay Ungrouped.
+  const sentUngroupedPassages = toolMode.advanced ? ungroupedPassages : 'keep';
   // The segment-length sample reads every selected Data Block (issue 414).
   const segmentLengths = useTopicSegmentLengths({
     workspaceId: currentWorkspaceId,
@@ -400,6 +404,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     embedding_model: embeddingModel,
     embedding_endpoint_id: remoteChoice.endpointId,
     cluster_sample_size: clusterSampleSizeForRequest,
+    ungrouped_passages: sentUngroupedPassages,
   };
   const serverTopicParams = (request: AnalysisRequestOfKind<'topic_modeling'>) => ({
     node_ids: request.node_ids,
@@ -421,6 +426,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     embedding_model: request.embedding_model ?? ENGLISH_EMBEDDING_MODEL,
     embedding_endpoint_id: request.embedding_endpoint_id ?? null,
     cluster_sample_size: request.cluster_sample_size ?? null,
+    // Left out of the request when they stay Ungrouped.
+    ungrouped_passages: request.ungrouped_passages ?? 'keep',
   });
   const hasTopicChanges = !serverRequest
     ? true
@@ -572,6 +579,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       embeddingModel,
       embeddingEndpointId: remoteChoice.endpointId,
       clusterSampleSize: clusterSampleSizeForRequest,
+      ungroupedPassages: sentUngroupedPassages,
     },
     actions: {
       runAnalysis,
@@ -677,6 +685,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
                     autoDecision: result.clustering.auto_decision ?? null,
                     autoDocumentShare: result.clustering.auto_document_share ?? null,
                     largestTopicSize: result.clustering.largest_topic_size ?? null,
+                    ungroupedSegments: result.clustering.ungrouped_segments ?? null,
+                    assignedSegments: result.clustering.assigned_segments ?? null,
                     randomSeed: resultRandomSeed,
                   }
                 : null
@@ -685,6 +695,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
             onClusterSampleChange={setClusterSample}
             clusterSampleSize={clusterSampleSize}
             onClusterSampleSizeChange={setClusterSampleSize}
+            ungroupedPassages={ungroupedPassages}
+            onUngroupedPassagesChange={setUngroupedPassages}
             suggestedSampleSize={suggestedSampleSize}
             estimatedSegmentCount={estimatedSegmentCount}
             estimatedTokenCount={estimatedTokenCount}

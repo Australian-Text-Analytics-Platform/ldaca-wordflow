@@ -74,6 +74,7 @@ def analysis_process(
             max_segment_tokens=invocation.max_segment_tokens,
             sample_fractions=invocation.sample_fractions,
             cluster_sample_size=invocation.cluster_sample_size,
+            ungrouped_passages=invocation.ungrouped_passages,
             embedding_model=invocation.embedding_model,
             remote_embedding=invocation.remote_embedding,
             progress_callback=progress,

@@ -10,7 +10,15 @@ Issues and ledger records wait until the work is accepted. When it is, the
 documentation must cover all of it, including the Topic Modelling Max tokens
 Auto design: what is measured (natural units, counted without splitting), the
 9 in 10 rule, that the run decides and records it, and the 200-text sample's
-remaining jobs. Known downgrade case to decide on: a Topic Modelling request with Max tokens
+remaining jobs. polars-text is a separate repository attached as a submodule. The Ungrouped
+passages work added a local commit there, `3375232` on the local branch
+`feat/outlier-assignment` (from `release/0.7`, unpushed), and this branch's
+submodule pointer names it. Before merging, that commit has to be pushed and
+released in polars-text (a version after 0.7.2, with its changelog entry
+moved out of Unreleased), and the backend's polars-text requirement raised to
+that version.
+
+Known downgrade case to decide on: a Topic Modelling request with Max tokens
 Auto leaves the field out of the saved Project, and 0.7.16 to 0.7.19 read a
 missing field as 256. With the Multilingual model (limit 128) those releases
 then refuse the request, so a Project with such a run does not open in them.
@@ -52,6 +60,8 @@ run" (it changes a request field to nullable), and this folder moved to
 | A2 Annotation | Done | `b7593784` |
 | A3 Concordance | Done | `2c00ab39` |
 | A4 Topic Modelling, with Max tokens Auto decided by the run (backend) | Done | `6f4655d1` |
+| Ungrouped passages, a further advanced Topic Modelling setting (native, backend, frontend) | Done; measured in the [Ungrouped review](../topic-modeling-ungrouped-2026-11-11.md) | see `git log` |
+| Data Editor: any column with long values is limited in width (unrelated fix) | Done | `58f9db8a` |
 
 **Nobody has run the app yet.** Every check so far is tsc, eslint, Biome,
 vitest (jsdom), knip and the docs checks. The manual pass under Verification

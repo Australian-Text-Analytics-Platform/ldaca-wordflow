@@ -647,6 +647,7 @@ def _compute_topic_payload(
     segmentation_method: str,
     max_segment_tokens: int | None,
     cluster_sample_size: int | None = None,
+    ungrouped_passages: str = "keep",
     embedding_model: str | None = None,
     remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict[str, Any]:
@@ -704,6 +705,7 @@ def _compute_topic_payload(
             segmentation_method=segmentation_method,
             max_segment_tokens=max_segment_tokens,
             cluster_sample_size=cluster_sample_size,
+            ungrouped_passages=ungrouped_passages,
             progress_path=progress_path,
         )
 
@@ -754,6 +756,8 @@ def _compute_topic_payload(
         "auto_decision": rust_result.get("auto_decision"),
         "auto_document_share": rust_result.get("auto_document_share"),
         "largest_topic_size": rust_result.get("largest_topic_size"),
+        "ungrouped_segments": rust_result.get("outlier_segments"),
+        "assigned_segments": rust_result.get("assigned_segments"),
     }
     payload["projection_context"] = {
         "version": 2,
@@ -818,6 +822,7 @@ def _compute_topic_modeling(
     progress_callback: ProgressCallback | None = None,
     sample_fractions: list[float | None] | None = None,
     cluster_sample_size: int | None = None,
+    ungrouped_passages: str = "keep",
     embedding_model: str | None = None,
     remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict[str, Any]:
@@ -871,6 +876,7 @@ def _compute_topic_modeling(
             segmentation_method=segmentation_method,
             max_segment_tokens=max_segment_tokens,
             cluster_sample_size=cluster_sample_size,
+            ungrouped_passages=ungrouped_passages,
             embedding_model=embedding_model,
             remote_embedding=remote_embedding,
         )
@@ -913,6 +919,7 @@ def run_topic_modeling_analysis(
     progress_callback: ProgressCallback | None = None,
     max_cluster_size: int | None = None,
     cluster_sample_size: int | None = None,
+    ungrouped_passages: str = "keep",
     embedding_model: str | None = None,
     remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict[str, Any]:
@@ -937,6 +944,7 @@ def run_topic_modeling_analysis(
         progress_callback=progress_callback,
         sample_fractions=sample_fractions,
         cluster_sample_size=cluster_sample_size,
+        ungrouped_passages=ungrouped_passages,
         embedding_cache_path=embedding_cache_path,
         embedding_model=embedding_model,
         remote_embedding=remote_embedding,

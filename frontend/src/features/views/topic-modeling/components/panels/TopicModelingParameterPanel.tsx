@@ -14,6 +14,7 @@ import type {
   TopicEmbeddingModel,
   TopicSegmentationMethod,
   TopicSegmentLengthsResource,
+  TopicUngroupedPassages,
 } from '@/api';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
 import { AdvancedSection } from '@/features/views/common/toolMode/AdvancedSection';
@@ -101,6 +102,10 @@ interface Props {
     autoDocumentShare: number | null;
     /** Segments in the largest topic the run produced. */
     largestTopicSize: number | null;
+    /** Passages in no topic when the run finished; `null` for older runs. */
+    ungroupedSegments: number | null;
+    /** Ungrouped passages given their most similar topic; `null` when not asked for. */
+    assignedSegments: number | null;
   } | null;
   /** Topic sampling, off by default. */
   clusterSample: boolean;
@@ -108,6 +113,9 @@ interface Props {
   /** Segments to sample as typed; `null` (empty) runs with the grey suggestion. */
   clusterSampleSize: number | null;
   onClusterSampleSizeChange: (value: number | null) => void;
+  /** What happens to passages the grouping leaves out. */
+  ungroupedPassages: TopicUngroupedPassages;
+  onUngroupedPassagesChange: (value: TopicUngroupedPassages) => void;
   /** The grey suggestion shown in the empty Segments to sample field. */
   suggestedSampleSize: number;
   /** Estimated Topic Segments across the selected Data Blocks; `null` while counting. */
@@ -150,6 +158,33 @@ interface Props {
   hasMissingColumns: boolean;
   parametersLocked: boolean;
 }
+/**
+ * What can happen to passages the grouping leaves out (2026-11). Topics are
+ * found first either way, so none of these adds a topic or allows a smaller
+ * one, and topic words stay those of the passages the grouping found.
+ */
+const UNGROUPED_PASSAGES_CHOICES: readonly {
+  value: TopicUngroupedPassages;
+  label: string;
+  note: string;
+}[] = [
+  {
+    value: 'keep',
+    label: 'Stay Ungrouped',
+    note: 'A passage is in a topic only when it sits in a dense group of similar passages.',
+  },
+  {
+    value: 'fit',
+    label: 'Join a topic they fit',
+    note: 'A passage joins the topic it is most similar to, when it is as similar as that topic’s own least similar passage. The rest stay Ungrouped.',
+  },
+  {
+    value: 'nearest',
+    label: 'Always join the nearest topic',
+    note: 'Every passage joins the topic it is most similar to, however loosely. Nothing stays Ungrouped.',
+  },
+];
+
 /** The Max tokens choice that means Auto. */
 const AUTO_MAX_SEGMENT_TOKENS = 'auto';
 const INTEGER_INPUT = 'h-8 w-20 px-2 text-right text-body tabular-nums';
@@ -229,6 +264,8 @@ export function TopicModelingParameterPanel({
   onClusterSampleChange,
   clusterSampleSize,
   onClusterSampleSizeChange,
+  ungroupedPassages,
+  onUngroupedPassagesChange,
   suggestedSampleSize,
   estimatedSegmentCount,
   estimatedTokenCount,
@@ -295,7 +332,20 @@ export function TopicModelingParameterPanel({
     onMaxClusterSizeChange(next);
   };
 
-  const lastRunSummary = (() => {
+  // Passages that joined a topic after the grouping, and those still left out.
+  const lastRunUngrouped = (() => {
+    const left = lastRunClustering?.ungroupedSegments ?? null;
+    if (!lastRunClustering || left === null) return '';
+    const share =
+      lastRunClustering.segmentCount > 0
+        ? ` (${String(Math.round((left / lastRunClustering.segmentCount) * 100))}%)`
+        : '';
+    const stayed = `${left.toLocaleString()}${share} ${left === 1 ? 'is' : 'are'} Ungrouped`;
+    return lastRunClustering.assignedSegments === null
+      ? `. ${stayed}`
+      : `. ${lastRunClustering.assignedSegments.toLocaleString()} Ungrouped passages joined their most similar topic; ${stayed}`;
+  })();
+  const lastRunSummaryBase = (() => {
     if (!lastRunClustering) return null;
     const segments = `Last run: ${lastRunClustering.segmentCount.toLocaleString()} passages`;
     const sampled =
@@ -327,6 +377,8 @@ export function TopicModelingParameterPanel({
       ? `${segments}${sampled}; no topic needed splitting`
       : `${segments}${sampled}; topics larger than ${appliedMaxTopicSize.toLocaleString()} were split`;
   })();
+  const lastRunSummary =
+    lastRunSummaryBase === null ? null : `${lastRunSummaryBase}${lastRunUngrouped}`;
 
   // Segments to sample: empty shows the suggestion in grey; Run uses it, Tab
   // fills it in to edit, and typing replaces it (as for Data Block names).
@@ -944,6 +996,42 @@ export function TopicModelingParameterPanel({
                 </a>
               </p>
             ) : null}
+          </div>
+          <div className="space-y-1">
+            <ParameterLabel
+              helpKey="analysis.topic-modeling.ungrouped-passages"
+              htmlFor="topic-ungrouped-passages"
+              help="Passages the grouping leaves out can stay Ungrouped, or join the topic they are most similar to."
+            >
+              Ungrouped passages
+            </ParameterLabel>
+            <Select
+              value={ungroupedPassages}
+              onValueChange={(value) => {
+                onUngroupedPassagesChange(value as TopicUngroupedPassages);
+              }}
+            >
+              <SelectTrigger
+                {...nudgeTargetProps(NUDGE_TARGETS.topicUngroupedPassages)}
+                id="topic-ungrouped-passages"
+                aria-label="Ungrouped passages"
+                aria-describedby="topic-ungrouped-passages-note"
+                className="h-8 w-72"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {UNGROUPED_PASSAGES_CHOICES.map((choice) => (
+                  <SelectItem key={choice.value} value={choice.value}>
+                    {choice.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p id="topic-ungrouped-passages-note" className="text-label-secondary text-description">
+              {UNGROUPED_PASSAGES_CHOICES.find((choice) => choice.value === ungroupedPassages)
+                ?.note ?? ''}
+            </p>
           </div>
         </AdvancedSection>
         {/* The passage count depends on every setting in the row (Passages and

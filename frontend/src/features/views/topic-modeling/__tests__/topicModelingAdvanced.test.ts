@@ -22,5 +22,7 @@ describe('topicRunUsedAdvanced', () => {
     expect(topicRunUsedAdvanced({ ...run, max_segment_tokens: 64 })).toBe(true);
     expect(topicRunUsedAdvanced({ ...run, random_seed: 7 })).toBe(true);
     expect(topicRunUsedAdvanced({ ...run, cluster_sample_size: 50_000 })).toBe(true);
+    expect(topicRunUsedAdvanced({ ...run, ungrouped_passages: 'fit' })).toBe(true);
+    expect(topicRunUsedAdvanced({ ...run, ungrouped_passages: 'keep' })).toBe(false);
   });
 });

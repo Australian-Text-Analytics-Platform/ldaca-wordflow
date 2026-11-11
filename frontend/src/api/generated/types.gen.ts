@@ -5840,6 +5840,10 @@ export type TopicClustering = {
      */
     adjustable: boolean;
     /**
+     * Assigned Segments
+     */
+    assigned_segments?: number | null;
+    /**
      * Auto Decision
      */
     auto_decision?: 'not_needed' | 'split' | 'kept' | null;
@@ -5875,6 +5879,10 @@ export type TopicClustering = {
      * Min Cluster Count
      */
     min_cluster_count: number;
+    /**
+     * Ungrouped Segments
+     */
+    ungrouped_segments?: number | null;
 };
 
 /**
@@ -6153,6 +6161,7 @@ export type TopicModelingAnalysisRequest = {
      */
     sample_fractions?: Array<number | null> | null;
     segmentation_method?: TopicSegmentationMethod;
+    ungrouped_passages?: TopicUngroupedPassages;
 };
 
 /**
@@ -6665,6 +6674,22 @@ export type TopicSource = {
      */
     text_column: string;
 };
+
+/**
+ * TopicUngroupedPassages
+ *
+ * What happens to passages the grouping leaves out (2026-11).
+ *
+ * Grouping by density leaves a passage Ungrouped when it sits in a sparse
+ * area as a Topic separates from its neighbours: often more than half of
+ * the passages, most of them between or beside Topics. KEEP leaves them.
+ * FIT gives each one the Topic whose centre it is most similar to, when it
+ * is at least as similar as that Topic's own least similar passage, so no
+ * Topic becomes looser than it was. NEAREST gives every one its most
+ * similar Topic. Topics are found before any passage joins, so neither adds
+ * a Topic nor allows a smaller one.
+ */
+export type TopicUngroupedPassages = 'keep' | 'fit' | 'nearest';
 
 /**
  * UnaryExpression

@@ -349,6 +349,17 @@ limit that holds 9 in 10 of them, or the limit when none does. The Result's
 absent from Results made before Auto. A saved request leaves the field out when
 Auto.
 
+`TopicModelingAnalysisRequest.ungrouped_passages` is `keep` (default), `fit` or
+`nearest`: what happens to passages the grouping leaves out. `fit` gives each
+one the Topic whose centre it is most similar to, when it is at least as
+similar as that Topic's own least similar passage; `nearest` gives every one
+its most similar Topic. Topics are found first, so neither adds a Topic, and
+representative words come from the passages grouping put in each Topic. A saved
+request leaves the field out when `keep`. The Result's
+`clustering.ungrouped_segments` is the number of passages in no Topic when the
+run finished and `clustering.assigned_segments` how many joined one this way
+(null when the run kept them); both are absent from earlier Results.
+
 `get_topic_segment_lengths` takes `column`, `segmentation_method` and
 `embedding_model`. It counts tokens with that model's tokenizer, special tokens
 included, per sentence, line, or (Automatic) whole document; when at least 90%

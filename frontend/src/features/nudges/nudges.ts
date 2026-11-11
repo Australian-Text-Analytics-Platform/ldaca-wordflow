@@ -18,6 +18,7 @@ export const NUDGE_TARGETS = {
   topicEmbeddingModel: 'topic-embedding-model',
   topicMaxSegmentTokens: 'topic-max-segment-tokens',
   topicRemoteGpu: 'topic-remote-gpu',
+  topicUngroupedPassages: 'topic-ungrouped-passages',
   tokenizer: 'tokenizer-model',
   exportFormat: 'export-format',
   trendsReferenceNote: 'trends-reference-note',
@@ -100,11 +101,24 @@ export const NUDGES = {
   },
   'topic-many-ungrouped': {
     title: 'Many documents are Ungrouped',
-    // What to do, plainly; why it helps only a little is in Learn more (Chao, 2026-10-10).
+    // From 30% of the documents (Chao, 2026-11). Ungrouped passages mostly
+    // sit between topics; letting them join the topic they fit took a
+    // comments corpus from 58% to 18% Ungrouped without adding a topic, where
+    // a smaller Min topic size only made thousands of tiny topics.
     message:
-      'To place more documents in topics, lower Min topic size or raise Max topic size, then Run again. The change is usually small.',
-    help: 'analysis.topic-modeling.ungrouped',
-    targets: [NUDGE_TARGETS.topicMinClusterSize, NUDGE_TARGETS.topicMaxClusterSize],
+      'Ungrouped passages can join the topic they are most similar to. Under Advanced, set Ungrouped passages to Join a topic they fit, then Run again.',
+    help: 'analysis.topic-modeling.ungrouped-passages',
+    targets: [NUDGE_TARGETS.topicUngroupedPassages],
+    advanced: true,
+  },
+  'topic-many-ungrouped-after-fit': {
+    title: 'Many documents are still Ungrouped',
+    // The run already let passages join a topic they fit.
+    message:
+      'They are less similar to any topic than its own passages are. If every passage should be in a topic, set Ungrouped passages to Always join the nearest topic under Advanced, then Run again.',
+    help: 'analysis.topic-modeling.ungrouped-passages',
+    targets: [NUDGE_TARGETS.topicUngroupedPassages],
+    advanced: true,
   },
   'topic-slow-start': {
     title: 'This run is taking a while',
@@ -191,6 +205,8 @@ interface TopicResultShape {
   clusteredSegments: number;
   /** Share of documents with no real Topic; null for runs before 0.7.12. */
   ungroupedShare?: number | null;
+  /** The run already let Ungrouped passages join a topic they fit. */
+  joinedByFit?: boolean;
 }
 
 /**
@@ -203,6 +219,7 @@ export function topicResultNudge({
   largestTopicSize,
   clusteredSegments,
   ungroupedShare = null,
+  joinedByFit = false,
 }: TopicResultShape): NudgeId | null {
   if (clusteredSegments > 0 && largestTopicSize / clusteredSegments > GIANT_TOPIC_SHARE) {
     return 'topic-giant-topic';
@@ -210,7 +227,7 @@ export function topicResultNudge({
   if (foundTopicCount > clusterCount) return 'topic-many-topics';
   if (clusterCount > 0 && clusterCount < FEW_TOPICS) return 'topic-few-topics';
   if (ungroupedShare !== null && ungroupedShare >= MANY_UNGROUPED_SHARE) {
-    return 'topic-many-ungrouped';
+    return joinedByFit ? 'topic-many-ungrouped-after-fit' : 'topic-many-ungrouped';
   }
   return null;
 }

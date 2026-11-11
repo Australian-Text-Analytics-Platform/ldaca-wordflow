@@ -124,6 +124,7 @@ when Advanced is turned on, not before, so Basic sends no reference.
 | Sampling (per Data Block) | Max tokens |
 | Model (chosen automatically, and wrong for other languages) | Seed |
 | Topic size, Min and Max (the settings most results need) | Topic sampling, Passages to sample |
+| | Ungrouped passages (added later; see the [Ungrouped measurement](../topic-modeling-ungrouped-2026-11-11.md)) |
 | Remote GPU and its server (where text is processed) | |
 
 **Max tokens has an Auto mode.** Passages and Max tokens work as a pair, so

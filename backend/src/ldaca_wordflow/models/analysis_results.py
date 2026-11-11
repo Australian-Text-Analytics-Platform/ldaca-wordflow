@@ -368,6 +368,11 @@ class TopicClustering(_StrictModel):
     # Segments in the largest topic the clustering produced: what Auto meant,
     # shown in grey in the Max topic size field (issue 336).
     largest_topic_size: int | None = Field(default=None, ge=1)
+    # Passages in no Topic when the run finished, and how many Ungrouped
+    # passages were given their most similar Topic (None when not asked for).
+    # None for results made before Ungrouped passages could join a Topic.
+    ungrouped_segments: int | None = Field(default=None, ge=0)
+    assigned_segments: int | None = Field(default=None, ge=0)
 
 
 class TopicInclusion(_StrictModel):

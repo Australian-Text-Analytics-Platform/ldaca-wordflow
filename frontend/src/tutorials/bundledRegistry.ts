@@ -416,6 +416,11 @@ const tutorial = {
     anchor: 'help-topic-modeling-segmentation-method',
     label: 'Passages',
   },
+  'analysis.topic-modeling.ungrouped-passages': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-ungrouped-passages',
+    label: 'Ungrouped passages',
+  },
   'analysis.topic-modeling.max-segment-tokens': {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-max-segment-tokens',

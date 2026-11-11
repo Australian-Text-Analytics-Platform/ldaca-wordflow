@@ -2,6 +2,7 @@ import type {
   TopicEmbeddingModel,
   TopicModelingAnalysisRequest,
   TopicSegmentationMethod,
+  TopicUngroupedPassages,
 } from '@/api';
 import { ENGLISH_EMBEDDING_MODEL, isTopicEmbeddingModel } from '../topicEmbeddingModels';
 
@@ -44,6 +45,12 @@ export interface TopicModelingParameterState {
   clusterSample: boolean;
   /** Segments to sample; `null` (an empty field) means the grey suggestion. */
   clusterSampleSize: number | null;
+  /**
+   * What happens to passages the grouping leaves out: they stay Ungrouped
+   * (`keep`, the default), join the topic they are most similar to when they
+   * fit it (`fit`), or always join it (`nearest`).
+   */
+  ungroupedPassages: TopicUngroupedPassages;
 }
 
 type TopicModelingParameterAction =
@@ -58,6 +65,7 @@ type TopicModelingParameterAction =
   | { type: 'setEmbeddingEndpointId'; value: string }
   | { type: 'setClusterSample'; value: boolean }
   | { type: 'setClusterSampleSize'; value: number | null }
+  | { type: 'setUngroupedPassages'; value: TopicUngroupedPassages }
   | { type: 'hydrateRequest'; request: TopicModelingAnalysisRequest };
 
 /**
@@ -80,6 +88,7 @@ export const createTopicModelingParameterState = (): TopicModelingParameterState
   embeddingEndpointId: null,
   clusterSample: false,
   clusterSampleSize: null,
+  ungroupedPassages: 'keep',
 });
 
 /**
@@ -228,6 +237,8 @@ export const topicModelingParameterReducer = (
       return { ...state, clusterSample: action.value };
     case 'setClusterSampleSize':
       return { ...state, clusterSampleSize: action.value };
+    case 'setUngroupedPassages':
+      return { ...state, ungroupedPassages: action.value };
     case 'hydrateRequest': {
       const hasSampling = Array.isArray(action.request.sample_fractions);
       const samples = hasSampling
@@ -254,6 +265,8 @@ export const topicModelingParameterReducer = (
         embeddingEndpointId: action.request.embedding_endpoint_id ?? null,
         clusterSample: action.request.cluster_sample_size != null,
         clusterSampleSize: action.request.cluster_sample_size ?? null,
+        // A run saved without it kept them Ungrouped.
+        ungroupedPassages: action.request.ungrouped_passages ?? 'keep',
         corpusSamplesByNodeId: hasSampling
           ? Object.fromEntries(
               action.request.node_ids.map((nodeId, index) => [

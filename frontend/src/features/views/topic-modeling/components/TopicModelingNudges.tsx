@@ -49,6 +49,9 @@ export function TopicResultNudge({
     largestTopicSize: clustering.largest_topic_size ?? 0,
     clusteredSegments: clustering.clustered_segments ?? result.data.segment_count,
     ungroupedShare: ungroupedDocumentShare(result.data),
+    // Passages only join during a run that asked for it; with Always join
+    // the nearest topic nothing is left Ungrouped, so this means "fit".
+    joinedByFit: clustering.assigned_segments != null,
   });
   if (!id) return null;
   const ungroupedShare = ungroupedDocumentShare(result.data);
@@ -56,9 +59,11 @@ export function TopicResultNudge({
   const title =
     id === 'topic-many-ungrouped' && ungroupedShare !== null
       ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are Ungrouped`
-      : id === 'topic-many-topics'
-        ? `The run found ${clustering.max_cluster_count.toLocaleString()} topics`
-        : undefined;
+      : id === 'topic-many-ungrouped-after-fit' && ungroupedShare !== null
+        ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are still Ungrouped`
+        : id === 'topic-many-topics'
+          ? `The run found ${clustering.max_cluster_count.toLocaleString()} topics`
+          : undefined;
   return <NudgeCard id={id} occurrence={`${analysisId ?? ''}\0${id}`} title={title} />;
 }
 

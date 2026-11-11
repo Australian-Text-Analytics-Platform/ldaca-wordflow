@@ -131,6 +131,24 @@ class TopicSegmentationMethod(StrEnum):
     SENTENCE = "sentence"
 
 
+class TopicUngroupedPassages(StrEnum):
+    """What happens to passages the grouping leaves out (2026-11).
+
+    Grouping by density leaves a passage Ungrouped when it sits in a sparse
+    area as a Topic separates from its neighbours: often more than half of
+    the passages, most of them between or beside Topics. KEEP leaves them.
+    FIT gives each one the Topic whose centre it is most similar to, when it
+    is at least as similar as that Topic's own least similar passage, so no
+    Topic becomes looser than it was. NEAREST gives every one its most
+    similar Topic. Topics are found before any passage joins, so neither adds
+    a Topic nor allows a smaller one.
+    """
+
+    KEEP = "keep"
+    FIT = "fit"
+    NEAREST = "nearest"
+
+
 class TopicEmbeddingModel(StrEnum):
     """The sentence models Topic Modelling offers (issue 413)."""
 
@@ -180,6 +198,11 @@ class TopicModelingAnalysisRequest(_StrictModel):
     # None clusters every segment. Clustering time grows with the square of the
     # segment count; a smaller sample misses smaller topics.
     cluster_sample_size: int | None = Field(default=None, ge=1_000)
+    # Left out of saved Projects when KEEP, so earlier releases can read them.
+    ungrouped_passages: TopicUngroupedPassages = Field(
+        default=TopicUngroupedPassages.KEEP,
+        exclude_if=lambda value: value == TopicUngroupedPassages.KEEP,
+    )
 
     @model_validator(mode="after")
     def validate_nodes_and_sampling(self) -> TopicModelingAnalysisRequest:
@@ -1132,6 +1155,7 @@ __all__ = [
     "TokenFrequencyAnalysisRequest",
     "TopicModelingAnalysisRequest",
     "TopicSegmentationMethod",
+    "TopicUngroupedPassages",
     "TopicEmbeddingModel",
     "TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS",
     "TopicModelingDataBlockCreationAnalysisRequest",

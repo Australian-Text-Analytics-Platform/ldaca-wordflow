@@ -46,6 +46,27 @@ describe('topicModelingParameterReducer', () => {
     });
   });
 
+  it('leaves Ungrouped passages as they are by default, and restores a saved choice', () => {
+    const initial = createTopicModelingParameterState();
+    expect(initial.ungroupedPassages).toBe('keep');
+    const chosen = topicModelingParameterReducer(initial, {
+      type: 'setUngroupedPassages',
+      value: 'fit',
+    });
+    expect(chosen.ungroupedPassages).toBe('fit');
+    const request = { node_ids: ['node-1'], node_columns: { 'node-1': 'text' } };
+    expect(
+      topicModelingParameterReducer(chosen, {
+        type: 'hydrateRequest',
+        request: { ...request, ungrouped_passages: 'nearest' },
+      }).ungroupedPassages,
+    ).toBe('nearest');
+    // A run saved without it kept them Ungrouped.
+    expect(
+      topicModelingParameterReducer(chosen, { type: 'hydrateRequest', request }).ungroupedPassages,
+    ).toBe('keep');
+  });
+
   it('keeps topic sampling off by default and restores a saved sample size', () => {
     const initial = createTopicModelingParameterState();
     expect(initial).toMatchObject({ clusterSample: false, clusterSampleSize: null });

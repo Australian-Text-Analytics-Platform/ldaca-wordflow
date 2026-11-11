@@ -11228,6 +11228,18 @@
             "title": "Adjustable",
             "type": "boolean"
           },
+          "assigned_segments": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Segments"
+          },
           "auto_decision": {
             "anyOf": [
               {
@@ -11312,6 +11324,18 @@
             "minimum": 0.0,
             "title": "Min Cluster Count",
             "type": "integer"
+          },
+          "ungrouped_segments": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ungrouped Segments"
           }
         },
         "required": [
@@ -11823,6 +11847,10 @@
           "segmentation_method": {
             "$ref": "#/components/schemas/TopicSegmentationMethod",
             "default": "automatic"
+          },
+          "ungrouped_passages": {
+            "$ref": "#/components/schemas/TopicUngroupedPassages",
+            "default": "keep"
           }
         },
         "required": [
@@ -12801,6 +12829,16 @@
         ],
         "title": "TopicSource",
         "type": "object"
+      },
+      "TopicUngroupedPassages": {
+        "description": "What happens to passages the grouping leaves out (2026-11).\n\nGrouping by density leaves a passage Ungrouped when it sits in a sparse\narea as a Topic separates from its neighbours: often more than half of\nthe passages, most of them between or beside Topics. KEEP leaves them.\nFIT gives each one the Topic whose centre it is most similar to, when it\nis at least as similar as that Topic's own least similar passage, so no\nTopic becomes looser than it was. NEAREST gives every one its most\nsimilar Topic. Topics are found before any passage joins, so neither adds\na Topic nor allows a smaller one.",
+        "enum": [
+          "keep",
+          "fit",
+          "nearest"
+        ],
+        "title": "TopicUngroupedPassages",
+        "type": "string"
       },
       "UnaryExpression-Input": {
         "additionalProperties": false,
