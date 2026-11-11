@@ -4,39 +4,47 @@ Read [DESIGN.md](DESIGN.md) first. It holds what people see and why. This file
 holds the order of work, the files, the traps, and how to verify. It is
 written for whoever implements next, with no memory of the design discussion.
 
-## At merge to `v0.7` (Chao, 11 November 2026)
+## Merged to `v0.7` (12 November 2026)
 
-Issues and ledger records wait until the work is accepted. When it is, the
-documentation must cover all of it, including the Topic Modelling Max tokens
-Auto design: what is measured (natural units, counted without splitting), the
-9 in 10 rule, that the run decides and records it, and the 200-text sample's
-remaining jobs. polars-text is a separate repository attached as a submodule. The Ungrouped
-passages work added two local commits there, `3375232` and `40f1b4a`, on the
-local branch `feat/outlier-assignment` (from `release/0.7`, unpushed), and
-this branch's submodule pointer names the second. Before merging, they have to
-be pushed and
-released in polars-text (a version after 0.7.2, with its changelog entry
-moved out of Unreleased), and the backend's polars-text requirement raised to
-that version.
+Chao asked for the records on 11 November and for the merge on 12 November
+2026. What exists now:
 
-Known downgrade case to decide on: a Topic Modelling request with Max tokens
-Auto leaves the field out of the saved Project, and 0.7.16 to 0.7.19 read a
-missing field as 256. With the Multilingual model (limit 128) those releases
-then refuse the request, so a Project with such a run does not open in them.
-English runs and runs with a size set by hand are unaffected. Chao, 11
-November 2026: not a concern for now; leave it as is. Places: GitHub issues, `V07-nnn` rows in
-`docs/releases/v0.7-branch-changes.md` and
-`docs/releases/v0.7-to-v0.8-migration-instructions.md`, release notes, the
-domain doc for Topic Modelling requests, an ADR for "Auto is decided by the
-run" (it changes a request field to nullable), and this folder moved to
-`specs/active/<issue>-<slug>/` then archived.
+- Issues #467 (Trends reference), #468 (modes), #469 (maximise), #470 (Max
+  tokens Auto), #471 (Ungrouped passages), #472 (Data Editor column width),
+  and records V07-375 to V07-381 in
+  `docs/releases/v0.7-to-v0.8-migration-instructions.md`. V07-382 to V07-390
+  record the fixes for Monika's issues made on the same branch.
+- ADR 0033 (Max tokens Auto is decided by the run) and ADR 0034 (topics are
+  defined by their grouped passages); the domain document states both rules.
+- polars-text 0.7.3 holds the Ungrouped passages options (commits `3375232`,
+  `40f1b4a`; release commit `96026fe`; tag `v0.7.3` at `f0e8fe1`, which also
+  moves its workflows to the macOS 15 runner). The submodule points at the
+  tag.
+- This folder stays in `docs/reviews/`. `v0.7` has not used `specs/` since it
+  was cut, and the records above are what v0.8 ports from.
+
+Still to do:
+
+- A hand check in the desktop app and in Safari. Only automated checks and
+  headless Chromium layout measurements have run.
+- Release notes and the summary in `docs/releases/v0.7-branch-changes.md`,
+  written when the next 0.7.x is released, as for earlier releases.
+- A reading of example passages before any change to the default of
+  **Ungrouped passages**.
+
+Known downgrade case, left as is (Chao, 11 November 2026): a Topic Modelling
+request with Max tokens Auto leaves the field out of the saved Project, and
+0.7.16 to 0.7.19 read a missing field as 256. With the Multilingual model
+(limit 128) those releases refuse the request, so a Project with such a run
+does not open in them. English runs and runs with a size set by hand are
+unaffected.
 
 ## Ground rules for this work
 
-- Branch: stay on `research/v0.7-trends-normalisation`. Commits are local
-  only. Never push unless Chao asks.
-- Do not file GitHub issues, ledger records (`V07-nnn`) or release notes.
-  Chao decides that when he keeps the work (DESIGN.md, question 4).
+- These were the rules while the work was built. The branch was
+  `research/v0.7-trends-normalisation`, with local commits only, and issues
+  and records waited until Chao kept the work (DESIGN.md, question 4). See
+  the section above for what followed.
 - One commit per numbered step below. Part B commits must not depend on
   Part A commits or on the Trends reference work, so Part B can be
   cherry-picked onto `v0.7` alone.
