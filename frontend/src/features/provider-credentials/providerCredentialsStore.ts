@@ -156,6 +156,89 @@ const normalizeConfigurationInput = (
   return { name, provider: input.provider, apiKey };
 };
 
+// The sanitizers must be defined before the store: `persist` reads localStorage synchronously inside
+// `create()`, so `merge` runs while this module is still loading. Defined later, they were not yet
+// initialised, persist swallowed the error, and every page load started with no providers.
+const sanitizeConfiguration = (value: unknown): StoredAnnotationProviderConfiguration | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  if (
+    typeof source.id !== 'string' ||
+    !UUID_PATTERN.test(source.id) ||
+    typeof source.name !== 'string' ||
+    source.name.trim().length === 0 ||
+    source.name.length > 200 ||
+    !isProviderType(source.provider) ||
+    typeof source.credentialRevision !== 'number' ||
+    !Number.isSafeInteger(source.credentialRevision) ||
+    source.credentialRevision < 1
+  ) {
+    return null;
+  }
+  const apiKey =
+    typeof source.apiKey === 'string' && source.apiKey.length > 0 && source.apiKey.length <= 4_000
+      ? source.apiKey
+      : undefined;
+  let baseUrl: string | undefined;
+  if (source.provider === 'custom') {
+    if (typeof source.baseUrl !== 'string') return null;
+    try {
+      baseUrl = normalizeCustomProviderBaseUrl(source.baseUrl);
+    } catch {
+      return null;
+    }
+  } else if (source.baseUrl !== undefined) {
+    return null;
+  }
+  return {
+    id: source.id,
+    name: source.name.trim(),
+    provider: source.provider,
+    baseUrl,
+    apiKey,
+    credentialRevision: source.credentialRevision,
+  };
+};
+
+const sanitizeEntry = (value: unknown): StoredUserProviderCredentials | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  if (!Array.isArray(source.annotationProviders)) return null;
+  const annotationProviders = source.annotationProviders.map(sanitizeConfiguration);
+  if (annotationProviders.some((item) => item === null)) return null;
+  const configurations = annotationProviders as StoredAnnotationProviderConfiguration[];
+  if (new Set(configurations.map((item) => item.id)).size !== configurations.length) {
+    return null;
+  }
+  const dataPortal =
+    typeof source.dataPortal === 'string' &&
+    source.dataPortal.length > 0 &&
+    source.dataPortal.length <= 4_000
+      ? source.dataPortal
+      : undefined;
+  if (
+    typeof source.revision !== 'number' ||
+    !Number.isSafeInteger(source.revision) ||
+    source.revision < 0
+  ) {
+    return null;
+  }
+  return { annotationProviders: configurations, dataPortal, revision: source.revision };
+};
+
+const sanitizePartitions = (
+  value: unknown,
+): Record<string, StoredUserProviderCredentials> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const result: Record<string, StoredUserProviderCredentials> = {};
+  for (const [userId, entryValue] of Object.entries(value)) {
+    const entry = userId ? sanitizeEntry(entryValue) : null;
+    if (!entry) return null;
+    result[userId] = entry;
+  }
+  return result;
+};
+
 /** Browser-owned provider secrets, intentionally kept outside Zustand devtools. */
 export const useProviderCredentialsStore = create<ProviderCredentialsStore>()(
   persist(
@@ -336,86 +419,6 @@ export const useBrowserProviderCredentialPresence = (
 ): ProviderCredentialPresence => {
   const entry = useProviderCredentialsStore((state) => (userId ? state.byUser[userId] : undefined));
   return presenceFromEntry(entry);
-};
-
-const sanitizeConfiguration = (value: unknown): StoredAnnotationProviderConfiguration | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const source = value as Record<string, unknown>;
-  if (
-    typeof source.id !== 'string' ||
-    !UUID_PATTERN.test(source.id) ||
-    typeof source.name !== 'string' ||
-    source.name.trim().length === 0 ||
-    source.name.length > 200 ||
-    !isProviderType(source.provider) ||
-    typeof source.credentialRevision !== 'number' ||
-    !Number.isSafeInteger(source.credentialRevision) ||
-    source.credentialRevision < 1
-  ) {
-    return null;
-  }
-  const apiKey =
-    typeof source.apiKey === 'string' && source.apiKey.length > 0 && source.apiKey.length <= 4_000
-      ? source.apiKey
-      : undefined;
-  let baseUrl: string | undefined;
-  if (source.provider === 'custom') {
-    if (typeof source.baseUrl !== 'string') return null;
-    try {
-      baseUrl = normalizeCustomProviderBaseUrl(source.baseUrl);
-    } catch {
-      return null;
-    }
-  } else if (source.baseUrl !== undefined) {
-    return null;
-  }
-  return {
-    id: source.id,
-    name: source.name.trim(),
-    provider: source.provider,
-    baseUrl,
-    apiKey,
-    credentialRevision: source.credentialRevision,
-  };
-};
-
-const sanitizeEntry = (value: unknown): StoredUserProviderCredentials | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const source = value as Record<string, unknown>;
-  if (!Array.isArray(source.annotationProviders)) return null;
-  const annotationProviders = source.annotationProviders.map(sanitizeConfiguration);
-  if (annotationProviders.some((item) => item === null)) return null;
-  const configurations = annotationProviders as StoredAnnotationProviderConfiguration[];
-  if (new Set(configurations.map((item) => item.id)).size !== configurations.length) {
-    return null;
-  }
-  const dataPortal =
-    typeof source.dataPortal === 'string' &&
-    source.dataPortal.length > 0 &&
-    source.dataPortal.length <= 4_000
-      ? source.dataPortal
-      : undefined;
-  if (
-    typeof source.revision !== 'number' ||
-    !Number.isSafeInteger(source.revision) ||
-    source.revision < 0
-  ) {
-    return null;
-  }
-  return { annotationProviders: configurations, dataPortal, revision: source.revision };
-};
-
-const sanitizePartitions = (
-  value: unknown,
-): Record<string, StoredUserProviderCredentials> | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const result: Record<string, StoredUserProviderCredentials> = {};
-  for (const [userId, entryValue] of Object.entries(value)) {
-    const entry = userId ? sanitizeEntry(entryValue) : null;
-    if (!entry) return null;
-    result[userId] = entry;
-  }
-  return result;
 };
 
 const parseStoredPartitions = (
