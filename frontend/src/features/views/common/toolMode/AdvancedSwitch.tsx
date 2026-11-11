@@ -9,11 +9,11 @@ import { useToolModeContext } from './ToolModeContext';
  * `headerAction`. It stays usable while the parameters are locked: the mode
  * changes what is shown and what the next run sends, never a run in progress.
  */
-export function AdvancedSwitch() {
+export function AdvancedSwitch({ guidanceTarget }: { guidanceTarget?: string } = {}) {
   const mode = useToolModeContext();
   if (!mode) return null;
   return (
-    <div className="flex shrink-0 items-center gap-1.5">
+    <div data-guidance={guidanceTarget} className="flex shrink-0 items-center gap-1.5">
       <label className="flex items-center gap-2 text-label-secondary text-description">
         Advanced
         <Switch

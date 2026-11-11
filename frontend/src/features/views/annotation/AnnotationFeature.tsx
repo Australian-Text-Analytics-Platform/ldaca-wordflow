@@ -53,6 +53,14 @@ import { getRerunActionState } from '../common/rerunActionState';
 import { GREY } from '../common/vizPalette';
 import { canAnnotate, canListModels, resolveAnnotationProviderConfiguration } from './aiProviders';
 import { AnnotationAiPreviewPanel } from './components/AnnotationAiPreviewPanel';
+import { AdvancedSwitch } from '../common/toolMode/AdvancedSwitch';
+import { ToolModeContext } from '../common/toolMode/ToolModeContext';
+import { useToolMode } from '../common/toolMode/useToolMode';
+import {
+  annotationRunUsedAdvanced,
+  basicAnnotationSettings,
+  type AnnotationAdvancedSettings,
+} from './annotationAdvanced';
 import { AnnotationAiSettings } from './components/AnnotationAiSettings';
 import { AnnotationClassDescriptionsEditor } from './components/AnnotationClassDescriptionsEditor';
 import { checkCodebook, codeKey } from './codebookChecks';
@@ -263,6 +271,22 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     onTabSettingChange,
     excludedRoleColumns: host.correctionColumns,
   });
+  // The example, prompt, inference and Run settings are advanced: in Basic
+  // they are hidden and Preview and Run send their defaults.
+  const toolMode = useToolMode({
+    host,
+    viewId: 'annotation',
+    lastRunUsedAdvanced: annotationRunUsedAdvanced(
+      latestPreview?.request.kind === 'annotation' ? latestPreview.request : null,
+      latestRunAll?.request.kind === 'annotation_run_all' ? latestRunAll.request : null,
+    ),
+  });
+  const setAdvanced = (advanced: boolean) => {
+    toolMode.setAdvanced(advanced);
+    if (advanced && annotationMode === 'ai') {
+      reachContextualHint(CONTEXTUAL_HINT_IDS.annotation.aiAdvanced);
+    }
+  };
   const providerCredentials = useProviderCredentials();
   const selectedAiProvider =
     providerCredentials.annotationProviders.find(
@@ -291,11 +315,6 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         aiProviderModels,
       ),
     [aiProviderModels, personAiDefaultModels, projectAiModels, serverAiProviders],
-  );
-  const aiMaxConcurrency = capServerAiConcurrency(
-    serverAiProviders,
-    aiProviderConfigurationId,
-    aiMaxConcurrencySetting,
   );
 
   useEffect(() => {
@@ -377,6 +396,37 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     constraints: EXAMPLE_NODE_CONSTRAINTS,
     deferNodeInputPlacement: true,
   });
+  const exampleDraftNode = exampleNodeInputs.resolvedNodes[0] ?? null;
+  const exampleDraftComplete = Boolean(
+    exampleDraftNode && exampleAnnotationColumns[exampleDraftNode.id],
+  );
+  const draftAdvancedSettings: AnnotationAdvancedSettings = {
+    useExamples: exampleDraftComplete,
+    aiPrompt,
+    aiTemperature,
+    aiMaxRetriesPerBatch,
+    aiMaxExamplesPerClass,
+    aiExampleSamplingMethod,
+    aiExampleRandomSeed,
+    aiBatchSize,
+    aiProcessingMode,
+    aiMaxConcurrency: aiMaxConcurrencySetting,
+    aiReasoningEnabled,
+    aiReasoningEffort,
+  };
+  // What Preview and Run send. The controls keep showing the draft, which is
+  // the same while Advanced is on and hidden while it is off.
+  const sent = toolMode.advanced ? draftAdvancedSettings : basicAnnotationSettings(aiProviderType);
+  const aiMaxConcurrency = capServerAiConcurrency(
+    serverAiProviders,
+    aiProviderConfigurationId,
+    sent.aiMaxConcurrency,
+  );
+  const draftAiMaxConcurrency = capServerAiConcurrency(
+    serverAiProviders,
+    aiProviderConfigurationId,
+    aiMaxConcurrencySetting,
+  );
   const handleExampleTextColumnChange = (nodeId: string, column: string) => {
     exampleNodeInputs.setColumn(nodeId, column);
     void persistDocumentColumn(nodeId, column);
@@ -500,7 +550,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   // node with both columns chosen AND at least one class row — the backend needs a
   // non-empty class list to classify into, so previewing an empty class node would
   // only ever return blanks.
-  const resolvedSystemPrompt = aiPrompt.trim() || DEFAULT_ANNOTATION_PROMPT;
+  const resolvedSystemPrompt = sent.aiPrompt.trim() || DEFAULT_ANNOTATION_PROMPT;
   const hasClassNodeForAi = Boolean(
     classDescriptionNode && classDescriptionClassColumn && classDescriptionDescriptionColumn,
   );
@@ -594,6 +644,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     correctionColumn: string | null,
   ) => {
     if (!correctionColumn) return;
+    setAdvanced(true);
     onTabInputSetChange(
       EXAMPLE_NODE_SELECTOR_ID,
       nodeInputsFromSelections([{ nodeId, column: textColumn }]),
@@ -644,12 +695,15 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     [],
   );
   const normalizedReasoningEffort: 'low' | 'medium' | 'high' =
-    aiReasoningEffort === 'low' || aiReasoningEffort === 'high' ? aiReasoningEffort : 'medium';
+    sent.aiReasoningEffort === 'low' || sent.aiReasoningEffort === 'high'
+      ? sent.aiReasoningEffort
+      : 'medium';
   const exampleNode = exampleNodeInputs.resolvedNodes[0] ?? null;
   const exampleAnnotationColumn = exampleNode
     ? (exampleAnnotationColumns[exampleNode.id] ?? '')
     : '';
-  const hasCompleteExample = Boolean(exampleNode && exampleAnnotationColumn);
+  // Examples are advanced: Basic sends none, whatever is chosen.
+  const hasCompleteExample = sent.useExamples && Boolean(exampleNode && exampleAnnotationColumn);
   // Preview creation captures every selector and setting in one immutable root
   // Analysis. Run All later executes only from that snapshot.
   const currentAiRequest: AnalysisRequestOfKind<'annotation'> | null =
@@ -687,12 +741,12 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
           ...(classDescriptions.taskContext.trim()
             ? { task_context: classDescriptions.taskContext.trim() }
             : {}),
-          temperature: aiTemperature,
-          max_retries_per_batch: aiMaxRetriesPerBatch,
-          max_examples_per_class: aiMaxExamplesPerClass,
-          example_sampling_method: aiExampleSamplingMethod,
-          example_random_seed: aiExampleRandomSeed,
-          reasoning_enabled: aiReasoningEnabled,
+          temperature: sent.aiTemperature,
+          max_retries_per_batch: sent.aiMaxRetriesPerBatch,
+          max_examples_per_class: sent.aiMaxExamplesPerClass,
+          example_sampling_method: sent.aiExampleSamplingMethod,
+          example_random_seed: sent.aiExampleRandomSeed,
+          reasoning_enabled: sent.aiReasoningEnabled,
           reasoning_effort: normalizedReasoningEffort,
         }
       : null;
@@ -840,8 +894,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   const currentRunAllSignature = currentAiRequest
     ? {
         source: currentAiRequest,
-        batch_size: aiBatchSize,
-        processing_mode: aiProcessingMode,
+        batch_size: sent.aiBatchSize,
+        processing_mode: sent.aiProcessingMode,
         max_concurrency: aiMaxConcurrency,
       }
     : null;
@@ -923,8 +977,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
           tabId: host.tabId,
           providerConfigurationId: selectedAiProvider.id,
           source: currentAiRequest,
-          batchSize: aiBatchSize,
-          processingMode: aiProcessingMode,
+          batchSize: sent.aiBatchSize,
+          processingMode: sent.aiProcessingMode,
           maxConcurrency: aiMaxConcurrency,
         });
         return data;
@@ -1021,575 +1075,590 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   ]);
 
   return (
-    <section aria-label="Annotation Setup" className="flex min-h-0 flex-1 flex-col">
-      <AnalysisSplitLayout
-        viewId="annotation"
-        parameters={
-          <div className="relative">
-            <section aria-label="Annotation Parameter Panel">
-              <AnalysisCardLayout
-                title="Annotation"
-                info={{
-                  targetKey: 'annotation.overview',
-                  label: 'About Annotation',
-                  tooltip: 'Learn what manual and AI annotation are for.',
-                }}
-                help={{
-                  targetKey: 'analysis.annotation.parameters',
-                  label: 'Annotation setup',
-                  tooltip: 'Set up the source, Codebook, mode, and review workflow.',
-                }}
-                parametersLocked={analysisActionLifecycle.parametersLocked}
-                actions={
-                  annotationMode === 'ai'
-                    ? {
-                        onPreview: runFreshAiAnalysis,
-                        onRunAll: handleRunAll,
-                        onStop: activeAnalysis ? stopAiTask : undefined,
-                        onClear: async () => {
-                          await clearAiResults();
-                          await host.clearCorrectionColumns();
-                        },
-                        previewDisabled:
-                          Boolean(codebookBlockReason) ||
-                          analysisActionLifecycle.previewDisabled ||
-                          aiActionState.runDisabled ||
-                          isCreatingColumn ||
-                          analysisActionLifecycle.isPreviewing,
-                        previewDisabledReason: isCreatingColumn
-                          ? 'Wait for the column to finish creating'
-                          : (codebookBlockReason ?? providerDisabledReason),
-                        runAllDisabled:
-                          Boolean(codebookBlockReason) ||
-                          !currentAiRequest ||
-                          analysisActionLifecycle.runAllDisabled ||
-                          runAllActionState.runDisabled,
-                        runAllDisabledReason:
-                          codebookBlockReason ??
-                          (selectedProviderNeedsKey
-                            ? 'Add an API key in Settings → Servers before running Annotation'
-                            : runAllActionState.runDisabledReason),
-                        clearDisabled: aiActionState.clearDisabled,
-                        clearDisabledReason: aiActionState.clearDisabledReason,
-                        isPreviewing: analysisActionLifecycle.isPreviewing,
-                        isRunningAll: analysisActionLifecycle.isRunningAll,
-                        isStopping: isAiStopping,
-                      }
-                    : undefined
-                }
-                footer={
-                  annotationMode === 'manual' ? (
-                    <DisabledReasonTooltip
-                      reason={
-                        !manualReviewSnapshot && (!sourceNode || !selectedAnnotationColumnExists)
-                          ? 'Select an Annotation Data Block and annotation column first'
-                          : undefined
-                      }
-                    >
-                      <Button
-                        type="button"
-                        disabled={
-                          !manualReviewSnapshot &&
-                          (!sourceNode || !selectedAnnotationColumnExists || isStartingManualReview)
+    <ToolModeContext value={{ advanced: toolMode.advanced, setAdvanced }}>
+      <section aria-label="Annotation Setup" className="flex min-h-0 flex-1 flex-col">
+        <AnalysisSplitLayout
+          viewId="annotation"
+          parameters={
+            <div className="relative">
+              <section aria-label="Annotation Parameter Panel">
+                <AnalysisCardLayout
+                  title="Annotation"
+                  info={{
+                    targetKey: 'annotation.overview',
+                    label: 'About Annotation',
+                    tooltip: 'Learn what manual and AI annotation are for.',
+                  }}
+                  help={{
+                    targetKey: 'analysis.annotation.parameters',
+                    label: 'Annotation setup',
+                    tooltip: 'Set up the source, Codebook, mode, and review workflow.',
+                  }}
+                  // Manual annotation has no advanced settings.
+                  headerAction={
+                    annotationMode === 'ai' ? (
+                      <AdvancedSwitch guidanceTarget="annotation-ai-settings-trigger" />
+                    ) : null
+                  }
+                  parametersLocked={analysisActionLifecycle.parametersLocked}
+                  actions={
+                    annotationMode === 'ai'
+                      ? {
+                          onPreview: runFreshAiAnalysis,
+                          onRunAll: handleRunAll,
+                          onStop: activeAnalysis ? stopAiTask : undefined,
+                          onClear: async () => {
+                            await clearAiResults();
+                            await host.clearCorrectionColumns();
+                          },
+                          previewDisabled:
+                            Boolean(codebookBlockReason) ||
+                            analysisActionLifecycle.previewDisabled ||
+                            aiActionState.runDisabled ||
+                            isCreatingColumn ||
+                            analysisActionLifecycle.isPreviewing,
+                          previewDisabledReason: isCreatingColumn
+                            ? 'Wait for the column to finish creating'
+                            : (codebookBlockReason ?? providerDisabledReason),
+                          runAllDisabled:
+                            Boolean(codebookBlockReason) ||
+                            !currentAiRequest ||
+                            analysisActionLifecycle.runAllDisabled ||
+                            runAllActionState.runDisabled,
+                          runAllDisabledReason:
+                            codebookBlockReason ??
+                            (selectedProviderNeedsKey
+                              ? 'Add an API key in Settings → Servers before running Annotation'
+                              : runAllActionState.runDisabledReason),
+                          clearDisabled: aiActionState.clearDisabled,
+                          clearDisabledReason: aiActionState.clearDisabledReason,
+                          isPreviewing: analysisActionLifecycle.isPreviewing,
+                          isRunningAll: analysisActionLifecycle.isRunningAll,
+                          isStopping: isAiStopping,
                         }
-                        onClick={() => {
-                          void handleManualReviewToggle();
-                        }}
+                      : undefined
+                  }
+                  footer={
+                    annotationMode === 'manual' ? (
+                      <DisabledReasonTooltip
+                        reason={
+                          !manualReviewSnapshot && (!sourceNode || !selectedAnnotationColumnExists)
+                            ? 'Select an Annotation Data Block and annotation column first'
+                            : undefined
+                        }
                       >
-                        {manualReviewSnapshot ? 'Close' : 'Start'}
-                      </Button>
-                    </DisabledReasonTooltip>
-                  ) : undefined
-                }
-                footerGuidanceTarget={
-                  annotationMode === 'manual' ? 'annotation-manual-start' : undefined
-                }
-              >
-                <div className="@container/annotation-selectors">
-                  <div
-                    data-testid="annotation-node-selector-grid"
-                    className="grid gap-5 @min-[640px]/annotation-selectors:grid-cols-2"
-                  >
-                    <section
-                      aria-label="Main Data Block Setup"
-                      className="rounded-lg border bg-editor/60 p-4"
-                    >
-                      <h3
-                        data-guidance="annotation-source"
-                        className="mb-3 text-body font-semibold"
-                      >
-                        Annotation Data Block
-                      </h3>
-                      <NodeInputsPanel
-                        resolvedNodes={sourceNodeInputs.resolvedNodes}
-                        availableNodes={sourceNodeInputs.availableNodes}
-                        canAddMore={sourceNodeInputs.canAddMore}
-                        maxNodes={1}
-                        onAddNodes={sourceNodeInputs.addNodes}
-                        onRemoveNode={sourceNodeInputs.removeNode}
-                        onClear={sourceNodeInputs.clear}
-                        onColumnChange={handleSourceTextColumnChange}
-                        columnLabel="Text column"
-                        defaultPalette={defaultPalette}
-                        nodeColors={nodeColors}
-                        onNodeColorChange={setNodeColor}
-                        renderColumnAddon={renderAnnotationColumnPicker}
-                        disabled={controlsLocked}
-                      />
-                    </section>
-
-                    <section
-                      aria-label="Codebook Setup"
-                      className="rounded-lg border bg-editor/60 p-4"
-                    >
-                      <div
-                        data-guidance="annotation-codebook"
-                        className="mb-3 flex items-center justify-between gap-2"
-                      >
-                        <h3 className="text-body font-semibold">Codebook</h3>
                         <Button
                           type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={!sourceNode || controlsLocked || isCreatingClassTable}
+                          disabled={
+                            !manualReviewSnapshot &&
+                            (!sourceNode ||
+                              !selectedAnnotationColumnExists ||
+                              isStartingManualReview)
+                          }
                           onClick={() => {
-                            void handleCreateClassTable();
+                            void handleManualReviewToggle();
                           }}
                         >
-                          {isCreatingClassTable ? 'Creating…' : 'Create new'}
+                          {manualReviewSnapshot ? 'Close' : 'Start'}
                         </Button>
-                      </div>
-                      <div>
-                        <NodeInputsPanel
-                          title="Codebook Data Block"
-                          resolvedNodes={classNodeInputs.resolvedNodes}
-                          availableNodes={classNodeInputs.availableNodes}
-                          canAddMore={classNodeInputs.canAddMore}
-                          maxNodes={1}
-                          onAddNodes={classNodeInputs.addNodes}
-                          onRemoveNode={classNodeInputs.removeNode}
-                          onClear={classNodeInputs.clear}
-                          onColumnChange={classNodeInputs.setColumn}
-                          columnLabel="Code column"
-                          disabled={controlsLocked}
-                          renderColumnAddon={renderDescriptionColumnPicker}
-                        />
-                      </div>
-                      <AnnotationClassDescriptionsEditor
-                        key={[
-                          classDescriptionNode?.id ?? 'none',
-                          classDescriptionClassColumn ?? 'none',
-                          classDescriptionDescriptionColumn ?? 'none',
-                        ].join(':')}
-                        workspaceId={currentWorkspaceId ?? null}
-                        nodeId={classDescriptionNode?.id ?? null}
-                        classColumn={classDescriptionClassColumn}
-                        descriptionColumn={classDescriptionDescriptionColumn}
-                      />
-                    </section>
-                  </div>
-                </div>
-
-                <section
-                  data-guidance="annotation-mode"
-                  aria-label="Annotation Mode"
-                  className="mt-5 rounded-lg border bg-editor/60 p-4"
+                      </DisabledReasonTooltip>
+                    ) : undefined
+                  }
+                  footerGuidanceTarget={
+                    annotationMode === 'manual' ? 'annotation-manual-start' : undefined
+                  }
                 >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        'text-body font-medium',
-                        annotationMode === 'manual' ? 'text-foreground' : 'text-description',
-                      )}
+                  <div className="@container/annotation-selectors">
+                    <div
+                      data-testid="annotation-node-selector-grid"
+                      className="grid gap-5 @min-[640px]/annotation-selectors:grid-cols-2"
                     >
-                      Manual
-                    </span>
-                    <Switch
-                      checked={annotationMode === 'ai'}
-                      disabled={controlsLocked}
-                      aria-label="Toggle AI annotation mode"
-                      onCheckedChange={(checked) => {
-                        setAnnotationMode(checked ? 'ai' : 'manual');
-                      }}
-                    />
-                    <span
-                      className={cn(
-                        'text-body font-medium',
-                        annotationMode === 'ai' ? 'text-foreground' : 'text-description',
-                      )}
-                    >
-                      AI
-                    </span>
-                  </div>
-                  {annotationMode === 'ai' ? (
-                    <div className="mt-4">
-                      <AnnotationAiSettings
-                        configurations={providerCredentials.annotationProviders}
-                        selectedConfigurationId={aiProviderConfigurationId}
-                        onProviderChange={(configuration, model) => {
-                          selectAiProvider(configuration.id, configuration.provider, model);
-                        }}
-                        onModelChange={setAiModel}
-                        onModelCommit={(configurationId, model) => {
-                          persistAiProviderModels({
-                            ...aiProviderModels,
-                            [configurationId]: model,
-                          });
-                          rememberProjectAiModel(
-                            userId,
-                            currentWorkspaceId,
-                            configurationId,
-                            model,
-                          );
-                        }}
-                        providerModels={providerModels}
-                        model={aiModel}
-                        disabled={controlsLocked}
-                        onAdvancedOpenChange={(open) => {
-                          if (open) {
-                            reachContextualHint(CONTEXTUAL_HINT_IDS.annotation.aiAdvanced);
-                          }
-                        }}
-                        advanced={
-                          <>
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor="annotation-ai-prompt"
-                                className="block text-label-secondary font-medium text-description"
-                              >
-                                Prompt
-                                <span className="ml-1 font-normal">(optional)</span>
-                              </Label>
-                              <AnnotationPromptInput
-                                id="annotation-ai-prompt"
-                                value={aiPrompt}
-                                onChange={setAiPrompt}
-                                onCommit={commitAiPrompt}
-                                defaultPrompt={DEFAULT_ANNOTATION_PROMPT}
-                                disabled={controlsLocked}
-                              />
-                            </div>
-                            <AnnotationInferenceSettings
-                              provider={selectedAiProvider?.provider ?? null}
-                              temperature={aiTemperature}
-                              onTemperatureCommit={commitAiTemperature}
-                              maxRetriesPerBatch={aiMaxRetriesPerBatch}
-                              onMaxRetriesPerBatchCommit={commitAiMaxRetriesPerBatch}
-                              batchSize={aiBatchSize}
-                              onBatchSizeCommit={commitAiBatchSize}
-                              processingMode={aiProcessingMode}
-                              onProcessingModeChange={setAiProcessingMode}
-                              maxConcurrency={aiMaxConcurrency}
-                              defaultMaxConcurrency={
-                                serverAiConcurrencyLimit(serverAiProviders, selectedAiProvider?.id)
-                                  ?.value ??
-                                defaultAnnotationConcurrency(selectedAiProvider?.provider ?? null)
-                              }
-                              maxConcurrencyLimit={serverAiConcurrencyLimit(
-                                serverAiProviders,
-                                selectedAiProvider?.id,
-                              )}
-                              onMaxConcurrencyCommit={commitAiMaxConcurrency}
-                              reasoningEnabled={aiReasoningEnabled}
-                              onReasoningEnabledChange={setAiReasoningEnabled}
-                              reasoningEffort={aiReasoningEffort}
-                              onReasoningEffortChange={setAiReasoningEffort}
-                              disabled={controlsLocked}
-                            />
-                          </>
-                        }
+                      <section
+                        aria-label="Main Data Block Setup"
+                        className="rounded-lg border bg-editor/60 p-4"
                       >
-                        <div className="space-y-2">
-                          <Label className="block text-label-secondary font-medium text-description">
-                            Example Data Block
-                            <span className="ml-1 font-normal">(optional)</span>
-                          </Label>
+                        <h3
+                          data-guidance="annotation-source"
+                          className="mb-3 text-body font-semibold"
+                        >
+                          Annotation Data Block
+                        </h3>
+                        <NodeInputsPanel
+                          resolvedNodes={sourceNodeInputs.resolvedNodes}
+                          availableNodes={sourceNodeInputs.availableNodes}
+                          canAddMore={sourceNodeInputs.canAddMore}
+                          maxNodes={1}
+                          onAddNodes={sourceNodeInputs.addNodes}
+                          onRemoveNode={sourceNodeInputs.removeNode}
+                          onClear={sourceNodeInputs.clear}
+                          onColumnChange={handleSourceTextColumnChange}
+                          columnLabel="Text column"
+                          defaultPalette={defaultPalette}
+                          nodeColors={nodeColors}
+                          onNodeColorChange={setNodeColor}
+                          renderColumnAddon={renderAnnotationColumnPicker}
+                          disabled={controlsLocked}
+                        />
+                      </section>
+
+                      <section
+                        aria-label="Codebook Setup"
+                        className="rounded-lg border bg-editor/60 p-4"
+                      >
+                        <div
+                          data-guidance="annotation-codebook"
+                          className="mb-3 flex items-center justify-between gap-2"
+                        >
+                          <h3 className="text-body font-semibold">Codebook</h3>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={!sourceNode || controlsLocked || isCreatingClassTable}
+                            onClick={() => {
+                              void handleCreateClassTable();
+                            }}
+                          >
+                            {isCreatingClassTable ? 'Creating…' : 'Create new'}
+                          </Button>
+                        </div>
+                        <div>
                           <NodeInputsPanel
-                            title="Example Data Block"
-                            resolvedNodes={exampleNodeInputs.resolvedNodes}
-                            availableNodes={exampleNodeInputs.availableNodes}
-                            canAddMore={exampleNodeInputs.canAddMore}
+                            title="Codebook Data Block"
+                            resolvedNodes={classNodeInputs.resolvedNodes}
+                            availableNodes={classNodeInputs.availableNodes}
+                            canAddMore={classNodeInputs.canAddMore}
                             maxNodes={1}
-                            onAddNodes={exampleNodeInputs.addNodes}
-                            onRemoveNode={exampleNodeInputs.removeNode}
-                            onClear={exampleNodeInputs.clear}
-                            onColumnChange={handleExampleTextColumnChange}
-                            columnLabel="Text column"
-                            renderColumnAddon={renderExampleAnnotationColumnPicker}
+                            onAddNodes={classNodeInputs.addNodes}
+                            onRemoveNode={classNodeInputs.removeNode}
+                            onClear={classNodeInputs.clear}
+                            onColumnChange={classNodeInputs.setColumn}
+                            columnLabel="Code column"
                             disabled={controlsLocked}
-                          />
-                          <AnnotationExampleSamplingControls
-                            maxExamplesPerClass={aiMaxExamplesPerClass}
-                            onMaxExamplesPerClassCommit={commitAiMaxExamplesPerClass}
-                            samplingMethod={aiExampleSamplingMethod}
-                            onSamplingMethodChange={setAiExampleSamplingMethod}
-                            randomSeed={aiExampleRandomSeed}
-                            onRandomSeedCommit={commitAiExampleRandomSeed}
-                            disabled={controlsLocked || !hasCompleteExample}
+                            renderColumnAddon={renderDescriptionColumnPicker}
                           />
                         </div>
-                      </AnnotationAiSettings>
+                        <AnnotationClassDescriptionsEditor
+                          key={[
+                            classDescriptionNode?.id ?? 'none',
+                            classDescriptionClassColumn ?? 'none',
+                            classDescriptionDescriptionColumn ?? 'none',
+                          ].join(':')}
+                          workspaceId={currentWorkspaceId ?? null}
+                          nodeId={classDescriptionNode?.id ?? null}
+                          classColumn={classDescriptionClassColumn}
+                          descriptionColumn={classDescriptionDescriptionColumn}
+                        />
+                      </section>
                     </div>
-                  ) : null}
-                </section>
-              </AnalysisCardLayout>
-            </section>
-          </div>
-        }
-      >
-        <CreateStringColumnDialog
-          open={Boolean(createColumnDialog)}
-          title={
-            createColumnDialog?.kind === 'correction'
-              ? 'Create correction column'
-              : 'Create annotation column'
+                  </div>
+
+                  <section
+                    data-guidance="annotation-mode"
+                    aria-label="Annotation Mode"
+                    className="mt-5 rounded-lg border bg-editor/60 p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={cn(
+                          'text-body font-medium',
+                          annotationMode === 'manual' ? 'text-foreground' : 'text-description',
+                        )}
+                      >
+                        Manual
+                      </span>
+                      <Switch
+                        checked={annotationMode === 'ai'}
+                        disabled={controlsLocked}
+                        aria-label="Toggle AI annotation mode"
+                        onCheckedChange={(checked) => {
+                          setAnnotationMode(checked ? 'ai' : 'manual');
+                        }}
+                      />
+                      <span
+                        className={cn(
+                          'text-body font-medium',
+                          annotationMode === 'ai' ? 'text-foreground' : 'text-description',
+                        )}
+                      >
+                        AI
+                      </span>
+                    </div>
+                    {annotationMode === 'ai' ? (
+                      <div className="mt-4">
+                        <AnnotationAiSettings
+                          configurations={providerCredentials.annotationProviders}
+                          selectedConfigurationId={aiProviderConfigurationId}
+                          onProviderChange={(configuration, model) => {
+                            selectAiProvider(configuration.id, configuration.provider, model);
+                          }}
+                          onModelChange={setAiModel}
+                          onModelCommit={(configurationId, model) => {
+                            persistAiProviderModels({
+                              ...aiProviderModels,
+                              [configurationId]: model,
+                            });
+                            rememberProjectAiModel(
+                              userId,
+                              currentWorkspaceId,
+                              configurationId,
+                              model,
+                            );
+                          }}
+                          providerModels={providerModels}
+                          model={aiModel}
+                          disabled={controlsLocked}
+                          advanced={
+                            <>
+                              <div className="space-y-2">
+                                <Label
+                                  htmlFor="annotation-ai-prompt"
+                                  className="block text-label-secondary font-medium text-description"
+                                >
+                                  Prompt
+                                  <span className="ml-1 font-normal">(optional)</span>
+                                </Label>
+                                <AnnotationPromptInput
+                                  id="annotation-ai-prompt"
+                                  value={aiPrompt}
+                                  onChange={setAiPrompt}
+                                  onCommit={commitAiPrompt}
+                                  defaultPrompt={DEFAULT_ANNOTATION_PROMPT}
+                                  disabled={controlsLocked}
+                                />
+                              </div>
+                              <AnnotationInferenceSettings
+                                provider={selectedAiProvider?.provider ?? null}
+                                temperature={aiTemperature}
+                                onTemperatureCommit={commitAiTemperature}
+                                maxRetriesPerBatch={aiMaxRetriesPerBatch}
+                                onMaxRetriesPerBatchCommit={commitAiMaxRetriesPerBatch}
+                                batchSize={aiBatchSize}
+                                onBatchSizeCommit={commitAiBatchSize}
+                                processingMode={aiProcessingMode}
+                                onProcessingModeChange={setAiProcessingMode}
+                                maxConcurrency={draftAiMaxConcurrency}
+                                defaultMaxConcurrency={
+                                  serverAiConcurrencyLimit(
+                                    serverAiProviders,
+                                    selectedAiProvider?.id,
+                                  )?.value ??
+                                  defaultAnnotationConcurrency(selectedAiProvider?.provider ?? null)
+                                }
+                                maxConcurrencyLimit={serverAiConcurrencyLimit(
+                                  serverAiProviders,
+                                  selectedAiProvider?.id,
+                                )}
+                                onMaxConcurrencyCommit={commitAiMaxConcurrency}
+                                reasoningEnabled={aiReasoningEnabled}
+                                onReasoningEnabledChange={setAiReasoningEnabled}
+                                reasoningEffort={aiReasoningEffort}
+                                onReasoningEffortChange={setAiReasoningEffort}
+                                disabled={controlsLocked}
+                              />
+                            </>
+                          }
+                        >
+                          <div className="space-y-2">
+                            <Label className="block text-label-secondary font-medium text-description">
+                              Example Data Block
+                              <span className="ml-1 font-normal">(optional)</span>
+                            </Label>
+                            <NodeInputsPanel
+                              title="Example Data Block"
+                              resolvedNodes={exampleNodeInputs.resolvedNodes}
+                              availableNodes={exampleNodeInputs.availableNodes}
+                              canAddMore={exampleNodeInputs.canAddMore}
+                              maxNodes={1}
+                              onAddNodes={exampleNodeInputs.addNodes}
+                              onRemoveNode={exampleNodeInputs.removeNode}
+                              onClear={exampleNodeInputs.clear}
+                              onColumnChange={handleExampleTextColumnChange}
+                              columnLabel="Text column"
+                              renderColumnAddon={renderExampleAnnotationColumnPicker}
+                              disabled={controlsLocked}
+                            />
+                            <AnnotationExampleSamplingControls
+                              maxExamplesPerClass={aiMaxExamplesPerClass}
+                              onMaxExamplesPerClassCommit={commitAiMaxExamplesPerClass}
+                              samplingMethod={aiExampleSamplingMethod}
+                              onSamplingMethodChange={setAiExampleSamplingMethod}
+                              randomSeed={aiExampleRandomSeed}
+                              onRandomSeedCommit={commitAiExampleRandomSeed}
+                              disabled={controlsLocked || !hasCompleteExample}
+                            />
+                          </div>
+                        </AnnotationAiSettings>
+                      </div>
+                    ) : null}
+                  </section>
+                </AnalysisCardLayout>
+              </section>
+            </div>
           }
-          description={
-            createColumnDialog?.kind === 'correction'
-              ? 'Add an empty text column to this Data Block and select it for user corrections.'
-              : 'Add an empty text column to this Data Block and select it for annotation.'
-          }
-          inputId={
-            createColumnDialog?.kind === 'correction'
-              ? 'annotation-correction-column-name'
-              : 'annotation-column-name'
-          }
-          inputLabel={
-            createColumnDialog?.kind === 'correction' ? 'Correction column name' : 'Column name'
-          }
-          value={newColumnName}
-          placeholder={defaultColumnName}
-          error={createColumnError}
-          pending={isCreatingColumn}
-          onValueChange={(value) => {
-            setNewColumnName(value);
-            setCreateColumnError(null);
-          }}
-          onClose={() => {
-            setCreateColumnDialog(null);
-            setNewColumnName('');
-            setCreateColumnError(null);
-          }}
-          onSubmit={() => {
-            void handleCreateColumn();
-          }}
-        />
-        {annotationMode === 'ai' && aiBanner ? (
-          <AnalysisTaskBanner
-            analysisName="Annotation"
-            status={aiBanner.status}
-            taskId={aiBanner.taskId}
-            message={aiBanner.message}
-          />
-        ) : null}
-        {annotationMode === 'ai' &&
-        annotationRunAll &&
-        (annotationRunAll.state === 'queued' || annotationRunAll.state === 'running') ? (
-          <AnalysisTaskBanner
-            analysisName="Annotation Run"
-            status={annotationRunAll.state}
-            taskId={annotationRunAll.id}
-            message={annotationRunAll.progress.message ?? undefined}
-            // The step line, with live counts and time left in Tasks (issue 370).
-            detail={annotationRunAll.progress.detail}
-          />
-        ) : null}
-        {annotationMode === 'ai' && sourceNode ? (
-          // Labels kept from a run that didn't finish (issue 371).
-          <AnnotationSavedLabelsNotice
-            workspaceId={currentWorkspaceId}
-            nodes={nodes}
-            sourceNodeId={sourceNode.id}
-            running={annotationRunAll?.state === 'queued' || annotationRunAll?.state === 'running'}
-            processingMode={aiProcessingMode}
-            onProcessingModeChange={setAiProcessingMode}
-          />
-        ) : null}
-        {annotationMode === 'ai' && annotationRunAll?.state === 'failed' ? (
-          <ErrorNotice
-            className="mt-4"
-            error={annotationRunAll.error}
-            fallback="The Annotation Run failed. Try again."
-          />
-        ) : null}
-        {annotationMode === 'manual' && manualReviewSnapshot ? (
-          <AnnotationResultsPanel
-            key={`${manualReviewSnapshot.nodeId}:${manualReviewSnapshot.annotationColumn}`}
-            workspaceId={currentWorkspaceId ?? null}
-            nodeId={manualReviewSnapshot.nodeId}
-            nodeName={sourceNode?.id === manualReviewSnapshot.nodeId ? sourceNode.name : undefined}
-            sourceColumns={manualReviewSnapshot.sourceColumns}
-            sourceColor={manualReviewSnapshot.sourceColor}
-            rowCount={manualReviewSnapshot.rowCount}
-            textColumn={manualReviewSnapshot.textColumn}
-            annotationColumn={manualReviewSnapshot.annotationColumn}
-            classNodeId={manualReviewSnapshot.classNodeId}
-            classColumn={manualReviewSnapshot.classColumn}
-            descriptionColumn={manualReviewSnapshot.descriptionColumn}
-            comparisonColumns={annotationComparisonColumns[manualReviewSnapshot.nodeId] ?? []}
-            onComparisonColumnsChange={(columns) => {
-              setAnnotationComparisonColumns(manualReviewSnapshot.nodeId, columns);
-            }}
-            reliabilityMetric={
-              annotationReliabilityMetrics[manualReviewSnapshot.nodeId] ??
-              DEFAULT_INTERCODER_RELIABILITY_METRIC
+        >
+          <CreateStringColumnDialog
+            open={Boolean(createColumnDialog)}
+            title={
+              createColumnDialog?.kind === 'correction'
+                ? 'Create correction column'
+                : 'Create annotation column'
             }
-            onReliabilityMetricChange={(metric) => {
-              setAnnotationReliabilityMetric(manualReviewSnapshot.nodeId, metric);
+            description={
+              createColumnDialog?.kind === 'correction'
+                ? 'Add an empty text column to this Data Block and select it for user corrections.'
+                : 'Add an empty text column to this Data Block and select it for annotation.'
+            }
+            inputId={
+              createColumnDialog?.kind === 'correction'
+                ? 'annotation-correction-column-name'
+                : 'annotation-column-name'
+            }
+            inputLabel={
+              createColumnDialog?.kind === 'correction' ? 'Correction column name' : 'Column name'
+            }
+            value={newColumnName}
+            placeholder={defaultColumnName}
+            error={createColumnError}
+            pending={isCreatingColumn}
+            onValueChange={(value) => {
+              setNewColumnName(value);
+              setCreateColumnError(null);
             }}
-            metadataColumns={annotationMetadataColumns[manualReviewSnapshot.nodeId] ?? []}
-            onMetadataColumnsChange={(columns) => {
-              setAnnotationMetadataColumns(manualReviewSnapshot.nodeId, columns);
+            onClose={() => {
+              setCreateColumnDialog(null);
+              setNewColumnName('');
+              setCreateColumnError(null);
             }}
-            columnOrder={annotationColumnLayout.order}
-            onReorderColumns={annotationColumnLayout.setOrder}
-            correction={{
-              column: manualReviewSnapshot.correctionColumn,
-              onColumnChange: (column) => {
-                setLiveCorrectionColumn(manualReviewSnapshot.nodeId, column);
-                setManualReviewSnapshot((current) =>
-                  current?.nodeId === manualReviewSnapshot.nodeId
-                    ? { ...current, correctionColumn: column }
-                    : current,
-                );
-              },
-              onCreate: () => {
-                openCorrectionColumnDialog(
-                  manualReviewSnapshot.nodeId,
-                  manualReviewSnapshot.annotationColumn,
-                  manualReviewSnapshot.sourceColumns,
-                );
-              },
-              disabled: isCreatingColumn,
+            onSubmit={() => {
+              void handleCreateColumn();
             }}
           />
-        ) : null}
-        {annotationMode === 'ai' &&
-        annotationRunAll?.state === 'succeeded' &&
-        annotationRunAllSource &&
-        currentWorkspaceId &&
-        reviewSourceNode ? (
-          <>
-            {(annotationRunAllResult.data?.failed_row_count ?? 0) > 0 ? (
-              <div
-                role="status"
-                className="mt-5 rounded-md border border-warning bg-warning-background px-4 py-3 text-body"
-              >
-                Annotation completed with {annotationRunAllResult.data?.failed_row_count} failed row
-                {annotationRunAllResult.data?.failed_row_count === 1 ? '' : 's'} across{' '}
-                {annotationRunAllResult.data?.failed_batch_count} failed batch
-                {annotationRunAllResult.data?.failed_batch_count === 1 ? '' : 'es'}. Failed rows
-                kept their existing values when reprocessing and remain blank when filling missing
-                values.
-              </div>
-            ) : null}
-            <RunAllReviewTable
-              columnOrder={annotationColumnLayout.order}
-              onReorderColumns={annotationColumnLayout.setOrder}
+          {annotationMode === 'ai' && aiBanner ? (
+            <AnalysisTaskBanner
+              analysisName="Annotation"
+              status={aiBanner.status}
+              taskId={aiBanner.taskId}
+              message={aiBanner.message}
+            />
+          ) : null}
+          {annotationMode === 'ai' &&
+          annotationRunAll &&
+          (annotationRunAll.state === 'queued' || annotationRunAll.state === 'running') ? (
+            <AnalysisTaskBanner
+              analysisName="Annotation Run"
+              status={annotationRunAll.state}
+              taskId={annotationRunAll.id}
+              message={annotationRunAll.progress.message ?? undefined}
+              // The step line, with live counts and time left in Tasks (issue 370).
+              detail={annotationRunAll.progress.detail}
+            />
+          ) : null}
+          {annotationMode === 'ai' && sourceNode ? (
+            // Labels kept from a run that didn't finish (issue 371).
+            <AnnotationSavedLabelsNotice
               workspaceId={currentWorkspaceId}
-              nodeId={annotationRunAllSource.node_id}
-              nodeName={reviewSourceNode.name}
-              sql={`SELECT * FROM ${sqlTable(annotationRunAllSource.node_id)}`}
-              sourceColumns={reviewSourceColumns}
-              sourceColor={reviewSourceNode.color ?? GREY}
-              rowCount={reviewSourceNode.shape?.[0] ?? 0}
-              title="Annotation"
-              guidanceTarget="annotation-ai-run-all-results"
-              requiredColumns={[
-                annotationRunAllSource.text_column,
-                annotationRunAllSource.annotation_column,
-              ]}
-              comparisonColumn={annotationRunAllSource.annotation_column}
-              comparisonColumns={annotationComparisonColumns[annotationRunAllSource.node_id] ?? []}
+              nodes={nodes}
+              sourceNodeId={sourceNode.id}
+              running={
+                annotationRunAll?.state === 'queued' || annotationRunAll?.state === 'running'
+              }
+              processingMode={sent.aiProcessingMode}
+              onProcessingModeChange={setAiProcessingMode}
+              advanced={toolMode.advanced}
+            />
+          ) : null}
+          {annotationMode === 'ai' && annotationRunAll?.state === 'failed' ? (
+            <ErrorNotice
+              className="mt-4"
+              error={annotationRunAll.error}
+              fallback="The Annotation Run failed. Try again."
+            />
+          ) : null}
+          {annotationMode === 'manual' && manualReviewSnapshot ? (
+            <AnnotationResultsPanel
+              key={`${manualReviewSnapshot.nodeId}:${manualReviewSnapshot.annotationColumn}`}
+              workspaceId={currentWorkspaceId ?? null}
+              nodeId={manualReviewSnapshot.nodeId}
+              nodeName={
+                sourceNode?.id === manualReviewSnapshot.nodeId ? sourceNode.name : undefined
+              }
+              sourceColumns={manualReviewSnapshot.sourceColumns}
+              sourceColor={manualReviewSnapshot.sourceColor}
+              rowCount={manualReviewSnapshot.rowCount}
+              textColumn={manualReviewSnapshot.textColumn}
+              annotationColumn={manualReviewSnapshot.annotationColumn}
+              classNodeId={manualReviewSnapshot.classNodeId}
+              classColumn={manualReviewSnapshot.classColumn}
+              descriptionColumn={manualReviewSnapshot.descriptionColumn}
+              comparisonColumns={annotationComparisonColumns[manualReviewSnapshot.nodeId] ?? []}
               onComparisonColumnsChange={(columns) => {
-                setAnnotationComparisonColumns(annotationRunAllSource.node_id, columns);
+                setAnnotationComparisonColumns(manualReviewSnapshot.nodeId, columns);
               }}
               reliabilityMetric={
-                annotationReliabilityMetrics[annotationRunAllSource.node_id] ??
+                annotationReliabilityMetrics[manualReviewSnapshot.nodeId] ??
                 DEFAULT_INTERCODER_RELIABILITY_METRIC
               }
               onReliabilityMetricChange={(metric) => {
-                setAnnotationReliabilityMetric(annotationRunAllSource.node_id, metric);
+                setAnnotationReliabilityMetric(manualReviewSnapshot.nodeId, metric);
               }}
-              metadataColumns={annotationMetadataColumns[annotationRunAllSource.node_id] ?? []}
+              metadataColumns={annotationMetadataColumns[manualReviewSnapshot.nodeId] ?? []}
               onMetadataColumnsChange={(columns) => {
-                setAnnotationMetadataColumns(annotationRunAllSource.node_id, columns);
+                setAnnotationMetadataColumns(manualReviewSnapshot.nodeId, columns);
               }}
+              columnOrder={annotationColumnLayout.order}
+              onReorderColumns={annotationColumnLayout.setOrder}
               correction={{
-                column: reviewCorrectionColumn,
-                classOptions: annotationRunAllSource.classes.map((item) => item.name),
+                column: manualReviewSnapshot.correctionColumn,
                 onColumnChange: (column) => {
-                  setLiveCorrectionColumn(annotationRunAllSource.node_id, column);
+                  setLiveCorrectionColumn(manualReviewSnapshot.nodeId, column);
+                  setManualReviewSnapshot((current) =>
+                    current?.nodeId === manualReviewSnapshot.nodeId
+                      ? { ...current, correctionColumn: column }
+                      : current,
+                  );
                 },
                 onCreate: () => {
                   openCorrectionColumnDialog(
-                    annotationRunAllSource.node_id,
-                    annotationRunAllSource.annotation_column,
-                    reviewSourceColumns,
-                  );
-                },
-                onUseAsExample: () => {
-                  handleUseCorrectionColumnAsExample(
-                    annotationRunAllSource.node_id,
-                    annotationRunAllSource.text_column,
-                    reviewCorrectionColumn,
+                    manualReviewSnapshot.nodeId,
+                    manualReviewSnapshot.annotationColumn,
+                    manualReviewSnapshot.sourceColumns,
                   );
                 },
                 disabled: isCreatingColumn,
               }}
             />
-          </>
-        ) : annotationMode === 'ai' && aiResult && serverAiRequest ? (
-          <AnnotationAiPreviewPanel
-            preview={aiPreview}
-            sourceColor={nodeColors[serverAiRequest.node_id] ?? sourceColor ?? GREY}
-            comparison={{
-              columns: annotationComparisonColumns[serverAiRequest.node_id] ?? [],
-              onColumnsChange: (columns) => {
-                setAnnotationComparisonColumns(serverAiRequest.node_id, columns);
-              },
-              metric:
-                annotationReliabilityMetrics[serverAiRequest.node_id] ??
-                DEFAULT_INTERCODER_RELIABILITY_METRIC,
-              onMetricChange: (metric) => {
-                setAnnotationReliabilityMetric(serverAiRequest.node_id, metric);
-              },
-            }}
-            metadata={{
-              columns: annotationMetadataColumns[serverAiRequest.node_id] ?? [],
-              onColumnsChange: (columns) => {
-                setAnnotationMetadataColumns(serverAiRequest.node_id, columns);
-              },
-            }}
-            columnOrder={annotationColumnLayout.order}
-            onReorderColumns={annotationColumnLayout.setOrder}
-            correction={{
-              nodeId: serverAiRequest.node_id,
-              column: previewCorrectionColumn,
-              classOptions: serverAiRequest.classes.map((item) => item.name),
-              onColumnChange: (column) => {
-                setLiveCorrectionColumn(serverAiRequest.node_id, column);
-              },
-              onCreate: () => {
-                openCorrectionColumnDialog(
-                  serverAiRequest.node_id,
-                  serverAiRequest.annotation_column,
-                  aiPreview.sourceColumns,
-                );
-              },
-              onUseAsExample: () => {
-                handleUseCorrectionColumnAsExample(
-                  serverAiRequest.node_id,
-                  serverAiRequest.text_column,
-                  previewCorrectionColumn,
-                );
-              },
-              disabled: isCreatingColumn,
-            }}
-          />
-        ) : null}
-      </AnalysisSplitLayout>
-    </section>
+          ) : null}
+          {annotationMode === 'ai' &&
+          annotationRunAll?.state === 'succeeded' &&
+          annotationRunAllSource &&
+          currentWorkspaceId &&
+          reviewSourceNode ? (
+            <>
+              {(annotationRunAllResult.data?.failed_row_count ?? 0) > 0 ? (
+                <div
+                  role="status"
+                  className="mt-5 rounded-md border border-warning bg-warning-background px-4 py-3 text-body"
+                >
+                  Annotation completed with {annotationRunAllResult.data?.failed_row_count} failed
+                  row
+                  {annotationRunAllResult.data?.failed_row_count === 1 ? '' : 's'} across{' '}
+                  {annotationRunAllResult.data?.failed_batch_count} failed batch
+                  {annotationRunAllResult.data?.failed_batch_count === 1 ? '' : 'es'}. Failed rows
+                  kept their existing values when reprocessing and remain blank when filling missing
+                  values.
+                </div>
+              ) : null}
+              <RunAllReviewTable
+                columnOrder={annotationColumnLayout.order}
+                onReorderColumns={annotationColumnLayout.setOrder}
+                workspaceId={currentWorkspaceId}
+                nodeId={annotationRunAllSource.node_id}
+                nodeName={reviewSourceNode.name}
+                sql={`SELECT * FROM ${sqlTable(annotationRunAllSource.node_id)}`}
+                sourceColumns={reviewSourceColumns}
+                sourceColor={reviewSourceNode.color ?? GREY}
+                rowCount={reviewSourceNode.shape?.[0] ?? 0}
+                title="Annotation"
+                guidanceTarget="annotation-ai-run-all-results"
+                requiredColumns={[
+                  annotationRunAllSource.text_column,
+                  annotationRunAllSource.annotation_column,
+                ]}
+                comparisonColumn={annotationRunAllSource.annotation_column}
+                comparisonColumns={
+                  annotationComparisonColumns[annotationRunAllSource.node_id] ?? []
+                }
+                onComparisonColumnsChange={(columns) => {
+                  setAnnotationComparisonColumns(annotationRunAllSource.node_id, columns);
+                }}
+                reliabilityMetric={
+                  annotationReliabilityMetrics[annotationRunAllSource.node_id] ??
+                  DEFAULT_INTERCODER_RELIABILITY_METRIC
+                }
+                onReliabilityMetricChange={(metric) => {
+                  setAnnotationReliabilityMetric(annotationRunAllSource.node_id, metric);
+                }}
+                metadataColumns={annotationMetadataColumns[annotationRunAllSource.node_id] ?? []}
+                onMetadataColumnsChange={(columns) => {
+                  setAnnotationMetadataColumns(annotationRunAllSource.node_id, columns);
+                }}
+                correction={{
+                  column: reviewCorrectionColumn,
+                  classOptions: annotationRunAllSource.classes.map((item) => item.name),
+                  onColumnChange: (column) => {
+                    setLiveCorrectionColumn(annotationRunAllSource.node_id, column);
+                  },
+                  onCreate: () => {
+                    openCorrectionColumnDialog(
+                      annotationRunAllSource.node_id,
+                      annotationRunAllSource.annotation_column,
+                      reviewSourceColumns,
+                    );
+                  },
+                  onUseAsExample: () => {
+                    handleUseCorrectionColumnAsExample(
+                      annotationRunAllSource.node_id,
+                      annotationRunAllSource.text_column,
+                      reviewCorrectionColumn,
+                    );
+                  },
+                  disabled: isCreatingColumn,
+                }}
+              />
+            </>
+          ) : annotationMode === 'ai' && aiResult && serverAiRequest ? (
+            <AnnotationAiPreviewPanel
+              preview={aiPreview}
+              sourceColor={nodeColors[serverAiRequest.node_id] ?? sourceColor ?? GREY}
+              comparison={{
+                columns: annotationComparisonColumns[serverAiRequest.node_id] ?? [],
+                onColumnsChange: (columns) => {
+                  setAnnotationComparisonColumns(serverAiRequest.node_id, columns);
+                },
+                metric:
+                  annotationReliabilityMetrics[serverAiRequest.node_id] ??
+                  DEFAULT_INTERCODER_RELIABILITY_METRIC,
+                onMetricChange: (metric) => {
+                  setAnnotationReliabilityMetric(serverAiRequest.node_id, metric);
+                },
+              }}
+              metadata={{
+                columns: annotationMetadataColumns[serverAiRequest.node_id] ?? [],
+                onColumnsChange: (columns) => {
+                  setAnnotationMetadataColumns(serverAiRequest.node_id, columns);
+                },
+              }}
+              columnOrder={annotationColumnLayout.order}
+              onReorderColumns={annotationColumnLayout.setOrder}
+              correction={{
+                nodeId: serverAiRequest.node_id,
+                column: previewCorrectionColumn,
+                classOptions: serverAiRequest.classes.map((item) => item.name),
+                onColumnChange: (column) => {
+                  setLiveCorrectionColumn(serverAiRequest.node_id, column);
+                },
+                onCreate: () => {
+                  openCorrectionColumnDialog(
+                    serverAiRequest.node_id,
+                    serverAiRequest.annotation_column,
+                    aiPreview.sourceColumns,
+                  );
+                },
+                onUseAsExample: () => {
+                  handleUseCorrectionColumnAsExample(
+                    serverAiRequest.node_id,
+                    serverAiRequest.text_column,
+                    previewCorrectionColumn,
+                  );
+                },
+                disabled: isCreatingColumn,
+              }}
+            />
+          ) : null}
+        </AnalysisSplitLayout>
+      </section>
+    </ToolModeContext>
   );
 }
 

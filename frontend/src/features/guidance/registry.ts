@@ -378,7 +378,8 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.annotation.aiSetup,
     resolveAnnotationAiSetupTarget,
     'Configure an AI annotation run',
-    'Expand AI settings to choose a provider and model; an Example Data Block is optional. Check the setup, then choose Preview before Run.',
+    'Choose a provider and model. Turn on Advanced for an optional Example Data Block, the prompt and the Run settings. Check the setup, then choose Preview before Run.',
+    2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.annotation.aiAdvanced,
