@@ -48,6 +48,13 @@ import {
   useConcordanceParameters,
 } from './hooks/useConcordanceParameters';
 import { ConcordanceParameterPanel } from './components/ConcordanceParameterPanel';
+import {
+  BASIC_CONCORDANCE_IGNORE_PUNCTUATION,
+  BASIC_CONCORDANCE_SEARCH_MODE,
+  concordanceRunUsedAdvanced,
+} from './concordanceAdvanced';
+import { ToolModeContext } from '../common/toolMode/ToolModeContext';
+import { useToolMode } from '../common/toolMode/useToolMode';
 import TokenizerModelSelector from '../common/components/TokenizerModelSelector';
 import { ConcordanceResultsPanel } from './components/ConcordanceResultsPanel';
 import { usePersistNodeDocumentColumn } from '../common/hooks/usePersistNodeDocumentColumn';
@@ -303,11 +310,26 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     effectiveNodeColumnSelections: nodeColumnSelections,
     nodeInfoById,
   });
+  // Search mode, Ignore punctuation and the Combined view are advanced: in
+  // Basic, Preview and Run search the text with punctuation ignored, and the
+  // results of two Data Blocks stay separated, whatever the hidden draft holds.
+  const toolMode = useToolMode({
+    host,
+    viewId: 'concordance',
+    lastRunUsedAdvanced:
+      concordanceRunUsedAdvanced(host.latestPreview?.request) ||
+      (host.latestRunAll?.request.kind === 'concordance_run_all' &&
+        concordanceRunUsedAdvanced(host.latestRunAll.request.source)),
+  });
+  const sentSearchMode = toolMode.advanced ? searchMode : BASIC_CONCORDANCE_SEARCH_MODE;
+  const sentIgnorePunctuation = toolMode.advanced
+    ? ignorePunctuation
+    : BASIC_CONCORDANCE_IGNORE_PUNCTUATION;
   // Tokens are lowercased at tokenisation (except case-free scripts), so a
   // Tokens search is always case-insensitive and its panel hides the Case
   // sensitive checkbox (issue 272). The Text-mode checkbox value is kept for
   // when the user switches back.
-  const requestCaseSensitive = searchMode === 'tokens' ? false : caseSensitive;
+  const requestCaseSensitive = sentSearchMode === 'tokens' ? false : caseSensitive;
 
   const {
     request: serverRequest,
@@ -530,8 +552,8 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         regex,
         wholeWord,
         caseSensitive: requestCaseSensitive,
-        ignorePunctuation,
-        searchMode,
+        ignorePunctuation: sentIgnorePunctuation,
+        searchMode: sentSearchMode,
         tokenizerModelsByNode: effectiveTokenizerModelsByNode,
         supersedesAnalysisIds: tabTaskId ? [tabTaskId] : [],
       },
@@ -556,6 +578,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
   const lastRunRequest = serverRequest ?? null;
   const currentRequestParams = {
     ...currentConcordanceParams,
+    ignore_punctuation: sentIgnorePunctuation,
     case_sensitive: requestCaseSensitive,
     node_ids: activeNodeIds.slice(0, 2),
     node_columns: Object.fromEntries(
@@ -563,9 +586,9 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         .filter((selection) => activeNodeIds.includes(selection.nodeId) && selection.column)
         .map((selection) => [selection.nodeId, selection.column]),
     ),
-    search_mode: searchMode,
+    search_mode: sentSearchMode,
     node_tokenizer_models:
-      searchMode === 'tokens'
+      sentSearchMode === 'tokens'
         ? Object.fromEntries(
             activeNodeIds.flatMap((nodeId) => {
               const model = (effectiveTokenizerModelsByNode[nodeId] ?? '').trim();
@@ -683,7 +706,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     );
     // Text mode searches the text itself: no tokeniser goes with it (issue 372).
     const nodeTokenizerModels =
-      searchMode === 'tokens'
+      sentSearchMode === 'tokens'
         ? Object.fromEntries(
             requestNodeIds.flatMap((nodeId) => {
               const model = (effectiveTokenizerModelsByNode[nodeId] ?? '').trim();
@@ -696,7 +719,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       requestNodeIds.length === 0 ||
       Object.keys(nodeColumns).length !== requestNodeIds.length ||
       !searchWord.trim() ||
-      (searchMode === 'tokens' &&
+      (sentSearchMode === 'tokens' &&
         Object.keys(nodeTokenizerModels).length !== requestNodeIds.length) ||
       analysisActionLifecycle.isRunningAll
     ) {
@@ -712,8 +735,8 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       regex,
       whole_word: wholeWord,
       case_sensitive: requestCaseSensitive,
-      ignore_punctuation: ignorePunctuation,
-      search_mode: searchMode,
+      ignore_punctuation: sentIgnorePunctuation,
+      search_mode: sentSearchMode,
     };
     await runAnalysis<Analysis>({
       action: 'run_all',
@@ -805,6 +828,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
   };
 
   const { handleViewModeChange } = useConcordanceViewModeSwap({
+    combinedAllowed: toolMode.advanced,
     viewMode,
     setViewMode,
     results,
@@ -825,283 +849,296 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
   ]);
 
   return (
-    <AnalysisSplitLayout
-      viewId="concordance"
-      parameters={
-        <ConcordanceParameterPanel
-          nodeInputs={nodeInputs}
-          handleColumnChange={handleColumnChange}
-          nodeColors={nodeColors}
-          onNodeColorChange={(nodeId, color) => {
-            setNodeColor(nodeId, color);
-          }}
-          defaultPalette={defaultPalette}
-          searchWord={searchWord}
-          setSearchWord={setSearchWord}
-          numLeftTokens={numLeftTokens}
-          setNumLeftTokens={setNumLeftTokens}
-          numRightTokens={numRightTokens}
-          setNumRightTokens={setNumRightTokens}
-          regex={regex}
-          setRegex={setRegex}
-          wholeWord={wholeWord}
-          setWholeWord={setWholeWord}
-          caseSensitive={caseSensitive}
-          setCaseSensitive={setCaseSensitive}
-          ignorePunctuation={ignorePunctuation}
-          setIgnorePunctuation={setIgnorePunctuation}
-          searchMode={searchMode}
-          setSearchMode={setSearchModeFromUser}
-          tokensModeAvailable={tokensModeAvailable}
-          renderTokenizerModelSelector={({ nodeId, column }) => (
-            <TokenizerModelSelector
-              workspaceId={currentWorkspaceId}
-              nodeId={nodeId}
-              column={column}
-              // Text mode uses no tokeniser, so it shows None (issue 372).
-              value={searchMode === 'tokens' ? (effectiveTokenizerModelsByNode[nodeId] ?? '') : ''}
-              disabled={searchMode !== 'tokens'}
-              disabledReason="Tokeniser models apply only in Tokens mode."
-              onChange={(model, detectedLanguage) => {
-                handleTokenizerModelChange(nodeId, column, model, detectedLanguage);
-              }}
-            />
-          )}
-          isSearching={analysisActionLifecycle.isPreviewing}
-          actionState={{
-            ...actionState,
-            clearDisabled:
-              analyses.length === 0 ||
-              analysisActionLifecycle.isPreviewing ||
-              analysisActionLifecycle.isRunningAll ||
-              Boolean(activeAnalysis),
-          }}
-          handleRunOrUpdate={handleRunOrUpdate}
-          handleRunAll={handleRunAll}
-          runAllDisabled={
-            analysisActionLifecycle.runAllDisabled ||
-            runAllActionState.runDisabled ||
-            panelSelectedNodes.length === 0 ||
-            !searchWord.trim() ||
-            nodeColumnSelections.some((selection) => !selection.column)
-          }
-          runAllStateDisabledReason={runAllActionState.runDisabledReason}
-          isRunningAll={analysisActionLifecycle.isRunningAll}
-          parametersLocked={analysisActionLifecycle.parametersLocked}
-          handleStopTask={activeAnalysis ? stopTask : undefined}
-          isStopping={isStopping}
-          handleClearResults={handleClearResults}
-        />
-      }
-    >
-      {concordanceWaitingBanner && (
-        <AnalysisTaskBanner
-          analysisName="Concordance"
-          status={concordanceWaitingBanner.status}
-          taskId={concordanceWaitingBanner.taskId}
-          message={concordanceWaitingBanner.message}
-          className="mt-4"
-        />
-      )}
-      {concordanceRunAllEntries.map(({ sourceId, analysis }) =>
-        analysis && (analysis.state === 'queued' || analysis.state === 'running') ? (
+    <ToolModeContext value={toolMode}>
+      <AnalysisSplitLayout
+        viewId="concordance"
+        parameters={
+          <ConcordanceParameterPanel
+            nodeInputs={nodeInputs}
+            handleColumnChange={handleColumnChange}
+            nodeColors={nodeColors}
+            onNodeColorChange={(nodeId, color) => {
+              setNodeColor(nodeId, color);
+            }}
+            defaultPalette={defaultPalette}
+            searchWord={searchWord}
+            setSearchWord={setSearchWord}
+            numLeftTokens={numLeftTokens}
+            setNumLeftTokens={setNumLeftTokens}
+            numRightTokens={numRightTokens}
+            setNumRightTokens={setNumRightTokens}
+            regex={regex}
+            setRegex={setRegex}
+            wholeWord={wholeWord}
+            setWholeWord={setWholeWord}
+            caseSensitive={caseSensitive}
+            setCaseSensitive={setCaseSensitive}
+            ignorePunctuation={ignorePunctuation}
+            setIgnorePunctuation={setIgnorePunctuation}
+            searchMode={sentSearchMode}
+            setSearchMode={setSearchModeFromUser}
+            tokensModeAvailable={tokensModeAvailable}
+            // The tokeniser belongs to Tokens mode, an advanced setting.
+            renderTokenizerModelSelector={
+              toolMode.advanced
+                ? ({ nodeId, column }) => (
+                    <TokenizerModelSelector
+                      workspaceId={currentWorkspaceId}
+                      nodeId={nodeId}
+                      column={column}
+                      // Text mode uses no tokeniser, so it shows None (issue 372).
+                      value={
+                        searchMode === 'tokens'
+                          ? (effectiveTokenizerModelsByNode[nodeId] ?? '')
+                          : ''
+                      }
+                      disabled={searchMode !== 'tokens'}
+                      disabledReason="Tokeniser models apply only in Tokens mode."
+                      onChange={(model, detectedLanguage) => {
+                        handleTokenizerModelChange(nodeId, column, model, detectedLanguage);
+                      }}
+                    />
+                  )
+                : undefined
+            }
+            isSearching={analysisActionLifecycle.isPreviewing}
+            actionState={{
+              ...actionState,
+              clearDisabled:
+                analyses.length === 0 ||
+                analysisActionLifecycle.isPreviewing ||
+                analysisActionLifecycle.isRunningAll ||
+                Boolean(activeAnalysis),
+            }}
+            handleRunOrUpdate={handleRunOrUpdate}
+            handleRunAll={handleRunAll}
+            runAllDisabled={
+              analysisActionLifecycle.runAllDisabled ||
+              runAllActionState.runDisabled ||
+              panelSelectedNodes.length === 0 ||
+              !searchWord.trim() ||
+              nodeColumnSelections.some((selection) => !selection.column)
+            }
+            runAllStateDisabledReason={runAllActionState.runDisabledReason}
+            isRunningAll={analysisActionLifecycle.isRunningAll}
+            parametersLocked={analysisActionLifecycle.parametersLocked}
+            handleStopTask={activeAnalysis ? stopTask : undefined}
+            isStopping={isStopping}
+            handleClearResults={handleClearResults}
+          />
+        }
+      >
+        {concordanceWaitingBanner && (
           <AnalysisTaskBanner
-            key={analysis.id}
-            analysisName={`Concordance Run${sourceId ? ` — ${sourceId}` : ''}`}
-            status={analysis.state}
-            taskId={analysis.id}
-            message={analysis.progress.message ?? undefined}
-            detail={analysis.progress.detail}
+            analysisName="Concordance"
+            status={concordanceWaitingBanner.status}
+            taskId={concordanceWaitingBanner.taskId}
+            message={concordanceWaitingBanner.message}
             className="mt-4"
           />
-        ) : null,
-      )}
-      {runAllReviewError ? (
-        <p className="mt-4 text-body text-error">
-          Could not load Review: {runAllReviewError.message}
-        </p>
-      ) : null}
-      {reviewError ? (
-        <p className="mt-4 text-body text-error">
-          Could not load the Concordance Results: {reviewError.message}
-        </p>
-      ) : null}
+        )}
+        {concordanceRunAllEntries.map(({ sourceId, analysis }) =>
+          analysis && (analysis.state === 'queued' || analysis.state === 'running') ? (
+            <AnalysisTaskBanner
+              key={analysis.id}
+              analysisName={`Concordance Run${sourceId ? ` — ${sourceId}` : ''}`}
+              status={analysis.state}
+              taskId={analysis.id}
+              message={analysis.progress.message ?? undefined}
+              detail={analysis.progress.detail}
+              className="mt-4"
+            />
+          ) : null,
+        )}
+        {runAllReviewError ? (
+          <p className="mt-4 text-body text-error">
+            Could not load Review: {runAllReviewError.message}
+          </p>
+        ) : null}
+        {reviewError ? (
+          <p className="mt-4 text-body text-error">
+            Could not load the Concordance Results: {reviewError.message}
+          </p>
+        ) : null}
 
-      {/* Results */}
-      {results ? (
-        <ConcordanceResultsPanel
-          title="Concordance Results"
-          guidanceTarget={isReview ? 'concordance-run-all-results' : 'concordance-preview-results'}
-          isReview={isReview}
-          headerAction={
-            isReview && addToWorkspaceSources.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-label="Download Concordance Results"
-                  title="Download Concordance Results"
-                  onClick={() => {
-                    setDownloadDialogOpen(true);
-                  }}
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button
-                  data-guidance="concordance-add-to-workspace"
-                  type="button"
-                  onClick={() => {
-                    setAddToWorkspaceDialogOpen(true);
-                  }}
-                >
-                  Add to Project
-                </Button>
-              </div>
-            ) : null
-          }
-          shell={{
-            resultsRef,
-            resultsViewportRef,
-            resultsViewportWidth,
-            viewMode,
-            handleViewModeChange,
-            combinedLoading,
-          }}
-          display={{
-            concordanceView,
-            setConcordanceView,
-            highlightL1R1,
-            setHighlightL1R1,
-            proportionalDispersionBars,
-            setProportionalDispersionBars,
-            dispersionChartMode,
-            setDispersionChartMode,
-            selectedBinIndices,
-            excludedMatchedTexts,
-            uncasedMatchedTexts,
-            onUncasedMatchedTextsChange: (value) => {
-              setCombinedPage(1);
-              setUncasedMatchedTexts(value);
-            },
-            onToggleMatchedTexts: (matchedTexts) => {
-              setCombinedPage(1);
-              toggleMatchedTexts(matchedTexts);
-            },
-            onBinSelect: (blockKey, index, shiftHeld) => {
-              if (blockKey === CONCORDANCE_COMBINED_NODE_KEY) setCombinedPage(1);
-              handleBinSelect(blockKey, index, shiftHeld);
-            },
-            onClearBinSelection: (blockKey) => {
-              if (blockKey === CONCORDANCE_COMBINED_NODE_KEY) setCombinedPage(1);
-              handleClearBinSelection(blockKey);
-            },
-            binCount,
-            setBinCount: (value) => {
-              setCombinedPage(1);
-              setBinCount(value);
-            },
-          }}
-          metadata={{
-            showMetadata,
-            availableMetadataColumns,
-            sections: metadataColumnSections,
-            disabledReason: metadataDisabledReason,
-            selectedColumns: selectedMetadataColumns,
-            setSelectedColumns: setSelectedMetadataColumns,
-            columnOrder: columnLayout.order,
-            setColumnOrder: columnLayout.setOrder,
-          }}
-          sources={{
-            searchWord: resultSearchWord,
-            caseSensitive: resultCaseSensitive,
-            panelSelectedNodes: resultPanelNodes,
-            effectiveNodeColumnSelections: resultPanelColumnSelections,
-            labelToNodeId,
-            sourceColorMap,
-            defaultPalette,
-          }}
-          session={{
-            results,
-            nodeSummaries,
-            nodePagination,
-            globalPageSize,
-            onPageSizeChange: handleGlobalPageSizeChange,
-            combinedPage,
-            setCombinedPage,
-            nodeLoading,
-            reviewDensityByNode,
-          }}
-          commands={{
-            handleSort: isReview
-              ? (columnKey, paginationKey) => {
-                  handleReviewSort(columnKey, paginationKey);
-                }
-              : handleSort,
-            handleResetSort: isReview ? handleReviewResetSort : handleResetSort,
-            handlePageChange: isReview
-              ? (newPage, paginationKey) => {
-                  handleReviewPageChange(newPage, paginationKey);
-                }
-              : handlePageChange,
-          }}
-        />
-      ) : null}
+        {/* Results */}
+        {results ? (
+          <ConcordanceResultsPanel
+            title="Concordance Results"
+            guidanceTarget={
+              isReview ? 'concordance-run-all-results' : 'concordance-preview-results'
+            }
+            isReview={isReview}
+            headerAction={
+              isReview && addToWorkspaceSources.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label="Download Concordance Results"
+                    title="Download Concordance Results"
+                    onClick={() => {
+                      setDownloadDialogOpen(true);
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    data-guidance="concordance-add-to-workspace"
+                    type="button"
+                    onClick={() => {
+                      setAddToWorkspaceDialogOpen(true);
+                    }}
+                  >
+                    Add to Project
+                  </Button>
+                </div>
+              ) : null
+            }
+            shell={{
+              resultsRef,
+              resultsViewportRef,
+              resultsViewportWidth,
+              viewMode,
+              handleViewModeChange,
+              combinedLoading,
+            }}
+            display={{
+              concordanceView,
+              setConcordanceView,
+              highlightL1R1,
+              setHighlightL1R1,
+              proportionalDispersionBars,
+              setProportionalDispersionBars,
+              dispersionChartMode,
+              setDispersionChartMode,
+              selectedBinIndices,
+              excludedMatchedTexts,
+              uncasedMatchedTexts,
+              onUncasedMatchedTextsChange: (value) => {
+                setCombinedPage(1);
+                setUncasedMatchedTexts(value);
+              },
+              onToggleMatchedTexts: (matchedTexts) => {
+                setCombinedPage(1);
+                toggleMatchedTexts(matchedTexts);
+              },
+              onBinSelect: (blockKey, index, shiftHeld) => {
+                if (blockKey === CONCORDANCE_COMBINED_NODE_KEY) setCombinedPage(1);
+                handleBinSelect(blockKey, index, shiftHeld);
+              },
+              onClearBinSelection: (blockKey) => {
+                if (blockKey === CONCORDANCE_COMBINED_NODE_KEY) setCombinedPage(1);
+                handleClearBinSelection(blockKey);
+              },
+              binCount,
+              setBinCount: (value) => {
+                setCombinedPage(1);
+                setBinCount(value);
+              },
+            }}
+            metadata={{
+              showMetadata,
+              availableMetadataColumns,
+              sections: metadataColumnSections,
+              disabledReason: metadataDisabledReason,
+              selectedColumns: selectedMetadataColumns,
+              setSelectedColumns: setSelectedMetadataColumns,
+              columnOrder: columnLayout.order,
+              setColumnOrder: columnLayout.setOrder,
+            }}
+            sources={{
+              searchWord: resultSearchWord,
+              caseSensitive: resultCaseSensitive,
+              panelSelectedNodes: resultPanelNodes,
+              effectiveNodeColumnSelections: resultPanelColumnSelections,
+              labelToNodeId,
+              sourceColorMap,
+              defaultPalette,
+            }}
+            session={{
+              results,
+              nodeSummaries,
+              nodePagination,
+              globalPageSize,
+              onPageSizeChange: handleGlobalPageSizeChange,
+              combinedPage,
+              setCombinedPage,
+              nodeLoading,
+              reviewDensityByNode,
+            }}
+            commands={{
+              handleSort: isReview
+                ? (columnKey, paginationKey) => {
+                    handleReviewSort(columnKey, paginationKey);
+                  }
+                : handleSort,
+              handleResetSort: isReview ? handleReviewResetSort : handleResetSort,
+              handlePageChange: isReview
+                ? (newPage, paginationKey) => {
+                    handleReviewPageChange(newPage, paginationKey);
+                  }
+                : handlePageChange,
+            }}
+          />
+        ) : null}
 
-      {analysisError && (
-        <Card>
-          <CardContent>
-            <ErrorNotice error={analysisFailure ?? analysisError} />
-          </CardContent>
-        </Card>
-      )}
+        {analysisError && (
+          <Card>
+            <CardContent>
+              <ErrorNotice error={analysisFailure ?? analysisError} />
+            </CardContent>
+          </Card>
+        )}
 
-      {downloadDialogOpen ? (
-        <ResultAddToWorkspaceDialog
-          open
-          onOpenChange={(nextOpen) => {
-            excelLimit.clear();
-            setDownloadDialogOpen(nextOpen);
-          }}
-          notice={excelLimit.card}
-          title={`Download Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'}`}
-          nameSuffix={concordanceView === 'dispersion' ? 'concordance_documents' : 'concordance'}
-          sources={addToWorkspaceSources}
-          isSubmitting={isDownloading}
-          mode={concordanceView === 'dispersion' ? 'document' : 'match'}
-          allowSourceSelection
-          columnOrder={tableColumnOrder}
-          purpose="download"
-          onSubmit={(sources, format = 'csv') => {
-            void handleDownload(sources, format);
-          }}
-        />
-      ) : null}
+        {downloadDialogOpen ? (
+          <ResultAddToWorkspaceDialog
+            open
+            onOpenChange={(nextOpen) => {
+              excelLimit.clear();
+              setDownloadDialogOpen(nextOpen);
+            }}
+            notice={excelLimit.card}
+            title={`Download Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'}`}
+            nameSuffix={concordanceView === 'dispersion' ? 'concordance_documents' : 'concordance'}
+            sources={addToWorkspaceSources}
+            isSubmitting={isDownloading}
+            mode={concordanceView === 'dispersion' ? 'document' : 'match'}
+            allowSourceSelection
+            columnOrder={tableColumnOrder}
+            purpose="download"
+            onSubmit={(sources, format = 'csv') => {
+              void handleDownload(sources, format);
+            }}
+          />
+        ) : null}
 
-      {addToWorkspaceDialogOpen ? (
-        <ResultAddToWorkspaceDialog
-          open
-          onOpenChange={setAddToWorkspaceDialogOpen}
-          title={`Add Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'} to Project`}
-          nameSuffix={concordanceView === 'dispersion' ? 'concordance_documents' : 'concordance'}
-          sources={addToWorkspaceSources}
-          isSubmitting={isAddingToWorkspace}
-          mode={concordanceView === 'dispersion' ? 'document' : 'match'}
-          allowSourceSelection
-          columnOrder={tableColumnOrder}
-          onSubmit={(sources) => {
-            void handleAddToWorkspace(sources);
-          }}
-        />
-      ) : null}
+        {addToWorkspaceDialogOpen ? (
+          <ResultAddToWorkspaceDialog
+            open
+            onOpenChange={setAddToWorkspaceDialogOpen}
+            title={`Add Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'} to Project`}
+            nameSuffix={concordanceView === 'dispersion' ? 'concordance_documents' : 'concordance'}
+            sources={addToWorkspaceSources}
+            isSubmitting={isAddingToWorkspace}
+            mode={concordanceView === 'dispersion' ? 'document' : 'match'}
+            allowSourceSelection
+            columnOrder={tableColumnOrder}
+            onSubmit={(sources) => {
+              void handleAddToWorkspace(sources);
+            }}
+          />
+        ) : null}
 
-      {/* Loading State */}
-      {isLoading.graph && (
-        <div className="text-center py-12">
-          <div className="inline-block size-8 animate-spin rounded-full border-2 border-surface-border border-t-primary" />
-          <p className="text-description mt-2">Loading Project…</p>
-        </div>
-      )}
-    </AnalysisSplitLayout>
+        {/* Loading State */}
+        {isLoading.graph && (
+          <div className="text-center py-12">
+            <div className="inline-block size-8 animate-spin rounded-full border-2 border-surface-border border-t-primary" />
+            <p className="text-description mt-2">Loading Project…</p>
+          </div>
+        )}
+      </AnalysisSplitLayout>
+    </ToolModeContext>
   );
 }
 

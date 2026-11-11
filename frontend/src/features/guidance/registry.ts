@@ -248,7 +248,8 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.concordance.search,
     '[data-guidance="concordance-actions"]',
     'Define the match and context',
-    'Enter a search term, choose Text or Tokens mode, and set the surrounding context. Choose Preview for a page or Run for the complete search.',
+    'Enter a search term and set the surrounding context. Choose Preview for a page or Run for the complete search. Advanced offers Tokens mode.',
+    2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.concordance.previewResults,

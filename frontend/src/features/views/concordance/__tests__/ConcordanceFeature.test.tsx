@@ -549,9 +549,27 @@ describe('ConcordanceFeature', () => {
     clearResultsMock.mockResolvedValue(true);
   });
 
+  it('keeps Basic in Text mode with no tokeniser, and searches with punctuation ignored', () => {
+    mockTokenizerModel = 'native:plain_words_en';
+    const { unmount } = renderConcordanceFeature();
+
+    expect(screen.queryByRole('tab', { name: 'Tokens' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Ignore punctuation' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Tokeniser model' })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Regular expression' })).toBeInTheDocument();
+    expect(latestTaskFlowParams?.state).toMatchObject({
+      searchMode: 'regex',
+      ignorePunctuation: true,
+    });
+
+    unmount();
+  });
+
   it('starts in Text mode and enables tokenizer selectors only after Tokens is selected', () => {
     mockTokenizerModel = 'native:plain_words_en';
     const { unmount } = renderConcordanceFeature();
+    // Search mode and Ignore punctuation are advanced settings.
+    fireEvent.click(screen.getByRole('switch', { name: 'Advanced settings' }));
 
     const ignorePunctuation = screen.getByRole('checkbox', { name: 'Ignore punctuation' });
     expect(ignorePunctuation).toBeChecked();
@@ -967,7 +985,7 @@ describe('ConcordanceFeature', () => {
     const { unmount } = renderConcordanceFeature('analysis-1');
 
     const wholeWordCheckbox = screen.getByRole('checkbox', { name: /whole word/i });
-    const regexCheckbox = screen.getByRole('checkbox', { name: /use regular expression/i });
+    const regexCheckbox = screen.getByRole('checkbox', { name: /^regular expression/i });
 
     expect(wholeWordCheckbox).toBeChecked();
     expect(wholeWordCheckbox).toBeEnabled();

@@ -26,6 +26,12 @@ choose to display.
 
 <h4 id="help-concordance-search-mode">Search mode</h4>
 
+Search mode is an advanced setting: turn on [**Advanced**](./ui.md#help-ui-tool-mode)
+at the top right of the Concordance parameters to choose it. With **Advanced**
+off, Concordance searches in Text mode, with **Ignore punctuation** on, and keeps
+the results of two Data Blocks separated; what you set under **Advanced
+settings** is kept for when you turn it on again.
+
 - **Text** searches the original text column. Whole-word, regular-expression,
   and case-sensitive options apply in this mode.
 - **Tokens** finds each term as one whole token, exactly as the tokeniser wrote
@@ -51,7 +57,7 @@ started with, even if you later change a Data Block's tokeniser preference.
 
 <h5 id="help-concordance-regex-toggle">Regular expressions</h5>
 
-In Text mode, tick **Use regular expression** to search for a pattern instead of the exact text. This lets you find word variants, several terms at once, or more complex patterns. For example, `child\w*` finds any word starting with *child* followed by **zero** or more characters, such as *child*, *children*, and *childhood*. To find all the hashtags in your data, use `#\w+`: a hashtag followed by **one** or more characters. [Regular expressions](./ui.md#help-ui-regular-expressions) explains what a pattern is, with more examples and a cheat sheet.
+In Text mode, tick **Regular expression** to search for a pattern instead of the exact text. This lets you find word variants, several terms at once, or more complex patterns. For example, `child\w*` finds any word starting with *child* followed by **zero** or more characters, such as *child*, *children*, and *childhood*. To find all the hashtags in your data, use `#\w+`: a hashtag followed by **one** or more characters. [Regular expressions](./ui.md#help-ui-regular-expressions) explains what a pattern is, with more examples and a cheat sheet.
 
 | Pattern | What it matches |
 |---|---|
@@ -80,7 +86,7 @@ into several short tokens. For example, *発表させていただきます* beco
 finds nothing, and *いただく* does not find *いただき*.
 
 To find an expression with all its spellings and forms, use Text mode, tick
-**Use regular expression**, and list the variants separated by `|`. For
+**Regular expression**, and list the variants separated by `|`. For
 example, `せていただ|せて頂|していただ|して頂` finds the expression written in
 kana or with kanji, including the して variant. Check a few results by hand to
 make sure the pattern finds nothing unrelated.
@@ -93,7 +99,7 @@ can be a whole clause. For context counted in words, use Tokens mode.
 
 **Left context** and **Right context** control how many tokens appear around a
 match. Both default to 10 and accept values from 0 to 50. In Text mode,
-**Ignore punctuation** is on by default: punctuation and symbol-only tokens do
+**Ignore punctuation**, under **Advanced settings**, is on by default: punctuation and symbol-only tokens do
 not consume those counts or become L1/R1, but the original punctuation and
 whitespace remain visible in each context. This option does not change which
 text or regular-expression matches are found. Tokens mode already applies its
@@ -274,7 +280,8 @@ and do not become source-metadata sort keys.
 <h3 id="help-concordance-display-mode">Separated and combined display</h3>
 
 With two Data Blocks, **Separated** gives each source its own Result block and
-sort state. **Combined** interleaves the current pages and colours rows by
+sort state. With **Advanced** on, the results header also offers **Combined**,
+which interleaves the current pages and colours rows by
 source. Combined headers are display-only because one sort order cannot be
 applied to two Data Blocks at once.
 
@@ -397,12 +404,12 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 
 | Setting | Default | Notes |
 |---|---|---|
-| Search mode | Text | Select Tokens explicitly to enable tokeniser selection |
+| Search mode | Text | Advanced setting; select Tokens explicitly to enable tokeniser selection |
 | Left / Right context | 10 tokens each | Range 0–50 |
-| Whole word | On | Text mode only; off while Use regular expression is ticked |
+| Whole word | On | Text mode only; off while Regular expression is ticked |
 | Regular expression | Off | Text mode only |
 | Case sensitive | Off | Text mode only (Tokens mode always ignores capitals); also decides whether L1/R1 counts and sorting ignore capitals |
-| Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens or become L1/R1; it never changes what the search or a regular expression matches |
+| Ignore punctuation | On | Advanced setting, Text mode only; punctuation remains visible but does not consume context tokens or become L1/R1; it never changes what the search or a regular expression matches |
 | Documents per page | 20 | Controls source documents evaluated per Preview page |
 | View | Table | Returning to Concordance starts in Table view |
 | Highlight L1/R1 for sorting | On | Local table-display state: L1/R1 shown in the source colour, and context headers sort by L1/R1; off, the contexts are plain text (matched text stays emphasised) and sort by their text |
