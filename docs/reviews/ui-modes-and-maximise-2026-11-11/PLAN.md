@@ -11,9 +11,10 @@ documentation must cover all of it, including the Topic Modelling Max tokens
 Auto design: what is measured (natural units, counted without splitting), the
 9 in 10 rule, that the run decides and records it, and the 200-text sample's
 remaining jobs. polars-text is a separate repository attached as a submodule. The Ungrouped
-passages work added a local commit there, `3375232` on the local branch
-`feat/outlier-assignment` (from `release/0.7`, unpushed), and this branch's
-submodule pointer names it. Before merging, that commit has to be pushed and
+passages work added two local commits there, `3375232` and `40f1b4a`, on the
+local branch `feat/outlier-assignment` (from `release/0.7`, unpushed), and
+this branch's submodule pointer names the second. Before merging, they have to
+be pushed and
 released in polars-text (a version after 0.7.2, with its changelog entry
 moved out of Unreleased), and the backend's polars-text requirement raised to
 that version.
