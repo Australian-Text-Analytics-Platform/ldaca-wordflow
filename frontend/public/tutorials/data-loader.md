@@ -240,7 +240,10 @@ click the refresh button in the top-right corner of the panel.
 
 Once a file is uploaded or imported, its row offers the following actions:
 
-- **Preview** the file contents before adding it to the Project.
+- **Preview** the file contents before adding it to the Project. **Maximise
+  preview**, beside the close button, gives the window the whole screen so the
+  table shows more rows and columns; **Restore size** brings it back. The Add
+  windows have the same button, and Wordflow remembers the size on this device.
 - **Add** opens the add panel, where you can check the preview and click
   **Add to Project** to load the file as a Data Block in the active Project. A
   Project must be open first. A spreadsheet with several sheets opens a list
