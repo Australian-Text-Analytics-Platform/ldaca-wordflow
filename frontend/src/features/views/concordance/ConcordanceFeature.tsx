@@ -53,6 +53,7 @@ import {
   BASIC_CONCORDANCE_SEARCH_MODE,
   concordanceRunUsedAdvanced,
 } from './concordanceAdvanced';
+import { concordanceNameSuffix } from './concordanceBlockName';
 import { ToolModeContext } from '../common/toolMode/ToolModeContext';
 import { useToolMode } from '../common/toolMode/useToolMode';
 import TokenizerModelSelector from '../common/components/TokenizerModelSelector';
@@ -441,6 +442,11 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       ? concordanceRunAll.request.source
       : serverRequest;
   const resultSearchWord = submittedResultRequest?.search_word ?? searchWord;
+  // New Data Blocks and files are named after the search they hold (issue 457).
+  const resultNameSuffix = concordanceNameSuffix(
+    concordanceView === 'dispersion',
+    resultSearchWord,
+  );
   const resultCaseSensitive = submittedResultRequest?.case_sensitive ?? caseSensitive;
 
   const {
@@ -1100,7 +1106,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
             }}
             notice={excelLimit.card}
             title={`Download Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'}`}
-            nameSuffix={concordanceView === 'dispersion' ? 'concordance_documents' : 'concordance'}
+            nameSuffix={resultNameSuffix}
             sources={addToWorkspaceSources}
             isSubmitting={isDownloading}
             mode={concordanceView === 'dispersion' ? 'document' : 'match'}
@@ -1118,7 +1124,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
             open
             onOpenChange={setAddToWorkspaceDialogOpen}
             title={`Add Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'} to Project`}
-            nameSuffix={concordanceView === 'dispersion' ? 'concordance_documents' : 'concordance'}
+            nameSuffix={resultNameSuffix}
             sources={addToWorkspaceSources}
             isSubmitting={isAddingToWorkspace}
             mode={concordanceView === 'dispersion' ? 'document' : 'match'}

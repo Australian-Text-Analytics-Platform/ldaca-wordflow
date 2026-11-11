@@ -348,7 +348,12 @@ is correct and opens properly in LibreOffice Calc, Numbers and other programs.
 See [Excel's cell limit](./export.md#help-export-excel-limit).
 
 Use **Add to Project** to create new Data Blocks after reviewing the
-result. Two of the columns are easy to confuse. `CONC_matched_text` is the text the
+result. The new Data Block, or the downloaded file, is named after the Data
+Block and the search, for example *speeches_concordance_climate* (the first 20
+characters of the search term), so several searches of one Data Block can be
+told apart. You can change the name before adding.
+
+Two of the columns are easy to confuse. `CONC_matched_text` is the text the
 search found, as written in the document: with one plain search term it is
 that term on every row, and with a regular expression or several terms it
 differs from row to row. `CONC_extraction` is the same match inside the text
