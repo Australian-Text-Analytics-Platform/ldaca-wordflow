@@ -42,3 +42,11 @@ starting count without migration.
 - Results with at most 100 natural Topics behave as before.
 - The stored Result's `clustering.default_cluster_count` keeps the natural
   count; only query responses report the starting count.
+- The cap stays at 100. On 12 November 2026 the same runs were merged to 20,
+  30, 50 and 100 Topics to see whether a lower starting count reads better
+  (issue 473). It does not: merging concentrates the documents in one Topic.
+  On 26,163 articles (776 natural Topics) the largest Topic holds 5.9% of the
+  grouped documents as found, 15.7% at 100, 38.3% at 50 and 51.6% at 30,
+  where its words are the subject of the corpus, not a theme in it. On
+  85,727 comments (257 natural Topics) the figures are 34.0%, 34.4%, 40.3%
+  and 46.1%. How a Result with many Topics should open is left to issue 473.
