@@ -46,6 +46,9 @@ class OpenAIAnnotationAdapter:
     # The OpenAI ``user`` field. Set only by server AI providers, from the
     # signed-in account (issue 411); never from the client.
     end_user: str | None = None
+    # Extra request headers for completions, set only by server AI providers
+    # (the LiteLLM user-details labels, issue 474).
+    extra_headers: tuple[tuple[str, str], ...] = ()
 
     async def complete(
         self,
@@ -119,6 +122,7 @@ class OpenAIAnnotationAdapter:
                 INFERENCE_TIMEOUT_SECONDS, connect=INFERENCE_CONNECT_TIMEOUT_SECONDS
             ),
             max_retries=0,
+            default_headers=dict(self.extra_headers) or None,
         ) as client:
             try:
                 for index, (with_schema, with_thinking) in enumerate(variants):

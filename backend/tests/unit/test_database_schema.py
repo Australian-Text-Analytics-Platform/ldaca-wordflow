@@ -20,13 +20,14 @@ async def test_fresh_database_is_created_at_exact_schema_version(
         columns = list(
             await (await connection.execute('PRAGMA table_info("users")')).fetchall()
         )
-    assert version == (7,)
-    assert columns[-1][1:5] == (
+    assert version == (8,)
+    assert columns[-2][1:5] == (
         "storage_quota_bytes",
         "INTEGER",
         0,
         "32212254720",
     )
+    assert columns[-1][1:5] == ("username", "TEXT", 0, None)
 
 
 @pytest.mark.anyio
@@ -75,27 +76,34 @@ async def test_user_storage_quota_defaults_nullable_and_positive_only(
 
 
 @pytest.mark.anyio
-async def test_a_version_6_database_with_the_same_schema_is_upgraded(
-    tmp_path: Path,
+@pytest.mark.parametrize("stored_version", [6, 7])
+async def test_a_version_6_or_7_database_is_upgraded_with_a_username_column(
+    tmp_path: Path, stored_version: int
 ) -> None:
-    """0.7.6 servers wrote version 6 with the same tables (issue 250)."""
+    """0.7.6 servers wrote version 6 with version 7's tables (issue 250);
+    version 8 adds users.username (issue 474)."""
     database = Database(tmp_path / "users.db")
     await database.initialize()
     async with aiosqlite.connect(database.path) as connection:
+        # The version 7 layout: the same tables without users.username.
+        await connection.execute("ALTER TABLE users DROP COLUMN username")
         await connection.execute(
             "INSERT INTO users (id, email, name, created_at) VALUES (?, ?, ?, ?)",
             ("user-1", "a@example.test", "A", "2026-08-28T00:00:00+00:00"),
         )
-        await connection.execute("PRAGMA user_version = 6")
+        await connection.execute(f"PRAGMA user_version = {stored_version}")
         await connection.commit()
 
     await database.initialize()
 
     async with aiosqlite.connect(database.path) as connection:
         version = await (await connection.execute("PRAGMA user_version")).fetchone()
-        rows = await (await connection.execute("SELECT id FROM users")).fetchall()
-    assert version == (7,)
-    assert rows == [("user-1",)]
+        rows = await (await connection.execute("SELECT id, username FROM users")).fetchall()
+    assert version == (8,)
+    assert rows == [("user-1", None)]
+
+    # Starting again leaves a version 8 database as it is.
+    await database.initialize()
 
 
 @pytest.mark.anyio

@@ -173,7 +173,7 @@ class SendsUser(Protocol):
     def name(self) -> str: ...
 
     @property
-    def send_user(self) -> Literal["email", "subject", "none"]: ...
+    def send_user(self) -> Literal["email", "subject", "username", "none"]: ...
 
 
 class EndUserResolver:
@@ -188,12 +188,21 @@ class EndUserResolver:
         if not self._sessions.settings.multi_user:
             from ..services.sessions import SINGLE_USER
 
-            return SINGLE_USER.email if provider.send_user == "email" else SINGLE_USER.id
+            return (
+                SINGLE_USER.id if provider.send_user == "subject" else SINGLE_USER.email
+            )
         async with self._sessions.hosted_database.connection() as connection:
-            if provider.send_user == "email":
+            if provider.send_user in ("email", "username"):
+                # username: the sign-in's login name; the email until the person
+                # signs in again after the upgrade, or when the sign-in has none.
+                column = (
+                    "COALESCE(NULLIF(username, ''), email)"
+                    if provider.send_user == "username"
+                    else "email"
+                )
                 row = await (
                     await connection.execute(
-                        "SELECT email AS value FROM users WHERE id = ?", (user_id,)
+                        f"SELECT {column} AS value FROM users WHERE id = ?", (user_id,)
                     )
                 ).fetchone()
             else:
@@ -212,6 +221,26 @@ class EndUserResolver:
         if not value:
             raise ProviderCredentialMissingError(f"{provider.name} needs a signed-in account")
         return value
+
+    async def user_details(self, user_id: str) -> dict[str, str]:
+        """The account's email and name, for providers with ``send_user_details``."""
+
+        if not self._sessions.settings.multi_user:
+            from ..services.sessions import SINGLE_USER
+
+            return {"email": SINGLE_USER.email, "name": SINGLE_USER.name}
+        async with self._sessions.hosted_database.connection() as connection:
+            row = await (
+                await connection.execute("SELECT email, name FROM users WHERE id = ?", (user_id,))
+            ).fetchone()
+        if row is None:
+            return {}
+        values = cast(Mapping[str, object], row)
+        return {
+            key: str(values[key]).strip()
+            for key in ("email", "name")
+            if values[key] is not None and str(values[key]).strip()
+        }
 
 
 __all__ = [

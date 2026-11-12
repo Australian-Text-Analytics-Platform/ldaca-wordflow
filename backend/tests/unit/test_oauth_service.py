@@ -172,7 +172,32 @@ async def test_cilogon_accepts_email_when_provider_omits_verification_claim() ->
         "email": "person@example.test",
         "name": "Person",
         "picture": None,
+        "username": None,
     }
+
+
+@pytest.mark.anyio
+async def test_oidc_passes_the_preferred_username_to_the_account() -> None:
+    """A university Keycloak's login name, such as a UniKey (issue 474)."""
+    sessions = _RecordingSessions()
+    service = _cilogon_userinfo_service(
+        {
+            "sub": "subject",
+            "email": "person@example.test",
+            "name": "Person",
+            "preferred_username": "abcd1234",
+        },
+        sessions,
+    )
+    await service.complete_cilogon(
+        code="code",
+        redirect_uri="https://app/callback",
+        code_verifier="verifier",
+    )
+    await service.close()
+
+    assert sessions.identity is not None
+    assert sessions.identity["username"] == "abcd1234"
 
 
 @pytest.mark.anyio
