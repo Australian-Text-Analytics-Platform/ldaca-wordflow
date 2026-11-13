@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildChartBlob, findSvgInContainer } from '../chartExport';
+import { buildChartBlob, CHART_PLOT_ATTRIBUTE, findSvgInContainer } from '../chartExport';
 
 const createChartSvg = () => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -76,14 +76,98 @@ describe('chartExport', () => {
     expect(context.drawImage).toHaveBeenCalled();
   });
 
-  it('finds the chart SVG while ignoring control icons', () => {
+  describe('theme colours', () => {
+    // The range slider and grid lines take their colours from the theme.
+    const createThemedSvg = () => {
+      const svg = createChartSvg();
+      svg.innerHTML = [
+        '<path id="grid" d="M0 0 L640 0" fill="none" stroke="var(--test-lines)" />',
+        '<path id="filler" d="M0 0 L640 10" fill="color-mix(in srgb, var(--test-focus) 22%, transparent)" />',
+        '<path id="plain" d="M0 0 L640 20" fill="#123456" />',
+      ].join('');
+      return svg;
+    };
+    let themeStyle: HTMLStyleElement;
+    beforeEach(() => {
+      themeStyle = document.createElement('style');
+      themeStyle.textContent =
+        '[data-theme="light-2026"] { --test-lines: #10101066; --test-focus: #004cb5; }';
+      document.head.append(themeStyle);
+    });
+    afterEach(() => {
+      themeStyle.remove();
+    });
+
+    const exportedSvg = async (svg: SVGSVGElement) => {
+      const { blob } = await buildChartBlob(svg, { format: 'svg' });
+      return new DOMParser().parseFromString(await blob.text(), 'image/svg+xml');
+    };
+
+    it('writes the light theme colours as plain rgb() values', async () => {
+      const painted: Record<string, number[]> = {
+        '#10101066': [16, 16, 16, 102],
+        'color-mix(in srgb, #004cb5 22%, transparent)': [0, 76, 181, 56],
+      };
+      let fillStyle = '';
+      const context = {
+        clearRect: vi.fn(),
+        fillRect: vi.fn(),
+        getImageData: vi.fn(() => ({ data: painted[fillStyle] ?? [0, 0, 0, 0] })),
+        set fillStyle(value: string) {
+          fillStyle = value;
+        },
+        get fillStyle() {
+          return fillStyle;
+        },
+      };
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as never);
+      const svg = createThemedSvg();
+
+      const doc = await exportedSvg(svg);
+
+      expect(doc.getElementById('grid')?.getAttribute('stroke')).toBe('rgba(16, 16, 16, 0.4)');
+      expect(doc.getElementById('filler')?.getAttribute('fill')).toBe('rgba(0, 76, 181, 0.22)');
+      expect(doc.getElementById('plain')?.getAttribute('fill')).toBe('#123456');
+      // The chart on the page keeps its theme colours.
+      expect(svg.querySelector('#grid')?.getAttribute('stroke')).toBe('var(--test-lines)');
+      expect(document.querySelector('[data-theme]')).toBeNull();
+    });
+
+    it('substitutes the theme values when no canvas is available', async () => {
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+
+      const doc = await exportedSvg(createThemedSvg());
+
+      expect(doc.getElementById('grid')?.getAttribute('stroke')).toBe('#10101066');
+      expect(doc.getElementById('filler')?.getAttribute('fill')).toBe(
+        'color-mix(in srgb, #004cb5 22%, transparent)',
+      );
+    });
+  });
+
+  it('finds the chart SVG in the plot, not a help icon before it', () => {
+    // The Trends toolbar has a Spacing help icon, a link with the button role
+    // (issue 335), before the chart.
     const container = document.createElement('div');
     const button = document.createElement('button');
     button.append(document.createElementNS('http://www.w3.org/2000/svg', 'svg'));
+    const help = document.createElement('a');
+    help.setAttribute('role', 'button');
+    help.append(document.createElementNS('http://www.w3.org/2000/svg', 'svg'));
+    const plot = document.createElement('div');
+    plot.setAttribute(CHART_PLOT_ATTRIBUTE, '');
     const chart = createChartSvg();
-    container.append(button, chart);
+    plot.append(chart);
+    container.append(button, help, plot);
 
     expect(findSvgInContainer(container)).toBe(chart);
+  });
+
+  it('finds no chart SVG when no chart is drawn', () => {
+    const container = document.createElement('div');
+    container.append(document.createElementNS('http://www.w3.org/2000/svg', 'svg'));
+
+    expect(findSvgInContainer(container)).toBeNull();
   });
 
   it('gives long legend labels their own width, wrapping rows (issue 281)', async () => {

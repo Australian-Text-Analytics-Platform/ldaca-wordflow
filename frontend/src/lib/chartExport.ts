@@ -52,6 +52,69 @@ export const toChartFilename = (
 const escSvg = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/** The theme whose colours suit the export's white background, whatever theme is in use. */
+const EXPORT_THEME = 'light-2026';
+const COLOR_ATTRIBUTES = ['fill', 'stroke', 'stop-color'];
+const THEMED_COLOR = /var\(|color-mix\(/;
+const CSS_VARIABLE = /var\((--[\w-]+)\s*(?:,\s*([^)]*))?\)/g;
+
+/**
+ * Replaces theme colours (`var(--…)` and `color-mix(…)`) in an export copy
+ * with plain `rgb()` or `rgba()` from the light theme. Outside the page the
+ * variables are undefined, so the range slider drew as a black bar and grid
+ * lines vanished. A 1×1 canvas turns each colour into numbers that any SVG
+ * viewer reads; without a canvas the variables are still substituted.
+ */
+/** Called by: `serializeChartSvg` on its clone, never on the live chart. */
+const resolveThemeColors = (clone: SVGSVGElement): void => {
+  const themed = [clone, ...Array.from(clone.querySelectorAll('*'))].flatMap((element) =>
+    COLOR_ATTRIBUTES.flatMap((name) => {
+      const value = element.getAttribute(name);
+      return value && THEMED_COLOR.test(value) ? [{ element, name, value }] : [];
+    }),
+  );
+  if (!themed.length) return;
+  const probe = document.createElement('div');
+  probe.setAttribute('data-theme', EXPORT_THEME);
+  probe.hidden = true;
+  document.body.append(probe);
+  try {
+    const style = getComputedStyle(probe);
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    const resolved = new Map<string, string>();
+    const resolve = (value: string): string => {
+      const substituted = value.replace(CSS_VARIABLE, (_match, name: string, fallback?: string) => {
+        const themeValue = style.getPropertyValue(name).trim();
+        return themeValue !== '' ? themeValue : (fallback?.trim() ?? '');
+      });
+      if (!context) return substituted;
+      context.clearRect(0, 0, 1, 1);
+      // A colour the canvas cannot read leaves this transparent, not black.
+      context.fillStyle = 'rgba(0, 0, 0, 0)';
+      context.fillStyle = substituted;
+      context.fillRect(0, 0, 1, 1);
+      const [red = 0, green = 0, blue = 0, alpha = 0] = context.getImageData(0, 0, 1, 1).data;
+      const rgb = `${String(red)}, ${String(green)}, ${String(blue)}`;
+      return alpha === 255
+        ? `rgb(${rgb})`
+        : `rgba(${rgb}, ${String(Math.round((alpha / 255) * 1000) / 1000)})`;
+    };
+    for (const { element, name, value } of themed) {
+      let color = resolved.get(value);
+      if (color === undefined) {
+        color = resolve(value);
+        resolved.set(value, color);
+      }
+      element.setAttribute(name, color);
+    }
+  } finally {
+    probe.remove();
+  }
+};
+
 /** Clones the chart SVG at its rendered size so export code does not mutate the live chart. */
 /**
  * Called by: `buildChartBlob` before SVG or bitmap composition.
@@ -76,6 +139,7 @@ const serializeChartSvg = (
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.setAttribute('width', String(Math.round(width)));
   clone.setAttribute('height', String(Math.round(height)));
+  resolveThemeColors(clone);
   return {
     svgString: new XMLSerializer().serializeToString(clone),
     width: Math.round(width),
@@ -475,9 +539,15 @@ export const downloadChartAs = async (
   await saveBlob(blob, filename);
 };
 
-/** Finds the chart SVG inside a feature panel while ignoring icon SVGs inside controls. */
-/** Used by: src/features/views/concordance/components/ConcordanceDispersionSummary.tsx, src/features/views/sequential-analysis/SequentialAnalysisFeature.tsx, src/features/views/topic-modeling/components/results/TopicModelingBubbleChartSection.tsx. */
-export const findSvgInContainer = (container: HTMLElement): SVGSVGElement | null => {
-  const svgs = container.querySelectorAll<SVGSVGElement>('svg');
-  return Array.from(svgs).find((svg) => !svg.closest('button')) ?? null;
-};
+/** Marks the element an `EChartsView` draws its chart into, so exports can find it. */
+export const CHART_PLOT_ATTRIBUTE = 'data-chart-plot';
+
+/**
+ * Finds the chart SVG drawn by `EChartsView` inside a feature panel.
+ * Why: picking the first SVG outside a `<button>` took the Trends Spacing help
+ * icon once help icons became links (issue 335), and the download was that
+ * 16 px icon with the header and legend squeezed around it.
+ */
+/** Used by: src/features/views/concordance/components/ConcordanceDispersionSummary.tsx, src/features/views/sequential-analysis/SequentialAnalysisFeature.tsx. */
+export const findSvgInContainer = (container: HTMLElement): SVGSVGElement | null =>
+  container.querySelector<SVGSVGElement>(`[${CHART_PLOT_ATTRIBUTE}] svg`);
