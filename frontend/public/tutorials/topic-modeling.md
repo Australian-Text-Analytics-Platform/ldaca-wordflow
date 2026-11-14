@@ -39,6 +39,15 @@ Block's colour in the bubble chart and topic lists.
 
 <h3 id="help-topic-modeling-options">Step 3: Configure the model</h3>
 
+**Model**, **Topic size** and, when you have a Topic Modelling server,
+**Remote GPU** are always shown. **Passages**, **Max tokens**, **Seed**,
+**Topic sampling** and **Ungrouped passages** are advanced settings: turn on
+[**Advanced**](./ui.md#help-ui-tool-mode) at the top right of the Topic Modelling
+parameters to see them. With **Advanced** off, a run uses Automatic passages,
+Max tokens **Auto**, seed 0 and no Topic sampling, and leaves Ungrouped
+passages as they are, which suits most corpora;
+what you set under **Advanced settings** is kept for when you turn it on again.
+
 <h4 id="help-topic-modeling-embedding-model">Model (embedding model)</h4>
 
 The model reads each passage and turns it into numbers, so that passages
@@ -122,10 +131,24 @@ algorithm, so abbreviations may occasionally form a short passage.
 
 <h4 id="help-topic-modeling-max-segment-tokens">Max tokens (maximum tokens per passage)</h4>
 
-Sets the maximum size of a passage in model tokens: **32**, **64**,
-**128** or **256** (the default), or up to 128 with the **Multilingual** model.
-These are the fixed lengths the model is prepared for, so every passage fits
-one exactly. A run saved with another value opens at the size below it.
+Sets the maximum size of a passage in model tokens: **Auto** (the default),
+or **32**, **64**, **128** or **256**, up to 128 with the **Multilingual**
+model. These are the fixed lengths the model is prepared for, so every passage
+fits one exactly. A run saved with another value opens at the size below it.
+
+<span id="help-topic-modeling-max-tokens-auto"></span>**Auto** chooses the size
+when the run starts. Before splitting anything, the run counts the tokens of
+every unit **Passages** keeps whole, in every text it reads (of both Data Blocks
+when there are two): the sentences for **Sentence**, the paragraphs for
+**Paragraph**, and for **Automatic** whole texts, or their paragraphs when
+nearly every text is longer than the model reads. It then takes the smallest of
+32, 64, 128 and 256 that holds at least 9 in 10 of those units whole, or the
+model's limit when none does, and splits the text once with it. Counting units
+never splits them, so the choice does not depend on the size chosen and nothing
+is split twice. The run records the size, and **Max tokens** then shows it, for
+example **Auto (64)**, as **Max topic size** shows what its Auto did. Before a
+run it may show an estimate from the first 200 texts, such as **Auto (about
+64)**. Choosing a size fixes it; choose **Auto** again to go back.
 Tokens may be complete words or parts of words, and the cap includes special tokens added by the embedding model. A
 smaller cap gives more local observations; a larger cap gives each observation
 more context. With **Automatic**, the cap is also how far short paragraphs are
@@ -137,13 +160,12 @@ Very small caps (such as 32 tokens) produce many short, fragment-like passages,
 which can make the number of topics unstable; 128–256 tokens usually gives more
 stable topics.
 
-With **Suggestions** on, Wordflow measures the first 200 documents of the first
-selected Data Block in the model's tokens: the sentences for **Sentence**, the
-paragraphs for **Paragraph**, and for **Automatic** whole texts (or their
-paragraphs, when nearly every text is longer than the model reads). When at
-least 9 in 10 of them fit whole in a smaller cap of 32, 64 or 128 tokens, a
+With **Suggestions** on and a size chosen by hand, Wordflow measures the first
+200 documents of each selected Data Block in the same way. When at least 9 in
+10 of their units fit whole in a smaller cap of 32, 64 or 128 tokens, a
 suggestion such as "Your sentences are short: 64 tokens per passage is plenty"
-offers to set it. Most passages then stay as they are, and the few longer ones
+offers to set it. Under **Auto** there is no suggestion: Auto already takes
+that size. Most passages then stay as they are, and the few longer ones
 are split into pieces of about that size. It only ever suggests a smaller cap.
 
 <h4 id="help-topic-modeling-remote-gpu">Remote GPU</h4>
@@ -267,6 +289,56 @@ skips embedding. Topic sampling is also different from Step 2's sampling
 percentage, which leaves documents out of the run: with Topic sampling no
 document is left out of the result.
 
+<h4 id="help-topic-modeling-ungrouped-passages">Ungrouped passages</h4>
+
+Grouping finds topics as dense groups of similar passages, and leaves out a
+passage that sits in a thinner area when a topic separates from its
+neighbours. On varied text that is often more than half of the passages. Most
+of them are not unlike everything: they lie between topics, or beside one.
+This setting says what happens to them once the topics are found.
+
+| Choice | What happens | Use it when |
+| --- | --- | --- |
+| **Stay Ungrouped** (the default) | A passage is in a topic only when grouping put it there. | You want each topic to hold only its clearest passages, and do not read topic sizes as shares of the corpus. |
+| **Join a topic they fit** | Each Ungrouped passage is compared with the topic it is most similar to, and joins it when it is at least as similar to that topic as the topic's own least similar passage. The rest stay Ungrouped. | Much of the corpus is Ungrouped and you want topic sizes that describe most of it. No topic becomes looser than it already was. |
+| **Always join the nearest topic** | Every Ungrouped passage joins the topic it is most similar to, however loosely. Nothing stays Ungrouped. | Not recommended for most work. Use it only when every passage must be in a topic, and read the topics knowing they include passages that are only loosely about them. |
+
+Neither choice finds different topics. The topics are found first, exactly as
+with **Stay Ungrouped**, and each topic's words stay those of the passages
+grouping put in it. Joining only adds passages to topics that already exist,
+so every passage that joins makes its topic a little less tightly about one
+thing: slightly with **Join a topic they fit**, where a passage must be as
+similar as the topic's own passages, and more with **Always join the nearest
+topic**, which takes in passages that fit no topic well. It is unlike methods
+that put every text in a group from the start, where the groups themselves
+shift to make room. Similarity is measured between a passage and the centre of
+a topic, which is the average of the passages grouping put in it. After a run,
+the line under the settings says how many Ungrouped passages joined a topic
+and how many stayed, for example *35,666 Ungrouped passages joined their most
+similar topic; 15,550 (18%) are Ungrouped*.
+
+A topic stays defined by the passages grouping put in it. Its words, its
+centre, its place on the map and the way topics merge when you lower
+**Topics** all come from those passages only, so they are the same with any
+choice here. Passages that join are counted in the topic, in its bubble and in
+**Add to Project**, and each is marked **Joined** in the topic's
+[examples](#help-topic-modeling-examples).
+
+Joining is decided once, during the run, against the topics the run found. It
+is not decided again when topics are merged with **Topics**: a passage that
+joined a topic stays with it when that topic merges into a broader one, so the
+number Ungrouped is the same at every number of topics.
+
+With **Suggestions** on, a result in which 30% or more of the documents are
+Ungrouped suggests **Join a topic they fit**, and, if that was already chosen,
+**Always join the nearest topic**.
+
+In Wordflow's own measurement, 85,727 news comments went from 58% Ungrouped to
+18% with **Join a topic they fit**, with the same 271 topics; of 26,163 news
+articles, the share with no topic at all went from 39% to 6%. Lowering **Min
+topic size** instead reduced Ungrouped far less and made several times as many
+small topics, so it is not the way to place more text in topics.
+
 <h2 id="help-topic-modeling-run">Step 4: Run the analysis</h2>
 
 Choose **Run**. The native pipeline constructs passages, embeds
@@ -314,8 +386,12 @@ resize grip, like the chart itself.
 
 <h3 id="help-topic-modeling-number-of-clusters">Topics (number of topics)</h3>
 
-The Result starts with the number of Topics the run found. Use **Number of
-topics** to merge them, down to one Topic, without running the analysis again.
+The Result starts with the number of Topics the run found, up to 100. A run
+that finds more, for example with a low Min topic size on a large corpus, opens
+with them merged into 100, so the chart stays readable, and a suggestion names
+how many the run found. Use **Number of topics** to merge them, down to one
+Topic, or to show more, up to every Topic the run found, without running the
+analysis again.
 Passages that fit no Topic are **Ungrouped**; they stay as they are and
 do not count toward the number shown. Results with zero or one real Topic
 show a fixed disabled control.
@@ -334,7 +410,7 @@ stop words, and Words per topic remain in place.
 
 A changed topic count is remembered with the result. If a lower cluster count cannot support the current Top topics per
 row, Wordflow sends one update with that value clamped to the new count.
-Running again starts from the natural count and Top 2. Export and Add to
+Running again starts from the natural count (at most 100) and Top 2. Export and Add to
 Project use the topics on screen and are unavailable while an update is
 pending.
 
@@ -350,7 +426,13 @@ like everything else, to form a group of their own.
 
 On varied text such as news, much can be Ungrouped. In the
 [informal benchmark](#help-topic-modeling-benchmark) below, about 60% of the
-text was Ungrouped, and 37% of the documents had no Topic at all.
+text was Ungrouped, and 37% of the documents had no Topic at all. That is a
+fair reason to say the topics do not describe the whole corpus: topic sizes
+then cannot be read as shares of it. To place that text in topics, use
+[Ungrouped passages](#help-topic-modeling-ungrouped-passages) under
+**Advanced**, which lets Ungrouped passages join the topic they are most
+similar to. A lower **Min topic size** is not the remedy: it places little
+more text and makes many more small topics.
 
 **The Ungrouped bubble and list entry.** Ungrouped has a bubble of its own, in
 the grey Wordflow uses for things not analysed, always in the bottom-left
@@ -399,14 +481,16 @@ search term, such as *obesity*, that term is the background of every document;
 the Topics are the many settings it appears in (sleep, school canteens, a sugar
 tax, a sports doping case).
 
-**Fewer Ungrouped documents.** How much is Ungrouped mostly comes from the
-text itself, which no setting changes, so settings make only a small
-difference. A slightly smaller **Min topic size** may group a few more
+**Fewer Ungrouped documents.** **Min topic size** and **Max topic size** are
+not the way: they decide which topics are found, and change how much is
+Ungrouped only a little. A slightly smaller Min topic size may group a few more
 documents, but makes many more, smaller Topics; in the benchmark, 37% fell to
 30% at 5, with 2,848 Topics instead of 782, and on other corpora the change
 can be about one percentage point. A larger size can put almost everything into
-one Topic. With **Suggestions** on, a result with many Ungrouped documents
-suggests trying a smaller Min topic size.
+one Topic. To place Ungrouped text in the topics already found, use
+[Ungrouped passages](#help-topic-modeling-ungrouped-passages) under
+**Advanced**. With **Suggestions** on, a result with 30% or more of its
+documents Ungrouped suggests that setting.
 
 <h3 id="help-topic-modeling-top-topics-per-row">Topics per doc (top topics per document)</h3>
 
@@ -584,7 +668,7 @@ they leave out the shown topic, a note says so, with **Clear filters**.
 ![The topic list, with two selected topics, beside the most typical examples of Topic 8](tutorials/assets/topic_modelling/topic_examples.png)
 
 - **Most typical** lists the passages closest to the centre of the topic
-  first. **Random** lists them in a random order set by the run's seed, so the
+  first. The centre is the average of the passages grouping put in the topic. **Random** lists them in a random order set by the run's seed, so the
   same run always gives the same examples.
 - **One per document** (on by default) shows only the most typical (or first
   random) passage of each document.
@@ -601,7 +685,21 @@ the topic's words in the bubble's colour, and a badge such as
 passages. Green marks the top quarter, amber the middle half and grey the
 bottom quarter. Hover over the badge for the passage's similarity to the
 topic's centre. The badge ranks passages within one topic; it is not the
-chance that the passage belongs to the topic. Runs from Wordflow 0.7.10 or
+chance that the passage belongs to the topic. For a topic merged from several,
+the centre and the rank are those of all its grouped passages together, so a
+passage's badge changes as you change **Topics**.
+
+<span id="help-topic-modeling-joined-examples"></span>With
+[Ungrouped passages](#help-topic-modeling-ungrouped-passages) set to let
+passages join, an example that joined after grouping is marked, for example
+**Joined · Top 60%**. Its rank is on the same scale as the others: where it
+falls among the passages grouping put in the topic, measured from their
+centre. Grouped passages therefore keep the badge they would have had with
+**Stay Ungrouped**. **Joined · Outside** marks a passage that is less similar
+to the centre than every grouped passage. With **Join a topic they fit** that
+is uncommon and happens in a merged topic, because the passage was admitted
+against the topic it joined, not against the broader one; with **Always join
+the nearest topic** it is common. Runs from Wordflow 0.7.10 or
 earlier list their examples without a badge; run Topic Modelling again to rank
 them.
 
@@ -688,11 +786,11 @@ available for the next run.
 | Symptom | What to try |
 | --- | --- |
 | Almost all passages are Ungrouped | Increase sampling, try another **Passages** setting, or check whether the corpus has shared themes |
+| 30% or more of the documents are Ungrouped | Under **Advanced**, set [Ungrouped passages](#help-topic-modeling-ungrouped-passages) to **Join a topic they fit** and run again |
 | Topics change substantially between runs | Increase sampling and compare runs with fixed seeds |
 | Representative words describe formatting rather than subject matter | Clean boilerplate or choose a **Passages** setting that better matches the document structure |
 | A structural unit becomes many passages | Increase Maximum tokens per passage or choose a coarser **Passages** setting |
 | Run time is very long | Reading the text takes most of a first run and depends on how much text there is, so reduce the per-Data-Block sampling percentage. A larger Max tokens and [Topic sampling](#help-topic-modeling-topic-sampling) shorten only the later grouping step |
-| Many documents are Ungrouped | Expected on varied text; see [Ungrouped](#help-topic-modeling-ungrouped). A slightly smaller Min topic size may group a few more |
 
 <h2 id="help-topic-modeling-defaults">Quick-reference defaults</h2>
 
@@ -700,10 +798,11 @@ available for the next run.
 | --- | --- |
 | Sampling | 100% per Data Block |
 | Passages | Automatic |
-| Max tokens | 256 |
+| Max tokens | Auto |
 | Topic size | 10 to Auto |
 | Seed | 0 |
 | Topic sampling | Off; suggested for very large corpora |
+| Ungrouped passages | Stay Ungrouped |
 | Topics per doc | 2, or the available Topic count when smaller |
 | Words per topic | 15 |
 

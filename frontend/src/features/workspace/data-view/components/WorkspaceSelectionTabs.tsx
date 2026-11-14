@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 
 import HelpIcon from '@/components/help/HelpIcon';
 import { MiddleFadeLabel } from '@/components/layout/sidebar/MiddleFadeLabel';
@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import type { WorkspaceSelectionTabsState } from '../hooks/useWorkspaceDataTable';
 
 type WorkspaceSelectionTabsProps = WorkspaceSelectionTabsState;
@@ -19,7 +20,8 @@ type WorkspaceSelectionTabsProps = WorkspaceSelectionTabsState;
  * Rendered by: WorkspaceDataTableFeature component.
  * Flow: reuse the shared `EditorTabs` strip (drag to reorder, close, and
  * double-click the active tab to rename its Data Block); the list at the right
- * end shows every tab alphabetically.
+ * end shows every tab alphabetically. Before it, Maximise Data Editor gives
+ * the table the whole window, and Restore layout brings the layout back.
  */
 export const WorkspaceSelectionTabs = ({
   shouldShowTabs,
@@ -29,6 +31,9 @@ export const WorkspaceSelectionTabs = ({
   onTabReorder,
   onTabRename,
 }: WorkspaceSelectionTabsProps) => {
+  const maximised = useLayoutFocusStore((state) => state.maximised === 'data-editor');
+  const maximise = useLayoutFocusStore((state) => state.maximise);
+  const restore = useLayoutFocusStore((state) => state.restore);
   if (!shouldShowTabs) {
     return null;
   }
@@ -59,6 +64,23 @@ export const WorkspaceSelectionTabs = ({
         onReorder={onTabReorder}
         onRename={onTabRename}
       />
+      <button
+        type="button"
+        aria-label={maximised ? 'Restore layout' : 'Maximise Data Editor'}
+        title={maximised ? 'Restore layout (Esc)' : 'Maximise Data Editor'}
+        data-testid="data-editor-maximise"
+        className="mb-[4px] inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-description hover:bg-list-hover hover:text-foreground focus-visible:outline-1 focus-visible:outline-focus"
+        onClick={() => {
+          if (maximised) restore();
+          else maximise('data-editor');
+        }}
+      >
+        {maximised ? (
+          <Minimize2 className="size-3.5" aria-hidden="true" />
+        ) : (
+          <Maximize2 className="size-3.5" aria-hidden="true" />
+        )}
+      </button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button

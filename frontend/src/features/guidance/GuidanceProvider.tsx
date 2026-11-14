@@ -24,6 +24,7 @@ import {
 } from './contextualHintVisitState';
 import { GuidanceContext } from './GuidanceContext';
 import { useModalLayerStore } from './modalLayerStore';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import {
   contextualHintRegistry,
   contextualHintSequences as productionContextualHintSequences,
@@ -246,10 +247,14 @@ export function GuidanceProvider({
   // After a hint closes, the next one waits for the person's next click or
   // key press, so they can first do what it showed (Chao, issue 364).
   const [awaitingAction, setAwaitingAction] = useState(false);
+  // A maximised surface hides what most hints point at; hints wait for the
+  // normal layout rather than point at nothing.
+  const layoutMaximised = useLayoutFocusStore((state) => state.maximised !== null);
   const hintSession: GuidanceSession | null =
     userId &&
     contextualHintsEnabled &&
     !settingsOpen &&
+    !layoutMaximised &&
     !awaitingAction &&
     visitState.activeView &&
     !visitState.paused &&

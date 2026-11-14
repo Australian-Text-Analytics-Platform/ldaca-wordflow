@@ -13,6 +13,74 @@ export type SequentialXAxisType = 'category' | 'number';
  * (issue 318), "elapsed" elapsed time in seconds, labelled like 7:58 (issue 324).
  */
 export type SequentialColumnType = 'datetime' | 'numeric' | 'category' | 'elapsed';
+/**
+ * What the chart's values are (Show as). Composition is each group's share of
+ * its period's rows (issue 219). The other rates divide a group's rows by the
+ * reference Data Block's words or rows in the same period and group.
+ */
+export type SequentialScale = 'count' | 'composition' | 'per-million-words' | 'percent-of-rows';
+export const SEQUENTIAL_SCALE_LABELS: Record<SequentialScale, string> = {
+  count: 'Row count',
+  composition: 'Composition (% of period)',
+  'per-million-words': 'Per million words',
+  'percent-of-rows': '% of reference rows',
+};
+/** The vertical axis title for each scale. */
+export const SEQUENTIAL_SCALE_AXIS_NAMES: Record<SequentialScale, string> = {
+  count: 'Rows',
+  composition: '% of period',
+  'per-million-words': 'Per million words',
+  'percent-of-rows': '% of reference rows',
+};
+const SCALE_FACTORS: Record<Exclude<SequentialScale, 'count' | 'composition'>, number> = {
+  // Per 100,000 words is a tenth of this; one scale is enough (Chao).
+  'per-million-words': 1_000_000,
+  'percent-of-rows': 100,
+};
+/** "Plain words" for the native tokeniser; other models keep their id. */
+const tokenizerModelLabel = (model: string | null | undefined): string =>
+  model === 'native:plain_words_en' ? 'Plain words' : (model ?? '');
+
+/** "words in 'text' (Plain words)" or "rows": what a reference's totals count. */
+const referenceMeasure = (reference: SequentialReferenceSummary, rows: boolean): string =>
+  rows || !reference.textColumn
+    ? 'rows'
+    : `words in '${reference.textColumn}' (${tokenizerModelLabel(reference.tokenizerModel)})`;
+
+/** The sentence under a chart that shows rates, naming what they divide by. */
+export interface SequentialReferenceNote {
+  /** What the rates divide by, and how the totals are grouped. */
+  divides: string;
+  /**
+   * The Group By columns the reference lacks, whose groups share a period's
+   * total: the clause to stress, then its consequence. Null when the totals
+   * are grouped like the result.
+   */
+  missing: { columns: string; effect: string } | null;
+}
+
+export function referenceNote(
+  reference: SequentialReferenceSummary,
+  rows: boolean,
+): SequentialReferenceNote {
+  const by =
+    reference.groupBy.length > 0
+      ? `period and ${reference.groupBy.map((column) => `'${column}'`).join(', ')}`
+      : 'period';
+  const missing =
+    reference.ignoredGroupBy.length > 0
+      ? {
+          columns: `${reference.ignoredGroupBy.map((column) => `'${column}'`).join(', ')} ${
+            reference.ignoredGroupBy.length === 1 ? 'is' : 'are'
+          } not in the reference`,
+          effect: ", so every group of it shares the period's total.",
+        }
+      : null;
+  return {
+    divides: `Rates divide each group's rows by the ${referenceMeasure(reference, rows)} of '${reference.nodeName}' in the same ${by}.`,
+    missing,
+  };
+}
 type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custom_interval_unit']>;
 
@@ -21,6 +89,8 @@ export const DEFAULT_MINIMUM_GROUP_COUNT = 10;
 const NUMERIC_X_KEY = '__x_numeric__';
 /** Raw count kept beside a normalised value, for the tooltip (issue 219). */
 const COUNT_KEY_PREFIX = '__count__:';
+/** The reference's words or rows a rate divides by, for the tooltip. */
+const DENOMINATOR_KEY_PREFIX = '__denominator__:';
 const CATEGORY_X_KEY = '__period_key__';
 
 const SEQUENTIAL_ANALYSIS_PALETTE = [
@@ -126,6 +196,19 @@ interface SequentialResultSummary {
   customIntervalValue: number | null;
   customIntervalUnit: SequentialCustomIntervalUnit | null;
   frequencyDisplay: string;
+  /** The reference Data Block the result was normalised against, if any. */
+  reference: SequentialReferenceSummary | null;
+}
+
+export interface SequentialReferenceSummary {
+  nodeName: string;
+  /** The text column whose words were counted, or null for rows only. */
+  textColumn: string | null;
+  tokenizerModel: string | null;
+  /** The group columns the reference shares, which split its totals. */
+  groupBy: string[];
+  /** Group columns the reference lacks: their groups share a period's total. */
+  ignoredGroupBy: string[];
 }
 
 interface SequentialChartDiagnostic {
@@ -154,6 +237,11 @@ interface SequentialCanonicalRow {
   groupIndex: number;
   groupLabel: string;
   groupValues: Record<string, SequentialGroupValue>;
+  /** The reference's rows and words for this period and shared group, when known. */
+  referenceRows: number | null;
+  referenceWords: number | null;
+  /** The shared group values a reference total belongs to, as one key. */
+  denominatorKey: string;
 }
 
 interface SequentialChartGroup {
@@ -190,8 +278,8 @@ export interface BuildSequentialChartModelInput {
   selectedPeriodIndices: Set<number>;
   /** Series name when nothing is grouped: the Data Block's name (#205 item 21). */
   ungroupedLabel?: string;
-  /** Show each group as a share of its period's rows (issue 219). */
-  normalise?: boolean;
+  /** Show as: counts, composition, or a rate against the reference Data Block. */
+  scale?: SequentialScale;
 }
 
 export interface SequentialChartModel {
@@ -211,11 +299,12 @@ export interface SequentialChartModel {
     valueFormatter: (seriesKey: string, row: Record<string, unknown>) => string;
   };
   /**
-   * Normalise to 100% (issue 219): offered when at least two groups meet the
-   * minimum group count; `normalised` is whether the chart shows percentages.
+   * The scale the chart shows, and those it can show: composition needs two
+   * groups that meet the minimum group count (issue 219), the rates a
+   * reference Data Block with words or rows.
    */
-  canNormalise: boolean;
-  normalised: boolean;
+  scale: SequentialScale;
+  availableScales: SequentialScale[];
   /** Rows counted in one group and period, also when the chart shows percentages (issue 269). */
   overviewValue: (row: Record<string, unknown>, seriesKey: string) => number;
   groups: SequentialChartGroup[];
@@ -238,10 +327,27 @@ export interface SequentialChartModel {
   counts: SequentialVisibilityCounts;
 }
 
+function buildReferenceSummary(
+  results: SequentialAnalysisResponse | null | undefined,
+): SequentialReferenceSummary | null {
+  // Tests and older results may lack a source.
+  const source: SequentialAnalysisResponse['source'] | undefined = results?.source;
+  const reference = source?.reference;
+  if (!reference) return null;
+  return {
+    nodeName: reference.node_name,
+    textColumn: reference.text_column ?? null,
+    tokenizerModel: reference.tokenizer_model ?? null,
+    groupBy: reference.group_by_columns,
+    ignoredGroupBy: reference.ignored_group_by_columns,
+  };
+}
+
 function buildSummary(
   parameters: SequentialChartParameters | null | undefined,
   fallbacks: SequentialResultSummaryFallbacks,
   diagnostics: SequentialChartDiagnostic[],
+  reference: SequentialReferenceSummary | null,
 ): SequentialResultSummary {
   const timeColumn = parameters?.time_column ?? fallbacks.timeColumn;
   let groupBy = fallbacks.groupBy;
@@ -309,7 +415,18 @@ function buildSummary(
     customIntervalValue,
     customIntervalUnit,
     frequencyDisplay,
+    reference,
   };
+}
+
+/**
+ * A finite non-negative number, or null when absent (no reference total).
+ * The reference totals are Int64 columns, which the Arrow decoder hands over
+ * as digit strings; the hit count is UInt32 and arrives as a number.
+ */
+function optionalCount(value: unknown): number | null {
+  const count = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
+  return typeof count === 'number' && Number.isFinite(count) && count >= 0 ? count : null;
 }
 
 function isPeriodBoundary(value: unknown): value is string | number {
@@ -479,6 +596,7 @@ function normalizeRows(
     const timePeriod = isPeriodBoundary(row.time_period_formatted)
       ? row.time_period_formatted
       : rawTimePeriod;
+    const denominatorGroupBy = summary.reference?.groupBy ?? [];
     rows.push({
       periodIndex: Number(row.period_index),
       periodKey: String(row.period_index),
@@ -491,6 +609,11 @@ function normalizeRows(
       groupIndex: group.index,
       groupLabel: group.label,
       groupValues: group.values,
+      referenceRows: optionalCount(row.reference_rows),
+      referenceWords: optionalCount(row.reference_words),
+      denominatorKey: JSON.stringify(
+        denominatorGroupBy.map((column) => group.values[column] ?? null),
+      ),
     });
   });
   return rows.sort((left, right) => {
@@ -523,10 +646,10 @@ export function buildSequentialChartModel({
   excludedGroupIndices,
   selectedPeriodIndices,
   ungroupedLabel,
-  normalise = false,
+  scale: requestedScale = 'count',
 }: BuildSequentialChartModelInput): SequentialChartModel {
   const diagnostics: SequentialChartDiagnostic[] = [];
-  const summary = buildSummary(parameters, fallbacks, diagnostics);
+  const summary = buildSummary(parameters, fallbacks, diagnostics, buildReferenceSummary(results));
   // Categories have no distance between them, so they are always evenly spaced (issue 318).
   const xAxisType: SequentialXAxisType =
     summary.columnType === 'category' ? 'category' : requestedXAxisType;
@@ -656,12 +779,19 @@ export function buildSequentialChartModel({
       if (row[group.id] === undefined) row[group.id] = 0;
     });
   });
-  // Normalise to 100% (issue 219, as v0.8): a period's total adds up every
-  // group that meets the minimum group count, hidden ones included, so hiding
-  // a group never changes a percentage. A period with no rows has none.
-  const canNormalise = filterEligibleGroupBases.length >= 2;
-  const normalised = normalise && canNormalise;
-  if (normalised) {
+  // Composition (issue 219, as v0.8): a period's total adds up every group
+  // that meets the minimum group count, hidden ones included, so hiding a
+  // group never changes a percentage. A period with no rows has none.
+  const availableScales: SequentialScale[] = ['count'];
+  if (filterEligibleGroupBases.length >= 2) availableScales.push('composition');
+  if (summary.reference?.textColumn) {
+    availableScales.push('per-million-words');
+  }
+  if (summary.reference) availableScales.push('percent-of-rows');
+  const scale: SequentialScale = availableScales.includes(requestedScale)
+    ? requestedScale
+    : 'count';
+  if (scale === 'composition') {
     const periodTotals = new Map<string, number>();
     canonicalRows.forEach((row) => {
       const displayId = displayIdByExactId.get(row.groupId) ?? row.groupId;
@@ -675,6 +805,49 @@ export function buildSequentialChartModel({
         if (typeof count !== 'number') return;
         row[`${COUNT_KEY_PREFIX}${group.id}`] = count;
         row[group.id] = total > 0 ? (count / total) * 100 : null;
+      });
+    });
+  } else if (scale !== 'count') {
+    // A rate divides a group's rows by the reference's words or rows in the
+    // same period and shared group. Groups merged by Ignore capitals, and
+    // groups of a column the reference lacks, can share one reference total,
+    // which counts once; a group without a total has no rate.
+    interface Denominator {
+      keys: Set<string>;
+      total: number;
+      missing: boolean;
+    }
+    const denominators = new Map<string, Map<string, Denominator>>();
+    canonicalRows.forEach((row) => {
+      const displayId = displayIdByExactId.get(row.groupId) ?? row.groupId;
+      const perPeriod = denominators.get(row.periodKey) ?? new Map<string, Denominator>();
+      const entry: Denominator = perPeriod.get(displayId) ?? {
+        keys: new Set<string>(),
+        total: 0,
+        missing: false,
+      };
+      if (!entry.keys.has(row.denominatorKey)) {
+        entry.keys.add(row.denominatorKey);
+        const value = scale === 'percent-of-rows' ? row.referenceRows : row.referenceWords;
+        if (value === null) entry.missing = true;
+        else entry.total += value;
+      }
+      perPeriod.set(displayId, entry);
+      denominators.set(row.periodKey, perPeriod);
+    });
+    chartData.forEach((row) => {
+      const perPeriod = denominators.get(String(row[CATEGORY_X_KEY]));
+      filterEligibleGroupBases.forEach((group) => {
+        const count = row[group.id];
+        if (typeof count !== 'number') return;
+        const entry = perPeriod?.get(group.id);
+        const denominator = entry && !entry.missing && entry.keys.size > 0 ? entry.total : null;
+        row[`${COUNT_KEY_PREFIX}${group.id}`] = count;
+        row[`${DENOMINATOR_KEY_PREFIX}${group.id}`] = denominator;
+        row[group.id] =
+          denominator !== null && denominator > 0
+            ? (count / denominator) * SCALE_FACTORS[scale]
+            : null;
       });
     });
   }
@@ -846,24 +1019,36 @@ export function buildSequentialChartModel({
           ? (value) => formatSequentialAxisTick(value, summary.columnType, formatInstant)
           : (value) => String(categoryLabelFor(value)),
       valueFormatter: (seriesKey, row) => {
-        if (!normalised) {
+        if (scale === 'count') {
           const count = row[seriesKey];
           return typeof count === 'number' ? count.toLocaleString() : '—';
         }
         const count = row[`${COUNT_KEY_PREFIX}${seriesKey}`];
-        const share = row[seriesKey];
+        const value = row[seriesKey];
         const countText = typeof count === 'number' ? count.toLocaleString() : '—';
-        return typeof share === 'number'
-          ? `${countText} (${share.toFixed(1)}%)`
-          : `${countText} (no rows in this period)`;
+        if (scale === 'composition') {
+          return typeof value === 'number'
+            ? `${countText} (${value.toFixed(1)}%)`
+            : `${countText} (no rows in this period)`;
+        }
+        const denominator = row[`${DENOMINATOR_KEY_PREFIX}${seriesKey}`];
+        const unit = scale === 'percent-of-rows' ? 'rows' : 'words';
+        if (typeof value !== 'number' || typeof denominator !== 'number') {
+          return `${countText} (no reference ${unit} in this period)`;
+        }
+        const rate = value.toFixed(1);
+        const of = `of ${denominator.toLocaleString()} ${unit}`;
+        return scale === 'percent-of-rows'
+          ? `${countText} (${rate}% ${of})`
+          : `${countText} (${rate} per million ${of})`;
       },
     },
-    canNormalise,
+    availableScales,
     overviewValue: (row, seriesKey) => {
-      const count = row[normalised ? `${COUNT_KEY_PREFIX}${seriesKey}` : seriesKey];
+      const count = row[scale === 'count' ? seriesKey : `${COUNT_KEY_PREFIX}${seriesKey}`];
       return typeof count === 'number' ? count : 0;
     },
-    normalised,
+    scale,
     groups,
     groupFilter: {
       minimumCount: normalizedMinimumGroupCount,

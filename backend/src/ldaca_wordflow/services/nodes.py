@@ -53,7 +53,7 @@ from .node_casting import check_cast
 from .node_operations import conversion_options
 from .column_examples import column_examples
 from .corpus_overview import corpus_overview
-from .topic_segment_lengths import topic_segment_lengths
+from ..analysis.topic_segment_lengths import topic_segment_lengths
 from .annotation_progress import apply_annotation_progress, is_annotation_progress_node
 from .category_order import (
     MAX_CATEGORY_VALUES,

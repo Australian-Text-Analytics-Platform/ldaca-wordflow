@@ -59,7 +59,8 @@ providers:
 | `models` | no | Offer and accept only these models, in this order. Without it, every model the endpoint lists is offered, in alphabetical order. |
 | `default_model` | no | The model new tabs start on. Must be in `models` when that is set. |
 | `model_descriptions` | no | Model id to one line of text (at most 200 characters). Wins over the gateway's own description. |
-| `send_user` | no | What goes in the OpenAI `user` field: `email` (default), `subject` (the sign-in's stable id) or `none`. LiteLLM uses it to track spend per person. |
+| `send_user` | no | What goes in the OpenAI `user` field: `email` (default), `subject` (the sign-in's stable id), `username` (the sign-in's `preferred_username`, such as a university login; see below) or `none`. LiteLLM uses it to track spend per person. |
+| `send_user_details` | no | `true` also labels each request with `{"app": "wordflow", "email": …, "name": …}` in LiteLLM's `x-litellm-spend-logs-metadata` header, so a gateway that tracks spend by login name still knows each person's email and name (for invoices). Default `false`. |
 | `max_requests_per_user` | no | Requests at once per person (1 to 32). Empty means the Run's own **Requests at once** setting. |
 
 A file with several providers lists them in that order. A wrong file, an
@@ -101,11 +102,38 @@ change within 5 minutes.
   with that provider says the server doesn't offer it, and the person chooses
   another.
 
+## One person, one id: `send_user: username`
+
+Emails are a poor id for billing when one person has several (a university
+may give staff `first.last@` and `login@` addresses). With `send_user:
+username`, the `user` field carries the sign-in's `preferred_username`: on a
+university Keycloak, the login name such as a UniKey. OIDC sign-ins need the
+`profile` scope for it (`OIDC_SCOPES`, for example
+`["openid","email","profile"]`); Google sign-in has none.
+
+- Wordflow keeps it with the account (`users.username`, lowercased), updated at
+  each sign-in; a sign-in without one keeps the stored value.
+- Until a person signs in again after the upgrade, or if the sign-in never
+  provides one, the email is sent instead. A gateway that merges ids per person
+  should map those emails to login names.
+- Pair it with `send_user_details: true` to keep the email and name with every
+  request.
+
+Database schema 8 (after 0.7.20) adds the `users.username` column; a version 7
+database is upgraded in place at start-up. To go back to an earlier release,
+remove the column first, with the server stopped:
+
+```bash
+sqlite3 "$DATA_ROOT/deployment.sqlite3" \
+  'ALTER TABLE users DROP COLUMN username; PRAGMA user_version = 7;'
+```
+
 ## Requests sent to the endpoint
 
 An ordinary chat completion with `model`, `messages`, `temperature`,
-`max_completion_tokens` and, if `send_user` isn't `none`, `user`. It also asks
-for:
+`max_completion_tokens` and, if `send_user` isn't `none`, `user`; with
+`send_user_details`, also the `x-litellm-spend-logs-metadata` header. It also
+asks for:
 
 - `response_format` `json_schema` (strict): exactly one label per text, each a
   code or null (#406);
@@ -141,7 +169,7 @@ embedding_endpoints:
 | `slug`, `name`, `base_url`, `api_key_env` | As for `providers`. The key must be set at start-up and never leaves the server. |
 | `endpoint_id` | Optional fixed id, so saved Topic Modelling runs keep pointing here. |
 | `models` | Each Topic Modelling model the endpoint serves, with its name there. Leave a model out if it isn't served. |
-| `send_user` | `email`, `subject` or `none`: the OpenAI `user` field, from the signed-in account. |
+| `send_user` | `email`, `subject`, `username` or `none`: the OpenAI `user` field, from the signed-in account. |
 | `batch_size`, `concurrency` | Optional: texts per request (default 128) and requests in flight (default 4). |
 | `default` | Ticks **Remote GPU** in new Topic Modelling tabs. |
 

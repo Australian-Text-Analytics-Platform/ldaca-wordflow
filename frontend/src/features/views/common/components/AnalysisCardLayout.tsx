@@ -19,6 +19,8 @@ interface AnalysisCardLayoutProps {
   title: React.ReactNode;
   info?: HelpConfig<'info'>;
   help?: HelpConfig<'tutorial'>;
+  /** Sits at the right end of the header, such as the Advanced switch; never locked. */
+  headerAction?: React.ReactNode;
   tone?: 'default' | 'error';
   actions?: {
     onPreview?: () => void | Promise<void>;
@@ -61,6 +63,7 @@ export function AnalysisCardLayout({
   title,
   info,
   help,
+  headerAction,
   tone = 'default',
   actions,
   children,
@@ -105,7 +108,7 @@ export function AnalysisCardLayout({
   return (
     <Card ref={cardRef} className={cardToneClassName}>
       <CardHeader className="space-y-0 pb-4">
-        <div className="flex items-start">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <CardTitle data-guidance={titleGuidanceTarget} className="flex items-center gap-2">
             {title}
             {info ? (
@@ -115,6 +118,7 @@ export function AnalysisCardLayout({
               <HelpIcon targetKey={help.targetKey} label={help.label} tooltip={help.tooltip} />
             ) : null}
           </CardTitle>
+          {headerAction}
         </div>
       </CardHeader>
 

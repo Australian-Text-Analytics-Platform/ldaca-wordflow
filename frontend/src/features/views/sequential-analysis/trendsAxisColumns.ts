@@ -34,6 +34,18 @@ export const isTrendsAxisField = (field: ArrowField): boolean =>
   // A category column: one bar per value, in its order (issue 318).
   isArrowDictionaryField(field);
 
+/** The kind of axis a column gives Trends, or null when it cannot be one. */
+export const trendsAxisKind = (field: ArrowField): SequentialColumnType | null =>
+  isTrendsDateField(field)
+    ? 'datetime'
+    : isArrowDurationField(field)
+      ? 'elapsed'
+      : isArrowIntegerField(field) || isArrowFloatField(field)
+        ? 'numeric'
+        : isArrowDictionaryField(field)
+          ? 'category'
+          : null;
+
 /**
  * Default-choice rank for the axis picker: dates and elapsed times (a transcript's start time
  * before its line number, issue 324), then numbers, then categories (issue 318).

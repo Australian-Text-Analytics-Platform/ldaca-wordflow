@@ -4,6 +4,7 @@ import {
   buildSequentialChartModel,
   type BuildSequentialChartModelInput,
   type SequentialResultSummaryFallbacks,
+  referenceNote,
 } from '../sequentialChartModel';
 
 const fallbacks: SequentialResultSummaryFallbacks = {
@@ -27,7 +28,9 @@ const build = (
     fallbacks?: SequentialResultSummaryFallbacks;
   } = {},
 ) => {
-  const { analysis_params: parameters = null, ...output } = results ?? { data: [] };
+  const { analysis_params: parameters = null, ...output } = results ?? {
+    data: [],
+  };
   const groupBy = parameters?.group_by_columns ?? overrides.fallbacks?.groupBy ?? fallbacks.groupBy;
   const periodValues = Array.from(
     new Map(output.data.map((row) => [JSON.stringify(row.time_period), row.time_period])).entries(),
@@ -73,7 +76,7 @@ const build = (
     excludedGroupIndices: overrides.excludedGroupIndices ?? new Set(),
     selectedPeriodIndices: overrides.selectedPeriodIndices ?? new Set(),
     ungroupedLabel: overrides.ungroupedLabel,
-    normalise: overrides.normalise,
+    scale: overrides.scale,
   });
 };
 
@@ -184,7 +187,10 @@ describe('buildSequentialChartModel', () => {
             sequential_count: 5,
           },
         ],
-        analysis_params: { column_type: 'numeric', group_by_columns: ['group'] },
+        analysis_params: {
+          column_type: 'numeric',
+          group_by_columns: ['group'],
+        },
       },
       { xAxisType: 'number' },
     );
@@ -236,7 +242,10 @@ describe('buildSequentialChartModel', () => {
     const formatter = model.xAxis.axisLabel?.formatter;
     expect(typeof formatter).toBe('function');
     // The first and last periods always keep their labels (issue 185).
-    expect(model.xAxis.axisLabel).toMatchObject({ showMinLabel: true, showMaxLabel: true });
+    expect(model.xAxis.axisLabel).toMatchObject({
+      showMinLabel: true,
+      showMaxLabel: true,
+    });
     expect(
       categoryValues.map((value) =>
         typeof formatter === 'function' ? formatter(value as never, 0) : value,
@@ -319,7 +328,10 @@ describe('buildSequentialChartModel', () => {
     });
     const reservedModel = build({
       data: [reservedRow],
-      analysis_params: { column_type: 'datetime', group_by_columns: ['__proto__'] },
+      analysis_params: {
+        column_type: 'datetime',
+        group_by_columns: ['__proto__'],
+      },
     });
 
     expect(tupleModel.groups.map((group) => group.label)).toEqual(['a - b - c', 'a - b - c']);
@@ -382,7 +394,10 @@ describe('buildSequentialChartModel', () => {
     ];
     const params = { column_type: 'datetime', group_by_columns: ['group'] };
     const forward = build({ data: rows, analysis_params: params });
-    const reversed = build({ data: [...rows].reverse(), analysis_params: params });
+    const reversed = build({
+      data: [...rows].reverse(),
+      analysis_params: params,
+    });
 
     expect(forward.groups).toEqual(reversed.groups);
     expect(forward.series).toEqual(reversed.series);
@@ -434,7 +449,10 @@ describe('buildSequentialChartModel', () => {
           sequential_count: 6,
         },
       ],
-      analysis_params: { column_type: 'datetime' as const, group_by_columns: ['group'] },
+      analysis_params: {
+        column_type: 'datetime' as const,
+        group_by_columns: ['group'],
+      },
     };
     const unfiltered = build(result);
     const cIndex = unfiltered.groups.find((group) => group.label === 'C')?.memberGroupIndices[0];
@@ -494,7 +512,10 @@ describe('buildSequentialChartModel', () => {
           sequential_count: 6,
         },
       ],
-      analysis_params: { column_type: 'datetime' as const, group_by_columns: ['group'] },
+      analysis_params: {
+        column_type: 'datetime' as const,
+        group_by_columns: ['group'],
+      },
     };
     const exact = build(grouped, { minimumGroupCount: 10 });
     const uncased = build(grouped, { minimumGroupCount: 10, uncased: true });
@@ -519,7 +540,7 @@ describe('buildSequentialChartModel', () => {
     expect(ungrouped.excludedGroupIndices).toEqual([]);
   });
 
-  describe('Normalise to 100% (issue 219)', () => {
+  describe('Composition, formerly Normalise to 100% (issue 219)', () => {
     const row = (period: string, group: string, count: number) => ({
       time_period: period,
       period_start: `${period}-01`,
@@ -536,18 +557,24 @@ describe('buildSequentialChartModel', () => {
         row('2024-02', 'B', 2),
         row('2024-03', 'C', 1),
       ],
-      analysis_params: { column_type: 'datetime' as const, group_by_columns: ['group'] },
+      analysis_params: {
+        column_type: 'datetime' as const,
+        group_by_columns: ['group'],
+      },
     };
     const groupId = (model: ReturnType<typeof build>, label: string) =>
       model.groups.find((group) => group.label === label)?.id ?? '';
 
     it('shows each group as a share of the groups that meet the minimum group count', () => {
-      const model = build(results, { minimumGroupCount: 2, normalise: true });
+      const model = build(results, {
+        minimumGroupCount: 2,
+        scale: 'composition',
+      });
       const a = groupId(model, 'A');
       const b = groupId(model, 'B');
 
-      expect(model.canNormalise).toBe(true);
-      expect(model.normalised).toBe(true);
+      expect(model.availableScales).toEqual(['count', 'composition']);
+      expect(model.scale).toBe('composition');
       expect(model.chartData.map((period) => [period[a], period[b]])).toEqual([
         [75, 25],
         [50, 50],
@@ -561,11 +588,14 @@ describe('buildSequentialChartModel', () => {
     });
 
     it('keeps every percentage when a group is hidden, in the chart and the legend', () => {
-      const shown = build(results, { minimumGroupCount: 2, normalise: true });
+      const shown = build(results, {
+        minimumGroupCount: 2,
+        scale: 'composition',
+      });
       const bIndex = shown.groups.find((group) => group.label === 'B')?.memberGroupIndices[0];
       const hidden = build(results, {
         minimumGroupCount: 2,
-        normalise: true,
+        scale: 'composition',
         excludedGroupIndices: new Set([bIndex ?? -1]),
       });
       const a = groupId(hidden, 'A');
@@ -584,20 +614,197 @@ describe('buildSequentialChartModel', () => {
 
     it('shows counts when off, and offers the toggle only with two groups that meet the minimum', () => {
       const off = build(results, { minimumGroupCount: 2 });
-      expect(off.normalised).toBe(false);
+      expect(off.scale).toBe('count');
       expect(off.chartData[0]?.[groupId(off, 'A')]).toBe(3);
       expect(off.tooltip.valueFormatter(groupId(off, 'A'), off.chartData[0] ?? {})).toBe('3');
 
-      const oneGroup = build(results, { minimumGroupCount: 5, normalise: true });
-      expect(oneGroup.canNormalise).toBe(false);
-      expect(oneGroup.normalised).toBe(false);
+      const oneGroup = build(results, {
+        minimumGroupCount: 5,
+        scale: 'composition',
+      });
+      expect(oneGroup.availableScales).toEqual(['count']);
+      expect(oneGroup.scale).toBe('count');
       expect(oneGroup.chartData[0]?.[groupId(oneGroup, 'A')]).toBe(3);
 
       const ungrouped = build(
-        { data: [row('2024-01', 'A', 3)], analysis_params: { column_type: 'datetime' } },
-        { normalise: true },
+        {
+          data: [row('2024-01', 'A', 3)],
+          analysis_params: { column_type: 'datetime' },
+        },
+        { scale: 'composition' },
       );
-      expect(ungrouped.canNormalise).toBe(false);
+      expect(ungrouped.availableScales).toEqual(['count']);
+    });
+  });
+
+  describe('rates against a reference Data Block', () => {
+    // Hits per year and gender for two terms; the corpus has the gender
+    // column but not the term, so both terms share a gender's totals.
+    const cell = (
+      period: number,
+      gender: string,
+      term: string,
+      count: number,
+      reference: { rows: number | null; words: number | null },
+    ) => ({
+      time_period: period,
+      period_start: period,
+      period_end: period + 1,
+      gender,
+      term,
+      sequential_count: count,
+      reference_rows: reference.rows,
+      reference_words: reference.words,
+    });
+    const results = {
+      data: [
+        cell(2020, 'f', 'jobs', 2, { rows: 1, words: 10 }),
+        cell(2020, 'f', 'work', 0, { rows: 1, words: 10 }),
+        cell(2020, 'm', 'jobs', 1, { rows: 1, words: 20 }),
+        cell(2020, 'm', 'work', 0, { rows: 1, words: 20 }),
+        cell(2021, 'f', 'jobs', 0, { rows: 2, words: 70 }),
+        cell(2021, 'f', 'work', 7, { rows: 2, words: 70 }),
+        cell(2021, 'm', 'jobs', 0, { rows: null, words: null }),
+        cell(2021, 'm', 'work', 0, { rows: null, words: null }),
+      ],
+      source: {
+        node_id: 'matches',
+        node_name: 'Matches',
+        columns: ['year', 'gender', 'term'],
+        period_count: 2,
+        group_count: 4,
+        reference: {
+          node_id: 'corpus',
+          node_name: 'Corpus',
+          text_column: 'text',
+          tokenizer_model: 'native:plain_words_en',
+          group_by_columns: ['gender'],
+          ignored_group_by_columns: ['term'],
+        },
+      },
+      analysis_params: {
+        column_type: 'numeric' as const,
+        numeric_interval: 1,
+        group_by_columns: ['gender', 'term'],
+      },
+    };
+    const groupId = (model: ReturnType<typeof build>, label: string) =>
+      model.groups.find((group) => group.label === label)?.id ?? '';
+
+    it('notes what the rates divide by, and the Group By columns the reference lacks', () => {
+      const model = build(results, { scale: 'per-million-words' });
+      expect(model.summary.reference && referenceNote(model.summary.reference, false)).toEqual({
+        divides:
+          "Rates divide each group's rows by the words in 'text' (Plain words) of 'Corpus' in the same period and 'gender'.",
+        missing: {
+          columns: "'term' is not in the reference",
+          effect: ", so every group of it shares the period's total.",
+        },
+      });
+      const grouped = build(
+        {
+          ...results,
+          source: {
+            ...results.source,
+            reference: { ...results.source.reference, ignored_group_by_columns: [] },
+          },
+        },
+        { scale: 'percent-of-rows' },
+      );
+      expect(grouped.summary.reference && referenceNote(grouped.summary.reference, true)).toEqual({
+        divides:
+          "Rates divide each group's rows by the rows of 'Corpus' in the same period and 'gender'.",
+        missing: null,
+      });
+    });
+
+    it('reads reference totals the Arrow decoder hands over as Int64 digit strings', () => {
+      const decoded = {
+        ...results,
+        data: results.data.map((row) => ({
+          ...row,
+          reference_rows: row.reference_rows === null ? null : String(row.reference_rows),
+          reference_words: row.reference_words === null ? null : String(row.reference_words),
+        })),
+      };
+      const model = build(decoded, { scale: 'per-million-words' });
+      const fJobs = groupId(model, 'f - jobs');
+      expect(model.chartData[0]?.[fJobs]).toBe(200_000);
+      expect(model.tooltip.valueFormatter(fJobs, model.chartData[0] ?? {})).toBe(
+        '2 (200000.0 per million of 10 words)',
+      );
+    });
+
+    it('offers every scale and divides by the reference words of the same period and group', () => {
+      const model = build(results, { scale: 'per-million-words' });
+      expect(model.availableScales).toEqual([
+        'count',
+        'composition',
+        'per-million-words',
+        'percent-of-rows',
+      ]);
+      expect(model.scale).toBe('per-million-words');
+      expect(model.summary.reference).toEqual({
+        nodeName: 'Corpus',
+        textColumn: 'text',
+        tokenizerModel: 'native:plain_words_en',
+        groupBy: ['gender'],
+        ignoredGroupBy: ['term'],
+      });
+      const fJobs = groupId(model, 'f - jobs');
+      const mJobs = groupId(model, 'm - jobs');
+      const fWork = groupId(model, 'f - work');
+      expect(model.chartData.map((row) => [row[fJobs], row[mJobs], row[fWork]])).toEqual([
+        [200_000, 50_000, 0],
+        // No men in 2021: no rate rather than zero.
+        [0, null, 100_000],
+      ]);
+      expect(model.tooltip.valueFormatter(fJobs, model.chartData[0] ?? {})).toBe(
+        '2 (200000.0 per million of 10 words)',
+      );
+      expect(model.tooltip.valueFormatter(mJobs, model.chartData[1] ?? {})).toBe(
+        '0 (no reference words in this period)',
+      );
+      // The overview slider keeps counts.
+      expect(model.overviewValue(model.chartData[0] ?? {}, fJobs)).toBe(2);
+    });
+
+    it('scales as a share of the reference rows', () => {
+      const share = build(results, { scale: 'percent-of-rows' });
+      const fWork = groupId(share, 'f - work');
+      expect(share.chartData[1]?.[fWork]).toBe(350);
+      expect(share.tooltip.valueFormatter(fWork, share.chartData[1] ?? {})).toBe(
+        '7 (350.0% of 2 rows)',
+      );
+    });
+
+    it('counts a shared reference total once when Ignore capitals merges groups', () => {
+      const merged = build(
+        {
+          ...results,
+          data: [
+            cell(2020, 'f', 'jobs', 2, { rows: 1, words: 10 }),
+            cell(2020, 'f', 'Jobs', 1, { rows: 1, words: 10 }),
+          ],
+        },
+        { scale: 'per-million-words', uncased: true },
+      );
+      const jobs = groupId(merged, 'f - jobs/f - Jobs');
+      expect(merged.groups.map((group) => group.label)).toEqual(['f - jobs/f - Jobs']);
+      expect(merged.chartData[0]?.[jobs]).toBe(300_000);
+    });
+
+    it('falls back to counts when the result has no reference', () => {
+      const model = build(
+        {
+          data: [cell(2020, 'f', 'jobs', 2, { rows: null, words: null })],
+          analysis_params: results.analysis_params,
+        },
+        { scale: 'per-million-words' },
+      );
+      expect(model.availableScales).toEqual(['count']);
+      expect(model.scale).toBe('count');
+      expect(model.chartData[0]?.[groupId(model, 'f - jobs')]).toBe(2);
     });
   });
 
@@ -654,7 +861,10 @@ describe('buildSequentialChartModel', () => {
             sequential_count: 4,
           },
         ],
-        analysis_params: { column_type: 'datetime', group_by_columns: ['group'] },
+        analysis_params: {
+          column_type: 'datetime',
+          group_by_columns: ['group'],
+        },
       },
       {
         excludedGroupIndices: new Set(hiddenIndex === undefined ? [] : [hiddenIndex]),
@@ -716,7 +926,10 @@ describe('buildSequentialChartModel', () => {
       },
     };
     const exact = build(result);
-    const uncased = build(result, { uncased: true, selectedPeriodIndices: new Set([0]) });
+    const uncased = build(result, {
+      uncased: true,
+      selectedPeriodIndices: new Set([0]),
+    });
 
     expect(exact.groups).toHaveLength(2);
     expect(uncased.supportsUncased).toBe(true);
@@ -767,7 +980,10 @@ describe('buildSequentialChartModel', () => {
             sequential_count: 4,
           },
         ],
-        analysis_params: { column_type: 'numeric', group_by_columns: ['group'] },
+        analysis_params: {
+          column_type: 'numeric',
+          group_by_columns: ['group'],
+        },
       },
       { uncased: true },
     );
@@ -795,7 +1011,9 @@ describe('buildSequentialChartModel', () => {
       analysis_params: { column_type: 'numeric' },
     };
 
-    const stale = build(result, { selectedPeriodIndices: new Set([9]) }).selection;
+    const stale = build(result, {
+      selectedPeriodIndices: new Set([9]),
+    }).selection;
     expect(stale.selectedIndices).toEqual(new Set());
     expect(stale.hasInvalidSelection).toBe(true);
   });
@@ -886,7 +1104,14 @@ describe('buildSequentialChartModel', () => {
   it('uses the declared domain for category tooltips and each chart legend type', () => {
     const numeric = build(
       {
-        data: [{ time_period: 0, period_start: -1, period_end: 1, sequential_count: 1 }],
+        data: [
+          {
+            time_period: 0,
+            period_start: -1,
+            period_end: 1,
+            sequential_count: 1,
+          },
+        ],
         analysis_params: { column_type: 'numeric' },
       },
       { xAxisType: 'category' },
@@ -948,7 +1173,10 @@ describe('buildSequentialChartModel', () => {
             sequential_count: 2,
           },
         ],
-        analysis_params: { column_type: 'datetime', group_by_columns: ['group'] },
+        analysis_params: {
+          column_type: 'datetime',
+          group_by_columns: ['group'],
+        },
       };
       const base = build(result, { chartType });
       const hiddenIndex = base.groups[0]?.memberGroupIndices[0];
@@ -969,13 +1197,27 @@ describe('buildSequentialChartModel', () => {
   it('formats early datetime epochs as dates while numeric category zero stays numeric', () => {
     const datetime = build(
       {
-        data: [{ time_period: 0, period_start: 0, period_end: 1000, sequential_count: 1 }],
+        data: [
+          {
+            time_period: 0,
+            period_start: 0,
+            period_end: 1000,
+            sequential_count: 1,
+          },
+        ],
         analysis_params: { column_type: 'datetime' },
       },
       { xAxisType: 'number' },
     );
     const numeric = build({
-      data: [{ time_period: 0, period_start: -1, period_end: 1, sequential_count: 1 }],
+      data: [
+        {
+          time_period: 0,
+          period_start: -1,
+          period_end: 1,
+          sequential_count: 1,
+        },
+      ],
       analysis_params: { column_type: 'numeric' },
     });
 
@@ -1058,7 +1300,10 @@ describe('buildSequentialChartModel', () => {
         sequential_count: 5,
       },
     ];
-    const params = { column_type: 'datetime' as const, frequency: 'daily' as const };
+    const params = {
+      column_type: 'datetime' as const,
+      frequency: 'daily' as const,
+    };
     const even = build({ data: rows, analysis_params: params });
     const evenFormatter = even.xAxis.axisLabel?.formatter;
     const evenLabels = even.axisData.map((row) =>

@@ -74,6 +74,7 @@ def analysis_process(
             max_segment_tokens=invocation.max_segment_tokens,
             sample_fractions=invocation.sample_fractions,
             cluster_sample_size=invocation.cluster_sample_size,
+            ungrouped_passages=invocation.ungrouped_passages,
             embedding_model=invocation.embedding_model,
             remote_embedding=invocation.remote_embedding,
             progress_callback=progress,
@@ -86,6 +87,7 @@ def analysis_process(
             node_id=invocation.node_id,
             artifact_dir=invocation.artifact_dir,
             request_payload=invocation.request_payload,
+            token_cache_path=invocation.token_cache_path,
             progress_callback=progress,
         )
     if isinstance(invocation, TopicDataBlockCreationInput):

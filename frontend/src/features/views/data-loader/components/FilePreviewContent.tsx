@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,23 @@ interface FilePreviewContentProps {
   /** A line under the preview heading, such as how to choose what it shows. */
   previewHint?: string;
 }
+
+/** Whether the preview window was last left maximised on this device (issue 460). */
+const MAXIMISED_KEY = 'ldaca.filePreview.maximised';
+const readMaximised = (): boolean => {
+  try {
+    return window.localStorage.getItem(MAXIMISED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
+const writeMaximised = (maximised: boolean) => {
+  try {
+    window.localStorage.setItem(MAXIMISED_KEY, String(maximised));
+  } catch {
+    // Private windows can refuse storage; the window still changes size.
+  }
+};
 
 /** Preview column widths a drag or arrow key can set (issue 400). */
 const MIN_COLUMN_WIDTH = 64;
@@ -136,6 +154,11 @@ function ColumnResizeHandle({
  * Flow: render Dialog skeleton, Card with header/content/footer, then
  * optionally render a sheet selector for Excel files, followed by a preview
  * table that handles loading / error / empty / data states.
+ *
+ * Maximise preview, beside Close, gives the window the whole screen and lets
+ * the table fill it; Restore size brings back the fixed size (issue 460). It
+ * is the control the Data Editor and analysis results have, kept here in the
+ * window itself because a dialog sits above the layout those maximise.
  */
 export function FilePreviewContent({
   filename,
@@ -171,6 +194,12 @@ export function FilePreviewContent({
     return width === undefined ? undefined : { width, minWidth: width, maxWidth: width };
   };
 
+  const [maximised, setMaximised] = useState(readMaximised);
+  const toggleMaximised = () => {
+    writeMaximised(!maximised);
+    setMaximised(!maximised);
+  };
+
   const handleSheetChange = (value: string) => {
     const next = value || null;
     setSelectedSheet(next);
@@ -186,7 +215,7 @@ export function FilePreviewContent({
     >
       <DialogContent
         className="w-full border-none bg-transparent p-0 shadow-none"
-        style={{ maxWidth: dialogMaxWidth }}
+        style={{ maxWidth: maximised ? 'calc(100vw - 2rem)' : dialogMaxWidth }}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>{title ?? `Preview: ${filename}`}</DialogTitle>
@@ -194,14 +223,43 @@ export function FilePreviewContent({
             {description ?? 'Inspect file content before adding to Project.'}
           </DialogDescription>
         </DialogHeader>
-        <Card className="flex w-full min-w-0 flex-col" style={{ maxHeight: cardMaxHeight }}>
-          <CardHeader className="border-b px-6 py-4">
+        <Card
+          className="relative flex w-full min-w-0 flex-col"
+          style={
+            maximised
+              ? { height: 'calc(100vh - 2rem)', maxHeight: 'calc(100vh - 2rem)' }
+              : { maxHeight: cardMaxHeight }
+          }
+        >
+          {hidePreview ? null : (
+            <button
+              type="button"
+              aria-label={maximised ? 'Restore size' : 'Maximise preview'}
+              title={maximised ? 'Restore size' : 'Maximise preview'}
+              aria-pressed={maximised}
+              className="absolute right-9 top-2 flex size-control-sm items-center justify-center rounded-sm text-description hover:bg-list-hover hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-focus"
+              onClick={toggleMaximised}
+            >
+              {maximised ? (
+                <Minimize2 className="size-3.5" aria-hidden="true" />
+              ) : (
+                <Maximize2 className="size-3.5" aria-hidden="true" />
+              )}
+            </button>
+          )}
+          <CardHeader className="border-b px-6 py-4 pr-16">
             <CardTitle className="truncate text-heading-3 font-semibold">
               {title ?? `File${filename ? `: ${filename}` : ''}`}
             </CardTitle>
             <CardDescription>{description ?? ''}</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 min-w-0 space-y-4 overflow-auto px-6 py-6">
+          <CardContent
+            className={
+              maximised
+                ? 'flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-auto px-6 py-6'
+                : 'flex-1 min-w-0 space-y-4 overflow-auto px-6 py-6'
+            }
+          >
             {headerSlot}
             {fileType === 'excel' && sheetNames && sheetNames.length > 0 && (
               <div>
@@ -223,7 +281,10 @@ export function FilePreviewContent({
                 </p>
               </div>
             )}
-            <div hidden={hidePreview}>
+            <div
+              hidden={hidePreview}
+              className={maximised && !hidePreview ? 'flex min-h-40 flex-1 flex-col' : undefined}
+            >
               <div className="mb-2">
                 <p className="truncate text-body font-medium text-foreground">
                   {previewLabel ? `Preview: ${previewLabel}` : 'Preview (first rows)'}
@@ -232,7 +293,10 @@ export function FilePreviewContent({
                   <p className="text-label-secondary text-description">{previewHint}</p>
                 ) : null}
               </div>
-              <div className="max-h-60 w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-sm border border-surface-border">
+              <div
+                data-testid="file-preview-table-box"
+                className={`${maximised ? 'min-h-0 flex-1' : 'max-h-60'} w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-sm border border-surface-border`}
+              >
                 {loading ? (
                   <div className="p-4 text-body text-description">Loading…</div>
                 ) : error ? (

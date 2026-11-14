@@ -71,7 +71,9 @@ export function DataPortalCredentialPanel({
       </div>
       <p className="text-body text-description">
         {credentials.storage === 'browser'
-          ? 'Your token stays in this browser and is sent only when you browse or import LDaCA collections.'
+          ? "Your token is saved in this web browser, not on the Wordflow server, and only for the account you're signed in with. " +
+            "In a different browser, or a private (incognito) window, you'll need to enter it again. " +
+            'It is sent only when you browse or import LDaCA collections.'
           : 'Wordflow keeps your token on this computer and uses it only to browse and import LDaCA collections.'}{' '}
         You can get one by signing in to the{' '}
         <a href="https://data.ldaca.edu.au" target="_blank" rel="noreferrer" className="underline">

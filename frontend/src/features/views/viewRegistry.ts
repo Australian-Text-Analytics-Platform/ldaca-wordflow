@@ -116,6 +116,9 @@ const VIEW_DEFINITION_BY_ID: Record<ViewType, ViewDefinition> = VIEW_DEFINITIONS
 
 const getViewDefinition = (view: ViewType): ViewDefinition => VIEW_DEFINITION_BY_ID[view];
 
+/** The view's full name, such as "Topic Modelling". */
+export const viewLabel = (view: ViewType): string => getViewDefinition(view).label;
+
 export const isWorkspaceRequired = (view: ViewType): boolean =>
   getViewDefinition(view).requiresWorkspace;
 

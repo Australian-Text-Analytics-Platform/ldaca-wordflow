@@ -32,11 +32,38 @@ export function buildSequentialChartExportMetadata({
     { label: 'Data Block', value: nodeName },
     { label: 'Time column', value: summary.timeColumn || '—' },
     { label: 'Period', value: summary.frequencyDisplay },
-    { label: 'Groups', value: summary.groupBy.length ? summary.groupBy.join(', ') : 'None' },
-    // Normalise to 100% (issue 219) plots shares, not counts.
-    ...(model.normalised
-      ? [{ label: 'Values', value: 'Percentage of all rows in each period' }]
+    {
+      label: 'Groups',
+      value: summary.groupBy.length ? summary.groupBy.join(', ') : 'None',
+    },
+    ...(summary.reference
+      ? [
+          {
+            label: 'Reference',
+            value: summary.reference.textColumn
+              ? `${summary.reference.nodeName}, words in ${summary.reference.textColumn}`
+              : `${summary.reference.nodeName}, rows`,
+          },
+        ]
       : []),
+    // Composition (issue 219) and the rates plot shares, not counts.
+    ...(model.scale === 'composition'
+      ? [{ label: 'Values', value: 'Percentage of all rows in each period' }]
+      : model.scale === 'per-million-words'
+        ? [
+            {
+              label: 'Values',
+              value: 'Rows per million words of the reference in each period',
+            },
+          ]
+        : model.scale === 'percent-of-rows'
+          ? [
+              {
+                label: 'Values',
+                value: "Percentage of the reference's rows in each period",
+              },
+            ]
+          : []),
   ];
   return { header, legend: model.legend };
 }

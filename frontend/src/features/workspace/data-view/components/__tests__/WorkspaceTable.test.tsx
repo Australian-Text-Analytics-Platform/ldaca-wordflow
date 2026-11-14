@@ -399,4 +399,31 @@ describe('WorkspaceTable', () => {
     await user.click(screen.getByRole('button', { name: 'Retry' }));
     expect(onRetryPage).toHaveBeenCalledOnce();
   });
+
+  it('limits the width of any column with long values, metadata included, and lets it expand', async () => {
+    const user = userEvent.setup();
+    const address =
+      'https://data.ldaca.edu.au/api/stream?id=arcp%3A%2F%2Fname%2Cdoi10.25949%252F24629712.v1&path=A01a-plain.txt';
+    render(
+      <WorkspaceTable
+        columns={['file_id', 'name']}
+        columnFields={{
+          file_id: new Field('file_id', new Utf8()),
+          name: new Field('name', new Utf8()),
+        }}
+        data={[{ file_id: address, name: 'A01a#Text' }]}
+      />,
+    );
+
+    // The short column keeps its natural width and has no expand button.
+    expect(screen.queryByRole('button', { name: 'Expand column name' })).not.toBeInTheDocument();
+    const cell = screen.getByRole('cell', { name: address });
+    expect(cell).toHaveStyle({ maxWidth: '320px' });
+    // The whole value stays readable on hover.
+    expect(within(cell).getByTitle(address)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Expand column file_id' }));
+    expect(screen.getByRole('cell', { name: address })).toHaveStyle({ maxWidth: '960px' });
+    expect(screen.getByRole('button', { name: 'Collapse column file_id' })).toBeInTheDocument();
+  });
 });

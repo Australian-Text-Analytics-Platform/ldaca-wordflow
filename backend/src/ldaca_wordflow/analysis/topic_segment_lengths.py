@@ -1,10 +1,16 @@
 """Token counts of a text column's segmentation units (issue 414).
 
-Topic Modelling's segment-cap suggestion asks how long the units a
-segmentation mode keeps whole are, in the embedding model's tokens. This reads
-the first documents of the column, counts tokens per unit with polars-text
-(only the model's tokenizer loads, never the model), and returns percentiles:
-no text leaves the backend.
+Topic Modelling sizes passages from how long the units a segmentation mode
+keeps whole are, in the embedding model's tokens. Units are counted with
+polars-text without splitting anything (only the model's tokenizer loads,
+never the model), so the counts do not depend on the passage size later
+chosen: there is nothing to re-measure after choosing. No text leaves the
+backend.
+
+Two callers: the segment-length endpoint reads the first documents of a
+column for the suggestion and the estimate shown before a run; a Topic
+Modelling run whose Max tokens is Auto reads every text it is about to
+segment and takes ``segment_token_cap`` of the result (Chao, 2026-11-11).
 
 What is measured follows the mode: Sentence measures sentences, Line measures
 lines, and Automatic measures whole texts, unless nearly every text is longer
@@ -29,6 +35,11 @@ from ..shared.errors import InvalidInputError
 
 # Documents read: the first ones, like the tokeniser language guess.
 SAMPLE_DOCUMENTS = 200
+# Passage sizes Max tokens offers: the lengths the embedder pads to and
+# compiles for (issue 412).
+SEGMENT_TOKEN_SIZES = (32, 64, 128, 256)
+# Share of units a passage size must hold whole (Chao, issue 414: 85 to 90%).
+UNITS_KEPT_WHOLE = 0.9
 # Share of texts over the model's limit at which Automatic measures paragraphs.
 LONG_TEXT_SHARE = 0.9
 
@@ -70,13 +81,33 @@ def _unit_counts(
     return [list(row or []) for row in frame["counts"].to_list()]
 
 
+def segment_token_cap(p90: int | None, token_limit: int) -> int:
+    """The passage size Auto chooses: the smallest offered size within the
+    model's limit that holds at least 9 in 10 units whole, or the limit when
+    none does or nothing was measured. The client's suggestion uses the same
+    rule (``suggestedSegmentTokenCap``)."""
+
+    if p90 is None:
+        return token_limit
+    for size in SEGMENT_TOKEN_SIZES:
+        if size <= token_limit and size >= p90:
+            return size
+    return token_limit
+
+
 def topic_segment_lengths(
     lazyframe: pl.LazyFrame,
     column: str,
     segmentation_method: TopicSegmentationMethod,
     embedding_model: TopicEmbeddingModel,
+    *,
+    sample_documents: int | None = SAMPLE_DOCUMENTS,
 ) -> TopicSegmentLengths:
-    """Token-count percentiles of the units ``segmentation_method`` keeps whole."""
+    """Token-count percentiles of the units ``segmentation_method`` keeps whole.
+
+    Reads the first ``sample_documents`` non-empty texts, or every one when
+    None.
+    """
 
     schema = lazyframe.collect_schema()
     if column not in schema:
@@ -85,11 +116,11 @@ def topic_segment_lengths(
         raise InvalidInputError(f'"{column}" is not a text column.')
 
     text = pl.col(column)
-    texts = (
-        lazyframe.select(text)
-        .filter(text.is_not_null() & (text.str.strip_chars().str.len_chars() > 0))
-        .head(SAMPLE_DOCUMENTS)
+    texts = lazyframe.select(text).filter(
+        text.is_not_null() & (text.str.strip_chars().str.len_chars() > 0)
     )
+    if sample_documents is not None:
+        texts = texts.head(sample_documents)
     token_limit = TOPIC_EMBEDDING_MODEL_TOKEN_LIMITS[embedding_model]
     long_document_share: float | None = None
     unit: MeasuredUnit
@@ -119,6 +150,6 @@ def topic_segment_lengths(
         long_document_share=long_document_share,
         p50=_percentile(values, 0.5),
         p85=_percentile(values, 0.85),
-        p90=_percentile(values, 0.9),
+        p90=_percentile(values, UNITS_KEPT_WHOLE),
         p95=_percentile(values, 0.95),
     )

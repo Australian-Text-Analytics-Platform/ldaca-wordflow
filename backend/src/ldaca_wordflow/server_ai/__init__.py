@@ -72,6 +72,14 @@ async def embedding_end_user(endpoint: ServerEmbeddingEndpoint, user_id: str) ->
     return await _resolver.end_user(endpoint, user_id)
 
 
+async def user_details(user_id: str) -> dict[str, str]:
+    """The account's email and name for providers with ``send_user_details``."""
+
+    if _resolver is None:
+        raise RuntimeError("Server AI identity resolver is not installed")
+    return await _resolver.user_details(user_id)
+
+
 def annotation_adapter_for(
     configuration_id: uuid.UUID | str | None,
 ) -> AnnotationProviderAdapter | None:
@@ -127,6 +135,7 @@ __all__ = [
     "ServerEmbeddingEndpoint",
     "annotation_adapter_for",
     "embedding_end_user",
+    "user_details",
     "bind_credential",
     "cap_concurrency",
     "claims_annotation_provider",

@@ -1,10 +1,8 @@
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 import { Download } from 'lucide-react';
 
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -15,10 +13,12 @@ import {
 } from '@/components/ui/select';
 
 import { SequentialChart } from '../SequentialChart';
-import type {
-  ChartTypeOption,
-  SequentialChartModel,
-  SequentialXAxisType,
+import {
+  SEQUENTIAL_SCALE_LABELS,
+  type ChartTypeOption,
+  type SequentialChartModel,
+  type SequentialScale,
+  type SequentialXAxisType,
 } from '../../hooks/sequentialChartModel';
 
 export interface SequentialAnalysisResultsPanelProps {
@@ -28,7 +28,7 @@ export interface SequentialAnalysisResultsPanelProps {
   onMinimumGroupCountChange: (value: number) => void;
   onChartTypeChange: (value: ChartTypeOption) => void;
   onXAxisTypeChange: (value: SequentialXAxisType) => void;
-  onNormaliseChange: (value: boolean) => void;
+  onScaleChange: (value: SequentialScale) => void;
   onDownloadClick: () => void;
   onAddToWorkspace: () => void;
   addToWorkspaceDisabled: boolean;
@@ -54,7 +54,7 @@ export function SequentialAnalysisResultsPanel({
   onMinimumGroupCountChange,
   onChartTypeChange,
   onXAxisTypeChange,
-  onNormaliseChange,
+  onScaleChange,
   onDownloadClick,
   onAddToWorkspace,
   addToWorkspaceDisabled,
@@ -144,31 +144,38 @@ export function SequentialAnalysisResultsPanel({
                   </Select>
                 </>
               )}
-              {/* Only when two or more groups meet the minimum group count (issue 219). */}
-              {model.canNormalise ? (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <label
-                        htmlFor="trends-normalise"
-                        className="flex shrink-0 items-center gap-2 text-body text-foreground"
-                      >
-                        <Checkbox
-                          id="trends-normalise"
-                          checked={model.normalised}
-                          onCheckedChange={(checked) => {
-                            onNormaliseChange(checked === true);
-                          }}
-                        />
-                        Normalise to 100%
-                      </label>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-80">
-                      Show each group as a share of its period's rows, to compare busy and quiet
-                      periods.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              {/* Show as: counts, composition (two or more groups that meet the
+                  minimum group count, issue 219), or a rate against the
+                  reference Data Block the result was run with. */}
+              {model.availableScales.length > 1 ? (
+                <>
+                  <span className="flex shrink-0 items-center gap-1 text-body text-description">
+                    Show as
+                    <HelpIcon
+                      targetKey="analysis.sequential-analysis.show-as"
+                      label="About Show as"
+                      tooltip="Row count: the rows in each period. Composition: each group's share of its period. Per million words and % of reference rows: rates against the reference Data Block."
+                      className="size-5 shrink-0 text-description"
+                    />
+                  </span>
+                  <Select
+                    value={model.scale}
+                    onValueChange={(value) => {
+                      onScaleChange(value as SequentialScale);
+                    }}
+                  >
+                    <SelectTrigger className="w-56 shrink-0 text-body" aria-label="Show as">
+                      <SelectValue placeholder="Show as" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {model.availableScales.map((scale) => (
+                        <SelectItem key={scale} value={scale}>
+                          {SEQUENTIAL_SCALE_LABELS[scale]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
               ) : null}
               <Button
                 variant="outline"

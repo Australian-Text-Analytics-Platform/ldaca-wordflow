@@ -20,6 +20,7 @@ import { CONCORDANCE_COMBINED_NODE_KEY } from '../concordanceTableDomain';
 import type { PaginationState } from '../hooks/useConcordanceTaskFlow';
 import { ConcordanceDispersionNodeBlock } from './ConcordanceDispersionNodeBlock';
 import { ConcordanceTableNodeBlock } from './ConcordanceTableNodeBlock';
+import { useToolModeContext } from '../../common/toolMode/ToolModeContext';
 
 interface Section {
   columns: string[];
@@ -284,6 +285,9 @@ export function ConcordanceResultsPanel({
     ]),
   );
 
+  // Combining two Data Blocks' results is an advanced setting (Chao).
+  const toolMode = useToolModeContext();
+  const combinedOffered = results.combinable && (toolMode?.advanced ?? true);
   return (
     <Card ref={resultsRef}>
       <CardHeader className="space-y-4">
@@ -297,7 +301,7 @@ export function ConcordanceResultsPanel({
             />
           </CardTitle>
           <div className="flex flex-wrap items-center gap-2">
-            {panelSelectedNodes.length > 1 && (
+            {panelSelectedNodes.length > 1 && combinedOffered && (
               <Tabs
                 value={viewMode}
                 onValueChange={(mode) => {
@@ -307,18 +311,16 @@ export function ConcordanceResultsPanel({
               >
                 <TabsList aria-label="Concordance view mode">
                   <TabsTrigger value="separated">Separated</TabsTrigger>
-                  {results.combinable && (
-                    <TabsTrigger value="combined">
-                      {combinedLoading ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Combined
-                        </span>
-                      ) : (
-                        'Combined'
-                      )}
-                    </TabsTrigger>
-                  )}
+                  <TabsTrigger value="combined">
+                    {combinedLoading ? (
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Combined
+                      </span>
+                    ) : (
+                      'Combined'
+                    )}
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             )}

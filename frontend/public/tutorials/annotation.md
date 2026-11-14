@@ -115,8 +115,14 @@ hidden until you reveal that column, and the viewer is read-only; use
 
 ![AI mode: optional Example Data Block, example sampling, and the provider and model row](tutorials/assets/annotation/ai_settings.png)
 
-Choose a **Provider** (a connection you set up) and a **Model**; both are always shown above **Advanced settings**. Provider
+Choose a **Provider** (a connection you set up) and a **Model**; both are always shown, since they decide where your text is sent. Provider
 credentials stay in Settings and are attached only when the request is sent.
+On a Wordflow server, your connections and keys are saved in your web browser,
+not on the server, and only for the account you're signed in with: they stay
+after you sign out or close the browser, another account signed in on the same
+browser can't see or use them, and in a different browser or a private
+(incognito) window you need to enter them again. On a shared computer, delete
+them when you finish.
 Create or edit connections under **Settings → Servers**, in **Generative AI**
 (the **AI** tab before 0.7.16). API keys are optional when
 saving, but a built-in provider marked **Needs API key** cannot list models,
@@ -138,6 +144,8 @@ same Project, on this computer. If the Project hasn't used the provider yet,
 it starts with the provider's **Default model** from Settings, if you set one,
 or the server's default for its own providers. Choosing a model in a Project
 never changes the default in Settings.
+The rest of the AI settings are advanced: turn on [**Advanced**](./ui.md#help-ui-tool-mode) at the top right of the Annotation parameters to see them, listed under **Advanced settings**. With **Advanced** off, Preview and Run use no Example Data Block, the default prompt, and the default for every setting below; what you had set is kept for when you turn it on again. Choosing **Use as example** beside a correction column turns **Advanced** on.
+
 An **Example Data Block** is optional; if used, choose both its text column and
 an existing annotation column containing reviewed labels. Set **Max examples
 per code**, then choose **Random**, **First N**, or **Last N**. Random sampling
@@ -145,7 +153,7 @@ also accepts a nonnegative seed and defaults to 0. The same Data Block snapshot,
 maximum, method, and seed produce the same per-code subset throughout one
 Analysis; groups with fewer examples contribute every usable row.
 
-**Advanced settings** include the instruction prompt, the settings for the
+**Advanced settings** also include the instruction prompt, the settings for the
 selected provider, and the Run settings. Each provider's settings offer
 **Thinking** (the model reasons before it answers; see
 [Thinking](#help-annotation-thinking) for when to turn it on) and, where the
@@ -223,7 +231,7 @@ the rows with those texts and keeps every other value, and **Remove**. After
 writing them, it says which rows the next Run sends. With the default, **Only
 rows without an annotation**, Run sends only the rest; if the tab is set to
 **Annotate all rows again**, it offers **Annotate only the empty rows**. The tab
-keeps that choice for later Runs; change it in **Advanced settings**. You can
+keeps that choice for later Runs; change it under **Advanced settings** (turn on **Advanced** first). You can
 also join the temporary Data Block to your Data Block on the text column
 yourself.
 

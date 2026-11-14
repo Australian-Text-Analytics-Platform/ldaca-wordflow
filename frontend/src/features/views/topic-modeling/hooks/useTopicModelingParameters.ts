@@ -3,6 +3,7 @@ import type {
   TopicEmbeddingModel,
   TopicModelingAnalysisRequest,
   TopicSegmentationMethod,
+  TopicUngroupedPassages,
   WorkspaceNodeInfo,
 } from '@/api';
 import {
@@ -15,7 +16,6 @@ import {
   nonEnglishLanguageSource,
 } from '../topicEmbeddingModels';
 import {
-  DEFAULT_MAX_SEGMENT_TOKENS,
   DEFAULT_MIN_CLUSTER_SIZE,
   createTopicModelingParameterState,
   defaultCorpusSample,
@@ -32,7 +32,6 @@ import {
 } from './topicModelingParameterState';
 
 export {
-  DEFAULT_MAX_SEGMENT_TOKENS,
   DEFAULT_MIN_CLUSTER_SIZE,
   effectiveSampleDocumentCount,
   normalizeTopicSampleFractions,
@@ -65,8 +64,9 @@ export interface UseTopicModelingParametersResult {
   segmentationMethod: TopicSegmentationMethod;
   setSegmentationMethod: (value: TopicSegmentationMethod) => void;
   /** Max tokens for the run: as set, but never above the model's limit. */
-  maxSegmentTokens: number;
-  setMaxSegmentTokens: (value: number) => void;
+  /** `null` is Auto. */
+  maxSegmentTokens: number | null;
+  setMaxSegmentTokens: (value: number | null) => void;
   /** The embedding model for the run (issue 413). */
   embeddingModel: TopicEmbeddingModel;
   setEmbeddingModel: (value: TopicEmbeddingModel) => void;
@@ -91,6 +91,9 @@ export interface UseTopicModelingParametersResult {
   /** Segments to sample; `null` (an empty field) means the grey suggestion. */
   clusterSampleSize: number | null;
   setClusterSampleSize: (value: number | null) => void;
+  /** What happens to passages the grouping leaves out. */
+  ungroupedPassages: TopicUngroupedPassages;
+  setUngroupedPassages: (value: TopicUngroupedPassages) => void;
   nodeDocCounts: number[];
   effectiveDocCounts: number[];
   sampleFractionsForRequest: (number | null)[];
@@ -140,6 +143,7 @@ export function useTopicModelingParameters({
     embeddingEndpointId,
     clusterSample,
     clusterSampleSize,
+    ungroupedPassages,
   } = parameterState;
 
   const activeNodeIds = panelNodeIds.slice(0, 2);
@@ -173,10 +177,10 @@ export function useTopicModelingParameters({
     (multilingualReason ? MULTILINGUAL_EMBEDDING_MODEL : ENGLISH_EMBEDDING_MODEL);
   const embeddingModelReason = chosenEmbeddingModel === null ? multilingualReason : null;
   // The value as set is kept, so switching back to English restores it.
-  const maxSegmentTokens = Math.min(
-    maxSegmentTokensAsSet,
-    embeddingModelTokenLimit(embeddingModel),
-  );
+  const maxSegmentTokens =
+    maxSegmentTokensAsSet === null
+      ? null
+      : Math.min(maxSegmentTokensAsSet, embeddingModelTokenLimit(embeddingModel));
 
   /** Updates one corpus sampling row and marks sampling as explicitly edited. */
   // Called by: TopicModelingParameterPanel because the sampling controls edit sparse per-corpus percentage patches.
@@ -204,8 +208,12 @@ export function useTopicModelingParameters({
     dispatchParameters({ type: 'setSegmentationMethod', value });
   };
 
-  const setMaxSegmentTokens = (value: number) => {
-    dispatchParameters({ type: 'setMaxSegmentTokens', value: sanitizeMaxSegmentTokens(value) });
+  /** Sets a fixed Max tokens, or `null` for Auto. */
+  const setMaxSegmentTokens = (value: number | null) => {
+    dispatchParameters({
+      type: 'setMaxSegmentTokens',
+      value: value === null ? null : sanitizeMaxSegmentTokens(value),
+    });
   };
 
   const setEmbeddingModel = (value: TopicEmbeddingModel) => {
@@ -270,6 +278,10 @@ export function useTopicModelingParameters({
     setClusterSample,
     clusterSampleSize,
     setClusterSampleSize,
+    ungroupedPassages,
+    setUngroupedPassages: (value: TopicUngroupedPassages) => {
+      dispatchParameters({ type: 'setUngroupedPassages', value });
+    },
     nodeDocCounts,
     effectiveDocCounts,
     sampleFractionsForRequest,

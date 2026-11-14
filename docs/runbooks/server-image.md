@@ -33,7 +33,8 @@ gh workflow run server-image.yml --repo Australian-Text-Analytics-Platform/ldaca
 ```
 
 GitHub starts a workflow by hand only once it is known, that is on the
-default branch (`main`) or after it has run from a tag. Until then the command
+default branch (`main`) or after it has run from a tag. `main` holds the latest
+release, so this works for `v0.7` refs. A workflow that is not on `main` yet
 fails with "workflow server-image.yml not found on the default branch"; push a
 tag instead.
 

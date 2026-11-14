@@ -247,6 +247,117 @@ def test_topic_query_rejects_count_with_current_bounds() -> None:
     }
 
 
+def _fake_projection(calls: list[int]):
+    def fake_project(**kwargs):
+        count = kwargs["cluster_count"]
+        calls.append(count)
+        return {
+            "topics": [
+                {
+                    "id": topic_id,
+                    "representative_words": [
+                        {"word": f"merged-{topic_id}", "occurrence_count": 1}
+                    ],
+                    "x": float(topic_id),
+                    "y": 0.0,
+                }
+                for topic_id in range(count)
+            ],
+            "activations": [[0, topic_id, 1, 1] for topic_id in range(count)],
+            "has_outlier": False,
+        }
+
+    return fake_project
+
+
+def test_many_topics_open_merged_to_the_starting_limit(tmp_path, monkeypatch) -> None:
+    # A run with 2,238 Topics froze the desktop app while it drew them all.
+    context_path = tmp_path / "context.msgpack.zst"
+    context_path.write_bytes(b"context")
+    calls: list[int] = []
+    monkeypatch.setattr(
+        "ldaca_wordflow.services.analysis_results.project_rust_topic_projection_basis",
+        _fake_projection(calls),
+    )
+    monkeypatch.setattr(
+        "ldaca_wordflow.services.analysis_results.TOPIC_STARTING_COUNT_LIMIT", 3
+    )
+    stored = _topic_stored_result()
+    before = stored.model_dump(mode="json")
+
+    payload = _query_topics(stored, TopicModelingResultQuery(), context_path)
+
+    assert calls == [3]
+    clustering = cast(dict[str, Any], payload["clustering"])
+    assert clustering["cluster_count"] == 3
+    assert clustering["default_cluster_count"] == 3
+    # The slider still reaches every Topic the run found.
+    assert clustering["max_cluster_count"] == 4
+    assert [row["id"] for row in cast(list[dict[str, Any]], payload["topics"])] == [
+        0,
+        1,
+        2,
+    ]
+    assert stored.model_dump(mode="json") == before
+
+
+def test_every_found_topic_stays_reachable_above_the_starting_limit(
+    tmp_path, monkeypatch
+) -> None:
+    context_path = tmp_path / "context.msgpack.zst"
+    context_path.write_bytes(b"context")
+    calls: list[int] = []
+    monkeypatch.setattr(
+        "ldaca_wordflow.services.analysis_results.project_rust_topic_projection_basis",
+        _fake_projection(calls),
+    )
+    monkeypatch.setattr(
+        "ldaca_wordflow.services.analysis_results.TOPIC_STARTING_COUNT_LIMIT", 3
+    )
+
+    payload = _query_topics(
+        _topic_stored_result(), TopicModelingResultQuery(cluster_count=4), context_path
+    )
+
+    assert calls == []
+    clustering = cast(dict[str, Any], payload["clustering"])
+    assert clustering["cluster_count"] == 4
+    assert clustering["default_cluster_count"] == 3
+
+
+def test_many_topics_open_unmerged_without_the_clustering_context(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "ldaca_wordflow.services.analysis_results.TOPIC_STARTING_COUNT_LIMIT", 3
+    )
+
+    payload = _query_topics(_topic_stored_result(), TopicModelingResultQuery(), None)
+
+    clustering = cast(dict[str, Any], payload["clustering"])
+    assert clustering["cluster_count"] == 4
+    assert clustering["default_cluster_count"] == 4
+
+
+def test_topic_query_bounds_name_the_starting_count(tmp_path, monkeypatch) -> None:
+    context_path = tmp_path / "context.msgpack.zst"
+    context_path.write_bytes(b"context")
+    monkeypatch.setattr(
+        "ldaca_wordflow.services.analysis_results.TOPIC_STARTING_COUNT_LIMIT", 3
+    )
+
+    with pytest.raises(InvalidClusterCountError) as exc_info:
+        _query_topics(
+            _topic_stored_result(),
+            TopicModelingResultQuery(cluster_count=5),
+            context_path,
+        )
+
+    assert exc_info.value.details == {
+        "min_cluster_count": 2,
+        "max_cluster_count": 4,
+        "default_cluster_count": 3,
+    }
+
+
 def test_topic_query_rejects_top_n_with_current_bounds() -> None:
     with pytest.raises(InvalidTopicTopNError) as exc_info:
         _query_topics(

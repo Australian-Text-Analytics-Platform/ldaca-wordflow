@@ -60,12 +60,12 @@ import {
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 import { Button } from '@/components/ui/button';
 import { formatCellValue } from '../services/formatCellValue';
-
-// --- Constants ---
-const WIDE_COLUMN_THRESHOLD = 120;
-const COLLAPSED_COLUMN_MAX_WIDTH = 320;
-const EXPANDED_COLUMN_MAX_WIDTH = 960;
-const WIDE_COLUMN_SAMPLE_LIMIT = 25;
+import {
+  COLLAPSED_COLUMN_MAX_WIDTH,
+  EXPANDED_COLUMN_MAX_WIDTH,
+  isWideText,
+  WIDE_COLUMN_SAMPLE_LIMIT,
+} from '../services/columnWidth';
 
 // --- Props ---
 export interface WorkspaceTableProps {
@@ -288,7 +288,8 @@ export function WorkspaceTable({
     const sampleRows = sanitizedData.slice(0, WIDE_COLUMN_SAMPLE_LIMIT);
     const result = new Set<string>();
     columns.forEach((col) => {
-      let maxLen = col.length;
+      // The header cuts a long name short itself, so only the values count:
+      // any column, text or metadata, whose values overflow the limited width.
       for (const row of sampleRows) {
         // DataRow is typed non-null, but rows arrive from API/JSON so guard malformed (null) rows.
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -298,8 +299,7 @@ export function WorkspaceTable({
         // Cell values may be objects; default stringification matches the existing width heuristic.
         // eslint-disable-next-line @typescript-eslint/no-base-to-string
         const display = typeof raw === 'string' ? raw : String(raw);
-        maxLen = Math.max(maxLen, display.length);
-        if (maxLen > WIDE_COLUMN_THRESHOLD) {
+        if (isWideText(display)) {
           result.add(col);
           break;
         }

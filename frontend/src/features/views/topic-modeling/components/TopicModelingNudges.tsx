@@ -24,9 +24,10 @@ import {
 } from '../topicEmbeddingModels';
 
 /**
- * Suggestion on a result with one giant topic or only a few topics (issue
- * 360). Only for the topics the run found: after people merge topics with the
- * Topics slider, a few large topics are what they asked for.
+ * Suggestion on a result with one giant topic, more topics than it opens
+ * with, or only a few topics (issue 360). Only at the count the result opens
+ * with: after people merge topics with the Topics slider, a few large topics
+ * are what they asked for.
  */
 export function TopicResultNudge({
   result,
@@ -44,24 +45,26 @@ export function TopicResultNudge({
   // clustering made (of the sample, with Topic sampling).
   const id = topicResultNudge({
     clusterCount: clustering.default_cluster_count,
+    foundTopicCount: clustering.max_cluster_count,
     largestTopicSize: clustering.largest_topic_size ?? 0,
     clusteredSegments: clustering.clustered_segments ?? result.data.segment_count,
     ungroupedShare: ungroupedDocumentShare(result.data),
+    // Passages only join during a run that asked for it; with Always join
+    // the nearest topic nothing is left Ungrouped, so this means "fit".
+    joinedByFit: clustering.assigned_segments != null,
   });
   if (!id) return null;
   const ungroupedShare = ungroupedDocumentShare(result.data);
-  return (
-    <NudgeCard
-      id={id}
-      occurrence={`${analysisId ?? ''}\0${id}`}
-      // The share is the point of this one (Chao): "Many (37%) documents are Ungrouped".
-      title={
-        id === 'topic-many-ungrouped' && ungroupedShare !== null
-          ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are Ungrouped`
-          : undefined
-      }
-    />
-  );
+  // The numbers are the point of these (Chao): "Many (37%) documents are Ungrouped".
+  const title =
+    id === 'topic-many-ungrouped' && ungroupedShare !== null
+      ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are Ungrouped`
+      : id === 'topic-many-ungrouped-after-fit' && ungroupedShare !== null
+        ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are still Ungrouped`
+        : id === 'topic-many-topics'
+          ? `The run found ${clustering.max_cluster_count.toLocaleString()} topics`
+          : undefined;
+  return <NudgeCard id={id} occurrence={`${analysisId ?? ''}\0${id}`} title={title} />;
 }
 
 /** Share of the run's documents with no real Topic (issue 362), or null. */
@@ -162,7 +165,8 @@ const SEGMENT_UNIT_NAMES: Record<TopicSegmentLengthsResource['unit'], string> = 
 /**
  * Suggestion before a run when the units the segmentation mode keeps whole are
  * short: a smaller Max tokens holds at least 9 in 10 of them whole (issue
- * 414). Only ever suggests a smaller cap; Apply sets it.
+ * 414). Only ever suggests a smaller cap; Apply sets it. Only for a Max
+ * tokens set by hand: Auto already takes that size (Chao, 2026-11-11).
  */
 export function TopicSegmentLengthNudge({
   lengths,
@@ -171,11 +175,12 @@ export function TopicSegmentLengthNudge({
   className = 'mx-3 mt-2',
 }: {
   lengths: TopicSegmentLengthsResource | null;
-  maxSegmentTokens: number;
+  /** `null` is Auto. */
+  maxSegmentTokens: number | null;
   onApply: (tokens: number) => void;
   className?: string;
 }) {
-  if (!lengths) return null;
+  if (!lengths || maxSegmentTokens === null) return null;
   const tokens = suggestedSegmentTokenCap({
     p90: lengths.p90,
     current: maxSegmentTokens,

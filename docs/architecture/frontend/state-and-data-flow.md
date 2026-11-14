@@ -74,8 +74,13 @@ safe credential revision; secret values never enter query keys, mutation state,
 Tab state, hydrated requests, errors, or telemetry. Name-only edits preserve
 cached inference, while credential replacement or removal invalidates model and
 active Preview queries. Logout does not delete
-another account's browser partition, and browser storage events synchronize
-replacement and deletion across tabs. In single-user mode, the same facade
+any account's browser partition: entries stay in `localStorage` until the person
+deletes them, and another account can never read a partition that is not its
+own. Browser storage events synchronize replacement and deletion across tabs.
+`persist` hydrates synchronously inside `create()` while the module is still
+evaluating, so every helper its `merge` calls must be initialised above the
+store definition; a later `const` throws, persist swallows the error, and the
+page starts with no configurations. In single-user mode, the same facade
 projects the backend-owned collection and invokes its write-only CRUD
 operations without creating a browser credential entry.
 

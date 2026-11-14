@@ -236,6 +236,7 @@ def _run_rust_topic_modeling(
     embedder_model: str | None = None,
     embedding_cache: str | os.PathLike[str] | None = None,
     cluster_sample_size: int | None = None,
+    ungrouped_passages: str = "keep",
     progress_path: str | None = None,
     remote_embedding: RemoteEmbeddingRun | None = None,
 ) -> dict:
@@ -262,6 +263,16 @@ def _run_rust_topic_modeling(
         optional_kwargs["max_topic_size"] = int(max_cluster_size)
     if cluster_sample_size is not None:
         optional_kwargs["cluster_sample_size"] = int(cluster_sample_size)
+    # polars-text calls Ungrouped passages outliers. "fit": an outlier joins
+    # its most similar topic when it is at least as similar as that topic's
+    # least similar member. "nearest": every outlier joins its most similar
+    # topic. "keep" is the native default and passes nothing.
+    if ungrouped_passages == "fit":
+        optional_kwargs["outlier_member_quantile"] = 0.0
+    elif ungrouped_passages == "nearest":
+        optional_kwargs["outlier_similarity"] = -1.0
+    elif ungrouped_passages != "keep":
+        raise ValueError(f"unknown Ungrouped passages choice {ungrouped_passages!r}")
     with remote_embedding_options(remote_embedding) as remote_kwargs:
         result_frame = pl.DataFrame({"__doc__": all_docs}).select(
             cast(Any, pl.col("__doc__"))
@@ -392,6 +403,12 @@ def _run_rust_topic_modeling(
         auto_document_share = None if raw_share is None else float(raw_share)
         raw_largest = raw_result.get("largest_topic_size")
         largest_topic_size = None if raw_largest is None else int(raw_largest)
+        # Segments in no topic, and those given one by similarity; absent from
+        # polars-text 0.7.2 and earlier.
+        raw_outliers = raw_result.get("outlier_segments")
+        outlier_segments = None if raw_outliers is None else int(raw_outliers)
+        raw_assigned = raw_result.get("assigned_segments")
+        assigned_segments = None if raw_assigned is None else int(raw_assigned)
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError("Topic modeling native run metadata is malformed") from exc
     return {
@@ -404,6 +421,8 @@ def _run_rust_topic_modeling(
         "auto_decision": auto_decision,
         "auto_document_share": auto_document_share,
         "largest_topic_size": largest_topic_size,
+        "outlier_segments": outlier_segments,
+        "assigned_segments": assigned_segments,
         "projection_context": projection_context,
     }
 

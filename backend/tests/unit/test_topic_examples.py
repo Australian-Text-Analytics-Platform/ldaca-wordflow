@@ -4,6 +4,7 @@ from ldaca_wordflow.analysis.topic_examples import (
     TopicSegment,
     corpus_position,
     order_topic_segments,
+    segments_outside_topic_range,
     typicality_percentiles,
 )
 
@@ -72,3 +73,31 @@ def test_label_columns_are_those_every_data_block_has() -> None:
     assert shared_columns([["party", "date", "user"], ["date", "user"]]) == ["date", "user"]
     assert shared_columns([["party", "date"]]) == ["party", "date"]
     assert shared_columns([]) == []
+
+
+def test_joined_segments_are_placed_on_the_grouped_scale_without_moving_it() -> None:
+    joined = [
+        *SEGMENTS,
+        # As similar as grouped segments: inside the Topic's own range.
+        TopicSegment(4, 3, 0, 10, 0.6, joined=True),
+        # Less similar than any grouped segment.
+        TopicSegment(5, 4, 0, 10, 0.1, joined=True),
+        # More similar than any grouped segment.
+        TopicSegment(6, 5, 0, 10, 0.95, joined=True),
+    ]
+    percentiles = typicality_percentiles(joined)
+    # The grouped segments keep the rank they had before anything joined.
+    assert {index: percentiles[index] for index in range(4)} == {0: 0, 1: 100, 2: 33, 3: 67}
+    assert (percentiles[4], percentiles[5], percentiles[6]) == (67, 0, 100)
+    assert segments_outside_topic_range(joined) == frozenset({5})
+    assert segments_outside_topic_range(SEGMENTS) == frozenset()
+
+
+def test_a_topic_of_one_grouped_segment_still_places_joined_segments() -> None:
+    segments = [
+        TopicSegment(0, 0, 0, 1, 0.4),
+        TopicSegment(1, 1, 0, 1, 0.5, joined=True),
+        TopicSegment(2, 2, 0, 1, 0.3, joined=True),
+    ]
+    assert typicality_percentiles(segments) == {0: 100, 1: 100, 2: 0}
+    assert segments_outside_topic_range(segments) == frozenset({2})

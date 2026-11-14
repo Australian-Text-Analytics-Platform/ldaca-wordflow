@@ -4,9 +4,10 @@ import { commonUploadFolder, useUploadState } from '../useUploadState';
 import { UploadCancelledError, type UploadOptions } from '@/lib/backend/uploadTransport';
 import { useUploadTasksStore } from '@/stores/uploadTasksStore';
 
-const reminderMock = vi.hoisted(() => ({ needed: false }));
+const reminderMock = vi.hoisted(() => ({ needed: false, manyFilesAbove: 1000 }));
 vi.mock('../../utils/largeUploadReminder', () => ({
   needsLargeUploadReminder: () => reminderMock.needed,
+  needsManyFilesReminder: (fileCount: number) => fileCount > reminderMock.manyFilesAbove,
 }));
 
 function pickerFile(name: string, relativePath = '') {
@@ -266,6 +267,39 @@ describe('useUploadState upload tasks (issue 260)', () => {
 describe('useUploadState large upload reminder (issue 260)', () => {
   afterEach(() => {
     reminderMock.needed = false;
+    reminderMock.manyFilesAbove = 1000;
+  });
+
+  it('asks before uploading more files than the limit, off a shared server too (issue 447)', async () => {
+    reminderMock.manyFilesAbove = 2;
+    useUploadTasksStore.setState({ uploads: [] });
+    const state = setup([[], []]);
+
+    let running: Promise<void> = Promise.resolve();
+    act(() => {
+      running = state.result.current.uploadSelectedFiles([
+        pickerFile('a.txt'),
+        pickerFile('b.txt'),
+        pickerFile('c.txt'),
+      ]);
+    });
+    await waitFor(() => {
+      expect(state.result.current.largeUploadReminder).toMatchObject({
+        fileCount: 3,
+        large: false,
+        manyFiles: true,
+      });
+    });
+    expect(state.uploadFileAtPath).not.toHaveBeenCalled();
+
+    act(() => {
+      state.result.current.declineLargeUpload();
+    });
+    await act(async () => {
+      await running;
+    });
+    expect(state.uploadFileAtPath).not.toHaveBeenCalled();
+    expect(state.notify).toHaveBeenCalledWith('info', 'Upload cancelled. Nothing was uploaded.');
   });
 
   it('waits for "Upload anyway" before creating anything', async () => {
@@ -278,7 +312,12 @@ describe('useUploadState large upload reminder (issue 260)', () => {
       running = state.result.current.uploadSelectedFiles([pickerFile('corpus.zip')]);
     });
     await waitFor(() => {
-      expect(state.result.current.largeUploadReminder).toEqual({ totalBytes: 10, fileCount: 1 });
+      expect(state.result.current.largeUploadReminder).toEqual({
+        totalBytes: 10,
+        fileCount: 1,
+        large: true,
+        manyFiles: false,
+      });
     });
     expect(state.uploadFileAtPath).not.toHaveBeenCalled();
     expect(useUploadTasksStore.getState().uploads).toEqual([]);

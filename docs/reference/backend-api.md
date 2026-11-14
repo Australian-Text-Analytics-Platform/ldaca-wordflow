@@ -340,7 +340,29 @@ is not accepted.
 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`;
 `max_segment_tokens` (32 upward) must not exceed the model's limit, 256 or
 128. A saved request names the model only when it is the multilingual one, and
-a request without it means the English model.
+a request without it means the English model. A request without
+`max_segment_tokens` (or with `null`) means Auto: before segmenting, the worker
+counts the tokens of every unit the segmentation mode keeps whole, in every
+text it reads, and takes the smallest of 32, 64, 128 and 256 within the model's
+limit that holds 9 in 10 of them, or the limit when none does. The Result's
+`max_segment_tokens` is the size the run used, as set or as Auto chose; it is
+absent from Results made before Auto. A saved request leaves the field out when
+Auto.
+
+`TopicModelingAnalysisRequest.ungrouped_passages` is `keep` (default), `fit` or
+`nearest`: what happens to passages the grouping leaves out. `fit` gives each
+one the Topic whose centre it is most similar to, when it is at least as
+similar as that Topic's own least similar passage; `nearest` gives every one
+its most similar Topic. Topics are found first, so neither adds a Topic, and
+representative words come from the passages grouping put in each Topic. A saved
+request leaves the field out when `keep`. The Result's
+`clustering.ungrouped_segments` is the number of passages in no Topic when the
+run finished and `clustering.assigned_segments` how many joined one this way
+(null when the run kept them); both are absent from earlier Results. In a
+Topic's example passages, `joined` marks a passage that joined after
+grouping; `typicality` ranks every passage among the Topic's grouped passages,
+measured from their centre, and `outside_topic_range` marks a joined passage
+less similar to that centre than every grouped one.
 
 `get_topic_segment_lengths` takes `column`, `segmentation_method` and
 `embedding_model`. It counts tokens with that model's tokenizer, special tokens

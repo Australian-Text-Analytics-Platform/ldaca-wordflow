@@ -1,22 +1,58 @@
 name: CI
 
+# CI checks major changes and releases, not every commit. The Scope job decides
+# (scripts/ci-scope.mjs): pull requests unless they change only documentation,
+# pushes to main, a push to v0.7 or v0.8 with a "Release X.Y.Z" commit or "[ci]"
+# in a commit message, and runs by hand (gh workflow run ci.yml --ref <branch>).
+# Fix and feature branches are checked through their pull request only.
 on:
   push:
     branches:
-      - "**"
+      - main
+      - v0.7
+      - v0.8
   pull_request:
   workflow_dispatch:
 
+# A pull request's newer push replaces its running check. Branch pushes never
+# cancel each other, so a skipped push cannot cancel a release commit's check.
 concurrency:
-  group: ldaca-wordflow-ci-${{ github.ref }}
+  group: ldaca-wordflow-ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  scope:
+    name: Scope
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+      backend: ${{ steps.scope.outputs.backend }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Test the scope rules
+        run: node --test scripts/ci-scope.test.mjs
+
+      - name: Decide what runs
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BASE_REF: ${{ github.base_ref }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-scope.mjs
+
   frontend:
     name: Frontend
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository with source dependencies
@@ -52,7 +88,8 @@ jobs:
 
   backend:
     name: Backend ${{ matrix.name }}
-    needs: frontend
+    needs: [scope, frontend]
+    if: needs.scope.outputs.backend == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

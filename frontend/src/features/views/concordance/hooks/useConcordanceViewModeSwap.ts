@@ -2,6 +2,8 @@ import { useCallback, useEffect, type Dispatch, type RefObject, type SetStateAct
 import type { ConcordanceAnalysisResponse } from '@/api';
 
 interface Params {
+  /** The Combined view is an advanced setting: off in Basic. */
+  combinedAllowed: boolean;
   viewMode: 'separated' | 'combined';
   setViewMode: Dispatch<SetStateAction<'separated' | 'combined'>>;
   results: ConcordanceAnalysisResponse | null;
@@ -11,21 +13,24 @@ interface Params {
 
 /** Owns only Concordance presentation mode and scroll anchoring; Query owns every page. */
 export function useConcordanceViewModeSwap({
+  combinedAllowed,
   viewMode,
   setViewMode,
   results,
   combinedLoading,
   resultsRef,
 }: Params) {
+  // Back to Separated when the results cannot be combined, or Advanced is
+  // turned off: Basic keeps two Data Blocks' results separated.
   useEffect(() => {
-    if (viewMode !== 'combined' || results?.combinable !== false) return;
+    if (viewMode !== 'combined' || (results?.combinable !== false && combinedAllowed)) return;
     const frame = requestAnimationFrame(() => {
       setViewMode('separated');
     });
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [results?.combinable, setViewMode, viewMode]);
+  }, [combinedAllowed, results?.combinable, setViewMode, viewMode]);
 
   const handleViewModeChange = useCallback(
     (nextMode: 'separated' | 'combined') => {

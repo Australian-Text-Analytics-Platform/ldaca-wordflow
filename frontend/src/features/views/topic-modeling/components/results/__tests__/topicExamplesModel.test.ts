@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   codePointOffsets,
   splitTopicWords,
+  typicalityBadge,
   typicalityBand,
   typicalityLabel,
 } from '../topicExamplesModel';
@@ -28,6 +29,18 @@ describe('topic examples model (#353)', () => {
 
   it('prefers the longer of two overlapping words', () => {
     expect(marked('new york city', ['new', 'new york'])).toEqual(['new york']);
+  });
+
+  it('marks a passage that joined after grouping, on the grouped passages’ scale', () => {
+    expect(typicalityBadge({ typicality: 90 })).toMatchObject({ text: 'Top 10%', band: 'high' });
+    expect(typicalityBadge({ typicality: 40, joined: true })).toMatchObject({
+      text: 'Joined · Top 60%',
+      band: 'middle',
+    });
+    // Less similar than every passage grouping put in the topic.
+    expect(typicalityBadge({ typicality: 0, joined: true, outsideTopicRange: true })).toMatchObject(
+      { text: 'Joined · Outside', band: 'low' },
+    );
   });
 
   it('labels typicality as a rank within the Topic, in three bands', () => {

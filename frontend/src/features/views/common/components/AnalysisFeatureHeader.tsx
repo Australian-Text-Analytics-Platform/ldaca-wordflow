@@ -16,6 +16,8 @@ export interface AnalysisFeatureHeaderProps {
   helpKey: DocumentKey<'tutorial'>;
   helpLabel: string;
   helpTooltip?: string;
+  /** Sits at the right end of the header, such as the Advanced switch. */
+  action?: React.ReactNode;
 }
 
 /**
@@ -31,15 +33,17 @@ export function AnalysisFeatureHeader({
   helpKey,
   helpLabel,
   helpTooltip,
+  action,
 }: AnalysisFeatureHeaderProps) {
   return (
     <CardHeader className="space-y-0 pb-4">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <CardTitle className="flex items-center gap-2">
           {title}
           <InfoIcon targetKey={infoKey} label={infoLabel} tooltip={infoTooltip} />
           <HelpIcon targetKey={helpKey} label={helpLabel} tooltip={helpTooltip} />
         </CardTitle>
+        {action}
       </div>
     </CardHeader>
   );

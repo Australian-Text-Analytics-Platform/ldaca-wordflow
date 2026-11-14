@@ -32,14 +32,24 @@ import { getAnalysisResultResource } from '../common/analysisApi';
 import { AnalysisCardLayout } from '../common/components/AnalysisCardLayout';
 import { useSequentialAnalysisTaskFlow } from './hooks/useSequentialAnalysisTaskFlow';
 import { buildSequentialChartExportMetadata } from './hooks/sequentialChartExport';
-import { buildSequentialChartModel, type ChartTypeOption } from './hooks/sequentialChartModel';
 import {
+  buildSequentialChartModel,
+  type ChartTypeOption,
+  type SequentialScale,
+} from './hooks/sequentialChartModel';
+import {
+  basicSequentialParameters,
   deriveSequentialParameterValues,
   readSequentialServerParams,
   useSequentialAnalysisParameters,
   type SequentialHydratedParams,
 } from './hooks/useSequentialAnalysisParameters';
 import { useSequentialChartControls } from './hooks/useSequentialChartControls';
+import { useReferenceCandidates } from './hooks/useReferenceCandidates';
+import { AdvancedSwitch } from '../common/toolMode/AdvancedSwitch';
+import { ToolModeContext } from '../common/toolMode/ToolModeContext';
+import { useToolMode } from '../common/toolMode/useToolMode';
+import { defaultReferenceNode } from './trendsReference';
 import { SequentialAnalysisParameterPanel } from './components/panels/SequentialAnalysisParameterPanel';
 import { SequentialAnalysisResultsPanel } from './components/panels/SequentialAnalysisResultsPanel';
 import { SequentialAddToWorkspaceDialog } from './components/SequentialAddToWorkspaceDialog';
@@ -77,7 +87,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   } = host;
   const tabTaskId = latestRunAll?.id ?? null;
   const queryClient = useQueryClient();
-  const { currentWorkspaceId } = useWorkspaceData();
+  const { currentWorkspaceId, nodes: workspaceNodes } = useWorkspaceData();
   const { createResultDataBlocks } = useWorkspaceActions();
   const { isLoading } = useWorkspaceStatus();
 
@@ -113,6 +123,11 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     setCustomIntervalValueInput,
     customIntervalUnit,
     setCustomIntervalUnit,
+    referenceTextColumn,
+    setReference,
+    setReferenceTextColumn,
+    referenceTokenizerModel,
+    setReferenceTokenizerModel,
   } = sequentialParameters;
   const savedChartType = host.settings['sequential.chartType'];
   const [chartType, setChartTypeState] = useState<ChartTypeOption>(
@@ -126,11 +141,21 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     setChartTypeState(value);
     host.setSetting('sequential.chartType', value);
   };
-  // Kept per tab like the chart type; off by default (issue 219).
-  const [normalise, setNormaliseState] = useState(host.settings['sequential.normalise'] === 'true');
-  const setNormalise = (value: boolean) => {
-    setNormaliseState(value);
-    host.setSetting('sequential.normalise', value ? 'true' : 'false');
+  // Show as, kept per tab like the chart type; counts by default. A tab saved
+  // with the former Normalise to 100% toggle on reopens as Composition.
+  const savedScale = host.settings['sequential.scale'];
+  const [scale, setScaleState] = useState<SequentialScale>(
+    savedScale === 'composition' ||
+      savedScale === 'per-million-words' ||
+      savedScale === 'percent-of-rows'
+      ? savedScale
+      : host.settings['sequential.normalise'] === 'true'
+        ? 'composition'
+        : 'count',
+  );
+  const setScale = (value: SequentialScale) => {
+    setScaleState(value);
+    host.setSetting('sequential.scale', value);
   };
   const chartControls = useSequentialChartControls(tabTaskId);
   const {
@@ -245,13 +270,73 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
           : 'datetime';
   // A Date column has no time of day, so sub-day periods do not apply (issue 187).
   const timeColumnIsDate = Boolean(activeColumnField && isArrowDateField(activeColumnField));
+  // Normalising against a reference Data Block is an advanced setting: in
+  // Basic it is hidden and no reference is sent, so Trends counts rows.
+  const toolMode = useToolMode({
+    host,
+    viewId: 'sequential-analysis',
+    lastRunUsedAdvanced: Boolean(serverRequest?.reference_node_id),
+  });
+  // Only a Data Block with the same time column can supply denominators.
+  // Basic reads no other Data Block's columns.
+  const referenceCandidates = useReferenceCandidates({
+    workspaceId: currentWorkspaceId,
+    nodes: workspaceNodes,
+    activeNodeId,
+    timeColumn: toolMode.advanced ? activeTimeColumn : '',
+    columnType: derivedColumnType,
+  });
+  // A freshly chosen Data Block starts with the Data Block it was made from
+  // as its reference, with that one's document column and tokeniser (Chao):
+  // the choice that is rarely wrong, still open to change, including to none.
+  // A reopened run keeps what it ran with, so a draft with a result is left.
+  const defaultedReferenceFor = useRef('');
+  useEffect(() => {
+    if (!toolMode.advanced) return;
+    if (!activeNodeId || defaultedReferenceFor.current === activeNodeId) return;
+    if (hydratingSelection || results) return;
+    defaultedReferenceFor.current = activeNodeId;
+    if (sequentialParameters.referenceNodeId !== '') return;
+    const parent = defaultReferenceNode(workspaceNodes, activeNodeId);
+    if (parent) setReference(parent.id, parent.document ?? '', parent.tokenizer_model ?? '');
+  }, [
+    activeNodeId,
+    hydratingSelection,
+    results,
+    sequentialParameters.referenceNodeId,
+    setReference,
+    toolMode.advanced,
+    workspaceNodes,
+  ]);
+  // Turning Advanced on offers the same default, also beside a result: the
+  // person asked for the advanced settings, so the next run can use them.
+  const setAdvanced = (advanced: boolean) => {
+    toolMode.setAdvanced(advanced);
+    if (!advanced || !activeNodeId || sequentialParameters.referenceNodeId !== '') return;
+    defaultedReferenceFor.current = activeNodeId;
+    const parent = defaultReferenceNode(workspaceNodes, activeNodeId);
+    if (parent) setReference(parent.id, parent.document ?? '', parent.tokenizer_model ?? '');
+  };
+  // A Data Block cannot be its own reference, nor can one without the time
+  // column: when the analysed Data Block or its time column changes so the
+  // chosen reference no longer qualifies, the reference reads as none.
+  const referenceNodeId =
+    sequentialParameters.referenceNodeId === activeNodeId ||
+    referenceCandidates.excluded.has(sequentialParameters.referenceNodeId)
+      ? ''
+      : sequentialParameters.referenceNodeId;
   const {
     numericOriginValue,
     numericIntervalValue,
     customIntervalValue,
     customIntervalUnitValue,
     currentSequentialParams,
-  } = deriveSequentialParameterValues(sequentialParameters, derivedColumnType);
+  } = deriveSequentialParameterValues(
+    toolMode.advanced
+      ? { ...sequentialParameters, referenceNodeId }
+      : basicSequentialParameters(sequentialParameters),
+    derivedColumnType,
+  );
 
   const lastRunRequest = serverRequest ?? null;
   const serverNodeId =
@@ -332,6 +417,9 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
         numericOriginInput,
         customIntervalValue,
         customIntervalUnit: customIntervalUnitValue,
+        referenceNodeId: currentSequentialParams.reference_node_id,
+        referenceTextColumn: currentSequentialParams.reference_text_column,
+        referenceTokenizerModel: currentSequentialParams.reference_tokenizer_model,
       },
       actions: {
         runAnalysis,
@@ -393,7 +481,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     excludedGroupIndices,
     selectedPeriodIndices,
     ungroupedLabel: resultNodeInfo?.name,
-    normalise,
+    scale,
   });
   const { summary } = chartModel;
 
@@ -421,7 +509,9 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding the Trends selection to the Project.');
     } catch (cause) {
-      toastError(cause, 'Try again.', { title: "Couldn't add the Trends selection." });
+      toastError(cause, 'Try again.', {
+        title: "Couldn't add the Trends selection.",
+      });
     } finally {
       setIsAddingToWorkspace(false);
     }
@@ -438,7 +528,10 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     }
     const nodeName =
       resultNodeInfo?.name ?? panelSelectedNodes[0]?.name ?? panelSelectedNodes[0]?.id ?? 'data';
-    const { header } = buildSequentialChartExportMetadata({ nodeName, model: chartModel });
+    const { header } = buildSequentialChartExportMetadata({
+      nodeName,
+      model: chartModel,
+    });
     try {
       await downloadChartAsHtml(chartContainerRef.current, {
         nodeName,
@@ -488,173 +581,191 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   };
 
   return (
-    <AnalysisSplitLayout
-      viewId="sequential-analysis"
-      parameters={
-        <AnalysisCardLayout
-          title="Trends Analysis"
-          info={{
-            targetKey: 'sequential-analysis.overview',
-            label: 'About Trends Analysis',
-            tooltip: 'Counts the rows in each period, for example documents per month.',
-          }}
-          help={{
-            targetKey: 'analysis.sequential-analysis.parameters',
-            label: 'Trends parameters',
-            tooltip:
-              'Choose a time, number or category column, set the period, and add Group By columns.',
-          }}
-          actions={{
-            // Routes the Run button through live sequential analysis.
-            onRunAll: () => {
-              void handleRunOrUpdate();
-            },
-            // Stops the active sequential-analysis task from the shared layout action.
-            onStop: activeAnalysis
-              ? () => {
-                  void stopTask();
-                }
-              : undefined,
-            // Clears live sequential-analysis results from the shared layout action.
-            onClear: () => {
-              void handleClearResults();
-            },
-            runAllDisabled:
-              parametersLocked ||
-              actionState.runDisabled ||
-              isLoading.operations ||
-              !activeTimeColumn ||
-              tooManyGroupsReason !== undefined,
-            runAllDisabledReason: (() => {
-              if (isAnalyzing || isLoading.operations) return undefined;
-              if (actionState.runDisabledReason) return actionState.runDisabledReason;
-              if (!activeTimeColumn) return 'Select a time, number or category column to run';
-              return tooManyGroupsReason;
-            })(),
-            clearDisabled: actionState.clearDisabled,
-            clearDisabledReason: actionState.clearDisabledReason,
-            isRunningAll: isAnalyzing,
-            isStopping,
-            runAllLabel: 'Run',
-            clearHelp: {
-              targetKey: 'analysis.sequential-analysis.clear-results',
-              label: 'Clear results',
-            },
-          }}
-          actionsGuidanceTarget="trends-actions"
-          parametersLocked={parametersLocked}
-        >
-          <SequentialAnalysisParameterPanel
-            nodeInputs={nodeInputs}
-            onColumnChange={(nodeId, column) => {
-              setNodeColumnSelection(nodeId, column);
-              setTimeColumn(column);
+    <ToolModeContext value={{ advanced: toolMode.advanced, setAdvanced }}>
+      <AnalysisSplitLayout
+        viewId="sequential-analysis"
+        parameters={
+          <AnalysisCardLayout
+            title="Trends Analysis"
+            headerAction={<AdvancedSwitch />}
+            info={{
+              targetKey: 'sequential-analysis.overview',
+              label: 'About Trends Analysis',
+              tooltip: 'Counts the rows in each period, for example documents per month.',
             }}
-            derivedColumnType={derivedColumnType}
-            dateOnly={timeColumnIsDate}
-            inputsDisabled={isAnalyzing || isLoading.operations || !activeNodeId}
-            activeNodeId={activeNodeId}
-            selectedNodeId={activeNodeId}
-            currentWorkspaceId={currentWorkspaceId}
-            frequency={frequency}
-            onFrequencyChange={setFrequency}
-            customIntervalValueInput={customIntervalValueInput}
-            onCustomIntervalValueChange={setCustomIntervalValueInput}
-            customIntervalUnit={customIntervalUnit}
-            onCustomIntervalUnitChange={setCustomIntervalUnit}
-            numericOriginInput={numericOriginInput}
-            onNumericOriginChange={setNumericOriginInput}
-            numericIntervalInput={numericIntervalInput}
-            onNumericIntervalChange={setNumericIntervalInput}
-            availableColumns={groupableColumns}
-            groupByColumns={groupByColumns}
-            onAddGroupByColumn={sequentialParameters.addGroupByColumn}
-            onRemoveGroupByColumn={sequentialParameters.removeGroupByColumn}
-            onGroupByColumnChange={sequentialParameters.changeGroupByColumn}
+            help={{
+              targetKey: 'analysis.sequential-analysis.parameters',
+              label: 'Trends parameters',
+              tooltip:
+                'Choose a time, number or category column, set the period, and add Group By columns.',
+            }}
+            actions={{
+              // Routes the Run button through live sequential analysis.
+              onRunAll: () => {
+                void handleRunOrUpdate();
+              },
+              // Stops the active sequential-analysis task from the shared layout action.
+              onStop: activeAnalysis
+                ? () => {
+                    void stopTask();
+                  }
+                : undefined,
+              // Clears live sequential-analysis results from the shared layout action.
+              onClear: () => {
+                void handleClearResults();
+              },
+              runAllDisabled:
+                parametersLocked ||
+                actionState.runDisabled ||
+                isLoading.operations ||
+                !activeTimeColumn ||
+                tooManyGroupsReason !== undefined,
+              runAllDisabledReason: (() => {
+                if (isAnalyzing || isLoading.operations) return undefined;
+                if (actionState.runDisabledReason) return actionState.runDisabledReason;
+                if (!activeTimeColumn) return 'Select a time, number or category column to run';
+                return tooManyGroupsReason;
+              })(),
+              clearDisabled: actionState.clearDisabled,
+              clearDisabledReason: actionState.clearDisabledReason,
+              isRunningAll: isAnalyzing,
+              isStopping,
+              runAllLabel: 'Run',
+              clearHelp: {
+                targetKey: 'analysis.sequential-analysis.clear-results',
+                label: 'Clear results',
+              },
+            }}
+            actionsGuidanceTarget="trends-actions"
+            parametersLocked={parametersLocked}
+          >
+            <SequentialAnalysisParameterPanel
+              nodeInputs={nodeInputs}
+              onColumnChange={(nodeId, column) => {
+                setNodeColumnSelection(nodeId, column);
+                setTimeColumn(column);
+              }}
+              derivedColumnType={derivedColumnType}
+              dateOnly={timeColumnIsDate}
+              inputsDisabled={isAnalyzing || isLoading.operations || !activeNodeId}
+              activeNodeId={activeNodeId}
+              selectedNodeId={activeNodeId}
+              currentWorkspaceId={currentWorkspaceId}
+              frequency={frequency}
+              onFrequencyChange={setFrequency}
+              customIntervalValueInput={customIntervalValueInput}
+              onCustomIntervalValueChange={setCustomIntervalValueInput}
+              customIntervalUnit={customIntervalUnit}
+              onCustomIntervalUnitChange={setCustomIntervalUnit}
+              numericOriginInput={numericOriginInput}
+              onNumericOriginChange={setNumericOriginInput}
+              numericIntervalInput={numericIntervalInput}
+              onNumericIntervalChange={setNumericIntervalInput}
+              availableColumns={groupableColumns}
+              groupByColumns={groupByColumns}
+              onAddGroupByColumn={sequentialParameters.addGroupByColumn}
+              onRemoveGroupByColumn={sequentialParameters.removeGroupByColumn}
+              onGroupByColumnChange={sequentialParameters.changeGroupByColumn}
+              reference={{
+                nodes: referenceCandidates.nodes,
+                timeColumn: activeTimeColumn,
+                referenceNodeId,
+                // A chosen Data Block starts with its document column and its
+                // tokeniser preference, as Frequency would count its words.
+                onReferenceChange: (node) => {
+                  if (node) setReference(node.id, node.document ?? '', node.tokenizer_model ?? '');
+                  else setReference('');
+                },
+                referenceTextColumn,
+                onReferenceTextColumnChange: setReferenceTextColumn,
+                referenceTokenizerModel,
+                onReferenceTokenizerModelChange: setReferenceTokenizerModel,
+              }}
+            />
+          </AnalysisCardLayout>
+        }
+      >
+        {sequentialWaitingBanner && (
+          <AnalysisTaskBanner
+            analysisName="Trends"
+            status={sequentialWaitingBanner.status}
+            taskId={sequentialWaitingBanner.taskId}
+            message={sequentialWaitingBanner.message}
+            className="mt-4"
           />
-        </AnalysisCardLayout>
-      }
-    >
-      {sequentialWaitingBanner && (
-        <AnalysisTaskBanner
-          analysisName="Trends"
-          status={sequentialWaitingBanner.status}
-          taskId={sequentialWaitingBanner.taskId}
-          message={sequentialWaitingBanner.message}
-          className="mt-4"
-        />
-      )}
+        )}
 
-      {/* A failed run says why (issue 205). */}
-      {analysisFailure && !isAnalyzing ? (
-        <ErrorNotice className="mt-4" error={analysisFailure} />
-      ) : null}
+        {/* A failed run says why (issue 205). */}
+        {analysisFailure && !isAnalyzing ? (
+          <ErrorNotice className="mt-4" error={analysisFailure} />
+        ) : null}
 
-      {resultTooManyGroups ? (
-        <ErrorNotice
-          className="mt-4"
-          error={`This result has ${resultGroupCount.toLocaleString()} groups, more than Trends can draw (${MAX_TRENDS_GROUPS.toLocaleString()}). Choose Clear, then run again with a group column that has fewer different values.`}
-        />
-      ) : null}
+        {resultTooManyGroups ? (
+          <ErrorNotice
+            className="mt-4"
+            error={`This result has ${resultGroupCount.toLocaleString()} groups, more than Trends can draw (${MAX_TRENDS_GROUPS.toLocaleString()}). Choose Clear, then run again with a group column that has fewer different values.`}
+          />
+        ) : null}
 
-      {drawableResults && (
-        <SequentialAnalysisResultsPanel
-          resultsSummary={resultsSummary}
-          model={chartModel}
-          minimumGroupCount={minimumGroupCount}
-          onMinimumGroupCountChange={chartControls.setMinimumGroupCount}
-          onChartTypeChange={(value) => {
-            handleChartTypeChange(value);
+        {drawableResults && (
+          <SequentialAnalysisResultsPanel
+            resultsSummary={resultsSummary}
+            model={chartModel}
+            minimumGroupCount={minimumGroupCount}
+            onMinimumGroupCountChange={chartControls.setMinimumGroupCount}
+            onChartTypeChange={(value) => {
+              handleChartTypeChange(value);
+            }}
+            onXAxisTypeChange={setXAxisType}
+            onScaleChange={setScale}
+            onDownloadClick={() => {
+              setDownloadDialogOpen(true);
+            }}
+            onAddToWorkspace={() => {
+              setAddToWorkspaceDialogOpen(true);
+            }}
+            addToWorkspaceDisabled={chartModel.eligibleDocumentCount === 0}
+            dataResetKey={tabTaskId ?? 'trends-result'}
+            onToggleGroupIndices={chartControls.toggleGroupIndices}
+            onUncasedChange={chartControls.setUncasedGroups}
+            onPeriodClick={(index, shiftHeld) => {
+              chartControls.selectPeriod(index, shiftHeld, chartModel.chartData.length);
+            }}
+            onClearSelection={chartControls.clearPeriodSelection}
+            containerRef={chartContainerRef}
+          />
+        )}
+        <ChartImageDownloadDialog
+          open={downloadDialogOpen}
+          onOpenChange={setDownloadDialogOpen}
+          title="Download Trends chart"
+          onConfirm={(format) => {
+            void handleDownloadChart(format);
           }}
-          onXAxisTypeChange={setXAxisType}
-          onNormaliseChange={setNormalise}
-          onDownloadClick={() => {
-            setDownloadDialogOpen(true);
-          }}
-          onAddToWorkspace={() => {
-            setAddToWorkspaceDialogOpen(true);
-          }}
-          addToWorkspaceDisabled={chartModel.eligibleDocumentCount === 0}
-          dataResetKey={tabTaskId ?? 'trends-result'}
-          onToggleGroupIndices={chartControls.toggleGroupIndices}
-          onUncasedChange={chartControls.setUncasedGroups}
-          onPeriodClick={(index, shiftHeld) => {
-            chartControls.selectPeriod(index, shiftHeld, chartModel.chartData.length);
-          }}
-          onClearSelection={chartControls.clearPeriodSelection}
-          containerRef={chartContainerRef}
-        />
-      )}
-      <ChartImageDownloadDialog
-        open={downloadDialogOpen}
-        onOpenChange={setDownloadDialogOpen}
-        title="Download Trends chart"
-        onConfirm={(format) => {
-          void handleDownloadChart(format);
-        }}
-        onConfirmHtml={() => {
-          void handleDownloadChartHtml();
-        }}
-      />
-      {drawableResults?.source ? (
-        <SequentialAddToWorkspaceDialog
-          open={addToWorkspaceDialogOpen}
-          onOpenChange={setAddToWorkspaceDialogOpen}
-          source={drawableResults.source}
-          axisColumn={summary.timeColumn}
-          groupByColumns={summary.groupBy}
-          filterSummary={
-            chartModel.selection.selectedCount > 0
-              ? `${String(chartModel.eligibleDocumentCount)} source rows in ${String(chartModel.selection.selectedCount)} selected period${chartModel.selection.selectedCount === 1 ? '' : 's'} and the visible groups`
-              : `${String(chartModel.eligibleDocumentCount)} source rows across all periods and the visible groups`
-          }
-          isSubmitting={isAddingToWorkspace}
-          onSubmit={(selection) => {
-            void handleAddToWorkspace(selection);
+          onConfirmHtml={() => {
+            void handleDownloadChartHtml();
           }}
         />
-      ) : null}
-    </AnalysisSplitLayout>
+        {drawableResults?.source ? (
+          <SequentialAddToWorkspaceDialog
+            open={addToWorkspaceDialogOpen}
+            onOpenChange={setAddToWorkspaceDialogOpen}
+            source={drawableResults.source}
+            axisColumn={summary.timeColumn}
+            groupByColumns={summary.groupBy}
+            filterSummary={
+              chartModel.selection.selectedCount > 0
+                ? `${String(chartModel.eligibleDocumentCount)} source rows in ${String(chartModel.selection.selectedCount)} selected period${chartModel.selection.selectedCount === 1 ? '' : 's'} and the visible groups`
+                : `${String(chartModel.eligibleDocumentCount)} source rows across all periods and the visible groups`
+            }
+            isSubmitting={isAddingToWorkspace}
+            onSubmit={(selection) => {
+              void handleAddToWorkspace(selection);
+            }}
+          />
+        ) : null}
+      </AnalysisSplitLayout>
+    </ToolModeContext>
   );
 };
 

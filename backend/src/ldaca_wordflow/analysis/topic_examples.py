@@ -24,31 +24,64 @@ class TopicSegment:
     start: int
     end: int
     similarity: float | None
+    # An Ungrouped passage that joined the Topic after grouping (2026-11).
+    joined: bool = False
 
 
 def typicality_percentiles(segments: Sequence[TopicSegment]) -> dict[int, int | None]:
-    """Each segment's share (0-100) of the Topic's segments less similar to its centre.
+    """Each segment's share (0-100) of the Topic's grouped segments less similar to its centre.
 
-    ``None`` for every segment when the run kept no compact embeddings. A
-    Topic of one segment ranks it 100.
+    The scale is that of the segments grouping put in the Topic, so it does
+    not move when Ungrouped passages join. A joined segment is placed on it:
+    0 when it is no more similar than the least similar grouped segment, 100
+    when it is as similar as the most similar one. ``None`` for every segment
+    when the run kept no compact embeddings. A Topic of one grouped segment
+    ranks it 100.
     """
 
-    similarities = sorted(
-        segment.similarity for segment in segments if segment.similarity is not None
-    )
-    if len(similarities) != len(segments):
+    if any(segment.similarity is None for segment in segments):
         return {segment.segment_index: None for segment in segments}
-    below_max = max(1, len(similarities) - 1)
+    grouped = sorted(
+        segment.similarity or 0.0 for segment in segments if not segment.joined
+    )
+    if not grouped:
+        # A Topic always has grouped segments; without any there is no scale.
+        return {segment.segment_index: None for segment in segments}
+    below_max = max(1, len(grouped) - 1)
     return {
         segment.segment_index: (
             100
-            if len(similarities) == 1
-            else round(
-                100 * bisect.bisect_left(similarities, segment.similarity or 0.0) / below_max
+            if len(grouped) == 1 and not segment.joined
+            else min(
+                100,
+                round(100 * bisect.bisect_left(grouped, segment.similarity or 0.0) / below_max),
             )
         )
         for segment in segments
     }
+
+
+def segments_outside_topic_range(segments: Sequence[TopicSegment]) -> frozenset[int]:
+    """Joined segments less similar to the centre than every grouped segment.
+
+    With "Join a topic they fit" a passage is within its natural Topic's own
+    range, so this is rare and comes from merged Topics, whose centre is
+    another. With "Always join the nearest topic" it is common.
+    """
+
+    grouped = [
+        segment.similarity
+        for segment in segments
+        if not segment.joined and segment.similarity is not None
+    ]
+    if not grouped:
+        return frozenset()
+    least = min(grouped)
+    return frozenset(
+        segment.segment_index
+        for segment in segments
+        if segment.joined and segment.similarity is not None and segment.similarity < least
+    )
 
 
 def corpus_position(document_index: int, corpus_sizes: Sequence[int]) -> tuple[int, int]:

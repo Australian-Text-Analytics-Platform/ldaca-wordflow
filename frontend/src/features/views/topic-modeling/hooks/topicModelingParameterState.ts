@@ -2,10 +2,11 @@ import type {
   TopicEmbeddingModel,
   TopicModelingAnalysisRequest,
   TopicSegmentationMethod,
+  TopicUngroupedPassages,
 } from '@/api';
 import { ENGLISH_EMBEDDING_MODEL, isTopicEmbeddingModel } from '../topicEmbeddingModels';
 
-export const DEFAULT_MAX_SEGMENT_TOKENS = 256;
+const DEFAULT_MAX_SEGMENT_TOKENS = 256;
 export const DEFAULT_MIN_CLUSTER_SIZE = 10;
 const DEFAULT_TOPIC_SAMPLE_PERCENT = 100;
 
@@ -22,8 +23,12 @@ export interface TopicModelingParameterState {
   randomSeed: number;
   randomSeedUserSet: boolean;
   segmentationMethod: TopicSegmentationMethod;
-  /** As set, up to 256; the model's limit applies on top (useTopicModelingParameters). */
-  maxSegmentTokens: number;
+  /**
+   * As set, up to 256; the model's limit applies on top
+   * (useTopicModelingParameters). `null` is Auto: the run measures the texts
+   * and chooses (Chao, 2026-11-11).
+   */
+  maxSegmentTokens: number | null;
   /**
    * The model someone chose or a saved run used; `null` follows the selected
    * Data Blocks' tokeniser (issue 413).
@@ -40,6 +45,12 @@ export interface TopicModelingParameterState {
   clusterSample: boolean;
   /** Segments to sample; `null` (an empty field) means the grey suggestion. */
   clusterSampleSize: number | null;
+  /**
+   * What happens to passages the grouping leaves out: they stay Ungrouped
+   * (`keep`, the default), join the topic they are most similar to when they
+   * fit it (`fit`), or always join it (`nearest`).
+   */
+  ungroupedPassages: TopicUngroupedPassages;
 }
 
 type TopicModelingParameterAction =
@@ -48,12 +59,13 @@ type TopicModelingParameterAction =
   | { type: 'setMaxClusterSize'; value: number | null }
   | { type: 'setRandomSeedFromUser'; value: number }
   | { type: 'setSegmentationMethod'; value: TopicSegmentationMethod }
-  | { type: 'setMaxSegmentTokens'; value: number }
+  | { type: 'setMaxSegmentTokens'; value: number | null }
   | { type: 'setEmbeddingModel'; value: TopicEmbeddingModel }
   | { type: 'setRemoteEmbedding'; value: boolean }
   | { type: 'setEmbeddingEndpointId'; value: string }
   | { type: 'setClusterSample'; value: boolean }
   | { type: 'setClusterSampleSize'; value: number | null }
+  | { type: 'setUngroupedPassages'; value: TopicUngroupedPassages }
   | { type: 'hydrateRequest'; request: TopicModelingAnalysisRequest };
 
 /**
@@ -70,12 +82,13 @@ export const createTopicModelingParameterState = (): TopicModelingParameterState
   randomSeed: 0,
   randomSeedUserSet: false,
   segmentationMethod: 'automatic',
-  maxSegmentTokens: DEFAULT_MAX_SEGMENT_TOKENS,
+  maxSegmentTokens: null,
   embeddingModel: null,
   remoteEmbedding: null,
   embeddingEndpointId: null,
   clusterSample: false,
   clusterSampleSize: null,
+  ungroupedPassages: 'keep',
 });
 
 /**
@@ -210,7 +223,10 @@ export const topicModelingParameterReducer = (
     case 'setSegmentationMethod':
       return { ...state, segmentationMethod: action.value };
     case 'setMaxSegmentTokens':
-      return { ...state, maxSegmentTokens: sanitizeMaxSegmentTokens(action.value) };
+      return {
+        ...state,
+        maxSegmentTokens: action.value === null ? null : sanitizeMaxSegmentTokens(action.value),
+      };
     case 'setEmbeddingModel':
       return { ...state, embeddingModel: action.value };
     case 'setRemoteEmbedding':
@@ -221,6 +237,8 @@ export const topicModelingParameterReducer = (
       return { ...state, clusterSample: action.value };
     case 'setClusterSampleSize':
       return { ...state, clusterSampleSize: action.value };
+    case 'setUngroupedPassages':
+      return { ...state, ungroupedPassages: action.value };
     case 'hydrateRequest': {
       const hasSampling = Array.isArray(action.request.sample_fractions);
       const samples = hasSampling
@@ -233,7 +251,11 @@ export const topicModelingParameterReducer = (
         randomSeed: action.request.random_seed ?? 0,
         randomSeedUserSet: true,
         segmentationMethod: normalizeSegmentationMethod(action.request.segmentation_method),
-        maxSegmentTokens: sanitizeMaxSegmentTokens(action.request.max_segment_tokens),
+        // A run saved without one used Auto.
+        maxSegmentTokens:
+          action.request.max_segment_tokens == null
+            ? null
+            : sanitizeMaxSegmentTokens(action.request.max_segment_tokens),
         // Runs saved before 0.7.16 name no model: they used English.
         embeddingModel: isTopicEmbeddingModel(action.request.embedding_model)
           ? action.request.embedding_model
@@ -243,6 +265,8 @@ export const topicModelingParameterReducer = (
         embeddingEndpointId: action.request.embedding_endpoint_id ?? null,
         clusterSample: action.request.cluster_sample_size != null,
         clusterSampleSize: action.request.cluster_sample_size ?? null,
+        // A run saved without it kept them Ungrouped.
+        ungroupedPassages: action.request.ungrouped_passages ?? 'keep',
         corpusSamplesByNodeId: hasSampling
           ? Object.fromEntries(
               action.request.node_ids.map((nodeId, index) => [

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Analysis } from '@/api';
 import type { RunAnalysisOptions } from '../../common/hooks/useAnalysisFeature';
+import { DEFAULT_ANNOTATION_PROMPT } from '../components/AnnotationPromptInput';
 import {
   ANNOTATION_TAB_SETTINGS_KEY,
   DEFAULT_ANNOTATION_TAB_SETTINGS,
@@ -21,6 +22,10 @@ const annotationSettings = (
     ...values,
   }),
 });
+/** The same, with the tab's Advanced switch on. */
+const advancedSettings = (
+  values: Partial<typeof DEFAULT_ANNOTATION_TAB_SETTINGS>,
+): Record<string, string> => ({ ...annotationSettings(values), 'tool.advanced': 'true' });
 
 async function executeAnalysis<TAnalysis extends Analysis>(options: RunAnalysisOptions<TAnalysis>) {
   try {
@@ -208,9 +213,11 @@ vi.mock('@/features/views/common/components/AnalysisCardLayout', () => ({
     children,
     footer,
     actions,
+    headerAction,
   }: {
     children: ReactNode;
     footer?: ReactNode;
+    headerAction?: ReactNode;
     actions?: {
       onPreview: () => void | Promise<void>;
       onRunAll: () => void | Promise<void>;
@@ -220,6 +227,7 @@ vi.mock('@/features/views/common/components/AnalysisCardLayout', () => ({
     };
   }) => (
     <div>
+      {headerAction}
       {children}
       {footer}
       {actions ? (
@@ -449,7 +457,8 @@ describe('AnnotationFeature', () => {
           latestRunAll: null,
           activeAnalysis: null,
           inputSets: {},
-          settings: annotationSettings({
+          // Examples are advanced settings, sent only in Advanced.
+          settings: advancedSettings({
             annotationMode: 'ai',
             annotationTargets: { 'source-1': 'annotation' },
             aiProviderConfigurationId: 'provider-1',
@@ -492,6 +501,70 @@ describe('AnnotationFeature', () => {
     await user.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
     expect(mocks.submitRunAll.mock.calls[0]?.[0].source).toEqual(previewRequest);
+  });
+
+  it('sends the defaults of the hidden advanced settings in Basic, and keeps the draft', async () => {
+    const user = userEvent.setup();
+    mocks.classSelected = true;
+    mocks.classRows = [{ class: 'support', description: 'Supports the claim' }];
+    mocks.providerConfigurations = [
+      { id: 'provider-1', name: 'OpenAI', provider: 'openai', base_url: null, has_api_key: true },
+    ];
+    mocks.sourceColumnNames = ['text', 'annotation'];
+
+    render(
+      <AnnotationFeature
+        host={{
+          tabId: 'tab-1',
+          analyses: [],
+          latestPreview: null,
+          latestRunAll: null,
+          activeAnalysis: null,
+          inputSets: {},
+          settings: annotationSettings({
+            annotationMode: 'ai',
+            annotationTargets: { 'source-1': 'annotation' },
+            aiProviderConfigurationId: 'provider-1',
+            aiProviderType: 'openai',
+            aiProviderModels: { 'provider-1': 'gpt-test' },
+            aiPrompt: 'Label stance carefully.',
+            aiTemperature: 0.7,
+            aiMaxExamplesPerClass: 3,
+            aiBatchSize: 50,
+            aiProcessingMode: 'reprocess_all',
+          }),
+          correctionColumns: {},
+          setInputSet: mocks.setInputSet,
+          setSetting: mocks.setSetting,
+          setCorrectionColumn: vi.fn(),
+          clearCorrectionColumns: vi.fn(),
+          refreshAnalyses: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('switch', { name: 'Advanced settings' })).not.toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await waitFor(() => expect(mocks.submitPreview).toHaveBeenCalledOnce());
+    const previewRequest = mocks.submitPreview.mock.calls[0]?.[0].request;
+    expect(previewRequest).toMatchObject({
+      instruction: DEFAULT_ANNOTATION_PROMPT,
+      temperature: 0,
+      max_examples_per_class: 10,
+    });
+    expect(previewRequest.example_node_id).toBeUndefined();
+
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
+    expect(mocks.submitRunAll.mock.calls[0]?.[0]).toMatchObject({
+      batchSize: 20,
+      processingMode: 'fill_missing',
+    });
+    // Turning Advanced off sent the defaults without changing the draft.
+    expect(mocks.setSetting).not.toHaveBeenCalledWith(
+      ANNOTATION_TAB_SETTINGS_KEY,
+      expect.stringContaining('"aiPrompt":""'),
+    );
   });
 
   it("starts a new tab with the Project's last model for the provider, and a run records it", async () => {
@@ -556,7 +629,7 @@ describe('AnnotationFeature', () => {
           latestRunAll: null,
           activeAnalysis: null,
           inputSets: {},
-          settings: annotationSettings({ annotationMode: 'ai' }),
+          settings: advancedSettings({ annotationMode: 'ai' }),
           correctionColumns: {},
           setInputSet: mocks.setInputSet,
           setSetting: mocks.setSetting,

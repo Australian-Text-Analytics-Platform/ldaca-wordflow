@@ -303,11 +303,24 @@ const RELAX_ITERATIONS = 240;
 /** Upper bound on separation-only passes after the anchored rounds. */
 const RELAX_MAX_FINAL_PASSES = 3000;
 /**
+ * Most steps one layout takes, where a step compares one pair of bubbles,
+ * looks in one grid cell, or files one bubble. The layout runs on the main
+ * thread: 2,238 Topics once took 46 s to lay out and froze the app. With the
+ * budget the same Topics take about 0.6 s (Node on an M-series Mac), leaving
+ * a handful of near-hidden pairs; 1,500 or fewer settle before reaching it.
+ */
+const RELAX_WORK_BUDGET = 60_000_000;
+/** The grid has at most this many cells per bubble (and at least the floor), however far bubbles spread. */
+const GRID_CELLS_PER_BUBBLE = 16;
+const GRID_MIN_CELLS = 4096;
+/**
  * Each round, bubbles drift this share of the way back to their projected
  * spot; the pull fades to zero over the rounds so separation can finish.
  */
 const RELAX_ANCHOR = 0.04;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+/** Area of a hexagonal-packing cell per unit of squared spacing: √3 ÷ 2. */
+const HEXAGON_CELL_SHARE = Math.sqrt(3) / 2;
 
 interface RelaxItem {
   id: number;
@@ -316,59 +329,208 @@ interface RelaxItem {
   radius: number;
 }
 
+interface RelaxBubble extends RelaxItem {
+  originX: number;
+  originY: number;
+}
+
+/** Moves a pair apart if one hides the other's centre; returns the shortfall it found. */
+function pushApart(a: RelaxBubble, b: RelaxBubble): number {
+  const large = Math.max(a.radius, b.radius);
+  const small = Math.min(a.radius, b.radius);
+  const required = Math.max(large + OVERLAP_CENTRE_MARGIN * small, MIN_LABEL_DISTANCE);
+  let dx = b.x - a.x;
+  let dy = b.y - a.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance >= required) return 0;
+  if (distance < 1e-6) {
+    // Same spot: split in a fixed direction so the layout is repeatable.
+    const angle = GOLDEN_ANGLE * (a.id * 31 + b.id);
+    dx = Math.cos(angle);
+    dy = Math.sin(angle);
+  } else {
+    dx /= distance;
+    dy /= distance;
+  }
+  const deficit = required - distance;
+  // Area weights: the smaller bubble takes most of the move.
+  const shareA = (b.radius * b.radius) / (a.radius * a.radius + b.radius * b.radius);
+  const shareB = 1 - shareA;
+  a.x -= dx * deficit * shareA;
+  a.y -= dy * deficit * shareA;
+  b.x += dx * deficit * shareB;
+  b.y += dy * deficit * shareB;
+  return deficit;
+}
+
+/**
+ * When the bubbles need more room than the area they start in, as with
+ * thousands of small Topics, spreads their starting spots out from the middle
+ * until they fit, keeping the map's shape. Separation alone would push the
+ * crowd outwards a little per pass and run out of budget first. Each bubble
+ * needs its own disc, or for a small one the hexagonal cell that keeps
+ * labels 26 px apart.
+ */
+function spreadCrowdedBubbles(bubbles: RelaxBubble[]): void {
+  if (bubbles.length < 2) return;
+  let left = Infinity;
+  let right = -Infinity;
+  let top = Infinity;
+  let bottom = -Infinity;
+  let needed = 0;
+  for (const bubble of bubbles) {
+    left = Math.min(left, bubble.x);
+    right = Math.max(right, bubble.x);
+    top = Math.min(top, bubble.y);
+    bottom = Math.max(bottom, bubble.y);
+    needed += Math.max(Math.PI * bubble.radius ** 2, HEXAGON_CELL_SHARE * MIN_LABEL_DISTANCE ** 2);
+  }
+  const available =
+    Math.max(right - left, MIN_LABEL_DISTANCE) * Math.max(bottom - top, MIN_LABEL_DISTANCE);
+  if (needed <= available) return;
+  const scale = Math.sqrt(needed / available);
+  const middleX = (left + right) / 2;
+  const middleY = (top + bottom) / 2;
+  for (const bubble of bubbles) {
+    bubble.x = middleX + (bubble.x - middleX) * scale;
+    bubble.y = middleY + (bubble.y - middleY) * scale;
+    bubble.originX = bubble.x;
+    bubble.originY = bubble.y;
+  }
+}
+
 /**
  * Nudges bubbles apart so none is hidden behind another (issue 189). Partial
  * overlap is allowed, since nearby topics are similar, but for every pair the
  * smaller bubble's centre, where its label is, stays outside the larger one:
  * distance ≥ max(r_large + 0.35 r_small, 26 px). The smaller bubble moves more,
  * a weak pull keeps bubbles near their projected positions, and the result is
- * deterministic. Called by: buildTopicBubbleModels.
+ * deterministic.
+ *
+ * Each pass compares only bubbles close enough to matter, found through a
+ * grid, and the layout stops after a fixed amount of work, so thousands of
+ * Topics lay out in well under a second instead of freezing the app.
+ * Called by: buildTopicBubbleModels.
  */
 export function relaxTopicPositions(items: readonly RelaxItem[]): Map<number, TopicGraphPoint> {
-  const bubbles = items.map((item) => ({ ...item, originX: item.x, originY: item.y }));
-  /** One pass over every pair; returns the largest remaining shortfall. */
+  const count = items.length;
+  const bubbles: RelaxBubble[] = items.map((item) => ({
+    ...item,
+    originX: item.x,
+    originY: item.y,
+  }));
+  spreadCrowdedBubbles(bubbles);
+  // A pair never needs more room than its larger bubble's reach, so each pair
+  // is compared by that bubble (the lower index when the reaches are equal),
+  // searching the grid cells within its reach. Most bubbles are small and
+  // search only the cells next to their own.
+  const reach = Float64Array.from(bubbles, (bubble) =>
+    Math.max(bubble.radius * (1 + OVERLAP_CENTRE_MARGIN), MIN_LABEL_DISTANCE),
+  );
+  const cellOf = new Int32Array(count);
+  const cellColumn = new Int32Array(count);
+  const cellRow = new Int32Array(count);
+  /** Bubble indices grouped by cell, in index order within a cell. */
+  const filed = new Int32Array(count);
+  let cellStart = new Int32Array(0);
+  let cellCursor = new Int32Array(0);
+  let work = 0;
+
+  /** One pass over every pair of nearby bubbles; returns the largest remaining shortfall. */
   const separate = (): number => {
+    // File bubbles by where they stand at the start of the pass, so each
+    // nearby pair is compared once and always in the same order.
+    let left = Infinity;
+    let right = -Infinity;
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const bubble of bubbles) {
+      left = Math.min(left, bubble.x);
+      right = Math.max(right, bubble.x);
+      top = Math.min(top, bubble.y);
+      bottom = Math.max(bottom, bubble.y);
+    }
+    let cellSize = MIN_LABEL_DISTANCE;
+    const cellLimit = Math.max(GRID_MIN_CELLS, GRID_CELLS_PER_BUBBLE * count);
+    const wanted = ((right - left) / cellSize + 1) * ((bottom - top) / cellSize + 1);
+    if (wanted > cellLimit) cellSize *= Math.sqrt(wanted / cellLimit);
+    const columns = Math.floor((right - left) / cellSize) + 1;
+    const rows = Math.floor((bottom - top) / cellSize) + 1;
+    const cellCount = columns * rows;
+    if (cellStart.length < cellCount + 1) {
+      cellStart = new Int32Array(cellCount + 1);
+      cellCursor = new Int32Array(cellCount + 1);
+    } else {
+      cellStart.fill(0, 0, cellCount + 1);
+    }
+    bubbles.forEach((bubble, index) => {
+      const column = Math.floor((bubble.x - left) / cellSize);
+      const row = Math.floor((bubble.y - top) / cellSize);
+      const cell = column * rows + row;
+      cellColumn[index] = column;
+      cellRow[index] = row;
+      cellOf[index] = cell;
+      cellStart[cell + 1] = (cellStart[cell + 1] ?? 0) + 1;
+    });
+    for (let cell = 0; cell < cellCount; cell += 1) {
+      cellStart[cell + 1] = (cellStart[cell + 1] ?? 0) + (cellStart[cell] ?? 0);
+    }
+    cellCursor.set(cellStart.subarray(0, cellCount));
+    for (let index = 0; index < count; index += 1) {
+      const cell = cellOf[index] ?? 0;
+      const slot = cellCursor[cell] ?? 0;
+      filed[slot] = index;
+      cellCursor[cell] = slot + 1;
+    }
+    work += count + cellCount;
+
     let worst = 0;
     bubbles.forEach((a, i) => {
-      for (const b of bubbles.slice(i + 1)) {
-        const large = Math.max(a.radius, b.radius);
-        const small = Math.min(a.radius, b.radius);
-        const required = Math.max(large + OVERLAP_CENTRE_MARGIN * small, MIN_LABEL_DISTANCE);
-        let dx = b.x - a.x;
-        let dy = b.y - a.y;
-        const distance = Math.hypot(dx, dy);
-        if (distance >= required) continue;
-        worst = Math.max(worst, required - distance);
-        if (distance < 1e-6) {
-          // Same spot: split in a fixed direction so the layout is repeatable.
-          const angle = GOLDEN_ANGLE * (a.id * 31 + b.id);
-          dx = Math.cos(angle);
-          dy = Math.sin(angle);
-        } else {
-          dx /= distance;
-          dy /= distance;
+      const reachA = reach[i] ?? MIN_LABEL_DISTANCE;
+      const span = Math.ceil(reachA / cellSize);
+      const column = cellColumn[i] ?? 0;
+      const row = cellRow[i] ?? 0;
+      const lastColumn = Math.min(columns - 1, column + span);
+      const lastRow = Math.min(rows - 1, row + span);
+      for (let c = Math.max(0, column - span); c <= lastColumn; c += 1) {
+        for (let r = Math.max(0, row - span); r <= lastRow; r += 1) {
+          const cell = c * rows + r;
+          const end = cellStart[cell + 1] ?? 0;
+          work += 1;
+          for (let slot = cellStart[cell] ?? 0; slot < end; slot += 1) {
+            const j = filed[slot] ?? 0;
+            const reachB = reach[j] ?? MIN_LABEL_DISTANCE;
+            // The other bubble compares this pair.
+            if (reachB > reachA || (reachB === reachA && j <= i)) continue;
+            const b = bubbles[j];
+            if (!b) continue;
+            work += 1;
+            worst = Math.max(worst, pushApart(a, b));
+          }
         }
-        const deficit = required - distance;
-        // Area weights: the smaller bubble takes most of the move.
-        const shareA = (b.radius * b.radius) / (a.radius * a.radius + b.radius * b.radius);
-        const shareB = 1 - shareA;
-        a.x -= dx * deficit * shareA;
-        a.y -= dy * deficit * shareA;
-        b.x += dx * deficit * shareB;
-        b.y += dy * deficit * shareB;
       }
     });
     return worst;
   };
-  for (let round = 0; round < RELAX_ITERATIONS; round += 1) {
+  const withinBudget = () => work < RELAX_WORK_BUDGET;
+  // When passes are costly, the anchored rounds use at most half the budget,
+  // leaving the rest for separation alone; small layouts get every round.
+  let anchoredRounds = RELAX_ITERATIONS;
+  for (let round = 0; round < anchoredRounds && withinBudget(); round += 1) {
     separate();
-    const pull = RELAX_ANCHOR * (1 - round / RELAX_ITERATIONS);
+    if (round === 0 && work > 0) {
+      anchoredRounds = Math.max(
+        1,
+        Math.min(RELAX_ITERATIONS, Math.floor(RELAX_WORK_BUDGET / 2 / work)),
+      );
+    }
+    const pull = RELAX_ANCHOR * (1 - round / anchoredRounds);
     for (const bubble of bubbles) {
       bubble.x += (bubble.originX - bubble.x) * pull;
       bubble.y += (bubble.originY - bubble.y) * pull;
     }
   }
-  for (let pass = 0; pass < RELAX_MAX_FINAL_PASSES; pass += 1) {
+  for (let pass = 0; pass < RELAX_MAX_FINAL_PASSES && withinBudget(); pass += 1) {
     if (separate() < 0.1) break;
   }
   return new Map(bubbles.map((bubble) => [bubble.id, { x: bubble.x, y: bubble.y }]));

@@ -1,4 +1,6 @@
 import { Loader2 } from 'lucide-react';
+import { useEffect } from 'react';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog,
@@ -72,6 +74,14 @@ const EmptyState = () => (
 export function WorkspaceDataTableFeature(_props: WorkspaceDataTableFeatureProps) {
   const { selectedNode, header, tabs, table, loading, nodeActions, switchGuard } =
     useWorkspaceDataTable();
+  // A maximised Data Editor with no Data Block left to show gives the layout
+  // back. Loading a Data Block is not that: the title row only steps aside.
+  const nothingSelected = !loading.nodeData && !selectedNode;
+  useEffect(() => {
+    if (!nothingSelected) return;
+    const { maximised, restore } = useLayoutFocusStore.getState();
+    if (maximised === 'data-editor') restore();
+  }, [nothingSelected]);
   const guardDialog = (
     <AlertDialog open={switchGuard !== null}>
       <AlertDialogContent>

@@ -7,10 +7,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { TopicModelingParameterPanel } from '../TopicModelingParameterPanel';
 import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ToolModeContext } from '@/features/views/common/toolMode/ToolModeContext';
 import { useUIStore } from '@/stores/uiStore';
 import { useNudgeStore } from '@/features/nudges/nudgeStore';
 
-const render = (ui: React.ReactElement) => renderUi(ui, { wrapper: TooltipProvider });
+/** The panel in Advanced, where every run parameter shows; Basic has its own test. */
+const AdvancedWrapper = ({ children }: { children: React.ReactNode }) => (
+  <TooltipProvider>
+    <ToolModeContext value={{ advanced: true, setAdvanced: vi.fn() }}>{children}</ToolModeContext>
+  </TooltipProvider>
+);
+const render = (ui: React.ReactElement) => renderUi(ui, { wrapper: AdvancedWrapper });
 
 vi.mock('../../../../../../components/help/InfoIcon', () => ({
   default: () => null,
@@ -129,8 +136,15 @@ const baseProps = {
   onRepresentativeWordsCountChange: vi.fn(),
   segmentationMethod: 'automatic' as const,
   onSegmentationMethodChange: vi.fn(),
-  maxSegmentTokens: 256,
+  maxSegmentTokens: 256 as number | null,
   onMaxSegmentTokensChange: vi.fn(),
+  ungroupedPassages: 'keep' as 'keep' | 'fit' | 'nearest',
+  onUngroupedPassagesChange: vi.fn(),
+  sentMaxSegmentTokens: 256 as number | null,
+  autoMaxSegmentTokens: { lastRun: null, estimate: null } as {
+    lastRun: number | null;
+    estimate: number | null;
+  },
   embeddingModel: 'sentence-transformers/all-MiniLM-L6-v2' as const,
   onEmbeddingModelChange: vi.fn(),
   embeddingModelReason: null,
@@ -215,6 +229,7 @@ describe('TopicModelingParameterPanel', () => {
     // A dropdown of the four lengths the embedder pads to (32, 64, 128, 256).
     await user.click(screen.getByLabelText('Maximum tokens per passage'));
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      'Auto',
       '32',
       '64',
       '128',
@@ -222,6 +237,75 @@ describe('TopicModelingParameterPanel', () => {
     ]);
     await user.click(screen.getByRole('option', { name: '64' }));
     expect(onMaxSegmentTokensChange).toHaveBeenLastCalledWith(64);
+    await user.click(screen.getByLabelText('Maximum tokens per passage'));
+    await user.click(screen.getByRole('option', { name: 'Auto' }));
+    expect(onMaxSegmentTokensChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('shows Max tokens Auto with the size it chose in the last run, or the estimate before', () => {
+    const { rerender } = render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        maxSegmentTokens={null}
+        sentMaxSegmentTokens={null}
+        autoMaxSegmentTokens={{ lastRun: null, estimate: 64 }}
+      />,
+    );
+    expect(screen.getByLabelText('Maximum tokens per passage')).toHaveTextContent(
+      'Auto (about 64)',
+    );
+    rerender(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        maxSegmentTokens={null}
+        sentMaxSegmentTokens={null}
+        autoMaxSegmentTokens={{ lastRun: 128, estimate: 64 }}
+      />,
+    );
+    expect(screen.getByLabelText('Maximum tokens per passage')).toHaveTextContent('Auto (128)');
+  });
+
+  it('keeps Passages, Max tokens, Seed and Topic sampling in Advanced, and Sampling in Basic', () => {
+    renderUi(
+      <TooltipProvider>
+        <ToolModeContext value={{ advanced: false, setAdvanced: vi.fn() }}>
+          <TopicModelingParameterPanel {...baseProps} />
+        </ToolModeContext>
+      </TooltipProvider>,
+    );
+    expect(screen.queryByLabelText('Passages')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Maximum tokens per passage')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Random seed')).not.toBeInTheDocument();
+    expect(screen.queryByText('Topic sampling')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Ungrouped passages')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Embedding model')).toBeInTheDocument();
+    expect(screen.getByLabelText('Min topic size')).toBeInTheDocument();
+  });
+
+  it('suggests a smaller Max tokens only for a size set by hand, never under Auto', () => {
+    useNudgeStore.setState({ enabled: true });
+    render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        segmentLengths={{
+          column: 'text',
+          segmentation_method: 'sentence',
+          embedding_model: 'sentence-transformers/all-MiniLM-L6-v2',
+          token_limit: 256,
+          sampled_documents: 200,
+          unit: 'sentence',
+          units: 900,
+          long_document_share: null,
+          p50: 20,
+          p85: 40,
+          p90: 50,
+          p95: 70,
+        }}
+        maxSegmentTokens={null}
+        sentMaxSegmentTokens={null}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /^Use \d+ tokens$/ })).not.toBeInTheDocument();
   });
 
   it('renders percentage sampling inside the selected node card', () => {
@@ -435,6 +519,69 @@ describe('TopicModelingParameterPanel', () => {
     ).toHaveTextContent('so it was kept. Try a fixed Max topic size');
   });
 
+  it('offers what happens to Ungrouped passages, with a line on what each choice does', async () => {
+    allowSelectMenus();
+    const user = userEvent.setup();
+    const onUngroupedPassagesChange = vi.fn();
+    const { rerender } = render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        onUngroupedPassagesChange={onUngroupedPassagesChange}
+      />,
+    );
+    expect(screen.getByLabelText('Ungrouped passages')).toHaveTextContent('Stay Ungrouped');
+    await user.click(screen.getByLabelText('Ungrouped passages'));
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      'Stay Ungrouped',
+      'Join a topic they fit',
+      'Always join the nearest topic',
+    ]);
+    await user.click(screen.getByRole('option', { name: 'Join a topic they fit' }));
+    expect(onUngroupedPassagesChange).toHaveBeenLastCalledWith('fit');
+
+    rerender(<TopicModelingParameterPanel {...baseProps} ungroupedPassages="fit" />);
+    expect(
+      screen.getByText(/as similar as that topic’s own least similar passage/),
+    ).toBeInTheDocument();
+  });
+
+  it('reports how many Ungrouped passages joined a topic and how many stayed', () => {
+    const run = {
+      segmentCount: 87_116,
+      appliedMaxTopicSize: null,
+      requestedMaxTopicSize: null,
+      clusteredSegments: null,
+      randomSeed: 0,
+      autoDecision: null,
+      autoDocumentShare: null,
+      largestTopicSize: null,
+    };
+    const { rerender } = render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{ ...run, ungroupedSegments: 15_550, assignedSegments: 35_666 }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Last run: 87,116 passages; no topic needed splitting. 35,666 Ungrouped passages joined their most similar topic; 15,550 (18%) are Ungrouped',
+      ),
+    ).toBeInTheDocument();
+
+    // A run that left them as they were says only how many there are.
+    rerender(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{ ...run, ungroupedSegments: 51_216, assignedSegments: null }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Last run: 87,116 passages; no topic needed splitting. 51,216 (59%) are Ungrouped',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('reports a last run whose topics came from a sample', () => {
     render(
       <TopicModelingParameterPanel
@@ -603,6 +750,7 @@ describe('TopicModelingParameterPanel', () => {
           embeddingModel="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
           embeddingModelReason={{ name: 'People’s Daily', tokenizer: 'Jieba' }}
           maxSegmentTokens={128}
+          sentMaxSegmentTokens={128}
         />,
       );
 
@@ -624,12 +772,14 @@ describe('TopicModelingParameterPanel', () => {
           {...baseProps}
           embeddingModel="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
           maxSegmentTokens={128}
+          sentMaxSegmentTokens={128}
           onMaxSegmentTokensChange={onMaxSegmentTokensChange}
         />,
       );
 
       await user.click(screen.getByLabelText('Maximum tokens per passage'));
       expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+        'Auto',
         '32',
         '64',
         '128',
@@ -664,6 +814,7 @@ describe('TopicModelingParameterPanel', () => {
           {...baseProps}
           segmentLengths={segmentLengths}
           maxSegmentTokens={64}
+          sentMaxSegmentTokens={64}
         />,
       );
       expect(screen.queryByRole('button', { name: /^Use \d+ tokens$/ })).not.toBeInTheDocument();
@@ -706,6 +857,7 @@ describe('TopicModelingParameterPanel', () => {
           embeddingModel="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
           embeddingModelReason={{ name: 'Le Monde', language: 'French' }}
           maxSegmentTokens={128}
+          sentMaxSegmentTokens={128}
         />,
       );
 
@@ -773,6 +925,7 @@ describe('TopicModelingParameterPanel', () => {
           {...baseProps}
           embeddingModel="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
           maxSegmentTokens={128}
+          sentMaxSegmentTokens={128}
           remoteEmbedding={{
             ticked: false,
             endpointId: null,

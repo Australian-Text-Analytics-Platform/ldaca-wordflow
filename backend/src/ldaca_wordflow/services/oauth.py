@@ -229,12 +229,15 @@ class OAuthService:
                 or email
             )
         picture = userinfo.get("picture")
+        # A university Keycloak's login name, such as a UniKey (issue 474).
+        username = userinfo.get("preferred_username")
         return await self.sessions.upsert_oidc_user(
             issuer=self.settings.get_oidc_issuer(),
             subject=subject,
             email=email,
             name=raw_name,
             picture=picture if isinstance(picture, str) else None,
+            username=username if isinstance(username, str) else None,
         )
 
 

@@ -93,8 +93,14 @@ class TopicSegmentItem(_StrictModel):
     end: int = Field(ge=0)
     text: str
     similarity: float | None
-    # Share (0-100) of the Topic's segments less similar to its centre.
+    # Share (0-100) of the Topic's grouped segments less similar to its centre.
+    # The centre and the scale are those of the segments grouping put in the
+    # Topic, so neither moves when Ungrouped passages join.
     typicality: int | None = Field(default=None, ge=0, le=100)
+    # An Ungrouped passage that joined the Topic after grouping, and whether it
+    # is less similar to the centre than every grouped segment of the Topic.
+    joined: bool = False
+    outside_topic_range: bool = False
     metadata: dict[str, str | None]
 
 
@@ -342,6 +348,9 @@ class _TopicModelingBody(_StrictModel):
     clustering: TopicClustering
     topic_inclusion: TopicInclusion
     segment_count: int = Field(ge=0)
+    # Max tokens per passage the run used: as set, or what Auto chose. None for
+    # results made before Auto, and when there was nothing to segment.
+    max_segment_tokens: int | None = Field(default=None, ge=1)
     # Per source, documents with no real Topic at all: the Ungrouped bubble
     # (issue 362). Merging Topics does not change it. None for results made
     # before 0.7.12.
@@ -365,6 +374,11 @@ class TopicClustering(_StrictModel):
     # Segments in the largest topic the clustering produced: what Auto meant,
     # shown in grey in the Max topic size field (issue 336).
     largest_topic_size: int | None = Field(default=None, ge=1)
+    # Passages in no Topic when the run finished, and how many Ungrouped
+    # passages were given their most similar Topic (None when not asked for).
+    # None for results made before Ungrouped passages could join a Topic.
+    ungrouped_segments: int | None = Field(default=None, ge=0)
+    assigned_segments: int | None = Field(default=None, ge=0)
 
 
 class TopicInclusion(_StrictModel):
@@ -440,6 +454,23 @@ class QuotationResult(_StrictModel):
     result: PreviewReadyResult
 
 
+class SequentialReferenceDescriptor(_StrictModel):
+    """The reference Data Block a Trends Result was normalised against.
+
+    ``group_by_columns`` are the request's group columns the reference shares,
+    which split its totals; ``ignored_group_by_columns`` are the rest, whose
+    groups all share the period's total. ``text_column`` and
+    ``tokenizer_model`` are set when words were counted.
+    """
+
+    node_id: uuid.UUID
+    node_name: NodeName
+    text_column: str | None = Field(default=None, max_length=500)
+    tokenizer_model: str | None = Field(default=None, max_length=500)
+    group_by_columns: list[str]
+    ignored_group_by_columns: list[str]
+
+
 class SequentialSourceDescriptor(_StrictModel):
     node_id: uuid.UUID
     node_name: NodeName
@@ -447,6 +478,7 @@ class SequentialSourceDescriptor(_StrictModel):
     columns: list[str] = Field(min_length=1)
     period_count: int = Field(ge=0)
     group_count: int = Field(ge=0)
+    reference: SequentialReferenceDescriptor | None = None
 
     @model_validator(mode="after")
     def validate_columns(self) -> SequentialSourceDescriptor:

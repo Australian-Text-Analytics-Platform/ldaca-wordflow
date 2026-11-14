@@ -230,8 +230,11 @@ exist. A corpus below the minimum usable segment count, or an all-noise fit,
 returns explicit outlier coverage with no projection Artifact. The context
 stores a deterministic cosine average-linkage tree over natural Topic embedding
 centroids plus additive term, document, corpus, row, and owned-character facts;
-it stores neither source text nor individual segment embeddings. An explicit
-`cluster_count` that differs from the stored count reads that immutable
+it stores neither source text nor individual segment embeddings. A query
+without `cluster_count` applies the starting count, the natural count capped
+at 100, and reports it as `default_cluster_count`
+([ADR 0032](../../adr/0032-topic-results-open-with-at-most-100-topics.md)).
+A `cluster_count` that differs from the stored count reads that immutable
 Artifact, cuts only downward from the natural count, and asks the native
 projector for a complete N-independent activation basis. Per-row coverage is
 not serialized for Result queries. The runtime's bounded single-flight LRU

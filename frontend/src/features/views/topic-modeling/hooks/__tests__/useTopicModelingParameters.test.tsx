@@ -128,7 +128,7 @@ describe('useTopicModelingParameters', () => {
       },
     });
 
-    it('defaults to English, with the cap as set', () => {
+    it('defaults to English, with Max tokens on Auto', () => {
       const { result } = renderHook(() =>
         useTopicModelingParameters({
           panelNodeIds: nodeIds(500),
@@ -139,7 +139,16 @@ describe('useTopicModelingParameters', () => {
       expect(result.current.embeddingModel).toBe('sentence-transformers/all-MiniLM-L6-v2');
       expect(result.current.embeddingModelReason).toBeNull();
       expect(result.current.cjkTokenizer).toBeNull();
-      expect(result.current.maxSegmentTokens).toBe(256);
+      // Auto: the run measures the texts and chooses (Chao, 2026-11-11).
+      expect(result.current.maxSegmentTokens).toBeNull();
+      act(() => {
+        result.current.setMaxSegmentTokens(64);
+      });
+      expect(result.current.maxSegmentTokens).toBe(64);
+      act(() => {
+        result.current.setMaxSegmentTokens(null);
+      });
+      expect(result.current.maxSegmentTokens).toBeNull();
     });
 
     it('picks Multilingual and a 128 cap for a CJK tokeniser; English restores the cap', () => {
@@ -156,6 +165,10 @@ describe('useTopicModelingParameters', () => {
       expect(result.current.embeddingModelReason).toEqual({
         name: 'People’s Daily',
         tokenizer: 'Jieba',
+      });
+      // A size set by hand is capped at the model's limit.
+      act(() => {
+        result.current.setMaxSegmentTokens(256);
       });
       expect(result.current.maxSegmentTokens).toBe(128);
 
@@ -187,7 +200,6 @@ describe('useTopicModelingParameters', () => {
         name: 'People’s Daily',
         language: 'French',
       });
-      expect(result.current.maxSegmentTokens).toBe(128);
 
       rerender({ language: 'en' });
       expect(result.current.embeddingModel).toBe('sentence-transformers/all-MiniLM-L6-v2');
@@ -244,6 +256,16 @@ describe('useTopicModelingParameters', () => {
       );
       expect(result.current.embeddingModelReason).toBeNull();
       expect(result.current.maxSegmentTokens).toBe(64);
+
+      // A run saved with Auto leaves the size out, and reopens on Auto.
+      act(() => {
+        result.current.hydrateParameters({
+          kind: 'topic_modeling' as const,
+          node_ids: ['node-1'],
+          node_columns: { 'node-1': 'text' },
+        });
+      });
+      expect(result.current.maxSegmentTokens).toBeNull();
     });
   });
 

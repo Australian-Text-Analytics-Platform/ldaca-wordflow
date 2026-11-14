@@ -22,6 +22,9 @@ import { ResizeHandle } from '@/components/layout/ResizeHandle';
 import { AccountThemeSynchronizer } from '@/features/theme/AccountThemeSynchronizer';
 import { DesktopNavigationHeader } from '@/components/layout/DesktopNavigationHeader';
 import { ServerNoticeBanner } from '@/features/server-notice/ServerNoticeBanner';
+import { LayoutFocusGuard } from '@/components/layout/LayoutFocusGuard';
+import { shellRegions } from '@/components/layout/shellLayout';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 
 const WorkspaceView = lazy(() => import('@/components/layout/WorkspaceView'));
 
@@ -59,12 +62,18 @@ function WorkspaceShellContent() {
     mainRef,
     asideRef,
   } = useRightPanelResize();
+  // A maximised surface (an analysis tool's results, or the Data Editor)
+  // takes the window: the other regions are hidden, never unmounted, and no
+  // split ratio changes, so restoring gives the same layout back.
+  const maximised = useLayoutFocusStore((state) => state.maximised);
+  const regions = shellRegions({ maximised, isRightCollapsed, asidePanelRatio });
 
   return (
     <WorkspaceProvider>
       <GuidanceProvider>
         <DesktopNavigationHeader />
         <ViewRouteSync />
+        <LayoutFocusGuard />
         <ErrorBoundary>
           <SidebarProvider
             className="app-titlebar-backplane h-full min-h-0"
@@ -74,17 +83,19 @@ function WorkspaceShellContent() {
             <NodeInputPointerCarrier />
             <RefreshStatusBanner />
             <div className="flex h-full w-full overflow-hidden" ref={sidebarHostRef}>
-              <ErrorBoundary>
-                <Sidebar />
-              </ErrorBoundary>
+              <div className={regions.sidebarHidden ? 'hidden' : 'contents'}>
+                <ErrorBoundary>
+                  <Sidebar />
+                </ErrorBoundary>
 
-              <ResizeHandle
-                orientation="vertical"
-                isDragging={isResizingSidebar}
-                className={`-mx-0.5 my-2 hidden md:flex ${isResizingSidebar ? 'z-20' : ''}`}
-                aria-label="Resize sidebar"
-                {...sidebarSplitterProps}
-              />
+                <ResizeHandle
+                  orientation="vertical"
+                  isDragging={isResizingSidebar}
+                  className={`-mx-0.5 my-2 hidden md:flex ${isResizingSidebar ? 'z-20' : ''}`}
+                  aria-label="Resize sidebar"
+                  {...sidebarSplitterProps}
+                />
+              </div>
 
               <SidebarInset className="@container/workspace-shell flex h-full flex-1 flex-col overflow-hidden bg-transparent md:m-0! md:ml-0! md:rounded-none! md:shadow-none!">
                 <header className="app-titlebar-backplane border-b px-4 py-2 md:hidden">
@@ -105,7 +116,10 @@ function WorkspaceShellContent() {
                       ref={mainRef}
                       role="main"
                       className={`relative h-full p-2 pt-0 pl-0 ${
-                        isRightCollapsed
+                        // With the sidebar hidden the card needs its own left gap.
+                        regions.sidebarHidden ? 'pl-2!' : ''
+                      } ${regions.mainHidden ? 'hidden!' : ''} ${
+                        isRightCollapsed || regions.asideHidden
                           ? // Stacked and collapsed: the analysis takes the
                             // whole height above the Project panel's bar (issue 390).
                             'pr-2 max-md:min-h-0 max-md:flex-1 @max-[639px]/workspace-shell:min-h-0 @max-[639px]/workspace-shell:flex-1'
@@ -113,12 +127,7 @@ function WorkspaceShellContent() {
                       } max-md:h-auto max-md:w-full! max-md:min-w-0! max-md:px-2 @max-[639px]/workspace-shell:h-auto @max-[639px]/workspace-shell:w-full! @max-[639px]/workspace-shell:min-w-0! @max-[639px]/workspace-shell:px-2 ${
                         isResizing ? 'transition-none' : 'transition-all duration-300 ease-in-out'
                       }`}
-                      style={{
-                        width: isRightCollapsed
-                          ? '100%'
-                          : `${String((1 - asidePanelRatio) * 100)}%`,
-                        minWidth: 280,
-                      }}
+                      style={{ width: regions.mainWidth, minWidth: 280 }}
                       innerClassName={
                         isTabbedMain
                           ? // Tabbed views own their continuous editor surface,
@@ -134,7 +143,7 @@ function WorkspaceShellContent() {
                       </div>
                     </InsetCard>
 
-                    {!isRightCollapsed && (
+                    {!regions.handleHidden && (
                       <ResizeHandle
                         orientation="vertical"
                         isDragging={isResizing}
@@ -146,16 +155,19 @@ function WorkspaceShellContent() {
 
                     <aside
                       ref={asideRef}
-                      className={`relative flex h-full flex-col bg-transparent ${isResizing ? 'transition-none' : 'transition-all duration-300 ease-in-out'} ${
+                      className={`relative flex h-full flex-col bg-transparent ${
+                        regions.asideHidden ? 'hidden!' : ''
+                      } ${
+                        // Maximised, the Data Editor takes the full height when stacked too.
+                        maximised === 'data-editor'
+                          ? 'max-md:h-full! @max-[639px]/workspace-shell:h-full!'
+                          : ''
+                      } ${isResizing ? 'transition-none' : 'transition-all duration-300 ease-in-out'} ${
                         isRightCollapsed
                           ? 'min-w-0 w-0 overflow-visible flex-none max-md:h-auto max-md:w-full! @max-[639px]/workspace-shell:h-auto @max-[639px]/workspace-shell:w-full!'
                           : 'min-w-[320px] overflow-hidden max-md:h-[70dvh] max-md:w-full! max-md:min-w-0! max-md:flex-none @max-[639px]/workspace-shell:h-[70dvh] @max-[639px]/workspace-shell:w-full! @max-[639px]/workspace-shell:min-w-0! @max-[639px]/workspace-shell:flex-none'
                       }`}
-                      style={
-                        isRightCollapsed
-                          ? { width: '0px' }
-                          : { width: `${String(asidePanelRatio * 100)}%` }
-                      }
+                      style={{ width: regions.asideWidth }}
                     >
                       <ErrorBoundary>
                         <Suspense

@@ -43,6 +43,7 @@ describe('useTopicModelingTaskFlow', () => {
         minClusterSize: 5,
         segmentationMethod: 'line',
         maxSegmentTokens: 64,
+        ungroupedPassages: 'fit',
       },
       actions: {
         runAnalysis,
@@ -62,6 +63,7 @@ describe('useTopicModelingTaskFlow', () => {
             min_cluster_size: 5,
             segmentation_method: 'line',
             max_segment_tokens: 64,
+            ungrouped_passages: 'fit',
           }),
         }),
       }),

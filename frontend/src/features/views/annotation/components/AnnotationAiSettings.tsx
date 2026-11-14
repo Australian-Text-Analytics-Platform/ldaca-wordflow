@@ -1,11 +1,11 @@
-import { ChevronDown, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
+import { AdvancedSection } from '@/features/views/common/toolMode/AdvancedSection';
 import { canListModels, providerConfigurationSecondaryText } from '../aiProviders';
 import { AddAnnotationProviderDialog } from './AddAnnotationProviderDialog';
 import { ModelNameCombobox } from './ModelNameCombobox';
@@ -19,12 +19,17 @@ interface AnnotationAiSettingsProps {
   providerModels: Record<string, string>;
   model: string;
   disabled?: boolean;
+  /** The Example Data Block and its sampling: advanced, listed first. */
   children?: ReactNode;
+  /** The prompt, inference and Run settings: advanced. */
   advanced?: ReactNode;
-  onAdvancedOpenChange?: (open: boolean) => void;
 }
 
-/** Named provider-configuration and model selection for Annotation requests. */
+/**
+ * Named provider-configuration and model selection for Annotation requests,
+ * then the advanced settings, shown only while the tool's Advanced switch is
+ * on. Provider and Model always show: they decide where text is sent.
+ */
 export function AnnotationAiSettings({
   configurations,
   selectedConfigurationId,
@@ -36,9 +41,7 @@ export function AnnotationAiSettings({
   disabled,
   children,
   advanced,
-  onAdvancedOpenChange,
 }: AnnotationAiSettingsProps) {
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [providerOpen, setProviderOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const selected =
@@ -48,8 +51,6 @@ export function AnnotationAiSettings({
 
   return (
     <div className="flex flex-col gap-4">
-      {children}
-
       {/* Provider and Model are required, so they stay in view (issue 205). */}
       <div
         data-guidance="annotation-ai-provider-model"
@@ -146,41 +147,10 @@ export function AnnotationAiSettings({
         ) : null}
       </div>
 
-      <Collapsible
-        open={advancedOpen}
-        onOpenChange={(open) => {
-          setAdvancedOpen(open);
-          onAdvancedOpenChange?.(open);
-        }}
-        className="relative rounded-lg border bg-editor/60"
-      >
-        <CollapsibleTrigger
-          data-guidance="annotation-ai-settings-trigger"
-          aria-label="Advanced settings"
-          title={advancedOpen ? 'Collapse advanced settings' : 'Expand advanced settings'}
-          className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 text-body transition-colors duration-300 ease-out hover:bg-panel/30 focus-visible:outline-hidden data-[state=closed]:w-full data-[state=open]:absolute data-[state=open]:top-2 data-[state=open]:right-2 data-[state=open]:z-10 data-[state=open]:size-7 data-[state=open]:grid-cols-1 data-[state=open]:gap-0 data-[state=open]:p-0 motion-reduce:transition-none"
-        >
-          {advancedOpen ? null : (
-            <span className="text-left text-description">Advanced settings</span>
-          )}
-          <span className="inline-flex size-7 items-center justify-center rounded-md border bg-editor group-data-[state=open]:border-0 group-data-[state=open]:bg-transparent">
-            <ChevronDown
-              className="size-4 transition-transform duration-300 group-data-[state=open]:rotate-180 motion-reduce:transition-none"
-              aria-hidden="true"
-            />
-          </span>
-        </CollapsibleTrigger>
-        <CollapsibleContent
-          forceMount
-          inert={!advancedOpen}
-          aria-hidden={!advancedOpen}
-          className="grid overflow-hidden opacity-0 transition-[grid-template-rows,opacity] duration-300 ease-out data-[state=closed]:grid-rows-[0fr] data-[state=open]:grid-rows-[1fr] data-[state=open]:opacity-100 motion-reduce:transition-none"
-        >
-          <div className="min-h-0 overflow-hidden">
-            <div className="space-y-4 px-3 py-3">{advanced}</div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      <AdvancedSection>
+        {children}
+        {advanced}
+      </AdvancedSection>
 
       <AddAnnotationProviderDialog
         open={addOpen}

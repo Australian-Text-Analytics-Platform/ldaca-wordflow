@@ -3,15 +3,18 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useSettingsWalk } from '@/features/guidance/GuidanceContext';
+import { useToolModeContext } from '@/features/views/common/toolMode/ToolModeContext';
 import { cn } from '@/lib/utils';
 import {
   fadeAfterOtherActions,
+  hasHiddenNudgeTarget,
   NUDGE_CARD_ATTRIBUTE,
   NUDGE_FADE_MS,
   outlineNudgeTargets,
 } from './nudgeHighlight';
 import { type NudgeDefinition, type NudgeId, NUDGES } from './nudges';
 import { useNudgeStore } from './nudgeStore';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import { useUIStore } from '@/stores/uiStore';
 import { type DocumentKey, getDocumentTarget } from '@/tutorials/documentationRegistry';
 
@@ -74,6 +77,16 @@ function NudgeCardOccurrence({
 }: Omit<NudgeCardProps, 'occurrence'>) {
   const nudge: NudgeDefinition = NUDGES[id];
   const startSettingsWalk = useSettingsWalk();
+  // Maximised results hide the parameters a suggestion may point at. The
+  // page is read here, while rendering, because nothing else says whether a
+  // target is in the results (still drawn) or in the hidden parameters.
+  const resultsMaximised = useLayoutFocusStore((state) => state.maximised === 'analysis');
+  const restoreLayout = useLayoutFocusStore((state) => state.restore);
+  const settingsHidden = resultsMaximised && hasHiddenNudgeTarget(nudge.targets);
+  // In Basic the advanced settings a suggestion points at are hidden; once
+  // Advanced is on they mount and the outline lands on them.
+  const toolMode = useToolModeContext();
+  const showAdvanced = Boolean(nudge.advanced && toolMode && !toolMode.advanced);
   const [phase, setPhase] = useState<Phase>('shown');
 
   // The card's outline lasts as long as the card and fades with it. It is
@@ -144,6 +157,30 @@ function NudgeCardOccurrence({
               }}
             >
               {action.label}
+            </Button>
+          ) : null}
+          {showAdvanced ? (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0 font-medium"
+              onClick={() => {
+                toolMode?.setAdvanced(true);
+              }}
+            >
+              Show advanced settings
+            </Button>
+          ) : null}
+          {settingsHidden ? (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0 font-medium"
+              onClick={restoreLayout}
+            >
+              Show settings
             </Button>
           ) : null}
           {/* Closes this one now; it comes back when the situation happens again (Chao). */}

@@ -44,6 +44,7 @@ import { DelimiterChips } from './DelimiterChips';
 import { MapValuesFields } from './MapValuesFields';
 import { useColumnValueCounts } from '../hooks/useColumnValueCounts';
 import { DATA_EDITOR_TOOL_LABELS, useDataEditorToolStore } from '../dataEditorToolStore';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import { focusDataEditorTool } from '../focusDataEditorTool';
 import { toastError } from '@/lib/toastError';
 
@@ -209,6 +210,8 @@ function OutputChoice({
  */
 export function DataEditorToolPanel() {
   const tool = useDataEditorToolStore((state) => state.tool);
+  // The Project Graph is hidden while the Data Editor is maximised.
+  const dataEditorMaximised = useLayoutFocusStore((state) => state.maximised === 'data-editor');
   const nodeId = useDataEditorToolStore((state) => state.nodeId);
   const nodeName = useDataEditorToolStore((state) => state.nodeName);
   const columns = useDataEditorToolStore((state) => state.columns);
@@ -400,18 +403,20 @@ export function DataEditorToolPanel() {
           {DATA_EDITOR_TOOL_LABELS[tool]}
           <span className="font-normal text-description"> · {nodeName}</span>
         </h3>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-7 px-2"
-          onClick={() => {
-            setGraphVisible(true);
-          }}
-        >
-          <Network className="mr-1 h-3.5 w-3.5" />
-          Show Project Graph
-        </Button>
+        {dataEditorMaximised ? null : (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2"
+            onClick={() => {
+              setGraphVisible(true);
+            }}
+          >
+            <Network className="mr-1 h-3.5 w-3.5" />
+            Show Project Graph
+          </Button>
+        )}
         <Button
           type="button"
           size="icon"

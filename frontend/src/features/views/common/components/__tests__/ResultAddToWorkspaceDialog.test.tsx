@@ -155,6 +155,42 @@ describe('ResultAddToWorkspaceDialog', () => {
     expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });
 
+  it('does not offer the second copy of the document in a Quotation result (issue 448)', () => {
+    const onSubmit = vi.fn();
+    render(
+      <ResultAddToWorkspaceDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Add Quotation Results"
+        nameSuffix="quotation"
+        sources={[
+          {
+            node_id: 'node-1',
+            node_name: 'Articles',
+            document_column: 'text',
+            metadata_columns: ['base_name'],
+            analysis_columns: ['QUOTE_extraction', 'QUOTE_speaker', 'QUOTE_quote'],
+            internal_columns: ['__wordflow_source_row_id'],
+            record_count: 3,
+            table: { table_id: 'result', rows_url: '/rows', schema_url: '/schema' },
+          },
+        ]}
+        isSubmitting={false}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(screen.queryByRole('checkbox', { name: /QUOTE_extraction/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
+    expect(onSubmit).toHaveBeenCalledWith([
+      {
+        source_node_id: 'node-1',
+        selected_columns: ['text', 'QUOTE_speaker', 'QUOTE_quote'],
+        new_node_name: 'Articles_quotation',
+      },
+    ]);
+  });
+
   it('creates only checked document sources and locks extraction on', () => {
     const onSubmit = vi.fn();
     const source = (id: string, name: string) => ({

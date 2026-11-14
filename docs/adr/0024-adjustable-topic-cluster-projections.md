@@ -7,7 +7,10 @@ status: accepted
 The private fixed-minimum clause below is superseded by
 [ADR 0026](0026-configurable-topic-minimum-cluster-size.md). The Ward space,
 stored facts, projection lower bound, and explicit-default query clauses are
-superseded by [ADR 0028](0028-non-overlapping-topic-coverage.md).
+superseded by [ADR 0028](0028-non-overlapping-topic-coverage.md). The
+null-value clause is superseded by
+[ADR 0032](0032-topic-results-open-with-at-most-100-topics.md): a Result opens
+with at most 100 Topics.
 
 ## Context
 

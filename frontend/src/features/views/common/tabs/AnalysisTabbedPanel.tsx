@@ -14,6 +14,8 @@
  */
 import { type ReactNode } from 'react';
 import { type EditorTabItem, EditorTabs } from '@/components/tabs';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
+import { AnalysisTabTitleContext } from './analysisTabTitleContext';
 import type { AnalysisTab } from './tabStateOps';
 
 export interface AnalysisTabbedPanelProps {
@@ -55,13 +57,19 @@ export function AnalysisTabbedPanel({
 
     title: tab.title || 'Untitled',
   }));
+  // Maximised results take the strip's height too, and name their tab
+  // instead: nobody switches tabs while concentrating on one result (Chao).
+  const resultsMaximised = useLayoutFocusStore((state) => state.maximised === 'analysis');
+  const activeTitle = multiTabEnabled
+    ? (items.find((item) => item.id === activeTabId)?.title ?? null)
+    : null;
 
   return (
     <div
       data-testid="analysis-editor-surface"
       className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-surface-border/60 bg-surface"
     >
-      {multiTabEnabled ? (
+      {multiTabEnabled && !resultsMaximised ? (
         <EditorTabs
           className="shrink-0"
           aria-label="Analysis tabs"
@@ -81,7 +89,7 @@ export function AnalysisTabbedPanel({
         data-testid="analysis-editor-content"
         className="flex min-h-0 flex-1 flex-col overflow-auto bg-surface p-4"
       >
-        {children}
+        <AnalysisTabTitleContext value={activeTitle}>{children}</AnalysisTabTitleContext>
       </div>
     </div>
   );

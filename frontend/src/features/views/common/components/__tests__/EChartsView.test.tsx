@@ -40,6 +40,7 @@ vi.mock('echarts/components', () => ({
 }));
 vi.mock('echarts/renderers', () => ({ SVGRenderer: {} }));
 
+import { findSvgInContainer } from '@/lib/chartExport';
 import { EChartsView } from '../EChartsView';
 
 describe('EChartsView', () => {
@@ -223,6 +224,29 @@ describe('EChartsView', () => {
 
     expect(insertBefore).toHaveBeenCalledWith(clip, after);
     expect(defs.contains(clip)).toBe(true);
+  });
+
+  it('lets image downloads find the chart, not a help icon in the toolbar', () => {
+    // Trends puts a Spacing help link (an <a>, issue 335) before the chart.
+    const { container } = render(
+      <EChartsView
+        height={200}
+        pointCount={3}
+        dataResetKey="result-1"
+        ariaLabel="Trends chart"
+        option={{ series: [] }}
+        toolbarStart={
+          <a href="#spacing" role="button" aria-label="Spacing help">
+            <svg />
+          </a>
+        }
+      />,
+    );
+    const plot = mocks.init.mock.calls[0]?.[0] as unknown as HTMLElement;
+    const chart = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    plot.append(chart);
+
+    expect(findSvgInContainer(container)).toBe(chart);
   });
 
   it('keeps plain wheel events away from ECharts so the pane scrolls (issue 215)', () => {

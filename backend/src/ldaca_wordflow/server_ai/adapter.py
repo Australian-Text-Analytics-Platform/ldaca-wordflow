@@ -9,6 +9,7 @@ backoff, and keeps the key out of every error it raises.
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 import re
 from dataclasses import dataclass
@@ -83,11 +84,27 @@ def _rate_limit_delay(attempt: int, retry_after: float | None) -> float:
     return base * random.uniform(0.75, 1.25)
 
 
+def _details_headers(details: dict[str, str] | None) -> tuple[tuple[str, str], ...]:
+    """LiteLLM spend-log labels: who the end user is, in readable form (issue 474).
+
+    The shape is the Apollo gateway's app identity standard: ``app``, ``email``
+    and ``name``; the end user itself goes in the OpenAI ``user`` field. JSON
+    escapes non-ASCII, so any name fits in a header.
+    """
+
+    if not details:
+        return ()
+    labels = {"app": "wordflow", **details}
+    return (("x-litellm-spend-logs-metadata", json.dumps(labels, sort_keys=True)),)
+
+
 @dataclass(frozen=True, slots=True)
 class ServerAiAnnotationAdapter:
     provider: ServerAiProvider
 
-    def _inner(self, end_user: str | None) -> OpenAIAnnotationAdapter:
+    def _inner(
+        self, end_user: str | None, details: dict[str, str] | None = None
+    ) -> OpenAIAnnotationAdapter:
         return OpenAIAnnotationAdapter(
             base_url=self.provider.base_url,
             # Gateways forward to many model servers: ask for JSON in the
@@ -100,6 +117,7 @@ class ServerAiAnnotationAdapter:
             # Descriptions from LiteLLM's /model/info (#407).
             describe_from_model_info=True,
             end_user=end_user or None,
+            extra_headers=_details_headers(details),
         )
 
     async def complete(
@@ -126,7 +144,12 @@ class ServerAiAnnotationAdapter:
                 f"This model is not available through {provider.name}",
                 code="annotation_provider_request_rejected",
             )
-        inner = self._inner(binding.end_user)
+        details = None
+        if provider.send_user_details and binding.end_user:
+            from . import user_details
+
+            details = await user_details(binding.user_id)
+        inner = self._inner(binding.end_user, details)
         if binding.purpose == "preview" and provider.max_requests_per_user is not None:
             async with user_gate().preview(provider, binding.user_id):
                 return await self._complete(inner, model, system, user, config)

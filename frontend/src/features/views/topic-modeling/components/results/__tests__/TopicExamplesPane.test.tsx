@@ -97,6 +97,23 @@ describe('TopicExamplesPane (#353)', () => {
     expect(api.queryTopicSegments).not.toHaveBeenCalled();
   });
 
+  it('marks examples that joined the topic after grouping, and those outside its range', async () => {
+    api.queryTopicSegments.mockResolvedValueOnce({
+      data: page({
+        items: [
+          item(0, 96),
+          { ...item(1, 40), joined: true },
+          { ...item(2, 0), joined: true, outside_topic_range: true },
+        ],
+      }),
+    });
+    renderPane();
+    const cards = await screen.findAllByRole('listitem');
+    expect(within(cards[0]!).getByText('Top 4%')).toBeInTheDocument();
+    expect(within(cards[1]!).getByText('Joined · Top 60%')).toBeInTheDocument();
+    expect(within(cards[2]!).getByText('Joined · Outside')).toBeInTheDocument();
+  });
+
   it('lists the most typical examples, one per document, with rank badges', async () => {
     renderPane();
     expect(await screen.findByText('40 passages in 12 documents')).toBeInTheDocument();

@@ -135,7 +135,8 @@ const STATISTICS_COLUMN_TOOLTIPS: Record<string, string> = {
   percent_study: "%S: the token's share of all tokens in the Study corpus.",
   log_likelihood_llv:
     'LL (log-likelihood): how sure we can be that the difference is real. Above 3.84 is significant (p < 0.05); above 15.13, p < 0.0001.',
-  overuse: 'Overuse: which corpus uses the token more, for its size: Study or Reference.',
+  overuse:
+    'Overuse: which corpus uses the token more, for its size: Study or Reference. Sorting puts the token most overused in Study first, or the one most overused in Reference.',
   signed_ll:
     'Signed LL: LL with a sign, positive when the token is more frequent in Study and negative when it is more frequent in Reference.',
   percent_diff:
@@ -225,11 +226,17 @@ const buildColumns = (
       /** Used by: TanStack Table LL column to render log-likelihood for the comparative token row. */
       cell: (info) => formatNumber(info.row.original.log_likelihood_llv, { decimals: 2 }),
     }),
-    columnHelper.accessor('overuse', {
+    // Sorted by Signed LL, not by the Study/Reference badge: every row of one
+    // direction tied on the badge and fell back to the result's alphabetical
+    // order (issue 454). Highest first puts the token most overused in Study
+    // at the top; the other way puts the one most overused in Reference there.
+    columnHelper.accessor('sort_signed_ll', {
+      id: 'overuse',
+      sortUndefined: 'last',
       header: 'Overuse',
       /** Used by: TanStack Table Overuse column to identify the Data Block with the higher observed frequency. */
       cell: (info) => {
-        const isOveruse = info.getValue();
+        const isOveruse = info.row.original.overuse;
         const directionColor = isOveruse ? studyColor : referenceColor;
         const fallbackClass = isOveruse
           ? 'bg-[color-mix(in_srgb,var(--vscode-charts-green)_12%,transparent)] text-foreground'

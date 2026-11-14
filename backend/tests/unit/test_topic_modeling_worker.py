@@ -160,6 +160,8 @@ def _fake_topic_modeling_expr_factory(
     auto_decision: str | None = None,
     auto_document_share: float | None = None,
     largest_topic_size: int | None = None,
+    outlier_segments: int | None = None,
+    assigned_segments: int | None = None,
 ):
     """Build a fake ``.text.topic_modeling`` method returning a canned struct.
 
@@ -235,6 +237,8 @@ def _fake_topic_modeling_expr_factory(
             pl.lit(auto_decision, dtype=pl.String).alias("auto_decision"),
             pl.lit(auto_document_share, dtype=pl.Float64).alias("auto_document_share"),
             pl.lit(largest_topic_size, dtype=pl.UInt32).alias("largest_topic_size"),
+            pl.lit(outlier_segments, dtype=pl.UInt32).alias("outlier_segments"),
+            pl.lit(assigned_segments, dtype=pl.UInt32).alias("assigned_segments"),
             pl.lit(b"context", dtype=pl.Binary).alias("projection_context"),
         )
 
@@ -447,6 +451,65 @@ def test_run_rust_topic_modeling_forwards_and_reports_topic_sampling(
     assert ("cluster_sample_size" in seen_kwargs) == (cluster_sample_size is not None)
     assert seen_kwargs.get("cluster_sample_size") == cluster_sample_size
     assert result["clustered_segments"] == cluster_sample_size
+
+
+@pytest.mark.parametrize(
+    ("ungrouped_passages", "expected"),
+    [
+        ("keep", {}),
+        # As similar as the topic's own least similar passage.
+        ("fit", {"outlier_member_quantile": 0.0}),
+        # Every one joins its most similar topic.
+        ("nearest", {"outlier_similarity": -1.0}),
+    ],
+)
+def test_run_rust_topic_modeling_forwards_what_happens_to_ungrouped_passages(
+    monkeypatch, ungrouped_passages: str, expected: dict[str, float]
+) -> None:
+    from polars_text.namespace import TextNamespace
+
+    seen_kwargs: dict[str, Any] = {}
+    assigned = None if ungrouped_passages == "keep" else 4_000
+    monkeypatch.setattr(
+        TextNamespace,
+        "topic_modeling",
+        _fake_topic_modeling_expr_factory(
+            documents=[{"doc_index": 0, "dominant_topic": 0}],
+            topics=[{"id": 0, "representative_words": _terms("alpha"), "x": 0.0, "y": 0.0}],
+            n_segments=10_000,
+            seen_kwargs=seen_kwargs,
+            outlier_segments=1_500,
+            assigned_segments=assigned,
+        ),
+    )
+
+    result = topic_pipeline._run_rust_topic_modeling(
+        all_docs=["one document"],
+        seed=0,
+        min_cluster_size=10,
+        vectorizer_model="native:plain_words_en",
+        ungrouped_passages=ungrouped_passages,
+    )
+
+    # Keeping them is the native default, so nothing is passed for it.
+    assert {
+        key: seen_kwargs[key]
+        for key in ("outlier_member_quantile", "outlier_similarity")
+        if key in seen_kwargs
+    } == expected
+    assert result["outlier_segments"] == 1_500
+    assert result["assigned_segments"] == assigned
+
+
+def test_run_rust_topic_modeling_refuses_an_unknown_ungrouped_choice() -> None:
+    with pytest.raises(ValueError, match="unknown Ungrouped passages choice"):
+        topic_pipeline._run_rust_topic_modeling(
+            all_docs=["one document"],
+            seed=0,
+            min_cluster_size=10,
+            vectorizer_model="native:plain_words_en",
+            ungrouped_passages="similar",
+        )
 
 
 @pytest.mark.parametrize("segmentation_method", ["automatic", "line", "sentence"])
@@ -686,12 +749,68 @@ def test__compute_topic_modeling_writes_only_projection_context(tmp_path, monkey
     # A run that names no model (saved before 0.7.16) uses English (issue 413).
     assert seen_run_kwargs["embedder_model"] == "sentence-transformers/all-MiniLM-L6-v2"
     assert result["segment_count"] == 7
+    # A size set by hand is used and recorded as set.
+    assert result["max_segment_tokens"] == 64
     # Both documents have a real Topic, so none is Ungrouped (issue 362).
     assert result["ungrouped_documents"] == [0]
     assert any("engine=rust backend=ort" in message for message in messages)
     assert progress[0][1].startswith("Loading the topic model")
     assert progress[-1] == (0.9, "Saving the topics…")
     assert all(0.0 <= fraction < 1.0 for fraction, _message in progress)
+
+
+def test__compute_topic_modeling_auto_max_tokens_measures_every_text_once(
+    tmp_path, monkeypatch
+):
+    """Auto measures the units of every text the run reads, before segmenting.
+
+    The counts never split a unit, so they do not depend on the size chosen:
+    the run picks once, segments once, and records the size (Chao, 2026-11-11).
+    """
+
+    from ldaca_wordflow.analysis import topic_segment_lengths as lengths_module
+
+    measured: list[tuple[str, int]] = []
+
+    def fake_counts(texts, column, unit, model):
+        frame = texts.collect()
+        measured.append((unit, frame.height))
+        # Short sentences: 9 in 10 fit in 64 tokens, none needs 128.
+        return [[20, 30, 60] for _ in range(frame.height)]
+
+    monkeypatch.setattr(lengths_module, "_unit_counts", fake_counts)
+    seen_run_kwargs: dict[str, Any] = {}
+
+    def fake_run(**kwargs):
+        seen_run_kwargs.update(kwargs)
+        return _canned_rust_result(
+            documents=[
+                {
+                    "doc_index": index,
+                    "dominant_topic": 0,
+                    "topic_coverage": [{"topic_id": 0, "coverage": 1.0}],
+                }
+                for index in range(3)
+            ],
+            topics=[{"id": 0, "representative_words": _terms("alpha"), "x": 0.0, "y": 0.0}],
+        )
+
+    monkeypatch.setattr(topic_modeling, "_run_rust_topic_modeling", fake_run)
+
+    result = topic_modeling._compute_topic_modeling(
+        # Two Data Blocks: Auto reads every text of both.
+        corpora=[["one. two.", "three."], ["four."]],
+        node_infos=[_node_info("node-1"), _node_info("node-2")],
+        artifact_dir=str(tmp_path),
+        artifact_prefix="tm_auto",
+        segmentation_method="sentence",
+        max_segment_tokens=None,
+        embedding_cache_path=str(tmp_path / "embeddings.duckdb"),
+    )
+
+    assert measured == [("sentence", 3)]
+    assert seen_run_kwargs["max_segment_tokens"] == 64
+    assert result["max_segment_tokens"] == 64
 
 
 def test__compute_topic_modeling_payload_keeps_all_ranked_candidates(

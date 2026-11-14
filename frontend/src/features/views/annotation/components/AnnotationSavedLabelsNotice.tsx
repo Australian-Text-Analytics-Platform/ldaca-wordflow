@@ -39,6 +39,7 @@ export function AnnotationSavedLabelsNotice({
   running,
   processingMode,
   onProcessingModeChange,
+  advanced = true,
 }: {
   workspaceId: string | null;
   nodes: readonly WorkspaceNodeInfo[];
@@ -47,6 +48,8 @@ export function AnnotationSavedLabelsNotice({
   /** The Tab's "Which rows to annotate" choice for the next Run. */
   processingMode: AnnotationProcessingMode;
   onProcessingModeChange: (mode: AnnotationProcessingMode) => void;
+  /** Whether the tab shows its advanced settings, where the choice is changed. */
+  advanced?: boolean;
 }) {
   const queryClient = useQueryClient();
   const { deleteNode } = useWorkspaceActions();
@@ -157,7 +160,11 @@ export function AnnotationSavedLabelsNotice({
         >
           <p className="min-w-0 flex-1">
             {processingMode === 'fill_missing'
-              ? `Run will annotate only the rows still empty in "${nudge}". To annotate every row again, change "Which rows to annotate" in Advanced settings.`
+              ? `Run will annotate only the rows still empty in "${nudge}". To annotate every row again, ${
+                  advanced
+                    ? 'change "Which rows to annotate" in Advanced settings.'
+                    : 'turn on Advanced and change "Which rows to annotate".'
+                }`
               : `Run will annotate every row again, including the ones already labelled in "${nudge}".`}
           </p>
           {processingMode === 'fill_missing' ? null : (

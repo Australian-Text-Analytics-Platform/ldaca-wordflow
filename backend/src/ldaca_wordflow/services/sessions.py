@@ -214,14 +214,24 @@ class SessionService:
         email: str,
         name: str,
         picture: str | None,
+        username: str | None = None,
     ) -> SessionUser:
-        """Provision a provider-validated identity without implicit account linking."""
+        """Provision a provider-validated identity without implicit account linking.
+
+        ``username`` is the provider's ``preferred_username`` (on a university
+        Keycloak, the login name such as a UniKey). It is kept, lowercased, for
+        server AI providers with ``send_user: username``; a sign-in without one
+        keeps the stored value.
+        """
 
         normalized_email = email.strip().lower()
         if not normalized_email:
             raise InvalidInputError("OAuth identity is missing an email")
         normalized_name = name.strip() or normalized_email
         normalized_picture = picture.strip() if picture and picture.strip() else None
+        normalized_username = (username or "").strip().lower() or None
+        if normalized_username is not None and len(normalized_username) > 256:
+            normalized_username = None
 
         now = _iso(_now())
         async with self.hosted_database.connection() as connection:
@@ -289,7 +299,8 @@ class SessionService:
             await connection.execute(
                 """
                 UPDATE users
-                SET email = ?, name = ?, picture = ?, last_login = ?
+                SET email = ?, name = ?, picture = ?, last_login = ?,
+                    username = COALESCE(?, username)
                 WHERE id = ?
                 """,
                 (
@@ -297,6 +308,7 @@ class SessionService:
                     normalized_name,
                     normalized_picture,
                     now,
+                    normalized_username,
                     user_id,
                 ),
             )

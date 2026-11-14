@@ -735,6 +735,57 @@ describe('Token frequency result layouts', () => {
     );
   });
 
+  it('sorts Overuse by strength, the most overused in Study first (issue 454)', async () => {
+    const user = userEvent.setup();
+    const onDownloadFrequencyCsv = vi.fn();
+    const nodeA = buildNodeResult({ nodeId: 'node-a', displayName: 'Reference Data Block' });
+    const nodeB = buildNodeResult({ nodeId: 'node-b', displayName: 'Study Data Block' });
+    const study = { percent_study: 0.6, percent_reference: 0.4 };
+    const reference = { percent_study: 0.4, percent_reference: 0.6 };
+    render(
+      <TokenFrequencyUnifiedTokenSection
+        {...baseUnifiedSectionProps}
+        normalizedNodeResults={[nodeA, nodeB]}
+        nodeDisplayResults={[nodeA, nodeB]}
+        lastCompareNodeIds={['node-a', 'node-b']}
+        // In the result's own order, which is alphabetical.
+        statistics={[
+          buildStatistic({ token: 'a-study-weak', log_likelihood_llv: 2, ...study }),
+          buildStatistic({ token: 'b-reference-strong', log_likelihood_llv: 30, ...reference }),
+          buildStatistic({ token: 'c-study-strong', log_likelihood_llv: 20, ...study }),
+          buildStatistic({ token: 'd-reference-weak', log_likelihood_llv: 4, ...reference }),
+        ]}
+        onDownloadFrequencyCsv={onDownloadFrequencyCsv}
+        view="list"
+      />,
+    );
+
+    const statisticsCard = within(
+      screen.getByRole('region', { name: 'Keyword Analysis statistics' }),
+    );
+    const exportedTokens = async () => {
+      await user.click(statisticsCard.getByRole('button', { name: 'Download frequencies' }));
+      const rows = onDownloadFrequencyCsv.mock.calls.at(-1)?.[1] as { token: string }[];
+      return rows.map((row) => row.token);
+    };
+    const overuseHeader = statisticsCard.getByRole('button', { name: /^Overuse/ });
+
+    await user.click(overuseHeader);
+    expect(await exportedTokens()).toEqual([
+      'c-study-strong',
+      'a-study-weak',
+      'd-reference-weak',
+      'b-reference-strong',
+    ]);
+    await user.click(overuseHeader);
+    expect(await exportedTokens()).toEqual([
+      'b-reference-strong',
+      'd-reference-weak',
+      'a-study-weak',
+      'c-study-strong',
+    ]);
+  });
+
   it('filters the Juxtorpus cloud and Keyword Analysis CSV from one shared value', async () => {
     const user = userEvent.setup();
     const onDownloadFrequencyCsv = vi.fn();
