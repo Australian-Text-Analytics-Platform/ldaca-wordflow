@@ -20,6 +20,6 @@
     "prepare:backend-runtime": "pnpm -C frontend prepare:backend-runtime"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.7"
   }
 }
