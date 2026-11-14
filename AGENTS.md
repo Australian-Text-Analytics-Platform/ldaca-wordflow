@@ -18,6 +18,15 @@ changing that package.
 Package manifests, CI workflows, and build scripts are authoritative when a
 document conflicts with executable configuration.
 
+## Branches
+
+- `main`: the latest release. Change it only through an approved pull request
+  from `v0.7` after a release; never commit to it directly.
+- `v0.7`: 0.7.x development. Start fix and feature branches from `v0.7`.
+- `v0.8`: Wordflow 0.8, in development until it is released.
+
+Details are in [the release runbook](docs/runbooks/wordflow-release.md#branches).
+
 ## Context routing
 
 Start with [the documentation index](docs/index.md), then read only the context
