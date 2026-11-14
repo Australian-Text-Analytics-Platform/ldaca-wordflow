@@ -1,5 +1,19 @@
 # Wordflow Release Runbook
 
+## Branches
+
+- `main` is the latest release. It is the default branch, so it is what GitHub
+  shows, what Dependabot scans and where hand-run workflows are found. It
+  changes only through an approved pull request from `v0.7` after a release
+  (see Post-release). Nobody commits to it directly.
+- `v0.7` is where 0.7.x releases are prepared. Fix and feature branches start
+  here, and release commits and tags are made here.
+- `v0.8` is Wordflow 0.8, in development until it is released. When it is,
+  merge `v0.7` into `v0.8` with `-s ours` once every V07 entry in
+  `docs/releases/v0.7-to-v0.8-migration-instructions.md` is ported, then open
+  the `v0.8` to `main` pull request. Publish 0.8 test builds as GitHub
+  pre-releases: the desktop updater follows the latest full release.
+
 ## Version Contract
 
 Six stamped surfaces must agree: root and backend Python metadata, frontend
@@ -41,7 +55,7 @@ the monorepo.
    with the `pypi` publish target.
 
 ```bash
-gh workflow run pypi-release.yml --ref main -f publish_target=pypi
+gh workflow run pypi-release.yml --ref vX.Y.Z -f publish_target=pypi
 ```
 
 The manually dispatched workflow does not repeat Ruff, Ty, pytest, or frontend
@@ -128,6 +142,11 @@ gh workflow run desktop-release.yml --repo Australian-Text-Analytics-Platform/ld
   relaunches into the new version and Windows exits into the passive installer.
   Confirm closing the updater window never stops the backend and closure is
   prevented while download or installation is active.
+- Update `README.md` on `v0.7` (stable release line, "Use Wordflow" links and a
+  "Release history" row with the master repository's Binder pin), then open a
+  pull request from `v0.7` to `main` titled "Release X.Y.Z". After approval,
+  merge it with a merge commit, not squash or rebase, so the release tag stays
+  reachable from `main`.
 - Deploy the tagged root commit and current supporting-package pointers.
 - Verify `/health/live`, `/health/ready`, hosted login, one Workspace read, and `/api/events`
   delivery.
