@@ -1,22 +1,55 @@
 name: CI
 
+# CI checks major changes and releases, not every commit. The Scope job decides
+# (scripts/ci-scope.mjs): pull requests unless they change only documentation,
+# pushes to main, a push to v0.7 or v0.8 with a "Release X.Y.Z" commit or "[ci]"
+# in a commit message, and runs by hand (gh workflow run ci.yml --ref <branch>).
+# Fix and feature branches are checked through their pull request only. When CI
+# runs on this branch, every job runs (the Scope job's backend output is unused).
 on:
   push:
     branches:
-      - "**"
+      - main
+      - v0.7
+      - v0.8
   pull_request:
   workflow_dispatch:
 
+# A pull request's newer push replaces its running check. Branch pushes never
+# cancel each other, so a skipped push cannot cancel a release commit's check.
 concurrency:
-  group: ldaca-wordflow-ci-${{ github.ref }}
+  group: ldaca-wordflow-ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  scope:
+    name: Scope
+    runs-on: ubuntu-24.04
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Test the scope rules
+        run: node --test scripts/ci-scope.test.mjs
+      - name: Decide whether CI runs
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BASE_REF: ${{ github.base_ref }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-scope.mjs
+
   workflows:
     name: Workflow syntax and shell checks
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -85,6 +118,8 @@ jobs:
 
   native-preview:
     name: Chromium with Rust preview (not Tauri)
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -119,6 +154,8 @@ jobs:
 
   native-shell:
     name: Tauri ${{ matrix.profile }} (${{ matrix.os }})
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -194,6 +231,8 @@ jobs:
 
   frontend:
     name: Frontend
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository with source dependencies
@@ -226,6 +265,8 @@ jobs:
 
   frontend-assets:
     name: Production frontend assets
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1

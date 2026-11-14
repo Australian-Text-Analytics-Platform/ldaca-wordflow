@@ -9,6 +9,7 @@
     "dev:backend": "node scripts/dev.mjs --backend",
     "dev:frontend": "node scripts/dev.mjs --frontend",
     "test:dev": "node --test scripts/dev.test.mjs",
+    "test:ci-scope": "node --test scripts/ci-scope.test.mjs",
     "prepare:e2e:models": "pnpm -C frontend prepare:e2e:models",
     "test:e2e": "pnpm -C frontend test:e2e",
     "test:e2e:browser": "pnpm -C frontend test:e2e:browser",

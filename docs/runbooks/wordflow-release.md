@@ -31,7 +31,17 @@ non-system libraries, including Homebrew paths; keep this audit enabled.
 
 ## Continuous integration
 
-CI runs on pushes, pull requests and manual dispatch:
+A full CI run takes over an hour, so CI checks major changes and releases, not
+every commit. Its Scope job (`scripts/ci-scope.mjs`, tested by
+`pnpm test:ci-scope`) runs it for pull requests unless they change only
+documentation, for pushes to `main`, for a push to `v0.7` or `v0.8` with a
+`Release X.Y.Z` commit or `[ci]` in a commit message, and by hand
+(`gh workflow run ci.yml --ref <branch>`). Other pushes start nothing. Small
+changes go straight to `v0.8` after the local checks, without waiting for CI;
+check major changes (dependencies, packaging, workflows, Rust) through a pull
+request, `[ci]` or a run by hand before they build up.
+
+When CI runs, it covers:
 
 - Workflow syntax, expressions and shell checks with checksum-verified actionlint.
 - Full frontend tests, lint, types, formatting, build, unused-source and documentation checks.
@@ -55,6 +65,8 @@ website and is not simulated in this workflow.
    The version registry includes frontend, backend, server, Tauri and Cargo lock entries.
 2. Require CI to pass on the intended release commit. The manual release workflow
    does not rerun CI or automatically enforce its status.
+   CI runs when the release commit is pushed if its subject is `Release X.Y.Z`;
+   otherwise run it by hand.
 3. Create/review the corresponding `vX.Y.Z` tag before publication.
 4. Dispatch **Production Wordflow Release Build**, supplying the source ref.
    This workflow only builds and retains production packages. It cannot publish.
