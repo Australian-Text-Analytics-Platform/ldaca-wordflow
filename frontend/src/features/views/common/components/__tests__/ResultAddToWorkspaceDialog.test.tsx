@@ -532,12 +532,7 @@ describe('ResultAddToWorkspaceDialog', () => {
         1,
         'Each match becomes one row in the new Data Block. Choose the columns to keep. The Result and the original Data Block stay as they are.',
       ],
-      [
-        'match' as const,
-        'quotation',
-        1,
-        'Each quotation becomes one row in the new Data Block.',
-      ],
+      ['match' as const, 'quotation', 1, 'Each quotation becomes one row in the new Data Block.'],
       [
         'document' as const,
         undefined,

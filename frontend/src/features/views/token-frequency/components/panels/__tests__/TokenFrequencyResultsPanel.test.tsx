@@ -74,7 +74,9 @@ describe('TokenFrequencyResultsPanel stop words', () => {
     );
 
     // The list editor opens on request; the count stays in the settings row.
-    expect(screen.queryByRole('textbox', { name: 'Stop words filter (2)' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('textbox', { name: 'Stop words filter (2)' }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Edit list' }));
     const editor = screen.getByRole('textbox', { name: 'Stop words filter (2)' });
     expect(editor).toHaveValue('the, and');

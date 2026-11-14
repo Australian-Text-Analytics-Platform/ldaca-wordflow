@@ -26,7 +26,10 @@ describe('AnalysisCardLayout', () => {
 
   it('labels the results Clear button with its full effect, not just "Clear"', () => {
     render(
-      <AnalysisCardLayout title="Example Analysis" actions={{ onRunAll: vi.fn(), onClear: vi.fn() }}>
+      <AnalysisCardLayout
+        title="Example Analysis"
+        actions={{ onRunAll: vi.fn(), onClear: vi.fn() }}
+      >
         <div>Parameters</div>
       </AnalysisCardLayout>,
     );
