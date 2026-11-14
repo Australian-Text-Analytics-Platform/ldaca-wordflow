@@ -84,8 +84,8 @@ The DOI above is the **concept DOI**: it always resolves to the latest version o
 
 ## Branches
 
-- `main`: the latest release (now 0.7.20). It changes only through an approved
-  pull request from `v0.7` after each release.
+- `main`: the latest release (now 0.7.20). It changes only through a pull
+  request from `v0.7` after each release.
 - `v0.7`: development of the 0.7.x releases. Fix and feature branches start here.
 - `v0.8`: Wordflow 0.8, in development until it is released.
 
