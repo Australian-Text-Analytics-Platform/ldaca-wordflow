@@ -9,6 +9,7 @@
     "dev:backend": "node scripts/dev.mjs --backend",
     "dev:frontend": "node scripts/dev.mjs --frontend",
     "test:dev": "node --test scripts/dev.test.mjs",
+    "test:ci-scope": "node --test scripts/ci-scope.test.mjs",
     "build": "pnpm -C frontend build",
     "bump-version": "node scripts/bump-version.mjs",
     "check-versions": "node scripts/check-versions.mjs",
