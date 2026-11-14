@@ -9,6 +9,11 @@ not recorded in GitHub Issues or in the
 If any are kept, add their ledger entries when merging, using the
 [merge notes](#merge-notes) below.
 
+**Base: v0.7 after release 0.7.20.** On 14 November 2026 v0.7 was merged into
+this branch (merge commit `fe8e60ed`), so the trial runs on top of the current
+release. See [Updated to 0.7.20](#updated-to-0720) and
+[How to test each change](#how-to-test-each-change).
+
 ## Scope
 
 Claude's review sorted Astra's proposals into four groups. Only the first two
@@ -23,6 +28,42 @@ were implemented.
 
 No backend, API, saved-state or preference changes were made. Every change is
 presentation, wording or a client-side shortcut to an existing action.
+
+## Updated To 0.7.20
+
+On 14 November 2026 v0.7 was merged in. That brought Basic/Advanced modes,
+Maximise results, the Trends reference corpus and the 0.7.20 fixes. The backend,
+Rust packages, scripts and lockfiles are identical to v0.7. The only differences
+from v0.7 are this trial and its records.
+
+Two files conflicted:
+
+- **Annotation screen.** v0.7 restructured it. v0.7's version was taken, and
+  the trial's only change there was re-applied: the Codebook and Example panels
+  don't offer the open Data Block.
+- **concordance.md.** Both sides added to the Add to Project paragraph. v0.7's
+  naming and column explanation were kept together with the trial's sentence
+  about the summary line.
+
+v0.7 now runs a Biome format check. Three of the trial's test files were
+reformatted to pass it.
+
+How the trial behaves with the new v0.7 features, checked live in WebKit and
+Chromium with [this script](implementation/live-check-v020.mjs):
+
+- **Maximise results in Frequency.** The settings row stays visible, and Edit
+  list works while maximised. At 1024 by 768 the cloud starts at 289 px, so
+  479 px of it shows in the first screen.
+  [Screenshot](implementation/after-08-frequency-maximised-1024.png).
+- **Concordance Basic and Advanced.** The context inputs keep their names and
+  stay side by side at 1024 pixels in both modes.
+  [Screenshot](implementation/after-09-concordance-basic-1024.png).
+- **Add to Project.** The summary line still shows, including when the
+  results are maximised. v0.7's new default name, such as
+  *synthetic-discourse_concordance_housing*, appears in the same window.
+- **Other input panels.** v0.7 added no new multi-panel tool. The Trends
+  reference picker is its own component, so it never offers the open Data
+  Block.
 
 ## Changes
 
@@ -141,12 +182,10 @@ export.
 
 | Check | Result |
 |---|---|
-| Type-check, `tsc --noEmit` | Passed |
-| Lint, `pnpm -C frontend lint` | Passed |
-| Frontend tests, `pnpm -C frontend test -- --run` | 364 files, 1,920 tests passed; build-verification tests 3 of 3 |
-| Help check, `pnpm -C frontend docs:check` | Passed |
-| Live checks in WebKit, [script](implementation/live-check.mjs) | 15 of 15 in the final runs; no page errors or API responses of 400 or above |
-| Same live checks in Chromium | 15 of 15 in two runs |
+| Full frontend check after the 0.7.20 merge, `pnpm -C frontend check` | Passed: format, lint, types, 374 test files with 2,007 tests, unused code, build, Help, versions (0.7.20) |
+| Live checks in WebKit, [script](implementation/live-check.mjs) | 15 of 15 on 2 November and again after the merge; no page errors or API responses of 400 or above |
+| Same live checks in Chromium | 15 of 15 on 2 November and after the merge |
+| Checks with 0.7.20 features, [script](implementation/live-check-v020.mjs) | 9 of 9 in WebKit and Chromium |
 
 One earlier WebKit run, made while the screenshot timing was being adjusted,
 printed 14 pass lines. Its failing line was not captured. Every later run
@@ -165,6 +204,9 @@ Measured live in WebKit with the default layout and the Project panel open.
 |---|---|---|---|
 | 1440 x 1000 | 74 px | 538 px | 462 px |
 | 1024 x 768 | 129 px | 623 px | 145 px |
+| 1024 x 768, results maximised (0.7.20) | 129 px | 289 px | 479 px |
+
+The first two rows are the same before and after the 0.7.20 merge.
 
 In Sol's [1024 baseline](screenshots/36-responsive-1024.png) the Cloud view
 selector sits near 703 px and the cloud starts below the 768 px screen. That
@@ -173,8 +215,8 @@ baseline is read from the screenshot, not measured with this script.
 ### Limits
 
 - Same environment caveats as [the evidence record](EVIDENCE.md): a source
-  checkout with `UV_NO_SYNC=true`, a scratch data folder, and the synthetic
-  fixture.
+  checkout, a scratch data folder, and the synthetic fixture. The 2 November
+  runs used `UV_NO_SYNC=true`. The 14 November runs used a normal `pnpm dev`.
 - Screenshot tab strips show F-1 to F-11 and C-1 to C-11 because each run
   opens a new tab. That is test residue, not a product change.
 - No participant has seen these changes. They make Sol's findings smaller but
@@ -190,9 +232,57 @@ These existed before this branch and were not changed.
 - token-frequency.md says the Cloud display limit defaults to 50. The code
   default, `DEFAULT_TOKEN_LIMIT`, is 25.
 
+## How To Test Each Change
+
+Start the app from this branch as usual, for example with the Wordflow folder's
+"Start Wordflow" task. Use any Project with a text column. Each change can be
+judged on its own.
+
+1. **Open Data Block offered in an empty inputs panel.** Open a Data Block in
+   the Data Editor, then open a new Frequency or Concordance tab. The empty
+   inputs panel should name that Data Block and offer **Add** with its name.
+   Click it and check the panel fills as **Add Data Block** would. In
+   Annotation, check the Codebook and Example panels don't offer it.
+2. **Clear labels.** In any analysis tool, the red button beside Run reads
+   **Clear results**. The inputs heading reads **Remove all**. In Frequency,
+   type in **Filter tokens**: its button reads **Clear filter**. Check each
+   still does what it did before.
+3. **Add to Project summary.** Run Concordance, then open **Add to Project**
+   from Table view and from Dispersion view. Do the same in Quotation. The
+   first line should say what one row will be: a match, a document with a
+   match, or a quotation.
+4. **Concordance context inputs.** With VoiceOver, or the Safari accessibility
+   inspector, the Left and Right context inputs should be announced by their
+   labels. Narrow the Concordance pane: they stack only when it's very narrow.
+5. **Frequency settings row.** Run Frequency on a laptop-sized window. Stop
+   words and both display limits should take one row, wrapping when narrow.
+   Try **Edit list** and **Hide list**. Switch the filter on with an empty list
+   and check the list opens. With words in the list and the list closed, check
+   the "Hidden words:" line. Right-click a word in the cloud and check it's
+   added. Try it maximised as well.
+
+Things worth deciding while testing:
+
+- Whether "Hidden words:" with up to eight words is enough, or the full list
+  should stay open once it has words.
+- Whether the open-Data-Block offer is helpful, or noisy when you deliberately
+  inspect one Data Block while analysing another.
+
 ## Merge Notes
 
 Each change is independent and can be kept or dropped on its own.
+
+Don't merge this branch into v0.7 as a whole: it also carries this review
+folder and about 9 MB of screenshots. Instead, start a branch from v0.7 and
+apply only the kept changes. Take the diff against `6ba93a78`, the v0.7 commit
+merged here, so later v0.7 work in the same files is kept:
+
+```
+git switch -c fix/v0.7-ui-trial-keep v0.7
+git diff 6ba93a78 research/v0.7-ui-astra-handoff -- <files of the kept changes> | git apply --3way
+```
+
+Include the matching tests and Help pages from the table below.
 
 | Change | Main files | Ledger area if kept |
 |---|---|---|
