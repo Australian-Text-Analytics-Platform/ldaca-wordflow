@@ -4,7 +4,7 @@
 
 - `main` is the latest release. It is the default branch, so it is what GitHub
   shows, what Dependabot scans and where hand-run workflows are found. It
-  changes only through an approved pull request from `v0.7` after a release
+  changes only through a pull request from `v0.7` after a release
   (see Post-release). Nobody commits to it directly.
 - `v0.7` is where 0.7.x releases are prepared. Fix and feature branches start
   here, and release commits and tags are made here.
@@ -144,8 +144,8 @@ gh workflow run desktop-release.yml --repo Australian-Text-Analytics-Platform/ld
   prevented while download or installation is active.
 - Update `README.md` on `v0.7` (stable release line, "Use Wordflow" links and a
   "Release history" row with the master repository's Binder pin), then open a
-  pull request from `v0.7` to `main` titled "Release X.Y.Z". After approval,
-  merge it with a merge commit, not squash or rebase, so the release tag stays
+  pull request from `v0.7` to `main` titled "Release X.Y.Z" and merge it
+  with a merge commit, not squash or rebase, so the release tag stays
   reachable from `main`.
 - Deploy the tagged root commit and current supporting-package pointers.
 - Verify `/health/live`, `/health/ready`, hosted login, one Workspace read, and `/api/events`
