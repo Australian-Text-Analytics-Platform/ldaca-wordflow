@@ -117,7 +117,10 @@ university Keycloak, the login name such as a UniKey. OIDC sign-ins need the
   provides one, the email is sent instead. A gateway that merges ids per person
   should map those emails to login names.
 - Pair it with `send_user_details: true` to keep the email and name with every
-  request.
+  request. They are read from the account when a Run or Preview starts and
+  travel with it (signed), so a name changed meanwhile shows from the next Run.
+  Runs need 0.7.22 or later for this (#492); with 0.7.21, set it to
+  `false`.
 
 Database schema 8 (after 0.7.20) adds the `users.username` column; a version 7
 database is upgraded in place at start-up. To go back to an earlier release,

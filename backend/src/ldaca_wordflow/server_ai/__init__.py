@@ -58,7 +58,14 @@ async def bind_credential(credential: str | None, user_id: str, purpose: Purpose
     if _resolver is None:
         raise RuntimeError("Server AI identity resolver is not installed")
     end_user = await _resolver.end_user(provider, user_id)
-    return encode_binding(ServerAiBinding(provider.slug, purpose, user_id, end_user))
+    # Looked up here, in the server process: a Run calls the model from a
+    # worker process, which can't read accounts (#492).
+    details = (
+        tuple(sorted((await _resolver.user_details(user_id)).items()))
+        if provider.send_user_details and end_user
+        else ()
+    )
+    return encode_binding(ServerAiBinding(provider.slug, purpose, user_id, end_user, details))
 
 
 async def embedding_end_user(endpoint: ServerEmbeddingEndpoint, user_id: str) -> str | None:
@@ -70,14 +77,6 @@ async def embedding_end_user(endpoint: ServerEmbeddingEndpoint, user_id: str) ->
     if _resolver is None:
         raise RuntimeError("Server AI identity resolver is not installed")
     return await _resolver.end_user(endpoint, user_id)
-
-
-async def user_details(user_id: str) -> dict[str, str]:
-    """The account's email and name for providers with ``send_user_details``."""
-
-    if _resolver is None:
-        raise RuntimeError("Server AI identity resolver is not installed")
-    return await _resolver.user_details(user_id)
 
 
 def annotation_adapter_for(
@@ -135,7 +134,6 @@ __all__ = [
     "ServerEmbeddingEndpoint",
     "annotation_adapter_for",
     "embedding_end_user",
-    "user_details",
     "bind_credential",
     "cap_concurrency",
     "claims_annotation_provider",

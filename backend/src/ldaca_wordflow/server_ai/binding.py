@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol, cast
@@ -44,6 +45,10 @@ class ServerAiBinding:
     user_id: str
     # Empty when the provider sends no user field.
     end_user: str
+    # The account's email and name for providers with send_user_details, looked
+    # up when the binding is made: Runs call the model from a worker process,
+    # which has no account database (#492).
+    details: tuple[tuple[str, str], ...] = ()
 
 
 class ServerAiBindingError(ValueError):
@@ -128,7 +133,26 @@ def encode_binding(binding: ServerAiBinding) -> str:
         f"{_BINDING_PREFIX}{binding.slug}:{binding.purpose}:"
         f"{_b64(binding.user_id)}:{_b64(binding.end_user)}"
     )
+    if binding.details:
+        # Signed with the rest; absent when there are none, so such bindings
+        # keep the four-part form.
+        payload += f":{_b64(json.dumps(dict(binding.details), sort_keys=True))}"
     return f"{payload}:{_signature(provider, payload)}"
+
+
+_DETAIL_KEYS = frozenset({"email", "name"})
+
+
+def _details(value: str) -> tuple[tuple[str, str], ...]:
+    loaded = json.loads(_unb64(value))
+    if (
+        not isinstance(loaded, dict)
+        or not loaded
+        or not set(loaded) <= _DETAIL_KEYS
+        or not all(isinstance(item, str) for item in loaded.values())
+    ):
+        raise ValueError("bad details")
+    return tuple(sorted(loaded.items()))
 
 
 def is_binding(credential: str | None) -> bool:
@@ -142,8 +166,14 @@ def decode_binding(credential: str | None) -> tuple[ServerAiProvider, ServerAiBi
         raise ServerAiBindingError("Not a server AI credential")
     payload, _, signature = credential.rpartition(":")
     try:
-        slug, purpose, user_id, end_user = payload.removeprefix(_BINDING_PREFIX).split(":")
-        binding = ServerAiBinding(slug, cast(Purpose, purpose), _unb64(user_id), _unb64(end_user))
+        parts = payload.removeprefix(_BINDING_PREFIX).split(":")
+        if len(parts) not in (4, 5):
+            raise ValueError("wrong number of parts")
+        slug, purpose, user_id, end_user = parts[:4]
+        details = _details(parts[4]) if len(parts) == 5 else ()
+        binding = ServerAiBinding(
+            slug, cast(Purpose, purpose), _unb64(user_id), _unb64(end_user), details
+        )
     except ValueError:
         raise ServerAiBindingError("Server AI credential is malformed") from None
     provider = server_ai_providers().by_slug(binding.slug)

@@ -220,9 +220,14 @@ class _StatusError(Exception):
         self.response = type("Response", (), {"headers": headers or {}})()
 
 
-def _binding(user_id: str = "user-a", end_user: str = "alice@uni.edu", purpose="run") -> str:
+def _binding(
+    user_id: str = "user-a",
+    end_user: str = "alice@uni.edu",
+    purpose="run",
+    details: tuple[tuple[str, str], ...] = (),
+) -> str:
     return server_binding.encode_binding(
-        server_binding.ServerAiBinding("research", purpose, user_id, end_user)
+        server_binding.ServerAiBinding("research", purpose, user_id, end_user, details)
     )
 
 
@@ -668,19 +673,19 @@ async def test_username_is_the_sign_ins_login_name_and_the_email_until_known(
 async def test_user_details_label_requests_only_when_the_provider_asks(
     research_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """send_user_details: app, email and name in LiteLLM's spend-log metadata header."""
-    calls = _install_fake_openai(monkeypatch, ['{"labels": ["Relevant"]}'] * 2)
+    """send_user_details: app, email and name in LiteLLM's spend-log metadata header.
 
-    class _Resolver:
-        async def user_details(self, user_id: str) -> dict[str, str]:
-            assert user_id == "user-a"
-            return {"email": "alice@uni.edu", "name": "Alice Ångström"}
+    From the binding alone: Runs call the model from a worker process, which has
+    no account lookup (issue 492), so none is installed here.
+    """
+    calls = _install_fake_openai(monkeypatch, ['{"labels": ["Relevant"]}'] * 2)
+    details = (("email", "alice@uni.edu"), ("name", "Alice Ångström"))
 
     labelled = {**PROVIDER, "send_user": "username", "send_user_details": True}
     _write_providers(tmp_path, monkeypatch, labelled)
-    monkeypatch.setattr(server_ai, "_resolver", _Resolver())
+    assert server_ai._resolver is None
     await ServerAiAnnotationAdapter(ServerAiProvider.model_validate(labelled)).complete(
-        "qwen3-32b", _binding(end_user="abcd1234"), "system", "user", CONFIG
+        "qwen3-32b", _binding(end_user="abcd1234", details=details), "system", "user", CONFIG
     )
     assert calls["creates"][-1]["user"] == "abcd1234"
     header = calls["clients"][-1]["default_headers"]["x-litellm-spend-logs-metadata"]
@@ -693,9 +698,43 @@ async def test_user_details_label_requests_only_when_the_provider_asks(
 
     _write_providers(tmp_path, monkeypatch, PROVIDER)
     await ServerAiAnnotationAdapter(_provider()).complete(
-        "qwen3-32b", _binding(end_user="abcd1234"), "system", "user", CONFIG
+        "qwen3-32b", _binding(end_user="abcd1234", details=details), "system", "user", CONFIG
     )
     assert calls["clients"][-1]["default_headers"] is None
+
+
+@pytest.mark.anyio
+async def test_binding_carries_the_labels_signed_and_only_when_asked(
+    research_env: None,
+    multi_user_test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Issue 492: the email and name are looked up when the Run is bound, in the server."""
+    user_id = multi_user_test_client.get("/api/session").json()["user"]["id"]
+    labelled = {**PROVIDER, "send_user": "username", "send_user_details": True}
+    _write_providers(tmp_path, monkeypatch, labelled)
+    unbound = server_binding.unbound_credential(_provider())
+
+    bound = await server_ai.bind_credential(unbound, user_id, "run")
+    _provider_found, binding = server_binding.decode_binding(bound)
+    assert binding.end_user == "fixture@example.test"
+    assert dict(binding.details) == {"email": "fixture@example.test", "name": "Fixture User"}
+
+    # The labels are signed: changing them breaks the binding.
+    assert bound is not None
+    payload, _, signature = bound.rpartition(":")
+    head, _, _labels = payload.rpartition(":")
+    forged = f"{head}:{server_binding._b64(json.dumps({'email': 'x@y.z'}))}:{signature}"
+    with pytest.raises(server_binding.ServerAiBindingError):
+        server_binding.decode_binding(forged)
+
+    # Without send_user_details: no labels, and the four-part form as before.
+    _write_providers(tmp_path, monkeypatch, {**PROVIDER, "send_user": "username"})
+    plain = await server_ai.bind_credential(unbound, user_id, "run")
+    assert plain is not None
+    assert plain.removeprefix("server-ai:v1:").count(":") == 4
+    assert server_binding.decode_binding(plain)[1].details == ()
 
 
 # One request at a time per user ------------------------------------------------------
