@@ -312,7 +312,20 @@ jobs:
           mkdir -p "$dmg_dir"
           ditto "$app_path" "$stage_dir/LDaCA Wordflow.app"
           ln -s /Applications "$stage_dir/Applications"
-          hdiutil create -volname "LDaCA Wordflow" -srcfolder "$stage_dir" -ov -format UDZO "$dmg_path"
+          # hdiutil sometimes fails with "Resource busy" on hosted runners while
+          # the system is still reading the staged app; it works seconds later
+          # (the 0.7.21 build failed here after signing and notarization).
+          for attempt in 1 2 3 4 5; do
+            if hdiutil create -volname "LDaCA Wordflow" -srcfolder "$stage_dir" -ov -format UDZO "$dmg_path"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "hdiutil create failed 5 times" >&2
+              exit 1
+            fi
+            echo "hdiutil create failed (attempt $attempt); trying again in $((attempt * 10)) s" >&2
+            sleep $((attempt * 10))
+          done
           codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$dmg_path"
           echo "path=$dmg_path" >> "$GITHUB_OUTPUT"
 
