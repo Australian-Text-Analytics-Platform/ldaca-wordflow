@@ -396,10 +396,9 @@ export function ConcordanceParameterPanel({
                 }}
                 variant="destructive"
                 disabled={actionState.clearDisabled}
-                aria-label="Clear results"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Clear
+                <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                Clear results
               </Button>
             </DisabledReasonTooltip>
             <HelpIcon targetKey="analysis.concordance.clear-results" label="Clear results" />

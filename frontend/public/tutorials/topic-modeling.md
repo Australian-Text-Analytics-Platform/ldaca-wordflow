@@ -777,7 +777,7 @@ add anything to a Project.
 
 <h3 id="help-topic-modeling-clear-results">Clear results</h3>
 
-**Clear** removes this tab's result. The selected
+**Clear results** removes this tab's result. The selected
 **Passages** method, **Max tokens** value, and **Topic size** range remain
 available for the next run.
 

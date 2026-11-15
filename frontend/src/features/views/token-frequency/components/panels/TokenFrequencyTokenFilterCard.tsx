@@ -55,7 +55,7 @@ export const TokenFrequencyTokenFilterCard = ({
                 onChange('');
               }}
             >
-              Clear
+              Clear filter
             </Button>
           ) : null}
         </div>

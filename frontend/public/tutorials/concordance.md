@@ -394,9 +394,9 @@ example stacked `CONC_extraction` text, the Result keeps it as `CONC_source`
 
 <h3 id="help-concordance-clear-results">Clear results</h3>
 
-**Clear** removes this tab's Preview and Run results. Settings are locked while
+**Clear results** removes this tab's Preview and Run results. Settings are locked while
 Preview or Run is working, and **Stop** cancels it. After a failure or a stop,
-Preview and Run stay off until you choose **Clear**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+Preview and Run stay off until you choose **Clear results**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-concordance-troubleshooting">Troubleshooting</h2>
 

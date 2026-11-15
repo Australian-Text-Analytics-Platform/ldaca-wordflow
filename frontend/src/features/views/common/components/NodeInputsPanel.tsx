@@ -282,7 +282,7 @@ export function NodeInputsPanel({
               aria-label="Remove all Data Blocks"
             >
               <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-              Clear
+              Remove all
             </Button>
           )}
 

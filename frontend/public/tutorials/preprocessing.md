@@ -36,7 +36,7 @@ These controls appear across multiple sub-tabs and work the same way throughout.
 
 <h3 id="help-preprocessing-common-node-selection">Data Block selection</h3>
 
-Add Data Blocks under **Data Blocks** with **Add Data Block**, or with a Data Block's **+** button in the Data Blocks list or the Project Graph. Each sub-tab requires a specific number of Data Blocks: exactly two for Join, two to six for Stack, and one for the other tools. The heading shows how many are added out of the maximum (for example **1/1**), and **Add Data Block** is greyed out once the maximum is reached. Remove a Data Block with its **×**, or all of them with **Clear**. Segment, Aggregate, and Deduplicate also use the column chosen beside the Data Block (the **Text column**, or the **Deduplicating column** for Deduplicate).
+Add Data Blocks under **Data Blocks** with **Add Data Block**, or with a Data Block's **+** button in the Data Blocks list or the Project Graph. Each sub-tab requires a specific number of Data Blocks: exactly two for Join, two to six for Stack, and one for the other tools. The heading shows how many are added out of the maximum (for example **1/1**), and **Add Data Block** is greyed out once the maximum is reached. Remove a Data Block with its **×**, or all of them with **Remove all**. Segment, Aggregate, and Deduplicate also use the column chosen beside the Data Block (the **Text column**, or the **Deduplicating column** for Deduplicate).
 
 ![The Data Blocks panel with one Data Block and its text column](tutorials/assets/preprocessing/inputs_panel.png)
 

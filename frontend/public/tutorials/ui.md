@@ -266,7 +266,7 @@ The analysis tools share three buttons.
 - **Run** works through all of your data. Use it for the final result, for
   sorting on every column, for charts of the whole result, and before
   **Add to Project**.
-- **Clear** removes this tab's Preview and Run results so you can start again.
+- **Clear results** removes this tab's Preview and Run results so you can start again.
   It does not remove Data Blocks you have already added to the Project, and it
   does not undo changes written to a Data Block (use **Undo** in the Data Editor
   for that).
@@ -284,9 +284,9 @@ What to expect:
 - **Settings are locked while a task runs.** Use **Stop** to cancel it. The
   running task also appears in **Tasks**.
 - **After a failure or a stop**, you can edit the settings again, but Preview
-  and Run stay off until you choose **Clear**. Annotation is the exception: its
+  and Run stay off until you choose **Clear results**. Annotation is the exception: its
   Preview and Run replace the tab's earlier results, so they turn on again
-  without **Clear**. The message explains what went wrong; **Details** has the technical text for a feedback report.
+  without **Clear results**. The message explains what went wrong; **Details** has the technical text for a feedback report.
 - **Results stay with the tab.** They are still there when you move to another
   tool, or close and reopen the Project.
 
@@ -364,7 +364,7 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
   you carry on with other things (typing in a field does not count), or choose
   **Dismiss** to close one at once. Either way it comes back when the same
   situation happens again. Buttons that lose work, such as
-  **Clear** and **Stop**, are named but never marked. Suggestions appear when:
+  **Clear results** and **Stop**, are named but never marked. Suggestions appear when:
   - a Concordance **Preview** finds no matches in the documents it checked,
     while the Data Block has more: show more **Documents per page**, or
     **Run** to search them all;

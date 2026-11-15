@@ -81,7 +81,7 @@ The result-level **Filter tokens** input remains active in both Cloud and List v
 
 ![Filter tokens set to *ing, with both clouds showing only words ending in ing](tutorials/assets/token_frequency/filter_tokens.png)
 
-Click **Clear** to remove the filter. Downloads also follow the active filter: frequency and Keyword Analysis CSVs contain all matching rows, while cloud image exports capture the filtered cloud.
+Click **Clear filter** to remove the filter. Downloads also follow the active filter: frequency and Keyword Analysis CSVs contain all matching rows, while cloud image exports capture the filtered cloud.
 
 <h2 id="help-token-frequency-cloud-view">Cloud view</h2>
 
@@ -161,8 +161,8 @@ The full table can be downloaded as a CSV file, in the order the table is sorted
 <h3 id="help-token-frequency-clear-results">Clear results</h3>
 
 The tab keeps its result when you move to another tool or reopen the Project.
-**Clear** removes it and resets the tab. After a failure or a stop, the settings
-stay editable but Run stays off until you choose **Clear**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+**Clear results** removes it and resets the tab. After a failure or a stop, the settings
+stay editable but Run stays off until you choose **Clear results**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-token-frequency-troubleshooting">Troubleshooting</h2>
 

@@ -199,7 +199,7 @@ compare them with existing labels, add corrections if useful, then revise the
 Codebook, examples, model, or settings when the errors show a pattern.
 Pages you have seen are kept with the tab and saved with the Project, so going
 back to a page, reloading or reopening the tab doesn't ask the provider again;
-a new Preview or **Clear** removes them. Preview waits as long as the provider
+a new Preview or **Clear results** removes them. Preview waits as long as the provider
 allows; choose **Stop** when you no longer want to wait. After a Preview, the button turns on again when you change a
 setting. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
@@ -253,14 +253,14 @@ The download icon above the Annotations table, and above the Review table
 after a Run, saves the annotated Data Block (all its columns, with your
 codes) as CSV or Excel, without going through the Export view.
 
-**Clear** removes the tab's Preview and Run results; it does not undo labels
+**Clear results** removes the tab's Preview and Run results; it does not undo labels
 already written to the Data Block. Use **Undo** in the Data Editor to reverse
 the latest manual edit, AI write, or column creation. Undo history lasts only
 until the Project is closed.
 
 Settings are locked while Preview or Run is working. After a failure or a stop,
 you can edit the settings and choose Preview or Run again straight away; the new
-Preview or Run replaces the tab's earlier results, so **Clear** is not needed
+Preview or Run replaces the tab's earlier results, so **Clear results** is not needed
 first. Tables on screen keep the settings of the Preview, Run or Start that
 made them while you edit the next setup. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 

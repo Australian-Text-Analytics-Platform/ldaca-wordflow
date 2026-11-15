@@ -198,14 +198,13 @@ export function AnalysisCardLayout({
                 }}
                 variant="destructive"
                 disabled={actions.clearDisabled}
-                aria-label="Clear results"
               >
                 {actions.isClearing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                 )}
-                Clear
+                Clear results
               </Button>
             </DisabledReasonTooltip>
             {actions.clearHelp ? (
