@@ -40,12 +40,16 @@ needs a new Preview.
 - Range: 0–2000.
 - Use 0 to keep the display close to the extracted speaker, quote, and verb.
 
-<h2 id="help-quotation-run">Step 4: Preview</h2>
+<h2 id="help-quotation-run">Step 4: Preview and Run</h2>
 
 Choose **Preview** to see the first pages of quotations. Each page is worked out
 when you open it, from the data as it was when you chose Preview. After a
 Preview, the button turns on again when you change the Data Block, text column
-or engine. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+or engine. Choose **Run** for every quotation; see
+[Run and Quotation Results](#help-quotation-run-all). **Clear results**, at the
+end of the same row, removes this tab's results; see
+[Clear results](#help-quotation-clear-results). See
+[How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-quotation-results">Result panel</h2>
 

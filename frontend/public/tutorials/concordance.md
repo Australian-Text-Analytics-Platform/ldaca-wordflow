@@ -119,10 +119,13 @@ does not mean the word is absent: choose **Run** to search every document.
 
 ![Preview footer: matches found so far and Documents per page](tutorials/assets/concordance/documents_per_page.png)
 
-<h2 id="help-concordance-run">Step 5: Preview</h2>
+<h2 id="help-concordance-run">Step 5: Preview and Run</h2>
 
 Choose **Preview** to see the first pages of matches. Each page is worked out
-when you open it, from the data as it was when you chose Preview. See
+when you open it, from the data as it was when you chose Preview. Choose
+**Run** for every match; see [Run and Concordance Results](#help-concordance-run-all).
+**Clear results**, at the end of the same row, removes this tab's results; see
+[Clear results](#help-concordance-clear-results). See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-concordance-results">Result panel</h2>

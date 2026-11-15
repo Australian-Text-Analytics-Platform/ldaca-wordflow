@@ -582,6 +582,7 @@ export function TopicModelingParameterPanel({
         isStopping,
         isClearing,
         runAllLabel: 'Run',
+        help: { targetKey: 'analysis.topic-modeling.run' },
       }}
       actionsGuidanceTarget="topic-modeling-actions"
       nudgeScope="topic-modeling"

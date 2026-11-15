@@ -1,5 +1,5 @@
 /** Default result row limit used by analysis panels when preferences are absent. */
-export const DEFAULT_TOKEN_LIMIT = 25;
+export const DEFAULT_TOKEN_LIMIT = 40;
 
 interface ClampResult {
   limit: number;

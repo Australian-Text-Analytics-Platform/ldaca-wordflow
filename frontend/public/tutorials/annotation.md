@@ -193,6 +193,10 @@ turn it on if you want them to think.
 
 <h3 id="help-annotation-preview">Preview</h3>
 
+The AI workflow ends with one row of buttons: **Preview**, **Run** (see
+[Run and review](#help-annotation-run-all)) and **Clear results** (see
+[Results, Clear, and Undo](#help-annotation-results)).
+
 Choose **Preview** to see predicted labels for a sample of rows without writing
 to the annotation column. Page through the predictions,
 compare them with existing labels, add corrections if useful, then revise the

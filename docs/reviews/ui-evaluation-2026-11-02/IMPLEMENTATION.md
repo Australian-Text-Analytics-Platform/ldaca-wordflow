@@ -25,9 +25,11 @@ were implemented.
 | Frequency result controls compacted | Implemented |
 | Task entry points, focused layout, Annotation setup sequence, when a Codebook is created | Not started. Each needs a product decision first |
 | Research or workflow profiles | Not started, as Astra recommended |
+| Product owner's requests while testing (15 November) | Implemented as changes 6 and 7 |
 
-No backend, API, saved-state or preference changes were made. Every change is
-presentation, wording or a client-side shortcut to an existing action.
+Changes 1 to 6 make no backend, API, saved-state or preference changes. Each is
+presentation, wording or a client-side shortcut to an existing action. Change 7
+changes one backend default, recorded in the OpenAPI file.
 
 ## Updated To 0.7.20
 
@@ -154,6 +156,52 @@ Screenshots: [1440 wide](implementation/after-02-frequency-1440.png),
 [list open](implementation/after-04-frequency-1024-edit-list.png),
 [hidden words](implementation/after-05-frequency-1024-hidden-words.png).
 
+### 6. One help icon for each Run row
+
+Requested by the product owner on 15 November: only Frequency had a help icon
+for Run, Topic Modelling and Annotation had none on that row, and one icon per
+row keeps the number of help icons down.
+
+- Every Preview, Run and Clear results row now ends with one help icon, placed
+  after **Clear results** and before **Stop**, so it doesn't move when Stop
+  appears. It opens the tool's Run step in Help.
+- Its accessible name says what it covers: "About Preview, Run and Clear
+  results", or "About Run and Clear results" where the tool has no Preview.
+  That also fixes the help icon that shared the name "Clear results" with the
+  button beside it.
+- The per-button icons were removed: Frequency's Run and Clear icons, and the
+  Clear icons in Concordance, Quotation and Trends.
+- Annotation's Manual mode has a **Start** / **Close** row instead. It gets the
+  same kind of icon, "About Start and Close", opening the Manual workflow
+  section.
+- `AnalysisCardLayout` takes one `actions.help` instead of `runAllHelp` and
+  `clearHelp`. Concordance builds its own row and was changed to match.
+- New Help registry keys: `analysis.<tool>.run` for Concordance, Quotation,
+  Trends, Topic Modelling and Annotation, and `analysis.annotation.manual`. The
+  old `clear-results` keys stay in the registry; nothing in the app uses them
+  now.
+- Help: each tool's Run step now also points to its own Clear results section.
+  Concordance and Quotation retitled "Step N: Preview" to "Step N: Preview and
+  Run" and point to the Run section further down. Annotation's Preview section
+  starts with a line naming the row's three buttons. The section ids did not
+  change.
+
+### 7. Frequency cloud display limit defaults to 40
+
+Requested by the product owner on 15 November. The default was 25 in the app
+and the Help said 50.
+
+- The backend request default (`TokenFrequencyAnalysisRequest.token_limit`) and
+  the frontend `DEFAULT_TOKEN_LIMIT` are both 40. Both had to change: the app
+  sends no limit when it runs, so the backend default comes back with every
+  result and the screen uses it.
+- The OpenAPI file shows default 40. A fresh export matches it, apart from the
+  file's version, which already said 0.7.19 on v0.7.
+- token-frequency.md says 40 for the Cloud display limit, and for the List
+  display limit, which follows it.
+- Results run before the change keep 25 until they are run again or the limit
+  is changed. A limit someone has already applied is kept.
+
 ### Help pages
 
 The Help pages, which are the documentation source of truth, were updated to
@@ -186,6 +234,9 @@ export.
 | Live checks in WebKit, [script](implementation/live-check.mjs) | 15 of 15 on 2 November and again after the merge; no page errors or API responses of 400 or above |
 | Same live checks in Chromium | 15 of 15 on 2 November and after the merge |
 | Checks with 0.7.20 features, [script](implementation/live-check-v020.mjs) | 9 of 9 in WebKit and Chromium |
+| Full frontend check after changes 6 and 7 | Passed: 374 test files with 2,008 tests, Help check with 80 icon references |
+| Backend tests for Frequency and the analysis contract | 40 passed |
+| Run-row help and cloud default, [script](implementation/live-check-rowhelp.mjs) | 16 of 16 in WebKit and Chromium: one icon in each of the six tools (both Annotation modes), no shared "Clear results" name, Help opens at Frequency's Run step, cloud limit 40 after a run |
 
 One earlier WebKit run, made while the screenshot timing was being adjusted,
 printed 14 pass lines. Its failing line was not captured. Every later run
@@ -224,13 +275,12 @@ baseline is read from the screenshot, not measured with this script.
 
 ## Found While Working
 
-These existed before this branch and were not changed.
+Both existed on v0.7 before this branch. Both are now resolved here.
 
-- The help icon beside the results button is also named "Clear results", so
-  two neighbouring controls share an accessible name. The Run help icon is
-  named "Run Frequency" and does not have this problem.
-- token-frequency.md says the Cloud display limit defaults to 50. The code
-  default, `DEFAULT_TOKEN_LIMIT`, is 25.
+- The help icon beside the results button was also named "Clear results", so
+  two neighbouring controls shared an accessible name. Fixed by change 6.
+- token-frequency.md said the Cloud display limit defaults to 50, while the
+  code used 25. Change 7 makes both 40.
 
 ## How To Test Each Change
 
@@ -260,6 +310,11 @@ judged on its own.
    and check the list opens. With words in the list and the list closed, check
    the "Hidden words:" line. Right-click a word in the cloud and check it's
    added. Try it maximised as well.
+6. **Run row help.** In each analysis tool, the row with Run should end with
+   one help icon after **Clear results**, and it should open that tool's Run
+   step. In Annotation, check both Manual (**Start**) and AI.
+7. **Cloud display limit.** Run Frequency in a new tab. The Cloud and List
+   display limits should both show 40.
 
 Things worth deciding while testing:
 
@@ -291,6 +346,12 @@ Include the matching tests and Help pages from the table below.
 | 3. Add to Project summary | `ResultAddToWorkspaceDialog.tsx`, `QuotationFeature.tsx`, `guidance/registry.ts`, concordance.md, quotation.md | Concordance and Quotation |
 | 4. Context input names | `ConcordanceParameterPanel.tsx` | Concordance |
 | 5. Frequency settings row | `TokenFrequencyResultsPanel.tsx`, `TokenFrequencyTokenFilterCard.tsx`, token-frequency.md | Frequency and Keyword Analysis |
+| 6. Run row help | `AnalysisCardLayout.tsx`, `ConcordanceParameterPanel.tsx`, `AnnotationFeature.tsx`, `QuotationFeature.tsx`, `SequentialAnalysisFeature.tsx`, `TokenFrequencyParameterPanel.tsx`, `TopicModelingParameterPanel.tsx`, `bundledRegistry.ts`, six Help pages | Help and guidance |
+| 7. Cloud default 40 | `domain/workspace/analysis.py`, `ldaca-wordflow.openapi.json`, `common/utils.ts`, token-frequency.md | Frequency and Keyword Analysis |
+
+Changes 1, 2 and 6 share `AnalysisCardLayout.tsx`, `ConcordanceParameterPanel.tsx`
+and `AnnotationFeature.tsx`. Applying one of those files brings all of its
+changes. To keep only some, apply the file and remove the rest by hand.
 
 For v0.8, carry over the behaviour rather than the markup: the open-Data-Block
 offer and its role-panel opt-out, the three distinct labels, the row-unit line,

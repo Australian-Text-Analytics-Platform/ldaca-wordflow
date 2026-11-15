@@ -26,6 +26,7 @@ import {
 } from '@/features/provider-credentials/providerCredentialRequests';
 import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
 import { DEFAULT_INTERCODER_RELIABILITY_METRIC } from '@/features/views/common/columnComparisonModel';
+import HelpIcon from '@/components/help/HelpIcon';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
 import type { NodeInputColumnAddonArgs } from '@/features/views/common/components/NodeInputsPanel';
 import { NodeInputsPanel } from '@/features/views/common/components/NodeInputsPanel';
@@ -1107,6 +1108,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                           onPreview: runFreshAiAnalysis,
                           onRunAll: handleRunAll,
                           onStop: activeAnalysis ? stopAiTask : undefined,
+                          help: { targetKey: 'analysis.annotation.run' },
                           onClear: async () => {
                             await clearAiResults();
                             await host.clearCorrectionColumns();
@@ -1140,28 +1142,35 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                   }
                   footer={
                     annotationMode === 'manual' ? (
-                      <DisabledReasonTooltip
-                        reason={
-                          !manualReviewSnapshot && (!sourceNode || !selectedAnnotationColumnExists)
-                            ? 'Select an Annotation Data Block and annotation column first'
-                            : undefined
-                        }
-                      >
-                        <Button
-                          type="button"
-                          disabled={
+                      <div className="flex items-center gap-2">
+                        <DisabledReasonTooltip
+                          reason={
                             !manualReviewSnapshot &&
-                            (!sourceNode ||
-                              !selectedAnnotationColumnExists ||
-                              isStartingManualReview)
+                            (!sourceNode || !selectedAnnotationColumnExists)
+                              ? 'Select an Annotation Data Block and annotation column first'
+                              : undefined
                           }
-                          onClick={() => {
-                            void handleManualReviewToggle();
-                          }}
                         >
-                          {manualReviewSnapshot ? 'Close' : 'Start'}
-                        </Button>
-                      </DisabledReasonTooltip>
+                          <Button
+                            type="button"
+                            disabled={
+                              !manualReviewSnapshot &&
+                              (!sourceNode ||
+                                !selectedAnnotationColumnExists ||
+                                isStartingManualReview)
+                            }
+                            onClick={() => {
+                              void handleManualReviewToggle();
+                            }}
+                          >
+                            {manualReviewSnapshot ? 'Close' : 'Start'}
+                          </Button>
+                        </DisabledReasonTooltip>
+                        <HelpIcon
+                          targetKey="analysis.annotation.manual"
+                          label="About Start and Close"
+                        />
+                      </div>
                     ) : undefined
                   }
                   footerGuidanceTarget={

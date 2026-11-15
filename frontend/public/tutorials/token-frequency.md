@@ -55,7 +55,9 @@ The sources and licences of the ready-made lists are listed under **Stop-word li
 Choose **Run** to start. Settings are locked while it works. After it finishes,
 Run turns on again only when you change a setting that affects the counts.
 Stop words and the Cloud and List display limits only change what is shown, so
-they do not turn Run on. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+they do not turn Run on. **Clear results**, at the end of the same row, removes
+this tab's results; see [Clear results](#help-token-frequency-clear-results).
+See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-token-frequency-results">Result panel</h2>
 
@@ -65,7 +67,7 @@ The results panel starts with one row of display settings: stop words, the Cloud
 
 ![Cloud and List display limits, each with an Apply button](tutorials/assets/token_frequency/display_limits.png)
 
-The **Cloud display limit** (range 10–100, default 50) sets the maximum number of tokens shown in the word clouds. Type a number, or use the arrows, then click **Apply**. Changing this value also updates the List display limit to the same number (capped at 100).
+The **Cloud display limit** (range 10–100, default 40) sets the maximum number of tokens shown in the word clouds. Type a number, or use the arrows, then click **Apply**. Changing this value also updates the List display limit to the same number (capped at 100).
 
 <h3 id="help-token-frequency-list-limit">List display limit</h3>
 
@@ -185,8 +187,8 @@ stay editable but Run stays off until you choose **Clear results**. See [How Pre
 | Corpus role switches | First selected Data Block is the Study corpus | Swaps which Data Block is OS/%S and which is OR/%R in the statistics table                                                                         |
 | Stop words           | Empty                                | Pick a language from the **Select language** dropdown for default stop words                                                                  |
 | Token filter         | Empty                                | Applies to every Cloud/List result and download; `*` matches any sequence of characters                                                       |
-| Cloud display limit  | 50                                   | Range 10–100; mirrors to list limit                                                                                                           |
-| List display limit   | 50                                   | Range 10 to vocabulary size; values > 100 diverge from cloud                                                                                   |
+| Cloud display limit  | 40                                   | Range 10–100; mirrors to list limit                                                                                                           |
+| List display limit   | 40                                   | Range 10 to vocabulary size; values > 100 diverge from cloud                                                                                   |
 
 ## Practice exercise
 
