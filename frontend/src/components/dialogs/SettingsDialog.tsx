@@ -12,6 +12,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DataFolderSettingsPanel } from '@/components/dialogs/DataFolderSettingsPanel';
+import {
+  SettingsHelpIcon,
+  SettingsSectionHeading,
+} from '@/components/dialogs/SettingsSectionHeading';
 import { ToolCacheSettingsPanel } from '@/components/dialogs/ToolCacheSettingsPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -143,21 +147,19 @@ export function SettingsDialog({
     return workspace?.name ?? workspaceId;
   };
 
-  const syncBadge = { label: 'Account', variant: 'outline' as const };
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex h-[80dvh] w-[80vw] max-w-none flex-col gap-0 overflow-hidden p-0">
           <DialogHeader className="shrink-0 border-b border-surface-border/60 px-6 py-4">
-            <div className="flex items-start justify-between gap-4 pr-8">
-              <div className="space-y-1">
+            <div className="space-y-1 pr-8">
+              <div className="flex items-center gap-1">
                 <DialogTitle>Settings</DialogTitle>
-                <DialogDescription>
-                  Manage saved preferences and browser-side options.
-                </DialogDescription>
+                <SettingsHelpIcon helpKey="settings.overview" helpLabel="About Settings" />
               </div>
-              <Badge variant={syncBadge.variant}>{syncBadge.label}</Badge>
+              <DialogDescription>
+                Manage saved preferences and browser-side options.
+              </DialogDescription>
             </div>
           </DialogHeader>
           <Tabs
@@ -196,7 +198,11 @@ export function SettingsDialog({
               <TabsContent value="general" className="mt-0 space-y-5">
                 <section className="space-y-3">
                   <div>
-                    <h3 className="text-body font-semibold">Appearance</h3>
+                    <SettingsSectionHeading
+                      title="Appearance"
+                      helpKey="settings.appearance"
+                      helpLabel="About Appearance"
+                    />
                     <p className="text-body text-description">
                       Use the VS Code 2026 Light or Dark theme. This preference follows your
                       account.
@@ -238,15 +244,18 @@ export function SettingsDialog({
                 </section>
                 <section className="space-y-3">
                   <div>
-                    <h3 className="text-body font-semibold">Preference sync</h3>
+                    <SettingsSectionHeading
+                      title="Preference sync"
+                      helpKey="settings.preference-sync"
+                      helpLabel="About Preference sync"
+                    />
                     <p className="text-body text-description">
-                      These preferences follow your account. Provider credentials use dedicated
-                      mode-specific storage and are not User Preferences.
+                      These preferences follow your account. AI provider keys and the LDaCA access
+                      token are stored separately.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 text-body">
-                    <Badge variant={syncBadge.variant}>{syncBadge.label}</Badge>
-                    <Badge variant="outline">{favoriteWorkspaces.length} favorites</Badge>
+                    <Badge variant="outline">{favoriteWorkspaces.length} favourites</Badge>
                     <Badge variant="outline">{visibleViews.length} visible views</Badge>
                   </div>
                 </section>
@@ -258,9 +267,15 @@ export function SettingsDialog({
                       'flex items-center justify-between gap-4 rounded-md border border-surface-border/70 px-3 py-2',
                     )}
                   >
-                    <Label htmlFor="settings-analysis-multi-tab" className="text-body font-medium">
-                      Enable multi-tab
-                    </Label>
+                    <div className="flex items-center gap-1">
+                      <Label
+                        htmlFor="settings-analysis-multi-tab"
+                        className="text-body font-medium"
+                      >
+                        Enable multi-tab
+                      </Label>
+                      <SettingsHelpIcon helpKey="settings.multi-tab" helpLabel="About multi-tab" />
+                    </div>
                     <Switch
                       id="settings-analysis-multi-tab"
                       checked={analysisMultiTabEnabled}
@@ -290,7 +305,11 @@ export function SettingsDialog({
               <TabsContent value="workspace" className="mt-0 space-y-5">
                 <section className="space-y-3">
                   <div>
-                    <h3 className="text-body font-semibold">Data folder</h3>
+                    <SettingsSectionHeading
+                      title="Data folder"
+                      helpKey="settings.data-folder"
+                      helpLabel="About the data folder"
+                    />
                     <p className="text-body text-description">
                       Where Wordflow keeps your Projects, imported files, and settings.
                     </p>
@@ -299,7 +318,11 @@ export function SettingsDialog({
                 </section>
                 <section className="space-y-3 border-t border-surface-border/60 pt-4">
                   <div>
-                    <h3 className="text-body font-semibold">Tool caches</h3>
+                    <SettingsSectionHeading
+                      title="Tool caches"
+                      helpKey="settings.tool-caches"
+                      helpLabel="About tool caches"
+                    />
                     <p className="text-body text-description">
                       Wordflow keeps the results of slow steps so later runs on the same text are
                       faster. Clearing frees disk space; nothing in your Projects changes.
@@ -308,7 +331,11 @@ export function SettingsDialog({
                   <ToolCacheSettingsPanel />
                 </section>
                 <section className="space-y-3 border-t border-surface-border/60 pt-4">
-                  <h3 className="text-body font-semibold">Favourite Projects</h3>
+                  <SettingsSectionHeading
+                    title="Favourite Projects"
+                    helpKey="settings.favourite-projects"
+                    helpLabel="About Favourite Projects"
+                  />
                   {favoriteWorkspaces.length ? (
                     <div className="space-y-2">
                       {favoriteWorkspaces.map((workspaceId) => (
@@ -349,7 +376,11 @@ export function SettingsDialog({
 
               <TabsContent value="views" className="mt-0 space-y-3">
                 <div>
-                  <h3 className="text-body font-semibold">Visible views</h3>
+                  <SettingsSectionHeading
+                    title="Visible views"
+                    helpKey="settings.views"
+                    helpLabel="About visible views"
+                  />
                   <p className="text-body text-description">
                     Data Loader stays visible so Projects remain reachable.
                   </p>
@@ -390,59 +421,79 @@ export function SettingsDialog({
                     Hints show tips while you learn Wordflow. Turn them off here, and back on here
                     at any time.
                   </p>
-                  <Label
-                    htmlFor="settings-hints-enabled"
-                    data-highlighted={guide === 'contextual-hints' && onWalkTab ? '' : undefined}
-                    data-walk-target={guide === 'contextual-hints' && onWalkTab ? '' : undefined}
-                    className={cn(
-                      'flex items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body',
-                    )}
-                  >
-                    <Checkbox
-                      id="settings-hints-enabled"
-                      checked={contextualHintsEnabled}
-                      onCheckedChange={(checked) => {
-                        updatePreferences.mutate({
-                          contextual_hints_enabled: checked === true,
-                        });
-                        if (guide === 'contextual-hints') endGuide();
-                      }}
+                  <div className="flex items-center gap-1">
+                    <Label
+                      htmlFor="settings-hints-enabled"
+                      data-highlighted={guide === 'contextual-hints' && onWalkTab ? '' : undefined}
+                      data-walk-target={guide === 'contextual-hints' && onWalkTab ? '' : undefined}
+                      className={cn(
+                        'flex min-w-0 flex-1 items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body',
+                      )}
+                    >
+                      <Checkbox
+                        id="settings-hints-enabled"
+                        checked={contextualHintsEnabled}
+                        onCheckedChange={(checked) => {
+                          updatePreferences.mutate({
+                            contextual_hints_enabled: checked === true,
+                          });
+                          if (guide === 'contextual-hints') endGuide();
+                        }}
+                      />
+                      <span>Show contextual hints</span>
+                    </Label>
+                    <SettingsHelpIcon
+                      helpKey="settings.contextual-hints"
+                      helpLabel="About Contextual Hints"
                     />
-                    <span>Show contextual hints</span>
-                  </Label>
+                  </div>
                   <div className="flex flex-wrap gap-2 text-body">
                     <Badge variant="outline">
                       {Object.keys(acknowledgments ?? {}).length} acknowledged
                     </Badge>
                   </div>
-                  <Button type="button" variant="outline" onClick={handleResetHints}>
-                    <RotateCcw className="h-4 w-4" />
-                    Reset Contextual Hint history
-                  </Button>
+                  {/* Monika, Nov 2026: say that this is how acknowledged hints come back. */}
+                  <div className="flex items-center gap-1">
+                    <Button type="button" variant="outline" onClick={handleResetHints}>
+                      <RotateCcw className="h-4 w-4" />
+                      Reset Contextual Hint history
+                    </Button>
+                    <SettingsHelpIcon
+                      helpKey="settings.reset-hints"
+                      helpLabel="About resetting Contextual Hint history"
+                      helpTooltip="Hints you have acknowledged stay hidden. Reset to let them appear again."
+                    />
+                  </div>
                 </section>
                 <section className="space-y-3">
                   <p className="text-label-secondary text-description">
                     Suggestions appear when a result or run looks off, and point to the settings
                     that may help.
                   </p>
-                  <Label
-                    htmlFor="settings-nudges-enabled"
-                    data-highlighted={guide === 'suggestions' && onWalkTab ? '' : undefined}
-                    data-walk-target={guide === 'suggestions' && onWalkTab ? '' : undefined}
-                    className={cn(
-                      'flex items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body',
-                    )}
-                  >
-                    <Checkbox
-                      id="settings-nudges-enabled"
-                      checked={nudgesEnabled}
-                      onCheckedChange={(checked) => {
-                        updatePreferences.mutate({ nudges_enabled: checked === true });
-                        if (guide === 'suggestions') endGuide();
-                      }}
+                  <div className="flex items-center gap-1">
+                    <Label
+                      htmlFor="settings-nudges-enabled"
+                      data-highlighted={guide === 'suggestions' && onWalkTab ? '' : undefined}
+                      data-walk-target={guide === 'suggestions' && onWalkTab ? '' : undefined}
+                      className={cn(
+                        'flex min-w-0 flex-1 items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body',
+                      )}
+                    >
+                      <Checkbox
+                        id="settings-nudges-enabled"
+                        checked={nudgesEnabled}
+                        onCheckedChange={(checked) => {
+                          updatePreferences.mutate({ nudges_enabled: checked === true });
+                          if (guide === 'suggestions') endGuide();
+                        }}
+                      />
+                      <span>Show suggestions</span>
+                    </Label>
+                    <SettingsHelpIcon
+                      helpKey="settings.suggestions"
+                      helpLabel="About Suggestions"
                     />
-                    <span>Show suggestions</span>
-                  </Label>
+                  </div>
                 </section>
               </TabsContent>
             </div>

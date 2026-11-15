@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { SettingsSectionHeading } from '@/components/dialogs/SettingsSectionHeading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toastError } from '@/lib/toastError';
@@ -87,7 +88,11 @@ export function EmbeddingEndpointsPanel() {
     <div className="space-y-5">
       <section className="space-y-3">
         <div>
-          <h3 className="text-body font-semibold">Topic Modelling</h3>
+          <SettingsSectionHeading
+            title="Topic Modelling"
+            helpKey="settings.servers-topic"
+            helpLabel="About Topic Modelling servers"
+          />
           <p className="text-body text-description">
             Servers that read text for Topic Modelling on a remote GPU, which is much faster than
             this computer on large corpora. Tick Remote GPU beside Max tokens in Topic Modelling to

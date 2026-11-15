@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { SettingsSectionHeading } from '@/components/dialogs/SettingsSectionHeading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -145,7 +146,11 @@ export function AiProvidersPreferencesPanel() {
     <div className="space-y-5">
       <section className="space-y-3">
         <div>
-          <h3 className="text-body font-semibold">Generative AI</h3>
+          <SettingsSectionHeading
+            title="Generative AI"
+            helpKey="settings.servers-ai"
+            helpLabel="About Generative AI servers"
+          />
           <p className="text-body text-description">
             Used by Annotation. Without one, Annotation can only be done by hand.
           </p>
