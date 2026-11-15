@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 from urllib.parse import quote
 
 from fastapi import (
@@ -13,6 +14,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
+from fastapi.sse import EventSourceResponse, ServerSentEvent
 from starlette.background import BackgroundTask
 
 from ...models.node_resources import (
@@ -32,10 +34,11 @@ from ...models.node_resources import (
     TopicSegmentLengthsResource,
 )
 from ...domain.workspace import TopicEmbeddingModel, TopicSegmentationMethod
+from ...models.annotations import CodebookDraftRequest
 from ...models.workspace import DataBlockResource, WorkspaceNodeInfo
 from ..dependencies import RuntimeDep
 from ..security import CurrentSessionSecurityDep
-from ..responses import api_errors, route_path, workspace_etag
+from ..responses import api_errors, route_path, streaming_api_errors, workspace_etag
 from ...shared.table_transport import (
     CHANGED_ROWS_HEADER,
     EMPTIED_VALUES_HEADER,
@@ -521,6 +524,34 @@ async def get_corpus_overview(
         node_id,
         column,
     )
+
+
+@router.post(
+    "/{node_id}/codebook-draft",
+    response_class=EventSourceResponse,
+    responses=streaming_api_errors(404, 422),
+)
+async def draft_codebook(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    request: CodebookDraftRequest,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> AsyncIterator[ServerSentEvent]:
+    """AI Code Designer: a first-draft codebook from a brief and a sample of this Data Block.
+
+    Streams ``stage`` events (sampling, waiting, reading), then one ``draft``
+    or ``error`` event. FastAPI sends a keep-alive comment every 15 seconds
+    while the model thinks; closing the request cancels the model call.
+    """
+
+    async for event in runtime.annotation_service.draft_codebook(
+        principal.user.id,
+        workspace_id,
+        node_id,
+        request,
+    ):
+        yield ServerSentEvent(event=event.type, data=event)
 
 
 @router.get(

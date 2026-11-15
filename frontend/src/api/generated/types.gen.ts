@@ -1496,6 +1496,67 @@ export type CloneNodeCreateRequest = {
 };
 
 /**
+ * CodebookDraftRequest
+ *
+ * One AI Code Designer request (Chao, 15 Nov 2026).
+ *
+ * The sample is drawn from the Data Block in the route and ``text_column``.
+ * ``system_prompt`` is the designer prompt shown under Advanced; its default
+ * lives in the frontend, like the annotation prompt. The answer format is
+ * appended on the server.
+ */
+export type CodebookDraftRequest = {
+    /**
+     * Brief
+     */
+    brief: string;
+    /**
+     * Max Classes
+     */
+    max_classes?: number;
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Provider
+     */
+    provider: 'openai' | 'openrouter' | 'anthropic' | 'google' | 'custom';
+    /**
+     * Provider Base Url
+     */
+    provider_base_url?: string | null;
+    /**
+     * Provider Configuration Id
+     */
+    provider_configuration_id: string;
+    /**
+     * Reasoning Effort
+     */
+    reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
+    /**
+     * Sample Seed
+     */
+    sample_seed?: number;
+    /**
+     * Sample Size
+     */
+    sample_size?: number;
+    /**
+     * System Prompt
+     */
+    system_prompt: string;
+    /**
+     * Task Context
+     */
+    task_context?: string;
+    /**
+     * Text Column
+     */
+    text_column: string;
+};
+
+/**
  * ColumnExamplesResource
  *
  * Each column's first non-empty value as short text (issue 354).
@@ -7774,6 +7835,71 @@ export type AnnotationRunAllSubmissionWritable = {
 };
 
 /**
+ * CodebookDraftRequest
+ *
+ * One AI Code Designer request (Chao, 15 Nov 2026).
+ *
+ * The sample is drawn from the Data Block in the route and ``text_column``.
+ * ``system_prompt`` is the designer prompt shown under Advanced; its default
+ * lives in the frontend, like the annotation prompt. The answer format is
+ * appended on the server.
+ */
+export type CodebookDraftRequestWritable = {
+    /**
+     * Api Key
+     */
+    api_key?: string | null;
+    /**
+     * Brief
+     */
+    brief: string;
+    /**
+     * Max Classes
+     */
+    max_classes?: number;
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Provider
+     */
+    provider: 'openai' | 'openrouter' | 'anthropic' | 'google' | 'custom';
+    /**
+     * Provider Base Url
+     */
+    provider_base_url?: string | null;
+    /**
+     * Provider Configuration Id
+     */
+    provider_configuration_id: string;
+    /**
+     * Reasoning Effort
+     */
+    reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
+    /**
+     * Sample Seed
+     */
+    sample_seed?: number;
+    /**
+     * Sample Size
+     */
+    sample_size?: number;
+    /**
+     * System Prompt
+     */
+    system_prompt: string;
+    /**
+     * Task Context
+     */
+    task_context?: string;
+    /**
+     * Text Column
+     */
+    text_column: string;
+};
+
+/**
  * DataPortalCredentialPatch
  *
  * Write-only Data Portal credential update.
@@ -12432,6 +12558,46 @@ export type GetCategoryValuesResponses = {
 };
 
 export type GetCategoryValuesResponse = GetCategoryValuesResponses[keyof GetCategoryValuesResponses];
+
+export type DraftCodebookData = {
+    body: CodebookDraftRequestWritable;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query?: never;
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/codebook-draft';
+};
+
+export type DraftCodebookErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type DraftCodebookError = DraftCodebookErrors[keyof DraftCodebookErrors];
+
+export type DraftCodebookResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type GetColumnExamplesData = {
     body?: never;

@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import type { AnnotationClassDescriptionRow } from '@/api';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -40,6 +49,25 @@ import {
   TASK_CONTEXT_MAX_CHARS,
   withTaskContext,
 } from '../taskContext';
+import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
+import { type CodeDesignerSettings, codebookSignature } from '../codebookDesigner';
+import { codebookDraftKey, useCodebookDraftStore } from '../codebookDraftStore';
+import { CodeDesignerBrief } from './CodeDesignerBrief';
+import { CodebookDesignerDialog } from './CodebookDesignerDialog';
+
+/** What the Edit codebook window needs from its Annotation tab for the AI Code Designer. */
+interface CodebookDesignerContext {
+  tabId: string;
+  settings: CodeDesignerSettings;
+  onSettingsChange: (patch: Partial<CodeDesignerSettings>) => void;
+  /** The tab's Annotation Data Block and text column; null until chosen. */
+  source: { nodeId: string; name: string; textColumn: string } | null;
+  configurations: AnnotationProviderConfigurationView[];
+  providerModels: Record<string, string>;
+  /** The tab's AI provider and model, the designer's starting choice. */
+  fallbackProviderId: string | null;
+  fallbackModel: string;
+}
 
 // Compact card shows class-name badges; extras collapse into a "+N more" badge
 // so the card stays tight while the full list lives in the Edit dialog.
@@ -69,6 +97,8 @@ interface AnnotationClassDescriptionsEditorProps {
   nodeId: string | null;
   classColumn: string | null;
   descriptionColumn: string | null;
+  /** Omitted where there is no Annotation tab around the codebook. */
+  designer?: CodebookDesignerContext;
 }
 
 /**
@@ -80,21 +110,35 @@ interface AnnotationClassDescriptionsEditorProps {
  *
  * Flow: fetch the selected two-column payload through
  * useAnnotationClassDescriptions, render the class names as compact badges, and
- * expose an Edit dialog with local draft rows. Save commits the complete row
- * set through one Data Block edit and therefore creates exactly one Undo
- * checkpoint. Closing or cancelling the dialog discards the draft.
+ * expose an Edit dialog with draft rows. Save commits the complete row set
+ * through one Data Block edit and therefore creates exactly one Undo
+ * checkpoint. Unsaved changes, typed or from the AI Code Designer, are kept
+ * for the tab until Save or a confirmed discard (Chao, 15 Nov 2026): closing
+ * the window keeps them, and Cancel asks first.
  */
 export function AnnotationClassDescriptionsEditor({
   workspaceId,
   nodeId,
   classColumn,
   descriptionColumn,
+  designer,
 }: AnnotationClassDescriptionsEditorProps) {
   const { saveAnnotationClasses } = useWorkspaceActions();
-  const [draftRows, setDraftRows] = useState<AnnotationClassDescriptionRow[] | null>(null);
-  const [draftTaskContext, setDraftTaskContext] = useState<string | null>(null);
+  const draftKey = codebookDraftKey([
+    workspaceId,
+    designer?.tabId,
+    nodeId,
+    classColumn,
+    descriptionColumn,
+  ]);
+  const draft = useCodebookDraftStore((state) => state.drafts[draftKey]);
+  const setDraft = useCodebookDraftStore((state) => state.setDraft);
+  const clearDraft = useCodebookDraftStore((state) => state.clearDraft);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [overwriteOpen, setOverwriteOpen] = useState(false);
+  const [designerOpen, setDesignerOpen] = useState(false);
   const classDescriptions = useAnnotationClassDescriptions({
     workspaceId,
     nodeId,
@@ -103,13 +147,30 @@ export function AnnotationClassDescriptionsEditor({
   });
 
   const savedRows = classDescriptions.rows;
-  const editorRows = draftRows ?? savedRows;
+  const editorRows = draft?.rows ?? normalizeClassDescriptionRows(savedRows);
   const savedTaskContext = classDescriptions.taskContext.trim();
-  const editorTaskContext = draftTaskContext ?? classDescriptions.taskContext;
-  // Compact card display: non-empty class names paired with their (trimmed)
-  // descriptions so each chip can show its description in a hover tooltip; capped
+  const editorTaskContext = draft?.taskContext ?? classDescriptions.taskContext;
+  const savedSignature = codebookSignature(savedRows);
+  // Changes worth keeping: different codes or a different Task context.
+  const dirty =
+    draft !== undefined &&
+    (codebookSignature(draft.rows) !== savedSignature ||
+      draft.taskContext.trim() !== savedTaskContext);
+  const isAiDraft =
+    dirty &&
+    draft.designedSignature !== null &&
+    codebookSignature(draft.rows) === draft.designedSignature;
+  const writeDraft = (patch: { rows?: AnnotationClassDescriptionRow[]; taskContext?: string }) => {
+    setDraft(draftKey, {
+      rows: patch.rows ?? editorRows,
+      taskContext: patch.taskContext ?? editorTaskContext,
+      designedSignature: draft?.designedSignature ?? null,
+    });
+  };
+  // Compact card display: the saved codes, each name paired with its (trimmed)
+  // description so each chip can show its description in a hover tooltip; capped
   // with a "+N more" badge. Chips without a description render as plain badges.
-  const classChips = editorRows
+  const classChips = savedRows
     .map((row) => ({
       name: row.class.trim(),
       description: row.description.trim(),
@@ -121,26 +182,36 @@ export function AnnotationClassDescriptionsEditor({
   const hiddenClassCount = classChips.length - visibleClassChips.length;
 
   const updateDraftCell = (rowIndex: number, field: 'class' | 'description', value: string) => {
-    setDraftRows((current) =>
-      (current ?? editorRows).map((row, index) =>
-        index === rowIndex ? { ...row, [field]: value } : row,
-      ),
-    );
+    writeDraft({
+      rows: editorRows.map((row, index) => (index === rowIndex ? { ...row, [field]: value } : row)),
+    });
   };
 
   const handleAddClass = () => {
-    setDraftRows([...editorRows, { class: '', description: '' }]);
+    writeDraft({ rows: [...editorRows, { class: '', description: '' }] });
   };
 
   // Remove the row from the draft; Save persists the remaining classes.
   const handleDeleteClass = (rowIndex: number) => {
-    setDraftRows(editorRows.filter((_, index) => index !== rowIndex));
+    writeDraft({ rows: editorRows.filter((_, index) => index !== rowIndex) });
   };
 
+  // Closing (×, Esc, a click outside) keeps unsaved changes for later.
   const handleOpenChange = (open: boolean) => {
+    if (!open && !dirty) clearDraft(draftKey);
     setIsEditOpen(open);
-    setDraftRows(open ? normalizeClassDescriptionRows(savedRows) : null);
-    setDraftTaskContext(open ? classDescriptions.taskContext : null);
+  };
+
+  const handleCancel = () => {
+    if (dirty) setDiscardOpen(true);
+    else handleOpenChange(false);
+  };
+
+  const namedCodeCount = editorRows.filter((row) => row.class.trim() !== '').length;
+  const startDesigner = () => {
+    // Replacing codes asks first, and suggests a fresh codebook instead.
+    if (namedCodeCount > 0) setOverwriteOpen(true);
+    else setDesignerOpen(true);
   };
 
   const handleSave = async () => {
@@ -170,9 +241,21 @@ export function AnnotationClassDescriptionsEditor({
         descriptionColumn,
         withTaskContext(normalized, editorTaskContext),
       );
+      if (designer) {
+        // Saving the AI draft as it came keeps the brief in step; codes
+        // changed by hand mean the brief no longer describes them.
+        const nextSignature = codebookSignature(normalized);
+        if (draft?.designedSignature && nextSignature === draft.designedSignature) {
+          designer.onSettingsChange({ designedSignature: nextSignature, briefStale: false });
+        } else if (
+          nextSignature !== savedSignature &&
+          nextSignature !== designer.settings.designedSignature
+        ) {
+          designer.onSettingsChange({ briefStale: true });
+        }
+      }
+      clearDraft(draftKey);
       setIsEditOpen(false);
-      setDraftRows(null);
-      setDraftTaskContext(null);
       toast.success('Codebook saved.');
     } catch (error) {
       toastError(error, "Couldn't save the codebook.");
@@ -223,11 +306,38 @@ export function AnnotationClassDescriptionsEditor({
             }}
           >
             <DialogHeader>
-              <DialogTitle>Edit codebook</DialogTitle>
+              <DialogTitle className="flex flex-wrap items-center gap-2">
+                Edit codebook
+                {dirty ? (
+                  // Orange, so an unsaved draft stands out (Chao, 15 Nov 2026):
+                  // the theme's orange as border, icon and a tint behind the
+                  // normal text colour, readable in light and dark themes.
+                  <Badge
+                    data-testid="codebook-unsaved-badge"
+                    className="gap-1 border-chart-4 bg-[color-mix(in_srgb,var(--color-chart-4)_22%,transparent)] font-semibold text-foreground"
+                  >
+                    <TriangleAlert aria-hidden="true" className="size-3 text-chart-4" />
+                    {isAiDraft ? 'AI draft, not saved' : 'Unsaved changes'}
+                  </Badge>
+                ) : null}
+              </DialogTitle>
               <DialogDescription>
                 Add, rename, or remove annotation codes and their descriptions.
               </DialogDescription>
             </DialogHeader>
+            {designer ? (
+              <CodeDesignerBrief
+                settings={designer.settings}
+                onSettingsChange={designer.onSettingsChange}
+                disabled={isSaving}
+                blockedReason={
+                  designer.source
+                    ? undefined
+                    : 'Choose an Annotation Data Block and its text column first.'
+                }
+                onDesign={startDesigner}
+              />
+            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="codebook-task-context">
                 Task context <span className="font-normal text-description">(optional)</span>
@@ -240,7 +350,7 @@ export function AnnotationClassDescriptionsEditor({
                 placeholder="What the texts are and what the codes are for, for example: Tweets by Australian politicians during the 2025 election campaign."
                 className="min-h-16 resize-y"
                 onChange={(event) => {
-                  setDraftTaskContext(event.target.value);
+                  writeDraft({ taskContext: event.target.value });
                 }}
               />
               <p className="text-label-secondary text-description">
@@ -307,7 +417,7 @@ export function AnnotationClassDescriptionsEditor({
                     size="sm"
                     disabled={isSaving}
                     onClick={() => {
-                      setDraftRows(withoutRepeatedRows(editorRows));
+                      writeDraft({ rows: withoutRepeatedRows(editorRows) });
                     }}
                   >
                     Remove repeated rows
@@ -336,7 +446,7 @@ export function AnnotationClassDescriptionsEditor({
                           aria-label={`Use description ${String(index + 1)} for ${code.name}`}
                           disabled={isSaving}
                           onClick={() => {
-                            setDraftRows(resolveCode(editorRows, code.key, description));
+                            writeDraft({ rows: resolveCode(editorRows, code.key, description) });
                           }}
                         >
                           Use this
@@ -350,9 +460,13 @@ export function AnnotationClassDescriptionsEditor({
                       aria-label={`Merge the descriptions for ${code.name}`}
                       disabled={isSaving}
                       onClick={() => {
-                        setDraftRows(
-                          resolveCode(editorRows, code.key, mergedDescription(code.descriptions)),
-                        );
+                        writeDraft({
+                          rows: resolveCode(
+                            editorRows,
+                            code.key,
+                            mergedDescription(code.descriptions),
+                          ),
+                        });
                       }}
                     >
                       Merge descriptions
@@ -373,11 +487,15 @@ export function AnnotationClassDescriptionsEditor({
                 Add code
               </Button>
               <div className="flex items-center gap-2">
-                <DialogClose asChild>
-                  <Button type="button" size="sm" variant="outline" disabled={isSaving}>
-                    Cancel
-                  </Button>
-                </DialogClose>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={isSaving}
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </Button>
                 <Button
                   type="button"
                   size="sm"
@@ -394,6 +512,94 @@ export function AnnotationClassDescriptionsEditor({
           </DialogContent>
         </Dialog>
       </div>
+
+      <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isAiDraft ? 'Discard the AI draft?' : 'Discard unsaved changes?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAiDraft
+                ? "The AI Code Designer's draft hasn't been saved. Discarding it can't be undone."
+                : "Your changes to the codes and Task context haven't been saved. Discarding them can't be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                clearDraft(draftKey);
+                setIsEditOpen(false);
+              }}
+            >
+              Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={overwriteOpen} onOpenChange={setOverwriteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace the codes in this codebook?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The AI Code Designer replaces the {String(namedCodeCount)}{' '}
+              {namedCodeCount === 1 ? 'code' : 'codes'} in this window with a new draft. Nothing is
+              saved until you choose Save, and Undo in the Data Editor brings back the saved
+              codebook. To keep these codes, cancel and start a fresh codebook with Create new.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDesignerOpen(true);
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {designer?.source && workspaceId ? (
+        <CodebookDesignerDialog
+          open={designerOpen}
+          onOpenChange={setDesignerOpen}
+          settings={designer.settings}
+          onSettingsChange={designer.onSettingsChange}
+          configurations={designer.configurations}
+          providerModels={designer.providerModels}
+          fallbackProviderId={designer.fallbackProviderId}
+          fallbackModel={designer.fallbackModel}
+          source={{ workspaceId, ...designer.source }}
+          brief={designer.settings.brief}
+          taskContext={editorTaskContext}
+          onDraft={(codes) => {
+            const rows = codes.map((code) => ({ class: code.name, description: code.definition }));
+            setDraft(draftKey, {
+              rows,
+              taskContext: editorTaskContext,
+              designedSignature: codebookSignature(rows),
+            });
+            toast.success('AI draft ready. Review the codes, then Save.');
+          }}
+        />
+      ) : null}
+
+      {dirty && !isEditOpen ? (
+        <p
+          role="status"
+          className="text-label-secondary text-warning"
+          data-testid="codebook-unsaved-note"
+        >
+          {isAiDraft
+            ? 'An AI draft of this codebook is waiting.'
+            : 'This codebook has unsaved changes.'}{' '}
+          Choose Edit to save or discard them.
+        </p>
+      ) : null}
 
       {savedTaskContext ? (
         <p className="line-clamp-2 text-label-secondary text-description" title={savedTaskContext}>
