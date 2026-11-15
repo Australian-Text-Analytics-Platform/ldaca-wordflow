@@ -6,8 +6,10 @@ following [Astra's plan](ASTRA-PLAN.md) and Claude's review of it.
 **Status: trial on `research/v0.7-ui-astra-handoff` only.** These changes are
 not recorded in GitHub Issues or in the
 [v0.7 to v0.8 migration instructions](../../releases/v0.7-to-v0.8-migration-instructions.md).
-If any are kept, add their ledger entries when merging, using the
-[merge notes](#merge-notes) below.
+When the product owner decides which to keep and merges them back to v0.7,
+Claude creates the GitHub Issues and migration entries for the kept ones (asked
+on 15 November), using the [merge notes](#merge-notes) below. Requests made
+during testing are logged in [Requests while testing](#requests-while-testing).
 
 **Base: v0.7 after release 0.7.20.** On 14 November 2026 v0.7 was merged into
 this branch (merge commit `fe8e60ed`), so the trial runs on top of the current
@@ -213,6 +215,17 @@ export.
 - token-frequency.md describes the settings row and Edit list.
 - The section title "How Preview, Run and Clear work" and its link anchor were
   kept, so existing links still work.
+
+## Requests While Testing
+
+The product owner's requests during testing, in order, so that issues and
+migration entries can be written from them later.
+
+| # | Date | Request | State |
+|---|---|---|---|
+| R1 | 15 Nov 2026 | Every analysis tool's Run row should have a help icon. One icon for the whole row, pointing to the Run section of Help, is preferred over one per button. Topic Modelling and Annotation had none. | Done, change 6 |
+| R2 | 15 Nov 2026 | Frequency's Cloud display limit should default to 40, in the interface and the Help. | Done, change 7 |
+| R3 | 15 Nov 2026 | Topic Modelling display options: show the stop-word list like Frequency does, with a line giving the first eight words and the count. In the bubbles' pop-up word clouds: right-click a word to add it as a stop word; left-click a word to add it to the search terms, colouring it at once in every cloud, and click a coloured word again to remove it (exact terms only; typed wildcards stay). Filtering the bubbles waits for a new **Apply** button or Enter in the search box, not for leaving the box. The pop-up must stay open long enough for the pointer to reach it. | Design under discussion; not started |
 
 ## Not Changed, And Why
 
