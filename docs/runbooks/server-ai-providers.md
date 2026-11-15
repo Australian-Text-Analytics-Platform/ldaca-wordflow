@@ -131,6 +131,20 @@ sqlite3 "$DATA_ROOT/deployment.sqlite3" \
   'ALTER TABLE users DROP COLUMN username; PRAGMA user_version = 7;'
 ```
 
+## Batches follow the model's context window
+
+Annotation fills each request with as many texts as fit the model's context
+window, up to the Run's **Rows per request**, so it does not send requests the
+model must refuse. It reads the window from the endpoint: `GET
+{base_url}/model/info` (`model_info.max_input_tokens`, LiteLLM), or the
+`/models` list (`context_length` or `max_model_len`). Set `max_input_tokens`
+for each model on a gateway. For a model server that counts the answer in the
+same limit, give the whole context length: Wordflow keeps room for the answer.
+
+Without a window, requests hold **Rows per request** texts; one the model
+refuses as too long is sent again in smaller parts, and a window stated in the
+refusal is used from then on.
+
 ## Requests sent to the endpoint
 
 An ordinary chat completion with `model`, `messages`, `temperature`,

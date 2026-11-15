@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
@@ -47,12 +49,62 @@ class AnnotationAiError(Exception):
 
 
 class AnnotationContextLimitError(AnnotationAiError):
-    def __init__(self, message: str) -> None:
+    """A request too large for the model's context window.
+
+    ``limit`` is the window in tokens and ``requested`` the size of the
+    refused request, where the provider's message states them (issue 493).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        limit: int | None = None,
+        requested: int | None = None,
+    ) -> None:
         super().__init__(
             message,
             code="annotation_provider_context_limit",
             retryable=False,
         )
+        self.limit = limit
+        self.requested = requested
+
+
+_NUMBER = r"(\d[\d,]*)"
+# How providers state the window and the refused request's size:
+# OpenAI, vLLM, LiteLLM and OpenRouter: "maximum context length is 262144
+# tokens. However, you requested 366000 tokens"; Anthropic: "prompt is too
+# long: 213000 tokens > 200000 maximum"; Google: "The input token count
+# (1234567) exceeds the maximum number of tokens allowed (1048576)".
+_LIMIT_PATTERNS = (
+    re.compile(rf"maximum context length (?:is|of) {_NUMBER}"),
+    re.compile(rf"> {_NUMBER} maximum"),
+    re.compile(rf"maximum number of tokens allowed \({_NUMBER}\)"),
+    re.compile(rf"context (?:window|length) (?:is|of) {_NUMBER}"),
+)
+_REQUESTED_PATTERNS = (
+    re.compile(rf"requested (?:about )?{_NUMBER} tokens"),
+    re.compile(rf"{_NUMBER} tokens > "),
+    re.compile(rf"input token count \({_NUMBER}\)"),
+)
+
+
+def _first_number(patterns: tuple[re.Pattern[str], ...], text: str) -> int | None:
+    for pattern in patterns:
+        found = pattern.search(text)
+        if found is not None:
+            value = int(found.group(1).replace(",", ""))
+            if value > 0:
+                return value
+    return None
+
+
+def context_limit_numbers(message: str) -> tuple[int | None, int | None]:
+    """The context window and the refused request's tokens a refusal states."""
+
+    text = message.casefold()
+    return _first_number(_LIMIT_PATTERNS, text), _first_number(_REQUESTED_PATTERNS, text)
 
 
 class AnnotationResponseError(AnnotationAiError):
@@ -76,7 +128,8 @@ def completion_error(error: Exception, fallback: str) -> AnnotationAiError:
         )
     ).casefold()
     if any(marker in details for marker in _CONTEXT_LIMIT_ERROR_MARKERS):
-        return AnnotationContextLimitError(message)
+        limit, requested = context_limit_numbers(details)
+        return AnnotationContextLimitError(message, limit=limit, requested=requested)
     status = getattr(error, "status_code", None)
     if not isinstance(status, int):
         status = getattr(getattr(error, "response", None), "status_code", None)
@@ -131,10 +184,22 @@ class InferenceConfig:
     # text, each a known label or null. Adapters that can make the server
     # enforce it send it; the others ignore it.
     labels_schema: dict[str, Any] | None = None
+    # Called with the request's prompt tokens when the provider reports them,
+    # so batch sizes follow the model's own count (issue 493).
+    on_usage: Callable[[int], None] | None = None
 
 
 def reasoning_budget_tokens(effort: str) -> int:
     return _REASONING_BUDGET_TOKENS[effort]
+
+
+def report_prompt_tokens(config: InferenceConfig, prompt_tokens: object) -> None:
+    """Pass a provider's prompt token count on; never fails the request."""
+
+    if config.on_usage is None or isinstance(prompt_tokens, bool):
+        return
+    if isinstance(prompt_tokens, int) and prompt_tokens > 0:
+        config.on_usage(prompt_tokens)
 
 
 def max_completion_tokens(config: InferenceConfig) -> int:
@@ -157,6 +222,9 @@ class AnnotationProviderAdapter(Protocol):
 
     async def list_models(self, api_key: str | None) -> list[str]: ...
 
+    # Optional: ``async def context_window(model, api_key) -> int | None``, the
+    # tokens one request may hold, where the provider says (issue 493).
+
 
 __all__ = [
     "ANSWER_TOKEN_HEADROOM",
@@ -170,6 +238,8 @@ __all__ = [
     "MODEL_DISCOVERY_MAX_RETRIES",
     "MODEL_DISCOVERY_TIMEOUT_SECONDS",
     "completion_error",
+    "context_limit_numbers",
     "max_completion_tokens",
+    "report_prompt_tokens",
     "reasoning_budget_tokens",
 ]

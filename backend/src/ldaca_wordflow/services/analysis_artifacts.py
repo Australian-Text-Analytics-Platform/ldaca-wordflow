@@ -391,6 +391,8 @@ def _publish_annotation_run_all(
         attempted_count=result.result.attempted_count,
         failed_batch_count=result.result.failed_batch_count,
         failed_row_count=result.result.failed_row_count,
+        too_long_row_count=result.result.too_long_row_count,
+        context_window_tokens=result.result.context_window_tokens,
         annotated_count=annotated_count,
     )
 

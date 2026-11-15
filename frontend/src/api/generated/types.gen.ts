@@ -815,6 +815,10 @@ export type AnnotationRunAllResult = {
      */
     committed_workspace_revision: number;
     /**
+     * Context Window Tokens
+     */
+    context_window_tokens?: number | null;
+    /**
      * Failed Batch Count
      */
     failed_batch_count: number;
@@ -830,6 +834,10 @@ export type AnnotationRunAllResult = {
      * Record Count
      */
     record_count: number;
+    /**
+     * Too Long Row Count
+     */
+    too_long_row_count?: number | null;
 };
 
 /**

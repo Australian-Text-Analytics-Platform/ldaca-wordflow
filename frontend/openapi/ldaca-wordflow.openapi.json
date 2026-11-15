@@ -1593,6 +1593,18 @@
             "title": "Committed Workspace Revision",
             "type": "integer"
           },
+          "context_window_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window Tokens"
+          },
           "failed_batch_count": {
             "minimum": 0.0,
             "title": "Failed Batch Count",
@@ -1613,6 +1625,18 @@
             "minimum": 0.0,
             "title": "Record Count",
             "type": "integer"
+          },
+          "too_long_row_count": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Too Long Row Count"
           }
         },
         "required": [

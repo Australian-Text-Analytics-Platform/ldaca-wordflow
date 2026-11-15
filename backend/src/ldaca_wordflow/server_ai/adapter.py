@@ -176,6 +176,14 @@ class ServerAiAnnotationAdapter:
             await asyncio.sleep(delay)
         raise AssertionError("Rate-limit retry loop did not return")
 
+    async def context_window(self, model: str, api_key: str | None) -> int | None:
+        """The model's context window, asked with the server's key (issue 493)."""
+
+        try:
+            return await self._inner(None).context_window(model, self.provider.api_key())
+        except Exception:  # noqa: BLE001 - the window is optional
+            return None
+
     async def list_models(self, api_key: str | None) -> list[str]:
         """Models from the server, with the server's key; the client's key is ignored."""
 

@@ -216,14 +216,38 @@ model uses it, **Temperature** (lower gives more consistent answers). Anthropic
 has no temperature setting.
 Below them, the Run settings apply to every provider: **Which rows to
 annotate** (**Only rows without an annotation**, the default, or **Annotate all
-rows again**), **Rows per request** (how many rows go to the model in each
-request), **Requests at once** (how many requests Run sends at the same time:
+rows again**), **Rows per request** (at most how many rows go to the model in
+each request; long texts go in smaller requests, see
+[Long texts](#help-annotation-long-texts)), **Requests at once** (how many
+requests Run sends at the same time:
 2 for a Custom provider, 10 for the others, kept for each provider), and
 **Retries if a request fails**. A server on your own computer usually works on
 one or two requests at a time; set **Requests at once** to its own limit, so
 requests don't wait in its queue until they time out. Defaults are a good
 starting point. Change one setting deliberately, because provider capability,
 cost, latency, and repeatability vary by model.
+
+<h3 id="help-annotation-long-texts">Long texts</h3>
+
+Every model can read only so much text in one request, called its context
+window and counted in tokens. When the provider tells Wordflow a model's
+context window, Preview and Run fill each request with as many rows as fit,
+up to **Rows per request**, so long texts are sent a few at a time and short
+ones many at a time. A Preview page of long texts may therefore take several
+requests. OpenRouter, and Custom providers and servers that report it, tell
+Wordflow the window; OpenAI, Anthropic and Google do not.
+
+When the window is not known, each request holds **Rows per request** rows. If
+the model refuses a request as too long, Wordflow sends it again in smaller
+parts, and uses the window the provider states in its refusal for the rest of
+the Run. Lower **Rows per request** if you see this often.
+
+A single text that is too long for the model on its own cannot be annotated:
+in a Run its row counts as failed, and the notice names the model and its
+context window; in a Preview the page fails with the same message. Wordflow
+never shortens a text to make it fit. Choose a model that takes longer texts,
+use fewer examples, or split the texts first with **Segment** in the
+[Data Builder](./preprocessing.md#help-preprocessing-segment-section).
 
 <h3 id="help-annotation-thinking">Thinking</h3>
 
@@ -300,7 +324,8 @@ the run goes on. If three requests in a row fail that way, or the provider never
 answers, the run stops; the labels that came back are kept as above. Other
 provider-wide failures, such as a wrong API key, are shown in Annotation and
 Tasks and write no labels.
-When only individual rows cannot fit the provider context or produce a valid
+When only individual rows cannot fit the model's context window (see
+[Long texts](#help-annotation-long-texts)) or produce a valid
 response, successful rows are published and a warning reports failed rows and
 batches. Failed rows keep their existing values in **Annotate all rows again** and
 remain blank in **Only rows without an annotation**; a successful explicit empty prediction may still

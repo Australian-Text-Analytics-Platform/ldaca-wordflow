@@ -15,7 +15,9 @@ from .annotation_adapter import (
     INFERENCE_TIMEOUT_SECONDS,
     completion_error,
     max_completion_tokens,
+    report_prompt_tokens,
 )
+from .context_window import fetch_context_window
 from .model_descriptions import (
     ModelOption,
     is_chat_model,
@@ -163,12 +165,26 @@ class OpenAIAnnotationAdapter:
                     break
             except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
                 raise completion_error(error, "OpenAI request failed") from error
+        report_prompt_tokens(config, getattr(getattr(completion, "usage", None), "prompt_tokens", None))
         choice = completion.choices[0]
         if choice.finish_reason == "length":
             raise AnnotationResponseError(
                 "Annotation response reached its output limit"
             )
         return choice.message.content or ""
+
+    async def context_window(self, model: str, api_key: str | None) -> int | None:
+        """The model's context window, where this server's lists give it.
+
+        OpenAI's own list does not; OpenRouter's, vLLM's and a LiteLLM
+        gateway's do (issue 493).
+        """
+
+        if self.base_url is None:
+            return None
+        return await fetch_context_window(
+            self.base_url, api_key, model, model_info=self.describe_from_model_info
+        )
 
     async def _listed_models(self, api_key: str | None) -> list[ModelOption]:
         """The /models list, sorted, with any description field it carries.
@@ -242,6 +258,13 @@ class CustomOpenAICompatibleAnnotationAdapter:
             send_thinking_switch=True,
             send_labels_schema=True,
         ).complete(model, api_key, system, user, config)
+
+    async def context_window(self, model: str, api_key: str | None) -> int | None:
+        return await OpenAIAnnotationAdapter(
+            base_url=self.base_url,
+            supports_json_response_format=False,
+            describe_from_model_info=True,
+        ).context_window(model, api_key)
 
     async def list_models(self, api_key: str | None) -> list[str]:
         return await OpenAIAnnotationAdapter(

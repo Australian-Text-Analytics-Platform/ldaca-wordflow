@@ -95,6 +95,7 @@ import {
   useAnalysisTabsPresentationStore,
 } from '@/features/views/common/tabs/analysisTabsPresentationStore';
 import { layerProviderModels } from './providerModels';
+import { tooLongRowsNote } from './tooLongRowsNote';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
@@ -1589,6 +1590,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                   {annotationRunAllResult.data?.failed_batch_count === 1 ? '' : 'es'}. Failed rows
                   kept their existing values when reprocessing and remain blank when filling missing
                   values.
+                  {tooLongRowsNote(
+                    annotationRunAllResult.data?.too_long_row_count,
+                    annotationRunAllSource.model,
+                    annotationRunAllResult.data?.context_window_tokens,
+                  )}
                 </div>
               ) : null}
               <RunAllReviewTable

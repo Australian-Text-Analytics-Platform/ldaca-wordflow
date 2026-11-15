@@ -195,10 +195,13 @@ def test_annotation_requests_share_one_annotation_class_schema() -> None:
         "annotation_column",
         "attempted_count",
         "committed_workspace_revision",
+        # Present only when a row's text was too long for the model (issue 493).
+        "context_window_tokens",
         "failed_batch_count",
         "failed_row_count",
         "kind",
         "record_count",
+        "too_long_row_count",
     }
 
 

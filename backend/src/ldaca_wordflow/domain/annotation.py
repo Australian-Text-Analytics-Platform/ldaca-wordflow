@@ -42,6 +42,24 @@ _PROVIDER_NAMES: dict[str, str] = {
 }
 
 
+def text_too_long_message(model: str, context_window: int | None) -> str:
+    """A plain sentence for a text that cannot fit the model (issue 493).
+
+    It names the model and its context window where the provider gave it.
+    """
+
+    advice = (
+        "Choose a model that takes longer texts, use fewer examples, or "
+        "annotate shorter texts."
+    )
+    if context_window is None:
+        return f"A text is too long for {model}. {advice}"
+    return (
+        f"A text is too long for {model}, whose context window is "
+        f"{context_window:,} tokens. {advice}"
+    )
+
+
 def provider_failure_message(code: str, provider: str | None) -> str:
     """A plain sentence, with what to do, for one provider failure (issue 205).
 
