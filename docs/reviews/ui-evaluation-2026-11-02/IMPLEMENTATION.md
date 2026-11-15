@@ -296,6 +296,7 @@ migration entries can be written from them later.
 | R7 | 15 Nov 2026 | Frequency: show only the Cloud display limit in Cloud view and only the List display limit in List view. The link between the two values does not change. | Done, change 10 |
 | R8 | 15 Nov 2026 | Topic Modelling: add a **Sort** button to the stop-word editing window, working like Frequency's. | Done, change 9 |
 | R9 | 15 Nov 2026 | Topic Modelling search box: show the usage tooltip only on the magnifier icon, or on the box when it is empty or its text fits. When the terms overflow the box, hovering the text shows the full list instead. | Done, change 8 |
+| R10 | 15 Nov 2026 | Annotation "Code designer": let the AI draft a first codebook from a sample of the real data and a short description of the coding aim (no more than 250 words, entered above Task context, which is optional extra background). The user sets a maximum number of classes (default 3), plus an "Other" class; the draft may have fewer. Definitions under 60 words, readable, and never containing real text from the data. Only for a new or empty codebook; regenerating warns before overwriting. Reasoning on. One pass, no evaluation rounds. Sample by default 10% or capped at 100 (to be settled). The hard-coded system prompt and the sampling options show only under an advanced toggle in the codebook window. R1 to R9 tested by the product owner on 15 November: all work as designed. | Design under discussion; not started |
 
 ### Agreed Design For R3 To R8
 
