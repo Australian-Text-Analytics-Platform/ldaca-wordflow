@@ -651,6 +651,11 @@ const tutorial = {
     anchor: 'help-export-excel-limit',
     label: "Excel's cell limit",
   },
+  'glossary.overview': {
+    file: 'tutorials/glossary.md',
+    anchor: 'help-glossary-section',
+    label: 'Glossary',
+  },
   'settings.overview': {
     file: 'tutorials/settings.md',
     anchor: 'help-settings-section',

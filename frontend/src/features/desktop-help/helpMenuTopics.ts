@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   'tutorials/concordance.md': 'Concordance',
   'tutorials/data-loader.md': 'Data Loader',
   'tutorials/export.md': 'Export',
+  'tutorials/glossary.md': 'Glossary',
   'tutorials/index.md': 'Wordflow Help',
   'tutorials/preprocessing.md': 'Data Builder',
   'tutorials/quotation.md': 'Quotation Extraction',
