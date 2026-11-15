@@ -245,7 +245,6 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     appliedStopSet,
     tokenLimitInput,
     tokenLimitError,
-    isApplyingTokenLimit,
     effectiveTokenLimit,
     applyTokenLimitState,
     applyStopSetFromText,
@@ -525,7 +524,6 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
         onTokenLimitBlur={handleTokenLimitBlur}
         applyCloudTokenLimit={applyTokenLimit}
         tokenLimitError={tokenLimitError}
-        isApplyingTokenLimit={isApplyingTokenLimit}
         appliedStopCount={effectiveAppliedStopSet.size}
         normalizedNodeResults={normalizedNodeResults}
         nodeDisplayResults={nodeDisplayResults}

@@ -38,15 +38,15 @@ The Study corpus is the collection whose key words you want to find. The Referen
 
 Stop words are terms you want to hide from the results: commonly words like _the_, _and_, or domain-specific filler that would otherwise dominate them. The stop-word controls appear with the results, after the first **Run** (Step 4); every token is still counted, and the filter only changes what is shown.
 
-- Turn on **Enable stop words**, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
-- Pick a list from the dropdown below the switch (**Select language**, shown as **Saved list (N words)** once the tab has a list) to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modelling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a list switches the filter on if it was off.
+- Turn on **Enable stop words**, then choose **Edit list** to open the list and type words separated by commas or newlines. The list opens by itself when you turn the filter on with no words yet; **Hide list** closes it. While the list is closed and the filter is on, the words being hidden are shown under the settings. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
+- Pick a list from the dropdown next to the switch (**Select language**, shown as **Saved list (N words)** once the tab has a list) to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modelling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a list switches the filter on if it was off.
 
 ![The stop words dropdown, with lists from other tabs, the classic lists, and the detected language](tutorials/assets/token_frequency/stop_words_menu.png)
 
 The sources and licences of the ready-made lists are listed under **Stop-word lists** in the References.
 
 - Lists picked under **From other tabs** (for example _Topic Modelling · 1_) are copied into this tab's list; later edits in either tab do not affect the other.
-- Click **Sort** to sort the current stop-word list alphabetically.
+- With the list open, click **Sort** to sort it alphabetically. **Sort** shows only while the list is open.
 - Edits to the list apply when you leave the text box. Removing stop words does not change the statistical measures of remaining tokens: they are excluded as a post-processing step.
 - Right-click any word in the word cloud or frequency list to add it directly to the stop-word list. Words added this way are **inserted at the start of the list** so they are easy to find and remove. The list is not re-sorted until you click **Sort**.
 
@@ -59,17 +59,17 @@ they do not turn Run on. See [How Preview, Run and Clear work](./ui.md#help-ui-p
 
 <h2 id="help-token-frequency-results">Result panel</h2>
 
-The results panel shows controls for stop words and display limits at the top, followed by a shared **Filter tokens** card and the **Cloud view / List view** selector. The **Enable stop words** switch is remembered with the tab, so it stays on across tool switches, reloads, and new runs until you turn it off. Results for each Data Block appear in the same order as the Data Block cards in the parameter panel.
+The results panel starts with the stop words in one row, which wraps onto more lines when the panel is narrow. The opened list, or the line naming the hidden words, comes under it. Below that, **Filter tokens**, the display limit and the **Cloud view / List view** selector share a row, and the results follow. Cloud view shows the **Cloud display limit** and List view shows the **List display limit**. The **Enable stop words** switch is remembered with the tab, so it stays on across tool switches, reloads, and new runs until you turn it off. Results for each Data Block appear in the same order as the Data Block cards in the parameter panel.
 
 <h3 id="help-token-frequency-token-limit">Cloud display limit</h3>
 
-![Cloud and List display limits, each with an Apply button](tutorials/assets/token_frequency/display_limits.png)
+![Filter tokens, then the Cloud display limit beside the Cloud view and List view selector](tutorials/assets/token_frequency/display_limits.png)
 
 The **Cloud display limit** (range 10–100, default 50) sets the maximum number of tokens shown in the word clouds. Type a number, or use the arrows, then click **Apply**. Changing this value also updates the List display limit to the same number (capped at 100).
 
 <h3 id="help-token-frequency-list-limit">List display limit</h3>
 
-The **List display limit** (range 10 to vocabulary size) sets the maximum number of tokens shown in the ranked frequency lists. Values up to 100 stay in sync with the Cloud display limit; setting the list limit above 100 lets you see a longer tail in list view while the cloud remains capped at 100.
+The **List display limit** (range 10 to vocabulary size) sets the maximum number of tokens shown in the ranked frequency lists. It shows in List view and applies the same way, on Enter or when you click away. Values up to 100 stay in sync with the Cloud display limit; setting the list limit above 100 lets you see a longer tail in list view while the cloud remains capped at 100.
 
 <h3 id="help-token-frequency-token-filter">Filter tokens</h3>
 

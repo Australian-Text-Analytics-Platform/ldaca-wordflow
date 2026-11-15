@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useReducer } from 'react';
 import type { TokenFrequencyResponse } from '@/api';
-import { parseStopWordsText } from '../../common/utils/stopWords';
+import {
+  parseStopWordsText,
+  sortStopWords as sortStopWordList,
+} from '../../common/utils/stopWords';
 import { clampDisplayTokenLimit, DEFAULT_TOKEN_LIMIT, toFiniteNumber } from '../../common/utils';
 import {
   createTokenFrequencyPreferenceState,
@@ -217,8 +220,7 @@ export const useTokenFrequencyPreferences = ({
    * Called by preference handlers in `useTokenFrequencyPreferences`.
    */
   const sortStopWords = () => {
-    const words = parseStopWordsText(stopWords);
-    words.sort((a, b) => a.localeCompare(b));
+    const words = sortStopWordList(parseStopWordsText(stopWords));
     dispatchPreference({ type: 'stopWordsApplied', words });
     if (results) onStopWordsChange?.(words);
   };

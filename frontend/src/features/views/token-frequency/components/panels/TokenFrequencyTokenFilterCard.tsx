@@ -18,10 +18,7 @@ export const TokenFrequencyTokenFilterCard = ({
   const inputId = useId();
 
   return (
-    <div
-      className="rounded-lg border border-surface-border/60 bg-panel/20 p-4"
-      data-testid="token-frequency-token-filter-card"
-    >
+    <div data-testid="token-frequency-token-filter-card">
       <div
         className="flex flex-wrap items-center justify-between gap-3"
         data-testid="token-frequency-token-filter-card-content"
