@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
 import { useNodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
 import { registerDataBlockDropTarget, useDataBlockDragStore } from '@/stores/dataBlockDragStore';
-import { useSelectionStore } from '@/stores/selectionStore';
 import type { NodeAddRejection, ResolvedNodeInput } from '../nodeInputs/nodeInputsCore';
 import { VIZ_PALETTE } from '../vizPalette';
 import { NodeColorPicker } from './NodeColorPicker';
@@ -67,12 +66,6 @@ export interface NodeInputsPanelProps {
   /** Optional compact header anchor for Contextual Hints. */
   guidanceTarget?: string;
   emptyMessage?: React.ReactNode;
-  /**
-   * When the panel is empty, offer the Data Block open in the Data Editor.
-   * Turn off for secondary role panels (Codebook, Example) where the open
-   * Data Block is rarely the right input.
-   */
-  offerOpenDataBlock?: boolean;
   renderExtraNodeContent?: (args: NodeInputColumnAddonArgs) => React.ReactNode;
   /** Disable all mutation controls (e.g. while a run is in flight). */
   disabled?: boolean;
@@ -121,7 +114,6 @@ export function NodeInputsPanel({
   title = 'Data Blocks',
   guidanceTarget,
   emptyMessage,
-  offerOpenDataBlock = true,
   renderExtraNodeContent,
   disabled = false,
   renderColumnAddon,
@@ -130,9 +122,6 @@ export function NodeInputsPanel({
   const { currentWorkspaceId } = useWorkspaceData();
   const currentView = useUIStore((state) => state.currentView);
   const consumeInputRequest = useNodeInputRequestsStore((state) => state.consume);
-  // The Data Editor's open Data Block is inspection, not input. An empty panel
-  // names it so the difference is visible, and offers one click to add it.
-  const editorNodeId = useSelectionStore((state) => state.activeNodeId);
   const pendingRequests = useNodeInputRequestsStore((state) => state.pendingRequests);
   const pendingInputRequest = pendingRequests.findLast(
     (request) => request.workspaceId === currentWorkspaceId && request.view === currentView,
@@ -260,10 +249,6 @@ export function NodeInputsPanel({
       }
     : undefined;
 
-  const openDataBlock =
-    offerOpenDataBlock && editorNodeId
-      ? availableNodes.find((node) => node.id === editorNodeId)
-      : undefined;
   const count = selectionItems.length;
   const countLabel = maxNodes != null ? `${String(count)}/${String(maxNodes)}` : String(count);
   // A Data Block dragged from the Project Graph can be dropped anywhere on
@@ -425,31 +410,6 @@ export function NodeInputsPanel({
               <span className="not-italic">+</span> button.
             </>
           )}
-          {openDataBlock ? (
-            <div
-              data-testid="node-inputs-open-data-block"
-              className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 not-italic"
-            >
-              <span className="min-w-0">
-                <span className="font-medium text-foreground">{openDataBlock.name}</span> is open in
-                the Data Editor but not added to this tool.
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 max-w-full px-2 text-label-secondary"
-                disabled={disabled || !canAddMore}
-                aria-label={`Add ${openDataBlock.name} to this tool`}
-                onClick={() => {
-                  handleAdd([openDataBlock.id]);
-                }}
-              >
-                <Plus className="mr-1 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate">Add {openDataBlock.name}</span>
-              </Button>
-            </div>
-          ) : null}
         </div>
       ) : (
         <NodeSelectionList

@@ -1,4 +1,6 @@
 // Evaluation helper, not part of the test suite.
+// HISTORICAL since 15 Nov 2026: its first checks test the open-Data-Block offer (change 1),
+// which was removed at the product owner's request. It no longer runs as written.
 // Live checks of the IMPLEMENTATION.md changes against a running dev server
 // (frontend 3100, backend 8101). Turns contextual hints off for the session,
 // opens a new Frequency and Concordance tab each run, prints PASS/FAIL lines,

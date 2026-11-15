@@ -49,7 +49,7 @@ Below the tool list, the **Data Blocks** panel shows every Data Block in the act
 
 ![Buttons shown when you hover a Data Block, with More options open](tutorials/assets/ui/data_block_menu.png)
 
-- Selecting a Data Block opens it in the Data Editor so you can look at it. It does not add it to the tool you are using: a tool works only on the Data Blocks in its own inputs panel. When a tool has none yet and a Data Block is open in the Data Editor, the inputs panel names it and offers **Add** with its name, which adds it in one click. Annotation's Codebook and Example panels do not offer this, because the open Data Block is usually the one you want to annotate.
+- Selecting a Data Block opens it in the Data Editor so you can look at it. It does not add it to the tool you are using: a tool works only on the Data Blocks in its own inputs panel. To add it, drag it onto the tool, use its **+** button, or use **Add Data Block** in the tool's inputs panel.
 - Most tools can only process a limited number of Data Blocks at a time, shown in their inputs panel. **Remove all** in the panel's heading takes every Data Block out of the tool; it does not delete them from the Project.
 
 <h2 id="help-ui-task-centre">3. Tasks</h2>

@@ -23,7 +23,7 @@ were implemented.
 
 | Group | Treatment on this branch |
 |---|---|
-| Wording, discoverability and accessibility fixes | Implemented, except the sidebar label item (see [Not changed](#not-changed-and-why)) |
+| Wording, discoverability and accessibility fixes | Implemented, except the sidebar label item (see [Not changed](#not-changed-and-why)). The open-Data-Block offer (change 1) was later removed |
 | Frequency result controls compacted | Implemented |
 | Task entry points, focused layout, Annotation setup sequence, when a Codebook is created | Not started. Each needs a product decision first |
 | Research or workflow profiles | Not started, as Astra recommended |
@@ -73,10 +73,19 @@ Chromium with [this script](implementation/live-check-v020.mjs):
 
 ## Changes
 
-### 1. The empty inputs panel names the Data Block open in the Data Editor
+### 1. The empty inputs panel names the Data Block open in the Data Editor (removed)
 
-Addresses Sol's finding U1: a Data Block can be open in the Data Editor while
-the tool still has no input.
+**Removed on 15 November 2026 at the product owner's request (R13).** With
+dragging from the graph and the sidebar (change 12), the offer was less
+useful, and it always named the Data Block selected last, which was wrong most
+of the time. The code, its tests and the two opt-outs in Annotation are gone.
+ui.md keeps one sentence saying that opening a Data Block does not add it to
+a tool, followed by the ways to add one. What follows describes the change as
+it was, for the record.
+
+Addressed Sol's finding U1: a Data Block can be open in the Data Editor while
+the tool still has no input. Change 12 now addresses U1 another way: the
+empty box says a Data Block can be dragged there.
 
 - When a tool has no inputs and the Data Editor's active tab is a Data Block
   the tool can take, the empty panel adds a line: "**name** is open in the Data
@@ -391,6 +400,7 @@ migration entries can be written from them later.
 | R10 | 15 Nov 2026 | Annotation "Code designer": let the AI draft a first codebook from a sample of the real data and a short description of the coding aim (no more than 250 words, entered above Task context, which is optional extra background). The user sets a maximum number of classes (default 3), plus an "Other" class; the draft may have fewer. Definitions under 60 words, readable, and never containing real text from the data. Only for a new or empty codebook; regenerating warns before overwriting. Reasoning on. One pass, no evaluation rounds. Sample by default 10% or capped at 100 (to be settled). The hard-coded system prompt and the sampling options show only under an advanced toggle in the codebook window. R1 to R9 tested by the product owner on 15 November: all work as designed. | Done, change 11 |
 | R11 | 15 Nov 2026 | Drag a Data Block from the Project Graph straight onto a tool to add it, as people keep trying to do (and as touch screens teach). Dragging on a Data Block drags it; the graph pans only when the drag starts on the background. Design point raised by the product owner: where a drag ends when a tool takes several Data Blocks. R10 tested by the product owner with the Apollo Qwen model: works, better than expected. | Done, change 12 |
 | R12 | 15 Nov 2026 | Enable the same dragging from the sidebar's Data Blocks list. R11 tested by the product owner: works as expected. | Done, change 12 |
+| R13 | 15 Nov 2026 | Remove the "…is open in the Data Editor but not added to this tool" line and its quick Add button (change 1): with dragging it is less useful, and it always suggests the Data Block selected last, which is wrong most of the time. R12 tested by the product owner: works. | Done: change 1 removed |
 
 ### Agreed Design For R3 To R8
 
@@ -546,6 +556,7 @@ the window says so, and there is no automatic check of the definitions.
 | Backend tests for Frequency and the analysis contract | 40 passed |
 | Run-row help and cloud default, [script](implementation/live-check-rowhelp.mjs) | 16 of 16 in WebKit and Chromium: one icon in each of the six tools (both Annotation modes), no shared "Clear results" name, Help opens at Frequency's Run step, cloud limit 40 after a run |
 | Full frontend check after changes 8 to 10 | Passed: 376 test files with 2,031 tests, unused code, build, Help |
+| Full frontend check after removing change 1 | Passed: 379 test files with 2,046 tests. Live: with a Data Block open in the Data Editor, an empty Frequency box shows no offer; the updated row-help script still passes 16 of 16 |
 | Full frontend check after change 12 | Passed: 379 test files with 2,049 tests, unused code, build, theme, Help |
 | Drag from the sidebar list, [script](implementation/live-check-drag-sidebar.mjs) | 6 of 6 in WebKit and Chromium with a mouse: the label names the block and box, release on the box adds, the dragged row is not selected, release elsewhere on a one-box tool adds, release on the sidebar adds nothing, a plain click still selects. Full frontend check: 2,050 tests pass |
 | Drag from the graph, [script](implementation/live-check-drag.mjs) | 16 of 16 in WebKit and Chromium with a mouse, no page errors or API errors: the label follows and names the box, the box highlights, release adds the block, the graph does not pan, the label and highlight go away, release elsewhere on a one-box tool adds, a full box says so and keeps its two, the background still pans, Esc cancels, a plain click still selects, double-click still adds, Annotation asks for a box and highlights several, release between boxes adds nothing, release on Codebook adds there only. Not tried on a real touch screen |
@@ -578,6 +589,12 @@ The first two rows are the same before and after the 0.7.20 merge.
 In Sol's [1024 baseline](screenshots/36-responsive-1024.png) the Cloud view
 selector sits near 703 px and the cloud starts below the 768 px screen. That
 baseline is read from the screenshot, not measured with this script.
+
+The saved check scripts that added a Data Block through the removed offer
+(`live-check-v020`, `-rowhelp`, `-r3`, `-designer`) now use the tool's **Add
+Data Block** list. `live-check.mjs` tested the offer itself and is kept as a
+historical record; it no longer runs as written. Screenshot `after-01` shows
+the removed offer.
 
 ### Limits
 
@@ -628,11 +645,9 @@ Start the app from this branch as usual, for example with the Wordflow folder's
 "Start Wordflow" task. Use any Project with a text column. Each change can be
 judged on its own.
 
-1. **Open Data Block offered in an empty inputs panel.** Open a Data Block in
-   the Data Editor, then open a new Frequency or Concordance tab. The empty
-   inputs panel should name that Data Block and offer **Add** with its name.
-   Click it and check the panel fills as **Add Data Block** would. In
-   Annotation, check the Codebook and Example panels don't offer it.
+1. **Open Data Block offered in an empty inputs panel.** Removed on 15
+   November (R13); nothing to test. An empty inputs box should show only its
+   usual message, which now mentions dragging.
 2. **Clear labels.** In any analysis tool, the red button beside Run reads
    **Clear results**. The inputs heading reads **Remove all**. In Frequency,
    type in **Filter tokens**: its button reads **Clear filter**. Check each
@@ -690,8 +705,8 @@ Things worth deciding while testing:
 
 - Whether "Hidden words:" with up to eight words is enough, or the full list
   should stay open once it has words.
-- Whether the open-Data-Block offer is helpful, or noisy when you deliberately
-  inspect one Data Block while analysing another.
+- ~~Whether the open-Data-Block offer is helpful, or noisy.~~ Decided on 15
+  November: removed (R13).
 - The card's timings (0.15 seconds to open, 0.3 to close) are first guesses.
   They are constants in `useBubblePopup.ts`.
 - Whether coloured-not-bold matches in the card are clear enough.
@@ -720,7 +735,7 @@ Include the matching tests and Help pages from the table below.
 
 | Change | Main files | Ledger area if kept |
 |---|---|---|
-| 1. Open Data Block offered in an empty inputs panel | `NodeInputsPanel.tsx`, `AnnotationFeature.tsx`, ui.md | Data Block actions |
+| 1. Open Data Block offered in an empty inputs panel | Removed (R13); nothing to carry over, apart from one sentence in ui.md | None |
 | 2. Clear labels | `AnalysisCardLayout.tsx`, `ConcordanceParameterPanel.tsx`, `NodeInputsPanel.tsx`, `TokenFrequencyTokenFilterCard.tsx`, eight Help pages | Wording across the app; also add to "Label changes that replace earlier entries" |
 | 3. Add to Project summary | `ResultAddToWorkspaceDialog.tsx`, `QuotationFeature.tsx`, `guidance/registry.ts`, concordance.md, quotation.md | Concordance and Quotation |
 | 4. Context input names | `ConcordanceParameterPanel.tsx` | Concordance |
@@ -733,16 +748,18 @@ Include the matching tests and Help pages from the table below.
 | 12. Drag from the graph | `stores/dataBlockDragStore.ts`, `components/layout/DataBlockDragLayer.tsx` (both new), `NodeInputsPanel.tsx`, `CustomNode.tsx`, `WorkspaceNodeList.tsx`, `WorkspaceShell.tsx`, ui.md | Data Block actions |
 | 11. AI Code Designer | Backend: `codebook_designer.py` (new), `services/annotations.py`, `models/annotations.py`, `api/workspaces/nodes.py`, `api/responses.py`, `runtime.py`, the OpenAPI file and the generated client, `test_current_api_surface.py`. Frontend: `codebookDesigner.ts`, `codebookDraftStore.ts`, `CodeDesignerBrief.tsx`, `CodebookDesignerDialog.tsx`, `AnnotationProviderModelPicker.tsx` (all new), `AnnotationClassDescriptionsEditor.tsx`, `AnnotationAiSettings.tsx`, `AnnotationFeature.tsx`, `providerCredentialRequests.ts`, `components/ui/dialog.tsx`, `bundledRegistry.ts`, annotation.md | Annotation |
 
-Changes 1, 2 and 6 share `AnalysisCardLayout.tsx`, `ConcordanceParameterPanel.tsx`
-and `AnnotationFeature.tsx`. Changes 5 and 10 share `TokenFrequencyResultsPanel.tsx`
-(10 builds on 5), changes 8 and 9 share `TopicModelingResultsPanel.tsx`, and
-changes 9 and 10 share `common/utils/stopWords.ts`, and changes 1, 6 and 11
-share `AnnotationFeature.tsx`, and changes 1, 2 and 12 share
-`NodeInputsPanel.tsx`. Applying one of those files
-brings all of its changes. To keep only some, apply the file and remove the
-rest by hand.
+Some changes share files:
 
-For v0.8, carry over the behaviour rather than the markup: the open-Data-Block
-offer and its role-panel opt-out, the three distinct labels, the row-unit line,
+- Changes 2 and 6: `AnalysisCardLayout.tsx` and `ConcordanceParameterPanel.tsx`.
+- Changes 6 and 11: `AnnotationFeature.tsx`.
+- Changes 2 and 12: `NodeInputsPanel.tsx`.
+- Changes 5 and 10: `TokenFrequencyResultsPanel.tsx` (10 builds on 5).
+- Changes 8 and 9: `TopicModelingResultsPanel.tsx`.
+- Changes 9 and 10: `common/utils/stopWords.ts`.
+
+Applying one of those files brings all of its changes. To keep only some, apply
+the file and remove the rest by hand.
+
+For v0.8, carry over the behaviour rather than the markup: the three distinct labels, the row-unit line,
 labelled context inputs, and a stop-word list that opens on request while
 keeping hidden words visible.

@@ -17,9 +17,8 @@ const openTool = async (name) => {
   await page.getByRole('button', { name: 'New tab' }).click();
   await page.getByText('Data Blocks (0/2)').waitFor();
   await page.waitForTimeout(600);
-  if ((await page.getByTestId('node-inputs-open-data-block').count()) === 0)
-    await page.getByText('synthetic-discourse', { exact: true }).first().click();
-  await page.getByRole('button', { name: 'Add synthetic-discourse to this tool' }).click();
+  await page.getByRole('button', { name: 'Add Data Block' }).first().click();
+  await page.locator('[data-radix-popper-content-wrapper]').getByRole('button', { name: 'synthetic-discourse', exact: true }).click();
   await page.getByText('Data Blocks (1/2)').waitFor();
   const col = page.getByRole('combobox').filter({ hasText: 'Select column' }).first();
   if (await col.count()) { await col.click(); await page.getByRole('option', { name: 'text', exact: true }).click(); }
