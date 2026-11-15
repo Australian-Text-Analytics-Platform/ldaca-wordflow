@@ -225,7 +225,72 @@ migration entries can be written from them later.
 |---|---|---|---|
 | R1 | 15 Nov 2026 | Every analysis tool's Run row should have a help icon. One icon for the whole row, pointing to the Run section of Help, is preferred over one per button. Topic Modelling and Annotation had none. | Done, change 6 |
 | R2 | 15 Nov 2026 | Frequency's Cloud display limit should default to 40, in the interface and the Help. | Done, change 7 |
-| R3 | 15 Nov 2026 | Topic Modelling display options: show the stop-word list like Frequency does, with a line giving the first eight words and the count. In the bubbles' pop-up word clouds: right-click a word to add it as a stop word; left-click a word to add it to the search terms, colouring it at once in every cloud, and click a coloured word again to remove it (exact terms only; typed wildcards stay). Filtering the bubbles waits for a new **Apply** button or Enter in the search box, not for leaving the box. The pop-up must stay open long enough for the pointer to reach it. | Design under discussion; not started |
+| R3 | 15 Nov 2026 | Topic Modelling display options: show the stop-word list like Frequency does, with a line giving the first eight words and the count. In the bubbles' pop-up word clouds: right-click a word to add it as a stop word; left-click a word to add it to the search terms, colouring it at once in every cloud, and click a coloured word again to remove it (exact terms only; typed wildcards stay). Filtering the bubbles waits for a new **Apply** button or Enter in the search box, not for leaving the box. The pop-up must stay open long enough for the pointer to reach it. | Design agreed 15 Nov, see [Agreed design](#agreed-design-for-r3-to-r8); not built |
+| R4 | 15 Nov 2026 | Frequency: hide **Sort** until **Edit list** has opened the full stop-word list. | Agreed; not built |
+| R5 | 15 Nov 2026 | Frequency: the display limits go on their own line below the stop words, so an opened stop-word list sits between the two lines and pushes the limits down. | Agreed; not built |
+| R6 | 15 Nov 2026 | Frequency: remove the two **Apply** buttons; a limit takes effect on Enter or on leaving the box. | Agreed; not built |
+| R7 | 15 Nov 2026 | Frequency: show only the Cloud display limit in Cloud view and only the List display limit in List view. The link between the two values does not change. | Agreed; not built |
+| R8 | 15 Nov 2026 | Topic Modelling: add a **Sort** button to the stop-word editing window, working like Frequency's. | Agreed; not built |
+
+### Agreed Design For R3 To R8
+
+Agreed with the product owner on 15 November 2026, question by question. Not
+built yet.
+
+**Pop-up word cloud on a bubble (R3)**
+
+- Opens about 0.15 seconds after the pointer settles on a bubble, so sweeping
+  across bubbles doesn't cover the one being aimed at.
+- Stays about 0.3 seconds after the pointer leaves the bubble, and for as long
+  as the pointer is inside the pop-up. During that time, passing over another
+  bubble doesn't swap it.
+- Holding Shift keeps the current pop-up open.
+- While the pointer is inside a pop-up, bubbles under it can't be hovered. This
+  cost was accepted.
+- Lasso mode and faded bubbles are unchanged: no clickable pop-up.
+- Word clicks work only in these pop-up clouds, not in the Topic list, whose
+  cards are selected as a whole.
+
+**Word clicks in the pop-up cloud (R3)**
+
+- Right-click a word: it's added to the front of the stop-word list, and the
+  stop words switch turns on if it was off, as in Frequency.
+- Left-click a word: that exact word is added to the front of the search box
+  as a term, or removed if it's already a term. A clicked word behaves like the
+  same word typed, so it also matches inside longer words. Clicking a word that
+  is lit only by another term adds it as its own term. Wildcard terms are never
+  removed by a click. No new search rules.
+
+**Search term box (R3)**
+
+- The box's text is the one list of terms. Highlighting follows the box at
+  once, for typed and clicked terms, in every pop-up cloud and the Topic list.
+- Filtering (fading bubbles, narrowing the Topic list) follows the terms as
+  they were at the last **Apply** or Enter. Leaving the box does nothing.
+  Apply is enabled only when the box differs from what is applied.
+- An empty box clears the filter at once, however it became empty.
+- A term keeps its colour until it's removed. A new term takes the first colour
+  not in use. Editing a term in place keeps its colour. The downloaded HTML
+  keeps its own simpler box and colours by position; the difference is accepted.
+
+**Stop words in Topic Modelling's Display options (R3, R8)**
+
+- A "Hidden words:" line under the stop words control: the first eight words,
+  then the count of the rest. Shown only while the switch is on and the list
+  has words. Newest words come first.
+- With the options folded, the summary reads "Stop words on" with the count.
+- Editing stays in the existing window, which gains a **Sort** button that
+  works like Frequency's.
+
+**Frequency display settings (R4 to R7)**
+
+- **Sort** shows only while the full list is open.
+- The stop words are the first line. The opened list or the "Hidden words" line
+  comes next. The display limit follows below.
+- No Apply buttons. The limits already take effect on Enter and on leaving the
+  box.
+- Cloud view shows only the Cloud display limit; List view shows only the List
+  display limit. The values stay linked as before.
 
 ## Not Changed, And Why
 
