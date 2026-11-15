@@ -308,6 +308,11 @@ Request R10, built to the [agreed design](#agreed-design-for-r10-ai-code-designe
   the brief clears it. Saving the AI draft unchanged doesn't lock it.
 - **xhigh** thinking effort was not added: Wordflow's provider adapters know
   low, medium and high only.
+- After testing (15 November): the "AI draft, not saved" / "Unsaved changes"
+  badge is orange (the theme's orange as border, icon and tint), so it stands
+  out. With no AI provider set up, the designer's provider list offers **Add
+  provider**, as in the AI section; checked live in WebKit and Chromium, the
+  new provider is selected and a draft follows.
 
 Screenshots: [Edit window with the AI draft](implementation/after-14-ai-draft.png),
 [designer window with Advanced](implementation/after-12-designer-window.png),

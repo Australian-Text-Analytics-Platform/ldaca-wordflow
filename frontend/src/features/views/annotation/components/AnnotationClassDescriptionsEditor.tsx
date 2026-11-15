@@ -309,7 +309,14 @@ export function AnnotationClassDescriptionsEditor({
               <DialogTitle className="flex flex-wrap items-center gap-2">
                 Edit codebook
                 {dirty ? (
-                  <Badge variant="outline" data-testid="codebook-unsaved-badge">
+                  // Orange, so an unsaved draft stands out (Chao, 15 Nov 2026):
+                  // the theme's orange as border, icon and a tint behind the
+                  // normal text colour, readable in light and dark themes.
+                  <Badge
+                    data-testid="codebook-unsaved-badge"
+                    className="gap-1 border-chart-4 bg-[color-mix(in_srgb,var(--color-chart-4)_22%,transparent)] font-semibold text-foreground"
+                  >
+                    <TriangleAlert aria-hidden="true" className="size-3 text-chart-4" />
                     {isAiDraft ? 'AI draft, not saved' : 'Unsaved changes'}
                   </Badge>
                 ) : null}
