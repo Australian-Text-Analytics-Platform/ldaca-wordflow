@@ -348,7 +348,8 @@ is correct and opens properly in LibreOffice Calc, Numbers and other programs.
 See [Excel's cell limit](./export.md#help-export-excel-limit).
 
 Use **Add to Project** to create new Data Blocks after reviewing the
-result. The new Data Block, or the downloaded file, is named after the Data
+result. The window opens with one line saying what each row of the new Data
+Block will be, before the list of columns. The new Data Block, or the downloaded file, is named after the Data
 Block and the search, for example *speeches_concordance_climate* (the first 20
 characters of the search term), so several searches of one Data Block can be
 told apart. You can change the name before adding.

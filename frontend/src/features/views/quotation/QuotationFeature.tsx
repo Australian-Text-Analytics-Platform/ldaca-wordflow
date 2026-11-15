@@ -937,6 +937,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
           onOpenChange={setAddToWorkspaceDialogOpen}
           title="Add Quotation Results to Project"
           nameSuffix="quotation"
+          rowUnit="quotation"
           sources={[runAllSource]}
           isSubmitting={isAddingToWorkspace}
           columnOrder={exportColumnOrder(runAllSource.document_column)}

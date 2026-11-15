@@ -264,7 +264,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.concordance.runAllResults,
     '[data-guidance="concordance-run-all-results"]',
     'Review the complete search',
-    'Run stores an immutable Result for the whole search. Page through matches and documents, then choose the columns you want to keep.',
+    'Run keeps the Result for the whole search. Page through matches and documents, then choose the columns you want to keep.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.concordance.addToWorkspace,
@@ -340,7 +340,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.quotation.runAllResults,
     '[data-guidance="quotation-run-all-results"]',
     'Review every extracted quotation',
-    'Run stores an immutable Result for the complete source. Page through documents and matches, then choose the columns you want to keep.',
+    'Run keeps the Result for the complete source. Page through documents and matches, then choose the columns you want to keep.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.quotation.addToWorkspace,

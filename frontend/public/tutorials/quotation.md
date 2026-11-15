@@ -130,7 +130,7 @@ is correct and opens properly in LibreOffice Calc, Numbers and other programs.
 See [Excel's cell limit](./export.md#help-export-excel-limit).
 
 Use **Add to Project** to publish selected Result columns as a new Data
-Block. The document column and the analysis columns start selected, and
+Block, with one row for each quotation. The document column and the analysis columns start selected, and
 metadata columns start unselected; unticking the document column also leaves
 out its character positions. `QUOTE_extraction` is not offered: in the Result
 table it is the document with its quotes highlighted, and in a Data Block or a
