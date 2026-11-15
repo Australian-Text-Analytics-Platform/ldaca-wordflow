@@ -11,16 +11,16 @@ Landing page: <https://australian-text-analytics-platform.github.io/LDaCa_Text_A
 
 ## Use Wordflow
 
-Current stable release: **Wordflow 0.7.20**, released 12 November 2026
-([release notes](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/tag/v0.7.20)).
+Current stable release: **Wordflow 0.7.21**, released 15 November 2026
+([release notes](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/tag/v0.7.21)).
 Wordflow 0.8 is in development on the [`v0.8` branch](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/tree/v0.8).
 
 | Option | Who it suits | How |
 | --- | --- | --- |
 | **Online** | Anyone who wants to keep their Projects and come back to them from any computer | Open <https://wordflow.ldaca.edu.au> and sign in through CILogon with your university or another account CILogon supports. Runs on the ARDC Nectar Research Cloud. |
-| **ARDC BinderHub** | Australian and New Zealand researchers trying Wordflow or teaching with it | [Launch Wordflow 0.7.20 on Binder](https://binderhub.rc.nectar.org.au/v2/gh/Australian-Text-Analytics-Platform/LDaCa_Text_Analytics_Tools/main?labpath=index.ipynb). Sign in with your institution (AAF or Tuakiri); nothing to install. The session ends when you close it, so download any Project you want to keep. |
-| **Desktop app** | Sensitive or large data, offline work | [Windows](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.20/ldaca-wordflow_0.7.20_windows-x86_64.msi) · [macOS (Apple Silicon)](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.20/ldaca-wordflow_0.7.20_darwin-aarch64.dmg). Your data stays on your computer. The macOS app is Developer ID signed and notarized; on Windows you may see a security prompt (choose "More info", then "Run anyway"). |
-| **Python** | Full control, your own computer or server | `uvx --refresh ldaca-wordflow@0.7.20` (needs [uv](https://docs.astral.sh/uv/)) |
+| **ARDC BinderHub** | Australian and New Zealand researchers trying Wordflow or teaching with it | [Launch Wordflow 0.7.21 on Binder](https://binderhub.rc.nectar.org.au/v2/gh/Australian-Text-Analytics-Platform/LDaCa_Text_Analytics_Tools/main?labpath=index.ipynb). Sign in with your institution (AAF or Tuakiri); nothing to install. The session ends when you close it, so download any Project you want to keep. |
+| **Desktop app** | Sensitive or large data, offline work | [Windows](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.21/ldaca-wordflow_0.7.21_windows-x86_64.msi) · [macOS (Apple Silicon)](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.21/ldaca-wordflow_0.7.21_darwin-aarch64.dmg). Your data stays on your computer. The macOS app is Developer ID signed and notarized; on Windows you may see a security prompt (choose "More info", then "Run anyway"). |
+| **Python** | Full control, your own computer or server | `uvx --refresh ldaca-wordflow@0.7.21` (needs [uv](https://docs.astral.sh/uv/)) |
 
 A Project downloaded from one of these opens in any other.
 
@@ -35,6 +35,7 @@ always opens the same version.
 
 | Released (Sydney time) | Version | ARDC BinderHub | Windows | macOS | Python |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-15 | `0.7.21` | [Open notebook](https://binderhub.rc.nectar.org.au/v2/gh/Australian-Text-Analytics-Platform/LDaCa_Text_Analytics_Tools/59cf661?labpath=index.ipynb) | [MSI](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.21/ldaca-wordflow_0.7.21_windows-x86_64.msi) | [DMG (Apple Silicon)](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.21/ldaca-wordflow_0.7.21_darwin-aarch64.dmg) | `uvx --refresh ldaca-wordflow@0.7.21` |
 | 2026-11-12 | `0.7.20` | [Open notebook](https://binderhub.rc.nectar.org.au/v2/gh/Australian-Text-Analytics-Platform/LDaCa_Text_Analytics_Tools/4d79246?labpath=index.ipynb) | [MSI](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.20/ldaca-wordflow_0.7.20_windows-x86_64.msi) | [DMG (Apple Silicon)](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.20/ldaca-wordflow_0.7.20_darwin-aarch64.dmg) | `uvx --refresh ldaca-wordflow@0.7.20` |
 | 2026-10-25 | `0.7.19` | [Open notebook](https://binderhub.rc.nectar.org.au/v2/gh/Australian-Text-Analytics-Platform/LDaCa_Text_Analytics_Tools/4b40d1e?labpath=index.ipynb) | [MSI](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.19/ldaca-wordflow_0.7.19_windows-x86_64.msi) | [DMG (Apple Silicon)](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.19/ldaca-wordflow_0.7.19_darwin-aarch64.dmg) | `uvx --refresh ldaca-wordflow@0.7.19` |
 | 2026-10-24 | `0.7.18` | [Open notebook](https://binderhub.rc.nectar.org.au/v2/gh/Australian-Text-Analytics-Platform/LDaCa_Text_Analytics_Tools/07439d7?labpath=index.ipynb) | [MSI](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.18/ldaca-wordflow_0.7.18_windows-x86_64.msi) | [DMG (Apple Silicon)](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/download/v0.7.18/ldaca-wordflow_0.7.18_darwin-aarch64.dmg) | `uvx --refresh ldaca-wordflow@0.7.18` |
@@ -84,7 +85,7 @@ The DOI above is the **concept DOI**: it always resolves to the latest version o
 
 ## Branches
 
-- `main`: the latest release (now 0.7.20). It changes only through a pull
+- `main`: the latest release (now 0.7.21). It changes only through a pull
   request from `v0.7` after each release.
 - `v0.7`: development of the 0.7.x releases. Fix and feature branches start here.
 - `v0.8`: Wordflow 0.8, in development until it is released.
