@@ -29,3 +29,30 @@ export function formatStopWords(words: string[]): string {
 export function mergeStopWordsText(existingText: string, appendedWords: string[]): string[] {
   return parseStopWordsText(formatStopWords([existingText, formatStopWords(appendedWords)]));
 }
+
+/**
+ * Puts a right-clicked word at the front of a stop-word list, so the newest
+ * words show first. Returns the same array when the word is already listed.
+ * Used by: Topic Modelling's word cloud right-click (Frequency does the same
+ * in its own text-based flow).
+ */
+export function addStopWordFirst(words: string[], word: string): string[] {
+  const normalized = word.trim().toLowerCase();
+  if (!normalized || words.some((existing) => existing.toLowerCase() === normalized)) return words;
+  return [normalized, ...words];
+}
+
+/** Sorts stop words alphabetically, as Frequency's Sort button does. */
+export function sortStopWords(words: string[]): string[] {
+  return words.toSorted((a, b) => a.localeCompare(b));
+}
+
+/** How many hidden words the preview line names before giving the count of the rest. */
+const STOP_WORDS_PREVIEW_COUNT = 8;
+
+/** "the, and, of … and 12 more": the line under a folded stop-word list. */
+export function stopWordsPreview(words: readonly string[]): string {
+  return words.length > STOP_WORDS_PREVIEW_COUNT
+    ? `${words.slice(0, STOP_WORDS_PREVIEW_COUNT).join(', ')} and ${String(words.length - STOP_WORDS_PREVIEW_COUNT)} more`
+    : words.join(', ');
+}

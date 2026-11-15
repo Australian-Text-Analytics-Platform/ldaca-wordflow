@@ -27,11 +27,11 @@ were implemented.
 | Frequency result controls compacted | Implemented |
 | Task entry points, focused layout, Annotation setup sequence, when a Codebook is created | Not started. Each needs a product decision first |
 | Research or workflow profiles | Not started, as Astra recommended |
-| Product owner's requests while testing (15 November) | Implemented as changes 6 and 7 |
+| Product owner's requests while testing (15 November) | Implemented as changes 6 to 10 (requests R1 to R9) |
 
-Changes 1 to 6 make no backend, API, saved-state or preference changes. Each is
-presentation, wording or a client-side shortcut to an existing action. Change 7
-changes one backend default, recorded in the OpenAPI file.
+Changes 1 to 6 and 8 to 10 make no backend, API, saved-state or preference
+changes. Each is presentation, wording or a client-side shortcut to an existing
+action. Change 7 changes one backend default, recorded in the OpenAPI file.
 
 ## Updated To 0.7.20
 
@@ -204,6 +204,70 @@ and the Help said 50.
 - Results run before the change keep 25 until they are run again or the limit
   is changed. A limit someone has already applied is kept.
 
+### 8. Topic Modelling: clickable word clouds and a search that applies on request
+
+Requests R3 and R9, built to the [agreed design](#agreed-design-for-r3-to-r8).
+
+- A bubble's word cloud opens 0.15 seconds after the pointer rests on it and
+  stays 0.3 seconds after it leaves, and for as long as the pointer is in the
+  card. While it closes, other bubbles don't replace it; once closed, the
+  bubble under the pointer opens. Holding Shift keeps it open. One
+  chart-level controller, `useBubblePopup.ts`, owns this; it replaces the
+  per-bubble `components/node-tooltip.tsx`, which nothing else used and which
+  was removed.
+- Left-click a word in the card: it is added to the start of the search box,
+  or removed if it is already a term (`topicSearch.ts`, `toggleSearchWord`).
+  Right-click: it goes to the start of the stop words and the switch turns on.
+  Clicks in the card no longer reach the bubble, so they don't select the
+  Topic or toggle its examples. The card says what the clicks do.
+- The search box's text colours matches at once; the bubbles and the list are
+  filtered by the search last applied with **Apply** (Wand2 icon) or Enter.
+  Emptying the box clears the filter at once. Leaving the box does nothing.
+  **Apply** is enabled only while the box differs from what is applied.
+- A term keeps its colour until it is removed (`assignSearchTermSlots`).
+- The usage tip is on the magnifier, and on the box while its text fits; when
+  the terms overflow, hovering the box shows them all (R9).
+- React Flow's Shift selection key is turned off, since Shift now keeps the
+  card open; nothing in the chart used it.
+- **Changed from the agreed design:** in the card, matches are coloured but no
+  longer bold. Bold changes the words' widths, so the cloud was laid out again
+  and the other words moved after every click, and a second click landed on
+  the wrong word. Colour alone keeps every word in place (checked live). The
+  Topic list keeps bold matches.
+
+Screenshot: [card with the options below the chart](implementation/after-11-topic-card-options-below.png),
+[the card close up](implementation/after-10-topic-word-card.png).
+
+### 9. Topic Modelling: hidden-words line and Sort
+
+Requests R3 and R8.
+
+- Under the stop words control, while the list is in use: "Hidden words:" with
+  the first eight words, newest first, and the count of the rest. It wraps
+  rather than truncates, so the count stays readable beside the chart.
+- With Display options folded, the summary reads "Stop words on (N)".
+- The editing window has **Sort** beside the word count; it sorts the draft,
+  and **Save** keeps it.
+- Shared helpers in `common/utils/stopWords.ts`: `stopWordsPreview` (now also
+  used by Frequency), `sortStopWords` (also used by Frequency's Sort) and
+  `addStopWordFirst`.
+
+### 10. Frequency: Sort on request, one display limit beside the view selector
+
+Requests R4 to R7.
+
+- **Sort** shows only while **Edit list** has the list open.
+- The bordered box holds only the stop words: their row, then the opened list
+  or the "Hidden words" line. The display limit moved to the row with **Filter
+  tokens** and the **Cloud view / List view** selector, so an opened list sits
+  between the stop words and the limit.
+- Cloud view shows the Cloud display limit, List view the List display limit.
+  The values stay linked as before. A limit's error shows under that row.
+- The two **Apply** buttons are gone; each limit already applied on Enter and
+  on leaving the box. The `isApplyingTokenLimit` prop went with them (the hook
+  still tracks it).
+- Help image `token_frequency/display_limits.png` was recaptured to match.
+
 ### Help pages
 
 The Help pages, which are the documentation source of truth, were updated to
@@ -225,17 +289,19 @@ migration entries can be written from them later.
 |---|---|---|---|
 | R1 | 15 Nov 2026 | Every analysis tool's Run row should have a help icon. One icon for the whole row, pointing to the Run section of Help, is preferred over one per button. Topic Modelling and Annotation had none. | Done, change 6 |
 | R2 | 15 Nov 2026 | Frequency's Cloud display limit should default to 40, in the interface and the Help. | Done, change 7 |
-| R3 | 15 Nov 2026 | Topic Modelling display options: show the stop-word list like Frequency does, with a line giving the first eight words and the count. In the bubbles' pop-up word clouds: right-click a word to add it as a stop word; left-click a word to add it to the search terms, colouring it at once in every cloud, and click a coloured word again to remove it (exact terms only; typed wildcards stay). Filtering the bubbles waits for a new **Apply** button or Enter in the search box, not for leaving the box. The pop-up must stay open long enough for the pointer to reach it. | Design agreed 15 Nov, see [Agreed design](#agreed-design-for-r3-to-r8); not built |
-| R4 | 15 Nov 2026 | Frequency: hide **Sort** until **Edit list** has opened the full stop-word list. | Agreed; not built |
-| R5 | 15 Nov 2026 | Frequency: the display limits go on their own line below the stop words, so an opened stop-word list sits between the two lines and pushes the limits down. | Agreed; not built |
-| R6 | 15 Nov 2026 | Frequency: remove the two **Apply** buttons; a limit takes effect on Enter or on leaving the box. | Agreed; not built |
-| R7 | 15 Nov 2026 | Frequency: show only the Cloud display limit in Cloud view and only the List display limit in List view. The link between the two values does not change. | Agreed; not built |
-| R8 | 15 Nov 2026 | Topic Modelling: add a **Sort** button to the stop-word editing window, working like Frequency's. | Agreed; not built |
+| R3 | 15 Nov 2026 | Topic Modelling display options: show the stop-word list like Frequency does, with a line giving the first eight words and the count. In the bubbles' pop-up word clouds: right-click a word to add it as a stop word; left-click a word to add it to the search terms, colouring it at once in every cloud, and click a coloured word again to remove it (exact terms only; typed wildcards stay). Filtering the bubbles waits for a new **Apply** button or Enter in the search box, not for leaving the box. The pop-up must stay open long enough for the pointer to reach it. | Done, changes 8 and 9 |
+| R4 | 15 Nov 2026 | Frequency: hide **Sort** until **Edit list** has opened the full stop-word list. | Done, change 10 |
+| R5 | 15 Nov 2026 | Frequency: the display limits go on their own line below the stop words, so an opened stop-word list sits between the two lines and pushes the limits down. | Done, change 10 |
+| R6 | 15 Nov 2026 | Frequency: remove the two **Apply** buttons; a limit takes effect on Enter or on leaving the box. | Done, change 10 |
+| R7 | 15 Nov 2026 | Frequency: show only the Cloud display limit in Cloud view and only the List display limit in List view. The link between the two values does not change. | Done, change 10 |
+| R8 | 15 Nov 2026 | Topic Modelling: add a **Sort** button to the stop-word editing window, working like Frequency's. | Done, change 9 |
+| R9 | 15 Nov 2026 | Topic Modelling search box: show the usage tooltip only on the magnifier icon, or on the box when it is empty or its text fits. When the terms overflow the box, hovering the text shows the full list instead. | Done, change 8 |
 
 ### Agreed Design For R3 To R8
 
-Agreed with the product owner on 15 November 2026, question by question. Not
-built yet.
+Agreed with the product owner on 15 November 2026, question by question. Built
+the same day as changes 8 to 10, with one change noted under change 8 (matches
+in the card are coloured, not bold).
 
 **Pop-up word cloud on a bubble (R3)**
 
@@ -273,6 +339,13 @@ built yet.
   not in use. Editing a term in place keeps its colour. The downloaded HTML
   keeps its own simpler box and colours by position; the difference is accepted.
 
+**Search box tooltip (R9)**
+
+- The usage tooltip ("Words or parts of words…") shows on the magnifier icon,
+  and on the box when it is empty or its text fits.
+- When the terms are wider than the box, hovering the text shows the full list
+  of terms instead.
+
 **Stop words in Topic Modelling's Display options (R3, R8)**
 
 - A "Hidden words:" line under the stop words control: the first eight words,
@@ -289,6 +362,8 @@ built yet.
   comes next. The display limit follows below.
 - No Apply buttons. The limits already take effect on Enter and on leaving the
   box.
+- The one limit shown sits on the row with **Filter tokens** and the **Cloud
+  view / List view** selector (agreed 15 November).
 - Cloud view shows only the Cloud display limit; List view shows only the List
   display limit. The values stay linked as before.
 
@@ -300,8 +375,9 @@ built yet.
 - **The parameters/results split.** V07-089 built it deliberately. The space
   problem was the controls inside the results card, so only those moved.
 - **Help screenshots.** Images that show the old labels or layout were not
-  recaptured. Candidates are `token_frequency/stop_words.png`,
-  `display_limits.png` and `filter_tokens.png`, plus any image showing a Run
+  recaptured, except `display_limits.png` (change 10). Candidates are
+  `token_frequency/stop_words.png` and `filter_tokens.png`, Topic Modelling's
+  `result_settings.png` and `bubble_hover.png`, plus any image showing a Run
   row.
 
 ## Verification
@@ -315,6 +391,8 @@ built yet.
 | Full frontend check after changes 6 and 7 | Passed: 374 test files with 2,008 tests, Help check with 80 icon references |
 | Backend tests for Frequency and the analysis contract | 40 passed |
 | Run-row help and cloud default, [script](implementation/live-check-rowhelp.mjs) | 16 of 16 in WebKit and Chromium: one icon in each of the six tools (both Annotation modes), no shared "Clear results" name, Help opens at Frequency's Run step, cloud limit 40 after a run |
+| Full frontend check after changes 8 to 10 | Passed: 376 test files with 2,031 tests, unused code, build, Help |
+| Changes 8 to 10, [script](implementation/live-check-r3.mjs) | 31 of 31 in WebKit and Chromium, no page errors or API errors. Frequency: Sort, limit row and view switch, Enter applies. Topic Modelling on a 400-row themed corpus (7 topics): card opens after the pause, stays with the pointer in it, word click adds then removes a term without selecting the Topic, other words stay in place, right-click adds a stop word first and turns the switch on without toggling examples, closes after leaving, Shift holds it, typing doesn't filter and Enter does, emptying clears, tooltip rules, Sort in the window |
 
 One earlier WebKit run, made while the screenshot timing was being adjusted,
 printed 14 pass lines. Its failing line was not captured. Every later run
@@ -353,12 +431,26 @@ baseline is read from the screenshot, not measured with this script.
 
 ## Found While Working
 
-Both existed on v0.7 before this branch. Both are now resolved here.
+The first two existed on v0.7 before this branch and are resolved here. The
+last two were found while checking change 8 and are not fixed.
 
 - The help icon beside the results button was also named "Clear results", so
   two neighbouring controls shared an accessible name. Fixed by change 6.
 - token-frequency.md said the Cloud display limit defaults to 50, while the
   code used 25. Change 7 makes both 40.
+- **The word cloud card is clipped by the chart's frame.** It is drawn inside
+  the chart, so with the Display options beside a narrow chart (about 420 px
+  at 1440 wide with the Project panel open) its top and right edge are cut
+  off. This was already so on v0.7; it matters more now that words are
+  clicked. With the options below the chart, the card fits. A fix would draw
+  the card outside the chart, or keep it within the chart's bounds.
+- **In WebKit, a click near the bottom of a word can hit the word below.** In
+  tightly packed clouds, WebKit's hit areas for neighbouring words overlap by
+  up to about 19 px, though the letters don't (seen with *school* above
+  *teacher*). Clicking the middle of the letters works. Chromium is not
+  affected. It comes from the shared word cloud's layout, so Frequency's
+  right-click has it too, and the desktop app uses WebKit. Possible fix:
+  a little more spacing between words in the shared cloud.
 
 ## How To Test Each Change
 
@@ -393,6 +485,20 @@ judged on its own.
    step. In Annotation, check both Manual (**Start**) and AI.
 7. **Cloud display limit.** Run Frequency in a new tab. The Cloud and List
    display limits should both show 40.
+8. **Topic word clouds and search.** Run Topic Modelling on a corpus with
+   several topics. Sweep the pointer across bubbles: no card should pop up
+   until it rests. Move from a bubble into its card and click words: each is
+   added to the start of the search box and coloured in every card and the
+   list, and the other words stay put; click again to remove. Check the
+   bubbles fade only on **Apply** or Enter, and that clearing the box
+   un-fades them. Right-click a word: it should appear first in "Hidden
+   words". Hold Shift and move away: the card should stay. Type more terms
+   than fit and hover the box.
+9. **Topic stop words.** With stop words on, check the "Hidden words" line,
+   the folded summary's count, and **Sort** in the editing window.
+10. **Frequency limits.** Check **Sort** appears only with the list open, the
+    limit sits beside the view selector and swaps with the view, an opened
+    list pushes the limit row down, and Enter or clicking away applies a limit.
 
 Things worth deciding while testing:
 
@@ -400,6 +506,9 @@ Things worth deciding while testing:
   should stay open once it has words.
 - Whether the open-Data-Block offer is helpful, or noisy when you deliberately
   inspect one Data Block while analysing another.
+- The card's timings (0.15 seconds to open, 0.3 to close) are first guesses.
+  They are constants in `useBubblePopup.ts`.
+- Whether coloured-not-bold matches in the card are clear enough.
 
 ## Merge Notes
 
@@ -426,10 +535,16 @@ Include the matching tests and Help pages from the table below.
 | 5. Frequency settings row | `TokenFrequencyResultsPanel.tsx`, `TokenFrequencyTokenFilterCard.tsx`, token-frequency.md | Frequency and Keyword Analysis |
 | 6. Run row help | `AnalysisCardLayout.tsx`, `ConcordanceParameterPanel.tsx`, `AnnotationFeature.tsx`, `QuotationFeature.tsx`, `SequentialAnalysisFeature.tsx`, `TokenFrequencyParameterPanel.tsx`, `TopicModelingParameterPanel.tsx`, `bundledRegistry.ts`, six Help pages | Help and guidance |
 | 7. Cloud default 40 | `domain/workspace/analysis.py`, `ldaca-wordflow.openapi.json`, `common/utils.ts`, token-frequency.md | Frequency and Keyword Analysis |
+| 8. Topic word clouds and search | `useBubblePopup.ts` (new), `topicSearch.ts` (new), `TopicModelingFlowChart.tsx`, `components/node-tooltip.tsx` (removed), `useTopicModelingResultControls.ts`, `topicModelingAdapters.ts`, `topicModelingGraph.ts`, `TopicSelectionPanel.tsx`, `TopicModelingBubbleChartSection.tsx`, `TopicModelingResultsPanel.tsx`, `TopicModelingFeature.tsx`, topic-modeling.md | Topic Modelling |
+| 9. Topic stop words | `TopicModelingStopWordsControl.tsx`, `TopicModelingResultsPanel.tsx`, `common/utils/stopWords.ts`, topic-modeling.md | Topic Modelling |
+| 10. Frequency limits | `TokenFrequencyResultsPanel.tsx`, `TokenFrequencyFeature.tsx`, `useTokenFrequencyPreferences.ts`, `common/utils/stopWords.ts`, token-frequency.md, `display_limits.png` | Frequency and Keyword Analysis |
 
 Changes 1, 2 and 6 share `AnalysisCardLayout.tsx`, `ConcordanceParameterPanel.tsx`
-and `AnnotationFeature.tsx`. Applying one of those files brings all of its
-changes. To keep only some, apply the file and remove the rest by hand.
+and `AnnotationFeature.tsx`. Changes 5 and 10 share `TokenFrequencyResultsPanel.tsx`
+(10 builds on 5), changes 8 and 9 share `TopicModelingResultsPanel.tsx`, and
+changes 9 and 10 share `common/utils/stopWords.ts`. Applying one of those files
+brings all of its changes. To keep only some, apply the file and remove the
+rest by hand.
 
 For v0.8, carry over the behaviour rather than the markup: the open-Data-Block
 offer and its role-panel opt-out, the three distinct labels, the row-unit line,

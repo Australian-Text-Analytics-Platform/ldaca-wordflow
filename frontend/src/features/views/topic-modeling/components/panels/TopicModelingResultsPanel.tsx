@@ -1,5 +1,5 @@
 import type { ProgressDetail } from '@/api';
-import { ChevronDown, ChevronRight, LoaderCircle, Plus, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, LoaderCircle, Plus, Search, Wand2 } from 'lucide-react';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type {
   TopicClustering,
@@ -29,6 +29,8 @@ import { ErrorNotice } from '@/components/errors/ErrorNotice';
 import { TopicRemoteGpuNudge, TopicResultNudge, TopicSlowStartNudge } from '../TopicModelingNudges';
 import { isUngrouped } from '../../ungrouped';
 import { TopicResultSummary } from '../results/TopicResultSummary';
+import { topicSearchTerms } from '../../topicModelingAdapters';
+import { sameSearchTerms } from '../../topicSearch';
 
 interface Props {
   topicWaitingBanner: {
@@ -59,8 +61,19 @@ interface Props {
   selectedTopicIds: Set<number>;
   onToggleTopicSelection: (id: number) => void;
   onClearSelection: () => void;
+  /** The search box's text: matches are coloured at once. */
   topicSearchQuery: string;
   onTopicSearchQueryChange: (query: string) => void;
+  /** The search last applied: what fades bubbles and narrows the list. Defaults to the box's text. */
+  appliedTopicSearchQuery?: string;
+  /** Applies the box's text as the filter (Apply or Enter). */
+  onTopicSearchApply?: () => void;
+  /** Each search term's colour slot, so a term keeps its colour. */
+  topicSearchTermSlots?: ReadonlyMap<string, number>;
+  /** Left-click on a word in a bubble's word cloud. */
+  onSearchWordClick?: (word: string) => void;
+  /** Right-click on a word in a bubble's word cloud. */
+  onStopWordAdd?: (word: string) => void;
   /** Display options folded to one summary line, remembered per tab on this device (issue 432). */
   settingsCollapsed?: boolean;
   onSettingsCollapsedChange?: (collapsed: boolean) => void;
@@ -143,15 +156,31 @@ function useControlClasses() {
   };
 }
 
-/** A search term dims the other topics in the chart and filters the list (issues 353, 433). */
+const SEARCH_USAGE =
+  'Words or parts of words, separated by spaces or commas. Topics with any of them match.';
+
+/**
+ * The search term box (issues 353, 433). Its words are coloured in the chart
+ * and the list as you type; topics are filtered only on Apply or Enter, and
+ * at once when the box is emptied (Chao, 15 Nov 2026). Leaving the box does
+ * nothing. The usage tip shows on the magnifier, or on the box while its
+ * text fits; when the terms overflow, hovering them shows the whole list.
+ */
 function FindTopicsInput({
   value,
+  applied,
   onChange,
+  onApply,
 }: {
   value: string;
+  applied: string;
   onChange: (query: string) => void;
+  onApply: () => void;
 }) {
   const classes = useControlClasses();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  const pending = !sameSearchTerms(value, applied);
   return (
     <div className={classes.control}>
       {/* In the header row the placeholder says it, so the label is for
@@ -159,23 +188,58 @@ function FindTopicsInput({
       <label htmlFor="topic-find-input" className={classes.column ? 'font-medium' : 'sr-only'}>
         Search term
       </label>
-      <div className={classes.column ? 'relative w-full' : 'relative'}>
-        <Search
-          aria-hidden="true"
-          className="pointer-events-none absolute top-2.5 left-2.5 size-3.5 text-description"
-        />
-        <input
-          id="topic-find-input"
-          type="search"
-          value={value}
-          onChange={(event) => {
-            onChange(event.target.value);
-          }}
-          // Examples show that parts of words and several terms work (issue 434).
-          placeholder="e.g. house, pre, gov"
-          title="Words or parts of words, separated by spaces or commas. Topics with any of them match."
-          className={`h-8 ${classes.column ? 'w-full' : 'w-56'} rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-[var(--vscode-input-placeholderForeground)] focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden`}
-        />
+      <div
+        className={
+          classes.column ? 'flex w-full min-w-0 items-center gap-2' : 'flex items-center gap-2'
+        }
+      >
+        <div className={classes.column ? 'relative min-w-0 flex-1' : 'relative'}>
+          <span
+            title={SEARCH_USAGE}
+            data-testid="topic-find-usage"
+            className="absolute top-2.5 left-2.5 text-description"
+            onClick={() => {
+              inputRef.current?.focus();
+            }}
+          >
+            <Search aria-hidden="true" className="size-3.5" />
+          </span>
+          <input
+            ref={inputRef}
+            id="topic-find-input"
+            type="search"
+            value={value}
+            onChange={(event) => {
+              onChange(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                onApply();
+              }
+            }}
+            onMouseEnter={(event) => {
+              const element = event.currentTarget;
+              setOverflowing(element.scrollWidth > element.clientWidth);
+            }}
+            // Examples show that parts of words and several terms work (issue 434).
+            placeholder="e.g. house, pre, gov"
+            title={overflowing && value.trim() ? topicSearchTerms(value).join(', ') : SEARCH_USAGE}
+            className={`h-8 ${classes.column ? 'w-full' : 'w-56'} rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-[var(--vscode-input-placeholderForeground)] focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden`}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label="Apply search term"
+          title="Fade the topics that don't match (Enter)"
+          disabled={!pending}
+          onClick={onApply}
+        >
+          <Wand2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+          Apply
+        </Button>
       </div>
     </div>
   );
@@ -622,6 +686,11 @@ export function TopicModelingResultsPanel({
   onClearSelection,
   topicSearchQuery,
   onTopicSearchQueryChange,
+  appliedTopicSearchQuery = topicSearchQuery,
+  onTopicSearchApply = () => undefined,
+  topicSearchTermSlots,
+  onSearchWordClick,
+  onStopWordAdd,
   settingsCollapsed = false,
   onSettingsCollapsedChange,
   chartLayout,
@@ -734,6 +803,10 @@ export function TopicModelingResultsPanel({
                   onClearSelection={onClearSelection}
                   topicSearchQuery={topicSearchQuery}
                   onTopicSearchQueryChange={onTopicSearchQueryChange}
+                  appliedTopicSearchQuery={appliedTopicSearchQuery}
+                  topicSearchTermSlots={topicSearchTermSlots}
+                  onSearchWordClick={onSearchWordClick}
+                  onStopWordAdd={onStopWordAdd}
                   corpusSizes={result?.data.corpus_sizes ?? []}
                   panelNodeIds={panelNodeIds}
                   nodeColors={nodeColors}
@@ -788,7 +861,9 @@ export function TopicModelingResultsPanel({
                             : null,
                           `${String(wordsPerTopic)} words per topic`,
                           colorBy?.loaded ? `Colour: ${colorBy.column ?? 'Data Block'}` : null,
-                          stopWordsEnabled ? 'Stop words on' : 'Stop words off',
+                          stopWordsEnabled
+                            ? `Stop words on (${String(stopWords.length)})`
+                            : 'Stop words off',
                         ]
                           .filter(Boolean)
                           .join(' · ')}
@@ -797,7 +872,9 @@ export function TopicModelingResultsPanel({
                     const findTopics = (
                       <FindTopicsInput
                         value={topicSearchQuery}
+                        applied={appliedTopicSearchQuery}
                         onChange={onTopicSearchQueryChange}
+                        onApply={onTopicSearchApply}
                       />
                     );
                     const addToProject = (

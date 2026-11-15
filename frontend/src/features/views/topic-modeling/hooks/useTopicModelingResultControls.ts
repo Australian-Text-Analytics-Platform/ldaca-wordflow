@@ -1,14 +1,23 @@
 import { useReducer } from 'react';
 
+import { topicSearchTerms } from '../topicModelingAdapters';
+import { assignSearchTermSlots } from '../topicSearch';
+
 interface TopicModelingResultControlState {
   selectedTopicIds: Set<number>;
+  /** The search box's text: highlighting follows it at once. */
   topicSearchQuery: string;
+  /** The search last applied with Apply or Enter: filtering follows it. */
+  appliedTopicSearchQuery: string;
+  /** Each term's colour slot, kept until the term is removed. */
+  topicSearchTermSlots: ReadonlyMap<string, number>;
 }
 
 export type TopicModelingResultControlAction =
   | { type: 'topicSelectionToggled'; id: number }
   | { type: 'topicSelectionCleared' }
-  | { type: 'topicSearchChanged'; query: string };
+  | { type: 'topicSearchChanged'; query: string }
+  | { type: 'topicSearchApplied' };
 
 /**
  * Creates reducer-owned state for topic-modeling result controls.
@@ -18,6 +27,8 @@ export type TopicModelingResultControlAction =
 export const createTopicModelingResultControlState = (): TopicModelingResultControlState => ({
   selectedTopicIds: new Set(),
   topicSearchQuery: '',
+  appliedTopicSearchQuery: '',
+  topicSearchTermSlots: new Map(),
 });
 
 /**
@@ -39,10 +50,25 @@ export const topicModelingResultControlReducer = (
     }
     case 'topicSelectionCleared':
       return state.selectedTopicIds.size === 0 ? state : { ...state, selectedTopicIds: new Set() };
-    case 'topicSearchChanged':
-      return state.topicSearchQuery === action.query
+    case 'topicSearchChanged': {
+      if (state.topicSearchQuery === action.query) return state;
+      return {
+        ...state,
+        topicSearchQuery: action.query,
+        // An empty box clears the filter at once; anything else waits for
+        // Apply or Enter (Chao, 15 Nov 2026).
+        appliedTopicSearchQuery: action.query.trim() === '' ? '' : state.appliedTopicSearchQuery,
+        topicSearchTermSlots: assignSearchTermSlots(
+          topicSearchTerms(state.topicSearchQuery),
+          state.topicSearchTermSlots,
+          topicSearchTerms(action.query),
+        ),
+      };
+    }
+    case 'topicSearchApplied':
+      return state.appliedTopicSearchQuery === state.topicSearchQuery
         ? state
-        : { ...state, topicSearchQuery: action.query };
+        : { ...state, appliedTopicSearchQuery: state.topicSearchQuery };
     default:
       return state;
   }
@@ -72,10 +98,15 @@ export const useTopicModelingResultControls = () => {
     dispatch({ type: 'topicSearchChanged', query });
   };
 
+  const applyTopicSearch = () => {
+    dispatch({ type: 'topicSearchApplied' });
+  };
+
   return {
     ...state,
     handleToggleTopicSelection,
     handleClearTopicSelection,
     setTopicSearchQuery,
+    applyTopicSearch,
   };
 };

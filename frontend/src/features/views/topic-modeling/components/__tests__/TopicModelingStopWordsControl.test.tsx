@@ -184,6 +184,30 @@ describe('TopicModelingStopWordsControl', () => {
     expect(useSwitch()).toBeChecked();
   });
 
+  it('names the first eight hidden words and counts the rest while the list is on', async () => {
+    const user = userEvent.setup();
+    const words = ['zeta', 'the', 'and', 'of', 'a', 'to', 'in', 'is', 'it', 'was'];
+    render(<Harness initialEnabled initialWords={words} />);
+
+    expect(screen.getByTestId('topic-stop-words-preview')).toHaveTextContent(
+      'Hidden words: zeta, the, and, of, a, to, in, is and 2 more',
+    );
+    await user.click(useSwitch());
+    expect(screen.queryByTestId('topic-stop-words-preview')).not.toBeInTheDocument();
+  });
+
+  it('sorts the draft in the editing window, as Frequency does', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn(() => Promise.resolve());
+    render(<Harness initialWords={['the', 'and', 'of']} onSave={onSave} />);
+
+    await user.click(screen.getByRole('button', { name: 'Edit stop words' }));
+    await user.click(screen.getByRole('button', { name: 'Sort' }));
+    expect(screen.getByLabelText('Stop words')).toHaveValue('and, of, the');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSave).toHaveBeenCalledWith(['and', 'of', 'the']);
+  });
+
   it('normalizes a custom draft and closes only after persistence succeeds', async () => {
     const user = userEvent.setup();
     let resolveSave: (() => void) | undefined;

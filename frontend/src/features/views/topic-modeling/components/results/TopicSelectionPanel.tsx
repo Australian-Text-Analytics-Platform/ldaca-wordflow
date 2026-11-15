@@ -20,7 +20,12 @@ interface Props {
   selectedTopicIds: Set<number>;
   onToggleTopicSelection: (id: number) => void;
   onClearSelection: () => void;
+  /** The search box's text: matching words are coloured at once. */
   topicSearchQuery: string;
+  /** The search last applied: the list keeps only matching topics. Defaults to the box's text. */
+  appliedTopicSearchQuery?: string;
+  /** Each term's colour slot, so a term keeps its colour. */
+  topicSearchTermSlots?: ReadonlyMap<string, number>;
   lassoTopicIds: Set<number>;
   corpusPresentation: TopicCorpusPresentation;
   hoveredTopicId: number | null;
@@ -69,6 +74,7 @@ interface TopicCardProps {
   hovered: boolean;
   shown: boolean;
   topicSearchQuery: string;
+  topicSearchTermSlots?: ReadonlyMap<string, number>;
   corpusPresentation: TopicCorpusPresentation;
   onToggleSelection: () => void;
   onToggleShown: () => void;
@@ -86,6 +92,7 @@ function TopicCard({
   hovered,
   shown,
   topicSearchQuery,
+  topicSearchTermSlots,
   corpusPresentation,
   onToggleSelection,
   onToggleShown,
@@ -178,7 +185,12 @@ function TopicCard({
         <div className="mt-0.5">
           <TopicWordsLine
             words={words}
-            matched={matchedTopicWords(words, topicSearchQuery, matchChecklistOption)}
+            matched={matchedTopicWords(
+              words,
+              topicSearchQuery,
+              matchChecklistOption,
+              topicSearchTermSlots,
+            )}
           />
         </div>
       </div>
@@ -216,6 +228,8 @@ export function TopicSelectionPanel({
   onToggleTopicSelection,
   onClearSelection,
   topicSearchQuery,
+  appliedTopicSearchQuery = topicSearchQuery,
+  topicSearchTermSlots,
   lassoTopicIds,
   corpusPresentation,
   hoveredTopicId,
@@ -228,13 +242,13 @@ export function TopicSelectionPanel({
 }: Props) {
   const sortedTopics = topics.toSorted((a, b) => b.total_size - a.total_size);
   const hasLassoFilter = lassoTopicIds.size > 0;
-  const hasSearch = topicSearchQuery.trim() !== '';
+  const hasSearch = appliedTopicSearchQuery.trim() !== '';
   const matches = (topic: TopicModelingTopic) => {
     if (hasLassoFilter && !lassoTopicIds.has(topic.id)) return false;
     if (!hasSearch) return true;
     return matchTopicWords(
       topic.representative_words.map((term) => term.word),
-      topicSearchQuery,
+      appliedTopicSearchQuery,
       matchChecklistOption,
       topicSearchTerms,
     );
@@ -284,6 +298,7 @@ export function TopicSelectionPanel({
       hovered={hoveredTopicId === topic.id}
       shown={shownTopicId === topic.id}
       topicSearchQuery={topicSearchQuery}
+      topicSearchTermSlots={topicSearchTermSlots}
       corpusPresentation={corpusPresentation}
       onToggleSelection={() => {
         onToggleTopicSelection(topic.id);

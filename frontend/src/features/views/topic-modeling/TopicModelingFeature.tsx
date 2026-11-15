@@ -38,6 +38,8 @@ import {
   useTopicModelingParameters,
 } from './hooks/useTopicModelingParameters';
 import { useTopicModelingResultControls } from './hooks/useTopicModelingResultControls';
+import { toggleSearchWord } from './topicSearch';
+import { addStopWordFirst } from '../common/utils/stopWords';
 import { useTopicColorGroups } from './hooks/useTopicColorGroups';
 import { useTopicModelingTaskFlow } from './hooks/useTopicModelingTaskFlow';
 import {
@@ -203,7 +205,10 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
   const {
     selectedTopicIds,
     topicSearchQuery,
+    appliedTopicSearchQuery,
+    topicSearchTermSlots,
     setTopicSearchQuery,
+    applyTopicSearch,
     handleToggleTopicSelection,
     handleClearTopicSelection,
   } = useTopicModelingResultControls();
@@ -767,6 +772,22 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
               onClearSelection={handleClearTopicSelection}
               topicSearchQuery={topicSearchQuery}
               onTopicSearchQueryChange={setTopicSearchQuery}
+              appliedTopicSearchQuery={appliedTopicSearchQuery}
+              onTopicSearchApply={applyTopicSearch}
+              topicSearchTermSlots={topicSearchTermSlots}
+              onSearchWordClick={(word) => {
+                setTopicSearchQuery(toggleSearchWord(topicSearchQuery, word));
+              }}
+              onStopWordAdd={(word) => {
+                // As in Frequency: the newest word goes first, and the filter
+                // turns on so the right-click is never silently ignored.
+                if (!resultKey) return;
+                if (!stopWordsEnabled) {
+                  host.setSetting(STOP_WORDS_ENABLED_SETTINGS.topicModeling, 'true');
+                }
+                const next = addStopWordFirst(host.stopWords, word);
+                if (next !== host.stopWords) void host.setPresentationSettings({ stopWords: next });
+              }}
               settingsCollapsed={host.settings[RESULT_SETTINGS_COLLAPSED_SETTING] === 'true'}
               onSettingsCollapsedChange={(collapsed) => {
                 host.setSetting(RESULT_SETTINGS_COLLAPSED_SETTING, String(collapsed));

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { NodeResultView, NormalizedNodeResult } from '../../tokenFrequencyAdapters';
 
 import { TokenFrequencySingleTokenSection } from '../results/TokenFrequencySingleTokenSection';
@@ -17,7 +17,7 @@ import { useTokenFrequencyListLimit } from '../../hooks/useTokenFrequencyListLim
 import { StopWordsEnabledSwitch } from '@/features/views/common/components/StopWordsEnabledSwitch';
 import { StopWordsLanguageSelect } from '@/features/views/common/components/StopWordsLanguageSelect';
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
-import { parseStopWordsText } from '@/features/views/common/utils/stopWords';
+import { parseStopWordsText, stopWordsPreview } from '@/features/views/common/utils/stopWords';
 import { TokenFrequencyTokenFilterCard } from './TokenFrequencyTokenFilterCard';
 import type { WordCloudChartContext } from '../../hooks/useTokenFrequencyDownloads';
 
@@ -61,7 +61,6 @@ interface TokenFrequencyResultsPanelProps {
    *  limit changes and needs to mirror to the cloud limit). */
   applyCloudTokenLimit: (value: number) => Promise<void> | void;
   tokenLimitError: string | null;
-  isApplyingTokenLimit: boolean;
 
   appliedStopCount: number;
 
@@ -109,7 +108,6 @@ export const TokenFrequencyResultsPanel = ({
   onTokenLimitBlur,
   applyCloudTokenLimit,
   tokenLimitError,
-  isApplyingTokenLimit,
   appliedStopCount,
   normalizedNodeResults,
   nodeDisplayResults,
@@ -156,10 +154,7 @@ export const TokenFrequencyResultsPanel = ({
   }
 
   const stopWordsList = parseStopWordsText(stopWords);
-  const stopWordsPreview =
-    stopWordsList.length > 8
-      ? `${stopWordsList.slice(0, 8).join(', ')} and ${String(stopWordsList.length - 8)} more`
-      : stopWordsList.join(', ');
+  const hiddenWordsPreview = stopWordsPreview(stopWordsList);
 
   const runningMessage =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- an empty progress_message/message should fall back to the next source, not render blank
@@ -186,41 +181,61 @@ export const TokenFrequencyResultsPanel = ({
 
       {isSuccessfulState ? (
         <div className="space-y-4">
-          {/* Display settings sit in one wrapping row so the result starts near
-              the top of the pane. They only change what is shown, never the
-              counts, and wrap by the pane's width, not the window's. */}
+          {/* Stop words sit in one wrapping row so the result starts near the
+              top of the pane; the opened list, or the hidden-words line, comes
+              under it and pushes the result down. They only change what is
+              shown, never the counts, and wrap by the pane's width, not the
+              window's. */}
           <div
             className="space-y-2 rounded-lg border border-surface-border/60 bg-panel/20 px-3 py-2"
             data-testid="token-frequency-display-settings"
           >
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              <div
-                role="group"
-                aria-label="Stop words"
-                className="flex min-w-0 flex-wrap items-center gap-2"
+            <div
+              role="group"
+              aria-label="Stop words"
+              className="flex min-w-0 flex-wrap items-center gap-2"
+            >
+              <Label htmlFor={stopWordsEditorOpen ? 'stop-words' : undefined}>
+                Stop words filter ({appliedStopCount})
+              </Label>
+              <StopWordsEnabledSwitch
+                checked={stopWordsEnabled}
+                onCheckedChange={(enabled) => {
+                  onStopWordsEnabledChange(enabled);
+                  // Nothing to filter yet: open the list so the words can be typed.
+                  if (enabled && !stopWords.trim()) setStopWordsEditorOpen(true);
+                }}
+              />
+              <StopWordsLanguageSelect
+                words={stopWordsList}
+                onWordsChange={onStopWordsListChange}
+                workspaceId={stopWordsLanguageSource.workspaceId}
+                nodeId={stopWordsLanguageSource.nodeId}
+                column={stopWordsLanguageSource.column}
+                sources={stopWordListSources}
+                onListAdded={() => {
+                  if (!stopWordsEnabled) onStopWordsEnabledChange(true);
+                }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-expanded={stopWordsEditorOpen}
+                aria-controls={stopWordsEditorOpen ? 'stop-words' : undefined}
+                onClick={() => {
+                  setStopWordsEditorOpen((open) => !open);
+                }}
               >
-                <Label htmlFor={stopWordsEditorOpen ? 'stop-words' : undefined}>
-                  Stop words filter ({appliedStopCount})
-                </Label>
-                <StopWordsEnabledSwitch
-                  checked={stopWordsEnabled}
-                  onCheckedChange={(enabled) => {
-                    onStopWordsEnabledChange(enabled);
-                    // Nothing to filter yet: open the list so the words can be typed.
-                    if (enabled && !stopWords.trim()) setStopWordsEditorOpen(true);
-                  }}
-                />
-                <StopWordsLanguageSelect
-                  words={stopWordsList}
-                  onWordsChange={onStopWordsListChange}
-                  workspaceId={stopWordsLanguageSource.workspaceId}
-                  nodeId={stopWordsLanguageSource.nodeId}
-                  column={stopWordsLanguageSource.column}
-                  sources={stopWordListSources}
-                  onListAdded={() => {
-                    if (!stopWordsEnabled) onStopWordsEnabledChange(true);
-                  }}
-                />
+                {stopWordsEditorOpen ? (
+                  <ChevronUp className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <ChevronDown className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                {stopWordsEditorOpen ? 'Hide list' : 'Edit list'}
+              </Button>
+              {/* Sorting only matters while the whole list is in view (Chao). */}
+              {stopWordsEditorOpen ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -230,31 +245,47 @@ export const TokenFrequencyResultsPanel = ({
                 >
                   Sort
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-expanded={stopWordsEditorOpen}
-                  aria-controls={stopWordsEditorOpen ? 'stop-words' : undefined}
-                  onClick={() => {
-                    setStopWordsEditorOpen((open) => !open);
-                  }}
-                >
-                  {stopWordsEditorOpen ? (
-                    <ChevronUp className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                  ) : (
-                    <ChevronDown className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                  )}
-                  {stopWordsEditorOpen ? 'Hide list' : 'Edit list'}
-                </Button>
-                <HelpIcon
-                  targetKey="analysis.token-frequency.stop-words"
-                  label="Stop words"
-                  tooltip="Words hidden from the results. Pick a list, or right-click a word to add it."
-                />
-              </div>
+              ) : null}
+              <HelpIcon
+                targetKey="analysis.token-frequency.stop-words"
+                label="Stop words"
+                tooltip="Words hidden from the results. Pick a list, or right-click a word to add it."
+              />
+            </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+            {!stopWordsEditorOpen && stopWordsEnabled && hiddenWordsPreview ? (
+              <p
+                className="truncate text-label-secondary text-description"
+                data-testid="token-frequency-stop-words-preview"
+              >
+                Hidden words: {hiddenWordsPreview}
+              </p>
+            ) : null}
+            {stopWordsEditorOpen ? (
+              <textarea
+                id="stop-words"
+                rows={4}
+                value={stopWords}
+                onChange={(event) => {
+                  onStopWordsChange(event.target.value);
+                }}
+                onBlur={onStopWordsApply}
+                placeholder="the, and, of"
+                disabled={!stopWordsEnabled}
+                className="w-full resize-y overflow-y-auto rounded-md border border-input-border bg-editor px-3 py-2 text-body text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
+              />
+            ) : null}
+          </div>
+
+          {/* The limit for the view on screen sits beside the view selector; the
+              two values stay linked as before (Chao, 15 Nov 2026). It applies on
+              Enter or when the box loses focus, so there is no Apply button. */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="min-w-0 flex-1 basis-80">
+              <TokenFrequencyTokenFilterCard value={tokenFilter} onChange={setTokenFilter} />
+            </div>
+            {resultsView === 'cloud' ? (
+              <div className="flex items-center gap-2" data-testid="token-frequency-display-limit">
                 <Label htmlFor="token-limit">Cloud display limit (10–100)</Label>
                 <Input
                   id="token-limit"
@@ -272,24 +303,14 @@ export const TokenFrequencyResultsPanel = ({
                     }
                   }}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleApplyCloudLimit}
-                  disabled={isApplyingTokenLimit}
-                >
-                  <Wand2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                  Apply
-                </Button>
                 <HelpIcon
                   targetKey="analysis.token-frequency.token-limit"
                   label="Cloud display limit"
                   tooltip="Most tokens in each word cloud (10–100). Also sets the list limit."
                 />
               </div>
-
-              <div className="flex flex-wrap items-center gap-2">
+            ) : (
+              <div className="flex items-center gap-2" data-testid="token-frequency-display-limit">
                 <Label htmlFor="list-limit">List display limit (10 – {globalMaxVocab})</Label>
                 <Input
                   id="list-limit"
@@ -307,52 +328,13 @@ export const TokenFrequencyResultsPanel = ({
                     }
                   }}
                 />
-                <Button type="button" variant="outline" size="sm" onClick={handleApplyListLimit}>
-                  <Wand2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                  Apply
-                </Button>
                 <HelpIcon
                   targetKey="analysis.token-frequency.list-limit"
                   label="List display limit"
                   tooltip="Most tokens in each list. Up to 100, it matches the cloud limit."
                 />
               </div>
-            </div>
-
-            {!stopWordsEditorOpen && stopWordsEnabled && stopWordsPreview ? (
-              <p
-                className="truncate text-label-secondary text-description"
-                data-testid="token-frequency-stop-words-preview"
-              >
-                Hidden words: {stopWordsPreview}
-              </p>
-            ) : null}
-            {stopWordsEditorOpen ? (
-              <textarea
-                id="stop-words"
-                rows={4}
-                value={stopWords}
-                onChange={(event) => {
-                  onStopWordsChange(event.target.value);
-                }}
-                onBlur={onStopWordsApply}
-                placeholder="the, and, of"
-                disabled={!stopWordsEnabled}
-                className="w-full resize-y overflow-y-auto rounded-md border border-input-border bg-editor px-3 py-2 text-body text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
-              />
-            ) : null}
-            {tokenLimitError ? (
-              <p className="text-label-secondary text-error">{tokenLimitError}</p>
-            ) : null}
-            {listLimitError ? (
-              <p className="text-label-secondary text-error">{listLimitError}</p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="min-w-0 flex-1 basis-80">
-              <TokenFrequencyTokenFilterCard value={tokenFilter} onChange={setTokenFilter} />
-            </div>
+            )}
             <Tabs
               value={resultsView}
               onValueChange={(value) => {
@@ -366,6 +348,12 @@ export const TokenFrequencyResultsPanel = ({
               </TabsList>
             </Tabs>
           </div>
+          {resultsView === 'cloud' && tokenLimitError ? (
+            <p className="text-label-secondary text-error">{tokenLimitError}</p>
+          ) : null}
+          {resultsView === 'list' && listLimitError ? (
+            <p className="text-label-secondary text-error">{listLimitError}</p>
+          ) : null}
 
           <TokenFrequencySingleTokenSection
             nodeDisplayResults={nodeDisplayResults}

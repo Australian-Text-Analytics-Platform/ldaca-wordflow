@@ -184,6 +184,66 @@ const interruptedPointerGestures: [string, (root: HTMLElement) => void][] = [
 ];
 
 describe('TopicModelingResultsPanel', () => {
+  it('applies the search on Apply or Enter, not on leaving the box (Chao, 15 Nov 2026)', async () => {
+    const user = userEvent.setup();
+    const onTopicSearchApply = vi.fn();
+    const { rerender } = render(
+      <TooltipProvider>
+        <TopicModelingResultsPanel
+          {...baseProps}
+          topicSearchQuery="house"
+          appliedTopicSearchQuery=""
+          onTopicSearchApply={onTopicSearchApply}
+        />
+      </TooltipProvider>,
+    );
+
+    const input = screen.getByLabelText('Search term');
+    const apply = screen.getByRole('button', { name: 'Apply search term' });
+    expect(apply).toBeEnabled();
+    fireEvent.blur(input);
+    expect(onTopicSearchApply).not.toHaveBeenCalled();
+    await user.type(input, '{Enter}');
+    expect(onTopicSearchApply).toHaveBeenCalledTimes(1);
+    await user.click(apply);
+    expect(onTopicSearchApply).toHaveBeenCalledTimes(2);
+
+    // Nothing new to apply: the button rests.
+    rerender(
+      <TooltipProvider>
+        <TopicModelingResultsPanel
+          {...baseProps}
+          topicSearchQuery="House "
+          appliedTopicSearchQuery="house"
+          onTopicSearchApply={onTopicSearchApply}
+        />
+      </TooltipProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Apply search term' })).toBeDisabled();
+  });
+
+  it('shows the usage tip on the magnifier, and the whole term list when the box overflows', () => {
+    render(
+      <TooltipProvider>
+        <TopicModelingResultsPanel {...baseProps} topicSearchQuery="house, rent, tax" />
+      </TooltipProvider>,
+    );
+
+    const input = screen.getByLabelText('Search term');
+    expect(screen.getByTestId('topic-find-usage')).toHaveAttribute(
+      'title',
+      expect.stringContaining('Words or parts of words'),
+    );
+    // The text fits: the box shows the usage tip too.
+    fireEvent.mouseEnter(input);
+    expect(input).toHaveAttribute('title', expect.stringContaining('Words or parts of words'));
+
+    Object.defineProperty(input, 'scrollWidth', { configurable: true, value: 400 });
+    Object.defineProperty(input, 'clientWidth', { configurable: true, value: 200 });
+    fireEvent.mouseEnter(input);
+    expect(input).toHaveAttribute('title', 'house, rent, tax');
+  });
+
   it('renders the accessible topic slider with server-provided bounds', () => {
     render(
       <TooltipProvider>

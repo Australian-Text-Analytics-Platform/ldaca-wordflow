@@ -45,6 +45,28 @@ describe('topicModelingResultControlReducer', () => {
   });
 });
 
+describe('applied search (Chao, 15 Nov 2026)', () => {
+  it('filters only after Apply, but clears the filter as soon as the box is empty', () => {
+    let state = createTopicModelingResultControlState();
+    state = topicModelingResultControlReducer(state, {
+      type: 'topicSearchChanged',
+      query: 'house',
+    });
+    expect(state.appliedTopicSearchQuery).toBe('');
+    state = topicModelingResultControlReducer(state, { type: 'topicSearchApplied' });
+    expect(state.appliedTopicSearchQuery).toBe('house');
+    state = topicModelingResultControlReducer(state, {
+      type: 'topicSearchChanged',
+      query: 'rent, house',
+    });
+    expect(state.appliedTopicSearchQuery).toBe('house');
+    expect(state.topicSearchTermSlots.get('house')).toBe(0);
+    expect(state.topicSearchTermSlots.get('rent')).toBe(1);
+    state = topicModelingResultControlReducer(state, { type: 'topicSearchChanged', query: ' ' });
+    expect(state.appliedTopicSearchQuery).toBe('');
+  });
+});
+
 describe('useTopicModelingResultControls', () => {
   it('exposes stable result-panel actions through the public hook', () => {
     const { result } = renderHook(() => useTopicModelingResultControls());
