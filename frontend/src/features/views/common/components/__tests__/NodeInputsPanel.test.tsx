@@ -1,10 +1,11 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Field, Utf8 } from 'apache-arrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { projectWorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import type { NodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
 import { useSelectionStore } from '@/stores/selectionStore';
+import { startDataBlockDragGesture } from '@/stores/dataBlockDragStore';
 import { NodeInputsPanel } from '../NodeInputsPanel';
 
 const mocks = vi.hoisted(() => ({
@@ -74,6 +75,51 @@ describe('NodeInputsPanel', () => {
     );
     nodeInputRequestsStore();
     useSelectionStore.getState().clearSelection();
+  });
+
+  it('lights up while a Data Block is dragged from the graph, and takes it on release', () => {
+    const onAddNodes = vi.fn(() => []);
+    render(<NodeInputsPanel {...baseProps} title="Data Blocks" onAddNodes={onAddNodes} />);
+    expect(screen.queryByTestId('node-inputs-drop-highlight')).toBeNull();
+
+    const box = screen.getByTestId('node-inputs-panel');
+    document.elementFromPoint = () => box;
+    act(() => {
+      startDataBlockDragGesture(
+        {
+          button: 0,
+          isPrimary: true,
+          pointerId: 1,
+          clientX: 0,
+          clientY: 0,
+          target: document.body,
+        } as unknown as React.PointerEvent,
+        { nodeId: 'node-9', name: 'Corpus Z' },
+      );
+      const move = new MouseEvent('pointermove', { clientX: 40, clientY: 0 });
+      Object.defineProperty(move, 'pointerId', { value: 1 });
+      window.dispatchEvent(move);
+    });
+    const highlight = screen.getByTestId('node-inputs-drop-highlight');
+    expect(highlight).toHaveTextContent('Drop here to add to Data Blocks');
+
+    act(() => {
+      const move = new MouseEvent('pointermove', { clientX: 50, clientY: 0 });
+      Object.defineProperty(move, 'pointerId', { value: 1 });
+      window.dispatchEvent(move);
+    });
+    expect(screen.getByTestId('node-inputs-drop-highlight')).toHaveAttribute(
+      'data-drag-over',
+      'true',
+    );
+
+    act(() => {
+      const up = new MouseEvent('pointerup', { clientX: 50, clientY: 0 });
+      Object.defineProperty(up, 'pointerId', { value: 1 });
+      window.dispatchEvent(up);
+    });
+    expect(onAddNodes).toHaveBeenCalledWith(['node-9']);
+    expect(screen.queryByTestId('node-inputs-drop-highlight')).toBeNull();
   });
 
   it('keeps its guidance anchor clear of analysis tab chrome when Joyride scrolls to it', () => {

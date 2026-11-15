@@ -27,13 +27,13 @@ were implemented.
 | Frequency result controls compacted | Implemented |
 | Task entry points, focused layout, Annotation setup sequence, when a Codebook is created | Not started. Each needs a product decision first |
 | Research or workflow profiles | Not started, as Astra recommended |
-| Product owner's requests while testing (15 November) | Implemented as changes 6 to 11 (requests R1 to R10) |
+| Product owner's requests while testing (15 November) | Implemented as changes 6 to 12 (requests R1 to R11) |
 
 Changes 1 to 6 and 8 to 10 make no backend, API, saved-state or preference
 changes. Each is presentation, wording or a client-side shortcut to an existing
 action. Change 7 changes one backend default, recorded in the OpenAPI file.
 Change 11 adds one backend route, recorded in the OpenAPI file; it changes no
-saved Project format.
+saved Project format. Change 12 is frontend only.
 
 ## Updated To 0.7.20
 
@@ -320,6 +320,41 @@ Screenshots: [Edit window with the AI draft](implementation/after-14-ai-draft.pn
 [greyed brief](implementation/after-15-brief-stale.png),
 [overwrite warning](implementation/after-16-overwrite-warning.png).
 
+### 12. Drag a Data Block from the Project Graph onto a tool
+
+Request R11. People kept trying to drag a Data Block to a tool, and touch
+screens teach it.
+
+- A drag that starts on a graph Data Block carries it: past 6 pixels a small
+  label follows the pointer, naming the Data Block and where a release would
+  put it. The Data Block itself stays where the layout put it, as decided in
+  October.
+- The graph pans only when the drag starts on its background. Data Block
+  cards have React Flow's `nopan` class and `touch-action: none`.
+- Every inputs box (`NodeInputsPanel`) is a drop target and is highlighted
+  while a drag is under way, more strongly under the pointer. Releasing on a
+  box adds the Data Block as its next block, like **Add Data Block**. A full
+  or locked box says why and refuses it.
+- Released elsewhere on the tool: a tool with one box takes it; a tool with
+  several asks for one of the highlighted boxes. Released anywhere else, or
+  on Esc, the drag is cancelled.
+- **Agreed with the product owner:** a drop never chooses a position among the
+  blocks already in a box. No way of adding does, and a box has no reordering
+  today; if order matters, reordering inside the box would be its own change.
+- A click still selects, a double-click still adds, and the hover **+** still
+  carries. The click that ends a drag is swallowed, so the block isn't also
+  selected.
+- Code: `stores/dataBlockDragStore.ts` (the gesture, the target registry and
+  the drag state), `components/layout/DataBlockDragLayer.tsx` (the label),
+  `NodeInputsPanel.tsx` (target and highlight), `CustomNode.tsx` (source),
+  `WorkspaceShell.tsx` (the label's mount and the tool zone). It is separate
+  from the carried stack: a drag leaves nothing pending.
+- Not covered: dragging from the sidebar's Data Blocks list, dragging several
+  selected Data Blocks at once, and dropping on the Data Editor.
+
+Screenshots: [dragging onto Frequency](implementation/after-17-drag-onto-frequency.png),
+[Annotation's boxes](implementation/after-18-drag-annotation-boxes.png).
+
 ### Help pages
 
 The Help pages, which are the documentation source of truth, were updated to
@@ -349,6 +384,7 @@ migration entries can be written from them later.
 | R8 | 15 Nov 2026 | Topic Modelling: add a **Sort** button to the stop-word editing window, working like Frequency's. | Done, change 9 |
 | R9 | 15 Nov 2026 | Topic Modelling search box: show the usage tooltip only on the magnifier icon, or on the box when it is empty or its text fits. When the terms overflow the box, hovering the text shows the full list instead. | Done, change 8 |
 | R10 | 15 Nov 2026 | Annotation "Code designer": let the AI draft a first codebook from a sample of the real data and a short description of the coding aim (no more than 250 words, entered above Task context, which is optional extra background). The user sets a maximum number of classes (default 3), plus an "Other" class; the draft may have fewer. Definitions under 60 words, readable, and never containing real text from the data. Only for a new or empty codebook; regenerating warns before overwriting. Reasoning on. One pass, no evaluation rounds. Sample by default 10% or capped at 100 (to be settled). The hard-coded system prompt and the sampling options show only under an advanced toggle in the codebook window. R1 to R9 tested by the product owner on 15 November: all work as designed. | Done, change 11 |
+| R11 | 15 Nov 2026 | Drag a Data Block from the Project Graph straight onto a tool to add it, as people keep trying to do (and as touch screens teach). Dragging on a Data Block drags it; the graph pans only when the drag starts on the background. Design point raised by the product owner: where a drag ends when a tool takes several Data Blocks. R10 tested by the product owner with the Apollo Qwen model: works, better than expected. | Done, change 12 |
 
 ### Agreed Design For R3 To R8
 
@@ -504,6 +540,8 @@ the window says so, and there is no automatic check of the definitions.
 | Backend tests for Frequency and the analysis contract | 40 passed |
 | Run-row help and cloud default, [script](implementation/live-check-rowhelp.mjs) | 16 of 16 in WebKit and Chromium: one icon in each of the six tools (both Annotation modes), no shared "Clear results" name, Help opens at Frequency's Run step, cloud limit 40 after a run |
 | Full frontend check after changes 8 to 10 | Passed: 376 test files with 2,031 tests, unused code, build, Help |
+| Full frontend check after change 12 | Passed: 379 test files with 2,049 tests, unused code, build, theme, Help |
+| Drag from the graph, [script](implementation/live-check-drag.mjs) | 16 of 16 in WebKit and Chromium with a mouse, no page errors or API errors: the label follows and names the box, the box highlights, release adds the block, the graph does not pan, the label and highlight go away, release elsewhere on a one-box tool adds, a full box says so and keeps its two, the background still pans, Esc cancels, a plain click still selects, double-click still adds, Annotation asks for a box and highlights several, release between boxes adds nothing, release on Codebook adds there only. Not tried on a real touch screen |
 | Full frontend check after change 11 | Passed: 378 test files with 2,042 tests, unused code, build, Help with 81 icon references |
 | Full backend tests after change 11 | 1,561 passed, 2 skipped (stress and soak tests) |
 | AI Code Designer, [script](implementation/live-check-designer.mjs) with [a stand-in model server](implementation/fake-llm-server.py) | 22 of 22 in WebKit and Chromium, no page errors or API errors: waits for a brief, word count, disclaimer, defaults (100, 0, High), prompt only under Advanced, stage names the model and texts sent, no × and Esc or outside clicks ignored while running, clock runs, 30-second note, draft fills the window marked unsaved, Task context untouched, closing keeps the draft, Save, untouched AI save leaves the brief usable, hand edit greys it, editing unlocks it, overwrite warning first, Stop returns to the form with the codes unchanged. The stand-in server logged the request: the default prompt plus the answer format with the maximum, the brief and Task context, 100 of 400 texts, thinking effort high, and the strict schema |
@@ -633,6 +671,11 @@ judged on its own.
     code by hand, save, and check the brief greys out until you edit it.
     Design again on a codebook with codes: the warning comes first. Also type
     a code by hand, press Esc, and check it's still there.
+12. **Drag from the graph.** Drag a Data Block from the Project Graph onto
+    Frequency's Data Blocks box, then a second, then a third (refused: full).
+    Check the graph pans only when you drag its background. In Annotation,
+    drop one on **Codebook** and one between the boxes. Press Esc mid-drag.
+    Check a click still selects and a double-click still adds.
 
 Things worth deciding while testing:
 
@@ -647,6 +690,8 @@ Things worth deciding while testing:
   default prompt needs tuning. It is in `codebookDesigner.ts` and editable
   under Advanced.
 - Whether 100 texts is the right default sample.
+- How dragging feels on a trackpad and on a touch screen, which the checks
+  did not cover, and whether 6 pixels is the right start distance.
 
 ## Merge Notes
 
@@ -676,13 +721,15 @@ Include the matching tests and Help pages from the table below.
 | 8. Topic word clouds and search | `useBubblePopup.ts` (new), `topicSearch.ts` (new), `TopicModelingFlowChart.tsx`, `components/node-tooltip.tsx` (removed), `useTopicModelingResultControls.ts`, `topicModelingAdapters.ts`, `topicModelingGraph.ts`, `TopicSelectionPanel.tsx`, `TopicModelingBubbleChartSection.tsx`, `TopicModelingResultsPanel.tsx`, `TopicModelingFeature.tsx`, topic-modeling.md | Topic Modelling |
 | 9. Topic stop words | `TopicModelingStopWordsControl.tsx`, `TopicModelingResultsPanel.tsx`, `common/utils/stopWords.ts`, topic-modeling.md | Topic Modelling |
 | 10. Frequency limits | `TokenFrequencyResultsPanel.tsx`, `TokenFrequencyFeature.tsx`, `useTokenFrequencyPreferences.ts`, `common/utils/stopWords.ts`, token-frequency.md, `display_limits.png` | Frequency and Keyword Analysis |
+| 12. Drag from the graph | `stores/dataBlockDragStore.ts`, `components/layout/DataBlockDragLayer.tsx` (both new), `NodeInputsPanel.tsx`, `CustomNode.tsx`, `WorkspaceShell.tsx`, ui.md | Data Block actions |
 | 11. AI Code Designer | Backend: `codebook_designer.py` (new), `services/annotations.py`, `models/annotations.py`, `api/workspaces/nodes.py`, `api/responses.py`, `runtime.py`, the OpenAPI file and the generated client, `test_current_api_surface.py`. Frontend: `codebookDesigner.ts`, `codebookDraftStore.ts`, `CodeDesignerBrief.tsx`, `CodebookDesignerDialog.tsx`, `AnnotationProviderModelPicker.tsx` (all new), `AnnotationClassDescriptionsEditor.tsx`, `AnnotationAiSettings.tsx`, `AnnotationFeature.tsx`, `providerCredentialRequests.ts`, `components/ui/dialog.tsx`, `bundledRegistry.ts`, annotation.md | Annotation |
 
 Changes 1, 2 and 6 share `AnalysisCardLayout.tsx`, `ConcordanceParameterPanel.tsx`
 and `AnnotationFeature.tsx`. Changes 5 and 10 share `TokenFrequencyResultsPanel.tsx`
 (10 builds on 5), changes 8 and 9 share `TopicModelingResultsPanel.tsx`, and
 changes 9 and 10 share `common/utils/stopWords.ts`, and changes 1, 6 and 11
-share `AnnotationFeature.tsx`. Applying one of those files
+share `AnnotationFeature.tsx`, and changes 1, 2 and 12 share
+`NodeInputsPanel.tsx`. Applying one of those files
 brings all of its changes. To keep only some, apply the file and remove the
 rest by hand.
 

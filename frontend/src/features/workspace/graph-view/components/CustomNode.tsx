@@ -24,6 +24,7 @@ import { normalizeNodeColor, toNodeSurfaceColor } from '@/lib/nodeColor';
 import { GREY } from '@/features/views/common/vizPalette';
 import { DataBlockName } from '@/components/DataBlockName';
 import type { NodeInputPointerPosition } from '@/stores/nodeInputRequestsStore';
+import { startDataBlockDragGesture } from '@/stores/dataBlockDragStore';
 import { CUSTOM_NODE_TOOLBAR_BUTTON_CLASS, CustomNodeActionMenu } from './CustomNodeActionMenu';
 import { DataBlockExportDialog } from '@/features/workspace/common/components/DataBlockExportDialog';
 import { DataBlockRenameDialog } from '@/features/workspace/common/components/DataBlockRenameDialog';
@@ -298,7 +299,7 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
 
   // The detached outline is the sole persistent node-state decoration.
   const nodeClasses = cn(
-    'w-80 rounded-md border border-surface-border bg-surface text-body',
+    'nopan w-80 cursor-grab touch-none rounded-md border border-surface-border bg-surface text-body',
     isSelected && 'outline outline-2 outline-offset-2 outline-data-block-selection',
   );
 
@@ -338,6 +339,16 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
   const handleAddClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onAddToSelection(node.id, e.detail > 0 ? { x: e.clientX, y: e.clientY } : undefined);
+  };
+
+  /**
+   * A drag that starts on the block carries it to a tool (Chao, 15 Nov 2026).
+   * The block stays where the layout put it; `nopan` on the card keeps the
+   * same drag from panning the graph, so the view pans only from the
+   * background.
+   */
+  const handleCardPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    startDataBlockDragGesture(event, { nodeId: node.id, name: node.name });
   };
 
   /**
@@ -488,13 +499,14 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
   if (isZoomedOut) {
     // Compact view keeps critical controls visible while preserving the compact footprint.
     const compactClasses = cn(
-      'flex items-start rounded-md border border-surface-border p-3 text-foreground',
+      'nopan flex cursor-grab touch-none items-start rounded-md border border-surface-border p-3 text-foreground',
       isSelected && 'outline outline-2 outline-offset-2 outline-data-block-selection',
     );
     return (
       <div
         className={compactClasses}
         data-testid="custom-node-compact-card"
+        onPointerDown={handleCardPointerDown}
         onClick={stopPortaledGraphEvent}
         onDoubleClick={stopPortaledGraphEvent}
         onMouseEnter={showToolbar}
@@ -539,6 +551,7 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
     <div
       className={nodeClasses}
       data-testid="custom-node-card"
+      onPointerDown={handleCardPointerDown}
       onClick={stopPortaledGraphEvent}
       onDoubleClick={stopPortaledGraphEvent}
       onMouseEnter={showToolbar}
