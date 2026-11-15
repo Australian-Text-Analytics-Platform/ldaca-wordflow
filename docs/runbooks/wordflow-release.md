@@ -43,12 +43,13 @@ so CI checks major changes and releases, not every commit. Its Scope job
 |---|---|
 | Push to `v0.7` or `v0.8` | Skipped, unless a commit in the push has the subject `Release X.Y.Z` (everything) or `[ci]` in its message |
 | Pull request | Runs, unless it changes only documentation (`*.md`, `docs/`, `specs/`, help pages) |
-| Pull request into `main`, push to `main` | Everything |
+| Pull request into `main` | Everything |
+| Push to `main` (merging that pull request) | Skipped: the pull request was just checked |
 | By hand: `gh workflow run ci.yml --ref <branch>` | Everything |
 | Push to any other branch | None; such branches are checked through their pull request |
 
 When CI runs, the backend jobs are skipped if only frontend and documentation
-files changed, except for a release or `main`.
+files changed, except for a release or a pull request into `main`.
 
 Small changes go straight to `v0.7` or `v0.8` after the local checks (`pnpm -C
 frontend check`, and `uv run pytest` in `backend/` for backend changes); CI

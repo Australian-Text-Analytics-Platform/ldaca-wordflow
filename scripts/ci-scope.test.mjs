@@ -34,9 +34,19 @@ test('[ci] runs CI, with the backend only when non-frontend files changed', () =
   assert.equal(frontend.backend, false);
 });
 
-test('pushes to main and runs by hand check everything', () => {
-  assert.equal(ciScope({ event: 'push', ref: 'refs/heads/main', files: ['README.md'] }).backend, true);
+test('runs by hand check everything', () => {
   assert.equal(ciScope({ event: 'workflow_dispatch' }).backend, true);
+});
+
+test('a push to main is skipped, even with the release commit its merge brings', () => {
+  const merged = ciScope({
+    event: 'push',
+    ref: 'refs/heads/main',
+    messages: ['Merge pull request #500 from v0.7', 'Release 0.7.21'],
+    files: ['backend/pyproject.toml'],
+  });
+  assert.equal(merged.run, false);
+  assert.equal(merged.backend, false);
 });
 
 test('pull requests skip documentation-only changes and the backend for frontend changes', () => {

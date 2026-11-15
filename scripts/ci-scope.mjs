@@ -6,13 +6,17 @@ import { pathToFileURL } from 'node:url';
  * Decides whether CI runs, and whether it needs the backend jobs.
  *
  * CI checks major changes and releases, not every commit (Chao, 2026-11-14):
- * - by hand (`gh workflow run ci.yml --ref <branch>`) and on pushes to `main`,
- *   which only changes by a release: everything;
- * - a pull request: unless it changes only documentation;
+ * - by hand (`gh workflow run ci.yml --ref <branch>`): everything;
+ * - a pull request: unless it changes only documentation; into `main` (a
+ *   release): everything;
+ * - a push to `main`: nothing. `main` changes only by merging a release pull
+ *   request, which was just checked, so a second hour-long run on the same
+ *   code told us nothing (Chao, 2026-11-15);
  * - a push to `v0.7` or `v0.8`: only with a release commit (subject
  *   "Release X.Y.Z") or "[ci]" in a commit message.
  * The backend jobs (Linux, macOS, Windows, about an hour) are skipped when only
- * the frontend and documentation changed, except for a release or `main`.
+ * the frontend and documentation changed, except for a release or a pull
+ * request into `main`.
  */
 
 const NO_PARENT = /^0+$/;
@@ -42,7 +46,14 @@ const needsBackend = (files) => files === null || files.some((path) => !isFronte
 export function ciScope({ event, ref = '', baseRef = '', messages = [], files = null }) {
   const all = (reason) => ({ run: true, backend: true, reason });
   if (event === 'workflow_dispatch') return all('run by hand');
-  if (event === 'push' && ref === 'refs/heads/main') return all('push to main (a release)');
+  // Before the release-commit rule: the merge brings "Release X.Y.Z" with it.
+  if (event === 'push' && ref === 'refs/heads/main') {
+    return {
+      run: false,
+      backend: false,
+      reason: 'push to main: its pull request was checked; run it by hand if needed',
+    };
+  }
   if (event === 'pull_request') {
     if (baseRef === 'main') return all('pull request into main (a release)');
     if (files !== null && files.every(isDocumentation)) {
