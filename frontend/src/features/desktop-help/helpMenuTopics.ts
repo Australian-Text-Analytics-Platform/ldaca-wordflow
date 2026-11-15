@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   'tutorials/preprocessing.md': 'Data Builder',
   'tutorials/quotation.md': 'Quotation Extraction',
   'tutorials/sequential-analysis.md': 'Trends',
+  'tutorials/settings.md': 'Settings',
   'tutorials/token-frequency.md': 'Frequency',
   'tutorials/topic-modeling.md': 'Topic Modelling',
   'tutorials/ui.md': 'Using Wordflow',

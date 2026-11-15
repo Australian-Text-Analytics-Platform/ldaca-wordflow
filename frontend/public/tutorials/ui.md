@@ -353,9 +353,10 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
 - Contextual Hints are turned off, and back on, under **Settings → Guidance**.
   A hint's **Turn off hints…** shows the way there: it points at the Settings
   gear at the top right, then Settings points out **Guidance** and the
-  **Show contextual hints** option, which you untick yourself. The same page
-  can reset acknowledgement history for the current user, causing eligible hint
-  versions to appear again on this device.
+  **Show contextual hints** option, which you untick yourself. A hint you have
+  acknowledged does not appear again until you choose
+  **Reset Contextual Hint history** there: see
+  [Bringing acknowledged hints back](./settings.md#help-settings-reset-hints).
 - A replayable **Guided Tour** is shown in Help only when one is available. A
   tour is started deliberately and is unaffected by the Contextual Hint switch.
 
@@ -366,24 +367,11 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
   you carry on with other things (typing in a field does not count), or choose
   **Dismiss** to close one at once. Either way it comes back when the same
   situation happens again. Buttons that lose work, such as
-  **Clear results** and **Stop**, are named but never marked. Suggestions appear when:
-  - a Concordance **Preview** finds no matches in the documents it checked,
-    while the Data Block has more: show more **Documents per page**, or
-    **Run** to search them all;
-  - Topic Modelling puts most passages in one topic (try a lower **Max topic
-    size**), finds only a few topics, or leaves 30% or more of the documents
-    [Ungrouped](./topic-modeling.md#help-topic-modeling-ungrouped) (under
-    **Advanced**, set
-    [Ungrouped passages](./topic-modeling.md#help-topic-modeling-ungrouped-passages)
-    to **Join a topic they fit**), then **Run** again;
-  - a Topic Modelling run is still splitting or reading the text after five
-    minutes: reading takes most of a first run, so **Stop**, then lower
-    **Sampling** to read fewer documents;
-  - a Topic Modelling input is large (from about 15,700 documents or 66,000
-    passages): a sample of documents or passages gives a faster first run;
-  - a Trends rate divides by a reference Data Block that lacks one of the
-    Group By columns, so its groups share each period's total: the note under
-    the chart says which columns the totals are grouped by.
+  **Clear results** and **Stop**, are named but never marked. For example, a
+  suggestion appears when a Concordance **Preview** finds no matches on the
+  page it checked, or when Topic Modelling puts most passages in one topic.
+  [Suggestions](./settings.md#help-settings-suggestions) in the Settings page
+  lists every situation and what each one suggests.
 - Clicking a disabled **Run** outlines what it is waiting for, such as an
   empty **Tokeniser model** in Frequency.
 - Suggestions are turned off, and back on, under **Settings → Guidance**

@@ -66,6 +66,7 @@ Data Builder tools (such as filtering, grouping, joining, sampling, and stacking
 - [Quotation extraction](./quotation.md): capture quoted segments with context.
 - [Annotation](./annotation.md): label text manually or with a configured AI provider.
 - [Export](./export.md): download tables or reports.
+- [Settings](./settings.md): what each setting does, and when Contextual Hints and Suggestions appear.
 
 ## Questions to check your understanding
 

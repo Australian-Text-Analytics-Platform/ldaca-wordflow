@@ -651,6 +651,86 @@ const tutorial = {
     anchor: 'help-export-excel-limit',
     label: "Excel's cell limit",
   },
+  'settings.overview': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-section',
+    label: 'Settings',
+  },
+  'settings.appearance': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-appearance',
+    label: 'Appearance',
+  },
+  'settings.preference-sync': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-preference-sync',
+    label: 'Preference sync',
+  },
+  'settings.multi-tab': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-multi-tab',
+    label: 'Enable multi-tab',
+  },
+  'settings.desktop-updates': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-desktop-updates',
+    label: 'Desktop updates',
+  },
+  'settings.portal': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-portal',
+    label: 'LDaCA access token',
+  },
+  'settings.servers-ai': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-servers-ai',
+    label: 'Generative AI servers',
+  },
+  'settings.servers-topic': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-servers-topic',
+    label: 'Topic Modelling servers',
+  },
+  'settings.data-folder': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-data-folder',
+    label: 'Data folder',
+  },
+  'settings.tool-caches': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-tool-caches',
+    label: 'Tool caches',
+  },
+  'settings.favourite-projects': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-favourite-projects',
+    label: 'Favourite Projects',
+  },
+  'settings.views': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-views',
+    label: 'Visible views',
+  },
+  'settings.guidance': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-guidance',
+    label: 'Contextual Hints and Suggestions',
+  },
+  'settings.contextual-hints': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-contextual-hints',
+    label: 'Contextual Hints',
+  },
+  'settings.reset-hints': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-reset-hints',
+    label: 'Reset Contextual Hint history',
+  },
+  'settings.suggestions': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-suggestions',
+    label: 'Suggestions',
+  },
 } as const satisfies Record<string, DocTarget>;
 
 const info = {
