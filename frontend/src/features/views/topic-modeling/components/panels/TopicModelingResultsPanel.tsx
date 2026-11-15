@@ -861,7 +861,9 @@ export function TopicModelingResultsPanel({
                             : null,
                           `${String(wordsPerTopic)} words per topic`,
                           colorBy?.loaded ? `Colour: ${colorBy.column ?? 'Data Block'}` : null,
-                          stopWordsEnabled ? 'Stop words on' : 'Stop words off',
+                          stopWordsEnabled
+                            ? `Stop words on (${String(stopWords.length)})`
+                            : 'Stop words off',
                         ]
                           .filter(Boolean)
                           .join(' · ')}

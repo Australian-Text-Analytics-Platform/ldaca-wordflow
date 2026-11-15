@@ -376,7 +376,7 @@ options to widen or narrow the chart (double-click it to go back). The panel ico
 right of the Display options heading moves the options below the chart, in a
 compact row, and back beside it. On a narrower panel they always sit below the
 chart. Click **Display options** to fold them to one summary line, such as "2
-topics per doc · 15 words per topic · Colour: Data Block · Stop words on"; the
+topics per doc · 15 words per topic · Colour: Data Block · Stop words on (12)"; the
 search term and Add to Project stay available. The tab remembers these choices
 on this computer. Below the chart and options, the topic list takes the left third and the
 [examples of one topic](#help-topic-modeling-examples) the rest; drag the
@@ -573,6 +573,11 @@ off, the dropdown reads **Use stop words**. Choosing a list from the dropdown
 switches it on, and the dropdown then shows **Saved list (N words)**. To stop
 using the list, turn the switch off or choose **Don't use stop words**; the
 saved list is kept for next time. You can edit the list while it is off.
+While the list is in use, a line under the stop word controls names the first
+eight hidden words, newest first, and counts the rest, for example "Hidden
+words: council, the, and, of, a, to, in, is and 12 more". The pencil button
+opens the list for editing; **Sort** in that window sorts it alphabetically,
+and **Save** keeps the change.
 The dropdown's **From other tabs** group lists stop words saved in your other
 Frequency or Topic Modelling tabs; **Wordflow classic lists** offers the built-in
 lists earlier Wordflow versions used; **Languages (stopword library)** offers
