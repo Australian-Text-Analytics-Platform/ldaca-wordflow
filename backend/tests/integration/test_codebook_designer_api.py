@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from fastapi.testclient import TestClient
 
@@ -28,8 +29,8 @@ def _client(tmp_path: Path) -> TestClient:
     )
 
 
-def _events(body: str) -> list[tuple[str, dict[str, object]]]:
-    events: list[tuple[str, dict[str, object]]] = []
+def _events(body: str) -> list[tuple[str, dict[str, Any]]]:
+    events: list[tuple[str, dict[str, Any]]] = []
     for block in body.split("\n\n"):
         name = None
         data = None
