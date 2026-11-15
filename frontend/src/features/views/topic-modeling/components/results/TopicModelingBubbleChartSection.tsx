@@ -44,8 +44,17 @@ interface Props {
   selectedTopicIds: Set<number>;
   onToggleTopicSelection: (id: number) => void;
   onClearSelection: () => void;
+  /** The search box's text: matches are coloured at once. */
   topicSearchQuery: string;
   onTopicSearchQueryChange: (query: string) => void;
+  /** The search last applied: what fades bubbles and narrows the list. Defaults to the box's text. */
+  appliedTopicSearchQuery?: string;
+  /** Each search term's colour slot, so a term keeps its colour. */
+  topicSearchTermSlots?: ReadonlyMap<string, number>;
+  /** Left-click on a word in a bubble's word cloud: add or remove it as a search term. */
+  onSearchWordClick?: (word: string) => void;
+  /** Right-click on a word in a bubble's word cloud: add it to the stop words. */
+  onStopWordAdd?: (word: string) => void;
   corpusSizes: number[];
   panelNodeIds: string[];
   nodeColors: Record<string, string>;
@@ -136,6 +145,10 @@ export function TopicModelingBubbleChartSection({
   onClearSelection,
   topicSearchQuery,
   onTopicSearchQueryChange,
+  appliedTopicSearchQuery = topicSearchQuery,
+  topicSearchTermSlots,
+  onSearchWordClick,
+  onStopWordAdd,
   corpusSizes,
   panelNodeIds,
   nodeColors,
@@ -243,6 +256,8 @@ export function TopicModelingBubbleChartSection({
     hoveredTopicId,
     shownTopicId,
     topicSearchQuery,
+    appliedTopicSearchQuery,
+    topicSearchTermSlots,
     colorScheme,
     plane,
   });
@@ -454,6 +469,8 @@ export function TopicModelingBubbleChartSection({
               onViewReady={onViewReady}
               onToggleTopicSelection={onToggleTopicSelection}
               onToggleShownTopic={examples ? toggleShownTopic : undefined}
+              onWordClick={onSearchWordClick}
+              onWordContextMenu={onStopWordAdd}
             />
           </ResultFrame>
         </div>
@@ -522,6 +539,8 @@ export function TopicModelingBubbleChartSection({
         onToggleTopicSelection={onToggleTopicSelection}
         onClearSelection={onClearSelection}
         topicSearchQuery={topicSearchQuery}
+        appliedTopicSearchQuery={appliedTopicSearchQuery}
+        topicSearchTermSlots={topicSearchTermSlots}
         lassoTopicIds={lassoTopicIds}
         corpusPresentation={corpusPresentation}
         hoveredTopicId={hoveredTopicId}
