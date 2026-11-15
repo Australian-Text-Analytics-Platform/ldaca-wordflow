@@ -421,7 +421,7 @@ export function NodeInputsPanel({
             <>
               No Data Blocks added yet. Use{' '}
               <span className="font-medium not-italic">Add Data Block</span>, drag one here from the
-              Project Graph, or carry one here from a Data Block&apos;s{' '}
+              sidebar or the Project Graph, or carry one here from a Data Block&apos;s{' '}
               <span className="not-italic">+</span> button.
             </>
           )}

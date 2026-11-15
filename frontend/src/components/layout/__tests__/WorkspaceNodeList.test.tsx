@@ -1,10 +1,11 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import WorkspaceNodeList from '../WorkspaceNodeList';
 import { GREY } from '@/features/views/common/vizPalette';
 import { toNodeSurfaceColor } from '@/lib/nodeColor';
+import { useDataBlockDragStore } from '@/stores/dataBlockDragStore';
 import { usePinnedNodesStore } from '@/stores/pinnedNodesStore';
 
 /** Minimal node fixture used to verify row activation and display-name behavior. */
@@ -85,6 +86,61 @@ describe('WorkspaceNodeList', () => {
     await user.keyboard(' ');
 
     expect(onToggleNodeSelection).toHaveBeenCalledTimes(3);
+  });
+
+  it('starts carrying the Data Block when a row is dragged, but not from its action buttons', () => {
+    const onToggleNodeSelection = vi.fn();
+    document.elementFromPoint = () => null;
+    render(
+      <WorkspaceNodeList
+        workspaceId="workspace-1"
+        nodes={nodes}
+        selectedNodeIds={[]}
+        onToggleNodeSelection={onToggleNodeSelection}
+        renderPinnedRowAction={() => null}
+        renderRowActions={() => <button type="button">Add to tool</button>}
+      />,
+    );
+    const move = (x: number) => {
+      const event = new MouseEvent('pointermove', { clientX: x, clientY: 0 });
+      Object.defineProperty(event, 'pointerId', { value: 1 });
+      act(() => {
+        window.dispatchEvent(event);
+      });
+    };
+    const release = () => {
+      const event = new MouseEvent('pointerup', { clientX: 0, clientY: 0 });
+      Object.defineProperty(event, 'pointerId', { value: 1 });
+      act(() => {
+        window.dispatchEvent(event);
+      });
+    };
+
+    // The row's own buttons keep their press.
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Add to tool' }), {
+      button: 0,
+      isPrimary: true,
+      pointerId: 1,
+    });
+    move(40);
+    expect(useDataBlockDragStore.getState().drag).toBeNull();
+    release();
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Select Corpus' }), {
+      button: 0,
+      isPrimary: true,
+      pointerId: 1,
+      clientX: 0,
+      clientY: 0,
+    });
+    move(40);
+    expect(useDataBlockDragStore.getState().drag).toMatchObject({
+      nodeId: 'node-1',
+      name: 'Corpus',
+    });
+    release();
+    expect(useDataBlockDragStore.getState().drag).toBeNull();
+    expect(onToggleNodeSelection).not.toHaveBeenCalled();
   });
 
   it('uses a toned node color as the identity surface with theme text', () => {
