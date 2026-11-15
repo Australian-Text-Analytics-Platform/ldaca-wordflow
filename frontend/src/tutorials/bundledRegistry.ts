@@ -561,6 +561,11 @@ const tutorial = {
     anchor: 'help-quotation-section',
     label: 'Quotation extraction overview',
   },
+  'analysis.annotation.code-designer': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-code-designer',
+    label: 'AI Code Designer',
+  },
   'analysis.annotation.manual': {
     file: 'tutorials/annotation.md',
     anchor: 'help-annotation-manual',

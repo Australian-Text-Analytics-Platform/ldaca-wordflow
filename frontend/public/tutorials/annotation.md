@@ -19,7 +19,8 @@ either directly or with predictions from a configured AI provider.
 3. Under **Codebook**, add a Data Block and map its code and description
    columns. Use **Create new** when you need an empty Codebook, then click
    **Edit** beside **Codes** to add, rename, or remove codes and their
-   descriptions before labelling.
+   descriptions before labelling. The [AI Code Designer](#help-annotation-code-designer)
+   can draft a first set of codes for you.
 
    ![Edit codebook dialog with three codes](tutorials/assets/annotation/edit_codebook.png)
 
@@ -37,10 +38,64 @@ either directly or with predictions from a configured AI provider.
    Codebook Data Block it is one row named `__task_context__`; that row is
    never a code.
 
+   The Edit dialog keeps unsaved changes, whether typed or drafted by the AI
+   Code Designer, until you choose **Save** or discard them. Closing the
+   dialog, pressing Esc or switching to another tab or tool keeps them, and
+   the Codes card says so; **Cancel** asks before discarding. They last while
+   Wordflow stays open: reloading the page loses them.
+
 4. Use the **Manual / AI** switch to choose a mode. The source and Codebook are
    shared between both modes.
 
 ![Annotation setup: source Data Block, annotation column, Codebook, and the Manual / AI switch](tutorials/assets/annotation/setup.png)
+
+<h3 id="help-annotation-code-designer">AI Code Designer</h3>
+
+The AI Code Designer drafts a first Codebook for you to review and tune. It
+reads a sample of your texts and a short **Brief**, and suggests codes with
+definitions, plus a code named **Other** for texts that fit none of them. It
+also shows how to describe a coding task to an AI model in plain language. It
+works in both Manual and AI mode, and it only drafts: the thinking and the
+checking stay with you.
+
+1. In the Edit dialog, write the **Brief** above Task context: what you want
+   to find out, as a research question, hypothesis or aim, in up to 250 words.
+   Task context, if you have one, is sent too as background. The Brief is kept
+   with this tab on this computer and is never sent with annotation.
+2. Set **Maximum classes** (2 to 10, default 3). Other comes on top, so the
+   default gives at most four codes. The model may suggest fewer.
+3. Choose **AI Code Designer**. If the Codebook already has codes, a warning
+   comes first: the draft replaces them, and starting a fresh Codebook with
+   **Create new** keeps them. Choose **Continue** to go on.
+4. The designer window says what is sent where. Check the **Provider** and
+   **Model**: they start on this tab's AI choice, but you can pick a stronger
+   reasoning model for this one request without changing the model used for
+   annotation. **Sample size** (default 100, 20 to 300) is how many texts are
+   sent, picked at random from the distinct, non-empty texts in the text
+   column, each cut to its first 150 words; the same **Sample seed** picks the
+   same texts. **Thinking effort** (default High; None turns thinking off)
+   applies when the model supports thinking. Turn on **Advanced** at the top
+   right to read or change the system prompt; **Restore default** brings back
+   Wordflow's.
+5. Choose **Design codebook**. The window stays open and shows what it is
+   doing and for how long. Thinking models can take several minutes, and
+   local models longer; **Stop** cancels the request. A request that runs
+   longer than five minutes stops with a message.
+6. The draft fills the Edit dialog, marked **AI draft, not saved**. Read
+   every code and definition, change what you like, and choose **Save**.
+   Saving is one Data Block Edit, so Undo in the Data Editor brings back the
+   previous Codebook. The designer never changes Task context.
+
+The model is asked to describe kinds of content in general words, never to
+quote your texts or name people, places or organisations that appear only in
+them. It may not always comply, so check every definition for real text or
+names from your data before saving or sharing the Codebook. Your sample texts
+are sent to the AI provider you choose, as they are for Preview and Run.
+
+Once you change the codes by hand and save, the Brief turns grey and the
+designer waits: the Brief no longer describes your codes. You can still select
+and copy it, and editing it makes it the Brief for the next draft. Saving a
+draft exactly as the designer wrote it doesn't do this.
 
 <h2 id="help-annotation-manual">Manual workflow</h2>
 

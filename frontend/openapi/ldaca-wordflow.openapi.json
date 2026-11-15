@@ -3153,6 +3153,128 @@
         "title": "CloneNodeCreateRequest",
         "type": "object"
       },
+      "CodebookDraftRequest": {
+        "additionalProperties": false,
+        "description": "One AI Code Designer request (Chao, 15 Nov 2026).\n\nThe sample is drawn from the Data Block in the route and ``text_column``.\n``system_prompt`` is the designer prompt shown under Advanced; its default\nlives in the frontend, like the annotation prompt. The answer format is\nappended on the server.",
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key",
+            "writeOnly": true
+          },
+          "brief": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Brief",
+            "type": "string"
+          },
+          "max_classes": {
+            "default": 3,
+            "maximum": 10.0,
+            "minimum": 2.0,
+            "title": "Max Classes",
+            "type": "integer"
+          },
+          "model": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "openai",
+              "openrouter",
+              "anthropic",
+              "google",
+              "custom"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_base_url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Base Url"
+          },
+          "provider_configuration_id": {
+            "format": "uuid",
+            "title": "Provider Configuration Id",
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "default": "high",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Reasoning Effort",
+            "type": "string"
+          },
+          "sample_seed": {
+            "default": 0,
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Sample Seed",
+            "type": "integer"
+          },
+          "sample_size": {
+            "default": 100,
+            "maximum": 300.0,
+            "minimum": 20.0,
+            "title": "Sample Size",
+            "type": "integer"
+          },
+          "system_prompt": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "System Prompt",
+            "type": "string"
+          },
+          "task_context": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Task Context",
+            "type": "string"
+          },
+          "text_column": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text Column",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_configuration_id",
+          "provider",
+          "model",
+          "text_column",
+          "brief",
+          "system_prompt"
+        ],
+        "title": "CodebookDraftRequest",
+        "type": "object"
+      },
       "ColumnExamplesResource": {
         "additionalProperties": false,
         "description": "Each column's first non-empty value as short text (issue 354).\n\n``None`` marks a column with no values: all missing, NaN or blank text.\nKeys follow the Data Block's column order.",
@@ -23568,6 +23690,110 @@
           }
         ],
         "summary": "Get Category Values",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/codebook-draft": {
+      "post": {
+        "description": "AI Code Designer: a first-draft codebook from a brief and a sample of this Data Block.\n\nStreams ``stage`` events (sampling, waiting, reading), then one ``draft``\nor ``error`` event. FastAPI sends a keep-alive comment every 15 seconds\nwhile the model thinks; closing the request cancels the model call.",
+        "operationId": "draft_codebook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodebookDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "itemSchema": {
+                  "properties": {
+                    "data": {
+                      "type": "string"
+                    },
+                    "event": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "retry": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Draft Codebook",
         "tags": [
           "nodes"
         ]

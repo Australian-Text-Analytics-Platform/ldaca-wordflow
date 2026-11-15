@@ -27,11 +27,13 @@ were implemented.
 | Frequency result controls compacted | Implemented |
 | Task entry points, focused layout, Annotation setup sequence, when a Codebook is created | Not started. Each needs a product decision first |
 | Research or workflow profiles | Not started, as Astra recommended |
-| Product owner's requests while testing (15 November) | Implemented as changes 6 to 10 (requests R1 to R9) |
+| Product owner's requests while testing (15 November) | Implemented as changes 6 to 11 (requests R1 to R10) |
 
 Changes 1 to 6 and 8 to 10 make no backend, API, saved-state or preference
 changes. Each is presentation, wording or a client-side shortcut to an existing
 action. Change 7 changes one backend default, recorded in the OpenAPI file.
+Change 11 adds one backend route, recorded in the OpenAPI file; it changes no
+saved Project format.
 
 ## Updated To 0.7.20
 
@@ -268,6 +270,51 @@ Requests R4 to R7.
   still tracks it).
 - Help image `token_frequency/display_limits.png` was recaptured to match.
 
+### 11. AI Code Designer
+
+Request R10, built to the [agreed design](#agreed-design-for-r10-ai-code-designer).
+
+- **Backend.** `POST /api/workspaces/{workspace_id}/nodes/{node_id}/codebook-draft`
+  streams server-sent events: `stage` (sampling, waiting, reading), then one
+  `draft` or `error`. FastAPI sends a keep-alive every 15 seconds while the
+  model thinks, and closing the request (Stop) cancels the model call. The
+  sample is drawn under a read lease, released before the model is called.
+  `infrastructure/providers/codebook_designer.py` holds sampling, the answer
+  format appended to the prompt, the strict JSON schema and answer reading
+  (Other always last, named exactly; at most the maximum real classes;
+  repeated and reserved names dropped). `AnnotationService.draft_codebook`
+  runs it through the existing provider adapters and credential store, with
+  plain error messages. The route's 404 and 422 are documented as JSON
+  (`streaming_api_errors`).
+- **The default system prompt** is `DEFAULT_CODEBOOK_DESIGNER_PROMPT` in
+  `frontend/src/features/views/annotation/codebookDesigner.ts`: the prompt
+  agreed on 15 November, without its last paragraph (the JSON answer format),
+  which the server appends so an edited prompt can't break reading the answer.
+- **Frontend.** The brief, maximum classes and button sit above Task context
+  (`CodeDesignerBrief.tsx`). The designer window (`CodebookDesignerDialog.tsx`)
+  has the disclaimer, its own provider and model (starting on the tab's), sample
+  size and seed, thinking effort, and the Advanced prompt; while it runs it
+  hides ×, ignores Esc and outside clicks, and shows the stage, a clock and,
+  after 30 seconds, that slow is normal. The provider and model picker was
+  split out of the AI settings as `AnnotationProviderModelPicker.tsx` with an
+  id prefix, so both can be on screen. `DialogContent` gained `hideCloseButton`.
+- **Unsaved changes are kept** per tab and codebook in a session store
+  (`codebookDraftStore.ts`): closing the Edit window keeps them, the Codes card
+  says so, and Cancel asks before discarding. This applies to typed changes
+  too, not only AI drafts.
+- **Brief lock.** The designer's state is one tab setting,
+  `annotation.codeDesigner`, on this device like the tab's other settings.
+  Saving codes that differ from the designed ones sets `briefStale`; editing
+  the brief clears it. Saving the AI draft unchanged doesn't lock it.
+- **xhigh** thinking effort was not added: Wordflow's provider adapters know
+  low, medium and high only.
+
+Screenshots: [Edit window with the AI draft](implementation/after-14-ai-draft.png),
+[designer window with Advanced](implementation/after-12-designer-window.png),
+[running](implementation/after-13-designer-running.png),
+[greyed brief](implementation/after-15-brief-stale.png),
+[overwrite warning](implementation/after-16-overwrite-warning.png).
+
 ### Help pages
 
 The Help pages, which are the documentation source of truth, were updated to
@@ -296,7 +343,7 @@ migration entries can be written from them later.
 | R7 | 15 Nov 2026 | Frequency: show only the Cloud display limit in Cloud view and only the List display limit in List view. The link between the two values does not change. | Done, change 10 |
 | R8 | 15 Nov 2026 | Topic Modelling: add a **Sort** button to the stop-word editing window, working like Frequency's. | Done, change 9 |
 | R9 | 15 Nov 2026 | Topic Modelling search box: show the usage tooltip only on the magnifier icon, or on the box when it is empty or its text fits. When the terms overflow the box, hovering the text shows the full list instead. | Done, change 8 |
-| R10 | 15 Nov 2026 | Annotation "Code designer": let the AI draft a first codebook from a sample of the real data and a short description of the coding aim (no more than 250 words, entered above Task context, which is optional extra background). The user sets a maximum number of classes (default 3), plus an "Other" class; the draft may have fewer. Definitions under 60 words, readable, and never containing real text from the data. Only for a new or empty codebook; regenerating warns before overwriting. Reasoning on. One pass, no evaluation rounds. Sample by default 10% or capped at 100 (to be settled). The hard-coded system prompt and the sampling options show only under an advanced toggle in the codebook window. R1 to R9 tested by the product owner on 15 November: all work as designed. | Design under discussion; not started |
+| R10 | 15 Nov 2026 | Annotation "Code designer": let the AI draft a first codebook from a sample of the real data and a short description of the coding aim (no more than 250 words, entered above Task context, which is optional extra background). The user sets a maximum number of classes (default 3), plus an "Other" class; the draft may have fewer. Definitions under 60 words, readable, and never containing real text from the data. Only for a new or empty codebook; regenerating warns before overwriting. Reasoning on. One pass, no evaluation rounds. Sample by default 10% or capped at 100 (to be settled). The hard-coded system prompt and the sampling options show only under an advanced toggle in the codebook window. R1 to R9 tested by the product owner on 15 November: all work as designed. | Done, change 11 |
 
 ### Agreed Design For R3 To R8
 
@@ -368,6 +415,65 @@ in the card are coloured, not bold).
 - Cloud view shows only the Cloud display limit; List view shows only the List
   display limit. The values stay linked as before.
 
+### Agreed Design For R10: AI Code Designer
+
+Agreed with the product owner on 15 November 2026, question by question.
+
+**Principle.** The designer is a kick-off assistant. The user does the
+thinking and checking: the model's compliance is out of Wordflow's control, so
+the window says so, and there is no automatic check of the definitions.
+
+**In the Edit codebook window**
+
+- An optional **Brief** above Task context: what the coding is for, up to 250
+  words. Beside it, **Maximum classes**: default 3, range 2 to 10, not counting
+  Other.
+- An **AI Code Designer** button, available in Manual mode too. It needs a
+  brief, an Annotation Data Block and its text column.
+- The brief and maximum are kept with the Annotation tab, not in the codebook,
+  and are never sent with annotation requests.
+- Unsaved changes in the window, from the designer or typed by hand, stay with
+  the tab until **Save** or a confirmed discard. Closing the window (×, Esc,
+  clicking outside) keeps them; **Cancel** asks first. They last while the tab
+  is open in this session; a reload loses them.
+- After the codes are changed by hand and saved, the brief greys out and the
+  button locks. The brief can still be selected and copied, and editing it
+  unlocks the button. Saving an untouched AI draft doesn't lock it.
+
+**Starting a design**
+
+- If the codebook already has codes, a separate warning comes first, with
+  **Cancel** and **Continue**: the codes will be overwritten; consider a fresh
+  codebook.
+- Then the designer window, always shown: a disclaimer (texts are sent to the
+  provider; review every code; check definitions hold no real text or names; a
+  stronger reasoning model gives a better draft), provider and model (starting
+  on the tab's choice), sample size (100, range 20 to 300), sample seed, and
+  thinking effort (None, Low, Medium, High; default High).
+- An **Advanced** toggle at its top right shows the system prompt, editable,
+  with a way back to the default.
+- Sampling: random non-empty, distinct texts from the tab's Annotation Data
+  Block and text column, each cut to its first 150 words.
+
+**While it runs**
+
+- The window is locked until it finishes: Esc, × and clicking outside do
+  nothing; **Stop** cancels.
+- Progress: the stage (sampling, waiting for the model, reading the answer),
+  a running clock, a reassurance after 30 seconds that thinking and local
+  models can take minutes, and a message at once if the connection drops.
+
+**The result**
+
+- Up to the maximum of real classes, then an ordinary, editable code named
+  **Other** with a task-specific definition. Names of one to three words;
+  definitions under 60 words, in the brief's language. These are prompt rules.
+- The draft fills the Edit codebook window unsaved; **Save** writes it as one
+  edit (Undo works). Task context is never written by the designer.
+- On failure, the provider's message shows and the settings are kept; no
+  automatic retry.
+- The system prompt is hard-coded with the designer and listed in this record.
+
 ## Not Changed, And Why
 
 - **Sidebar labels.** Claude's review proposed aligning "Loader" with "Data
@@ -393,6 +499,9 @@ in the card are coloured, not bold).
 | Backend tests for Frequency and the analysis contract | 40 passed |
 | Run-row help and cloud default, [script](implementation/live-check-rowhelp.mjs) | 16 of 16 in WebKit and Chromium: one icon in each of the six tools (both Annotation modes), no shared "Clear results" name, Help opens at Frequency's Run step, cloud limit 40 after a run |
 | Full frontend check after changes 8 to 10 | Passed: 376 test files with 2,031 tests, unused code, build, Help |
+| Full frontend check after change 11 | Passed: 378 test files with 2,042 tests, unused code, build, Help with 81 icon references |
+| Full backend tests after change 11 | 1,561 passed, 2 skipped (stress and soak tests) |
+| AI Code Designer, [script](implementation/live-check-designer.mjs) with [a stand-in model server](implementation/fake-llm-server.py) | 22 of 22 in WebKit and Chromium, no page errors or API errors: waits for a brief, word count, disclaimer, defaults (100, 0, High), prompt only under Advanced, stage names the model and texts sent, no × and Esc or outside clicks ignored while running, clock runs, 30-second note, draft fills the window marked unsaved, Task context untouched, closing keeps the draft, Save, untouched AI save leaves the brief usable, hand edit greys it, editing unlocks it, overwrite warning first, Stop returns to the form with the codes unchanged. The stand-in server logged the request: the default prompt plus the answer format with the maximum, the brief and Task context, 100 of 400 texts, thinking effort high, and the strict schema |
 | Changes 8 to 10, [script](implementation/live-check-r3.mjs) | 31 of 31 in WebKit and Chromium, no page errors or API errors. Frequency: Sort, limit row and view switch, Enter applies. Topic Modelling on a 400-row themed corpus (7 topics): card opens after the pause, stays with the pointer in it, word click adds then removes a term without selecting the Topic, other words stay in place, right-click adds a stop word first and turns the switch on without toggling examples, closes after leaving, Shift holds it, typing doesn't filter and Enter does, emptying clears, tooltip rules, Sort in the window |
 
 One earlier WebKit run, made while the screenshot timing was being adjusted,
@@ -433,7 +542,7 @@ baseline is read from the screenshot, not measured with this script.
 ## Found While Working
 
 The first two existed on v0.7 before this branch and are resolved here. The
-last two were found while checking change 8 and are not fixed.
+others were found while checking changes 8 and 11 and are not fixed.
 
 - The help icon beside the results button was also named "Clear results", so
   two neighbouring controls shared an accessible name. Fixed by change 6.
@@ -452,6 +561,16 @@ last two were found while checking change 8 and are not fixed.
   affected. It comes from the shared word cloud's layout, so Frequency's
   right-click has it too, and the desktop app uses WebKit. Possible fix:
   a little more spacing between words in the shared cloud.
+- **An analysis tab forgets its Data Blocks when you switch tool before it
+  has run.** A tab's input choices live in the tool's on-screen state until a
+  Preview or Run is sent, and leaving the tool drops them (this is v0.7's
+  behaviour). For Annotation this means a new tab loses its Annotation Data
+  Block and Codebook on a tool switch. The AI Code Designer's unsaved draft is
+  kept separately, per tab and codebook, so it is not lost with them.
+- **Model requests stop after five minutes.** Every provider request has a
+  300-second limit (`INFERENCE_TIMEOUT_SECONDS`). A slow local model thinking
+  hard could reach it; the designer then shows the provider's timeout message.
+  The limit could be raised for the designer only if this proves a problem.
 
 ## How To Test Each Change
 
@@ -500,6 +619,15 @@ judged on its own.
 10. **Frequency limits.** Check **Sort** appears only with the list open, the
     limit sits beside the view selector and swaps with the view, an opened
     list pushes the limit row down, and Enter or clicking away applies a limit.
+11. **AI Code Designer.** In an Annotation tab with a Data Block and text
+    column, choose **Create new** for an empty Codebook and open **Edit**.
+    Write a brief and choose **AI Code Designer**. Check the disclaimer, try
+    **Advanced**, pick a strong model and design. While it runs, check Esc
+    and clicking outside do nothing, and try **Stop** once. Review the draft,
+    close the window and reopen it (the draft stays), then **Save**. Change a
+    code by hand, save, and check the brief greys out until you edit it.
+    Design again on a codebook with codes: the warning comes first. Also type
+    a code by hand, press Esc, and check it's still there.
 
 Things worth deciding while testing:
 
@@ -510,6 +638,10 @@ Things worth deciding while testing:
 - The card's timings (0.15 seconds to open, 0.3 to close) are first guesses.
   They are constants in `useBubblePopup.ts`.
 - Whether coloured-not-bold matches in the card are clear enough.
+- How good the designer's drafts are with your models, and whether the
+  default prompt needs tuning. It is in `codebookDesigner.ts` and editable
+  under Advanced.
+- Whether 100 texts is the right default sample.
 
 ## Merge Notes
 
@@ -539,11 +671,13 @@ Include the matching tests and Help pages from the table below.
 | 8. Topic word clouds and search | `useBubblePopup.ts` (new), `topicSearch.ts` (new), `TopicModelingFlowChart.tsx`, `components/node-tooltip.tsx` (removed), `useTopicModelingResultControls.ts`, `topicModelingAdapters.ts`, `topicModelingGraph.ts`, `TopicSelectionPanel.tsx`, `TopicModelingBubbleChartSection.tsx`, `TopicModelingResultsPanel.tsx`, `TopicModelingFeature.tsx`, topic-modeling.md | Topic Modelling |
 | 9. Topic stop words | `TopicModelingStopWordsControl.tsx`, `TopicModelingResultsPanel.tsx`, `common/utils/stopWords.ts`, topic-modeling.md | Topic Modelling |
 | 10. Frequency limits | `TokenFrequencyResultsPanel.tsx`, `TokenFrequencyFeature.tsx`, `useTokenFrequencyPreferences.ts`, `common/utils/stopWords.ts`, token-frequency.md, `display_limits.png` | Frequency and Keyword Analysis |
+| 11. AI Code Designer | Backend: `codebook_designer.py` (new), `services/annotations.py`, `models/annotations.py`, `api/workspaces/nodes.py`, `api/responses.py`, `runtime.py`, the OpenAPI file and the generated client, `test_current_api_surface.py`. Frontend: `codebookDesigner.ts`, `codebookDraftStore.ts`, `CodeDesignerBrief.tsx`, `CodebookDesignerDialog.tsx`, `AnnotationProviderModelPicker.tsx` (all new), `AnnotationClassDescriptionsEditor.tsx`, `AnnotationAiSettings.tsx`, `AnnotationFeature.tsx`, `providerCredentialRequests.ts`, `components/ui/dialog.tsx`, `bundledRegistry.ts`, annotation.md | Annotation |
 
 Changes 1, 2 and 6 share `AnalysisCardLayout.tsx`, `ConcordanceParameterPanel.tsx`
 and `AnnotationFeature.tsx`. Changes 5 and 10 share `TokenFrequencyResultsPanel.tsx`
 (10 builds on 5), changes 8 and 9 share `TopicModelingResultsPanel.tsx`, and
-changes 9 and 10 share `common/utils/stopWords.ts`. Applying one of those files
+changes 9 and 10 share `common/utils/stopWords.ts`, and changes 1, 6 and 11
+share `AnnotationFeature.tsx`. Applying one of those files
 brings all of its changes. To keep only some, apply the file and remove the
 rest by hand.
 

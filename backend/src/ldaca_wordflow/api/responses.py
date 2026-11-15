@@ -38,6 +38,27 @@ def api_errors(*status_codes: int) -> dict[int | str, dict[str, Any]]:
     }
 
 
+def streaming_api_errors(*status_codes: int) -> dict[int | str, dict[str, Any]]:
+    """ApiError responses for a route that streams its success (server-sent events).
+
+    FastAPI documents ``model`` responses with the route's own media type, so
+    a streaming route would list its JSON errors as event streams. These name
+    the JSON body explicitly.
+    """
+
+    return {
+        status_code: {
+            "description": _DESCRIPTIONS[status_code],
+            "content": {
+                "application/json": {
+                    "schema": {"$ref": "#/components/schemas/ApiError"}
+                }
+            },
+        }
+        for status_code in status_codes
+    }
+
+
 def route_path(request: Request, route_name: str, **path_params: object) -> str:
     """Return a named route's origin-relative path, including ASGI root_path.
 
@@ -65,4 +86,10 @@ def workspace_etag(revision: int) -> str:
     return f'"{revision}"'
 
 
-__all__ = ["api_errors", "route_path", "route_path_with_query", "workspace_etag"]
+__all__ = [
+    "api_errors",
+    "streaming_api_errors",
+    "route_path",
+    "route_path_with_query",
+    "workspace_etag",
+]
