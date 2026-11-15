@@ -19,10 +19,11 @@ from dataclasses import dataclass, field
 
 # English text is about four characters to a token; three errs on the high side.
 ASCII_CHARS_PER_TOKEN = 3
-# json.dumps writes each non-ASCII character as a six-character \uXXXX escape,
-# which tokenizers split into several tokens.
+# A \uXXXX escape (a control character, or text that is not valid Unicode):
+# six characters that tokenizers split into several tokens.
 ESCAPE_TOKENS = 4
-# Text sent as it is (instruction, codes, examples): CJK and other scripts.
+# Texts are sent as written. A Chinese, Japanese or Korean character is one to
+# two tokens; other scripts are fewer per character, so two is on the high side.
 NON_ASCII_TOKENS = 2
 # Kept free below the window for what the estimate cannot see.
 SAFETY_MARGIN = 0.10
@@ -54,10 +55,26 @@ def estimate_tokens(text: str) -> int:
     )
 
 
+def json_as_written(value: object) -> str:
+    """JSON with every character as written, not as a \\uXXXX code.
+
+    A Chinese character sent as its six-character code costs several tokens
+    and is harder for a model to read (issue 493). Text that is not valid
+    Unicode cannot be sent as written, so it alone keeps the codes.
+    """
+
+    rendered = json.dumps(value, ensure_ascii=False)
+    try:
+        rendered.encode("utf-8")
+    except UnicodeEncodeError:
+        return json.dumps(value)
+    return rendered
+
+
 def estimate_text_tokens(text: str) -> int:
     """One text's tokens inside the JSON array a batch is sent as."""
 
-    return estimate_tokens(json.dumps(text)) + 1
+    return estimate_tokens(json_as_written(text)) + 1
 
 
 @dataclass(slots=True)
@@ -214,4 +231,5 @@ __all__ = [
     "TokenBudget",
     "estimate_text_tokens",
     "estimate_tokens",
+    "json_as_written",
 ]

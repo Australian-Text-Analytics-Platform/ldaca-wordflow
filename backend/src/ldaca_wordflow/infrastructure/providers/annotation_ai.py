@@ -26,7 +26,13 @@ from .annotation_adapter import (
     max_completion_tokens,
 )
 from .annotation_anthropic import AnthropicAnnotationAdapter
-from .annotation_batching import Batch, BatchPlanner, TokenBudget, estimate_tokens
+from .annotation_batching import (
+    Batch,
+    BatchPlanner,
+    TokenBudget,
+    estimate_tokens,
+    json_as_written,
+)
 from .annotation_google import GoogleAnnotationAdapter
 from .annotation_openai import (
     CustomOpenAICompatibleAnnotationAdapter,
@@ -168,7 +174,8 @@ def build_annotation_user_prompt(texts: list[str]) -> str:
     return "\n".join(
         [
             f"Classify these {len(texts)} texts (JSON array, preserve order):",
-            json.dumps(texts),
+            # As written: "气候" is two characters to the model, not twelve.
+            json_as_written(texts),
         ]
     )
 

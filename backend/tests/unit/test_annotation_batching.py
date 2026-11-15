@@ -23,6 +23,7 @@ from ldaca_wordflow.infrastructure.providers.annotation_adapter import (
 from ldaca_wordflow.infrastructure.providers.annotation_ai import (
     annotate_all,
     annotate_preview,
+    build_annotation_user_prompt,
 )
 from ldaca_wordflow.infrastructure.providers.annotation_anthropic import (
     AnthropicAnnotationAdapter,
@@ -141,15 +142,31 @@ def _long_texts(count: int, characters: int) -> list[str]:
     return [f"{index:04d} " + "word " * (characters // 5) for index in range(count)]
 
 
-def test_the_estimate_is_on_the_high_side_for_english_and_escaped_text() -> None:
+def test_the_estimate_is_on_the_high_side_for_english_and_other_scripts() -> None:
     english = "The quick brown fox jumps over the lazy dog. " * 40
     assert estimate_tokens(english) >= len(english) / 4
-    # json.dumps writes each CJK character as a \uXXXX escape: several tokens.
+    # A Chinese character is one to two tokens: counted as two, not as the
+    # several a \uXXXX code would cost.
     chinese = "气候变化是一个全球性的问题" * 20
-    assert estimate_text_tokens(chinese) >= 3 * len(chinese)
-    # Text sent as it is (the instruction, examples) counts each character.
-    assert estimate_tokens(chinese) >= len(chinese)
+    assert len(chinese) < estimate_text_tokens(chinese) <= 2 * len(chinese) + 2
+    for other in ("Изменение климата", "تغير المناخ", "기후 변화", "気候変動"):
+        assert estimate_text_tokens(other) >= len(other.replace(" ", ""))
     assert estimate_tokens("") == 0
+
+
+def test_texts_reach_the_model_as_written_not_as_unicode_codes() -> None:
+    texts = ["气候变化", "Ça va « bien »", 'a "quoted" line\nand a tab\t']
+
+    user = build_annotation_user_prompt(texts)
+
+    assert "气候变化" in user and "Ça va « bien »" in user
+    assert "\\u" not in user
+    # Still one JSON array on one line, read back unchanged.
+    assert json.loads(user.split("\n", 1)[1]) == texts
+    # Text that is not valid Unicode cannot be sent as written: it keeps codes.
+    broken = build_annotation_user_prompt(["half a pair \ud83d"])
+    assert "\\ud83d" in broken
+    broken.encode("utf-8")
 
 
 def test_a_batch_fills_to_the_text_limit_or_the_token_budget_whichever_is_first() -> None:
