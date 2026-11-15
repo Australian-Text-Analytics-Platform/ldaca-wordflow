@@ -261,6 +261,11 @@ EXPECTED_OPERATIONS = {
         "get_corpus_overview",
     ),
     (
+        "POST",
+        "/api/workspaces/{workspace_id}/nodes/{node_id}/codebook-draft",
+        "draft_codebook",
+    ),
+    (
         "GET",
         "/api/workspaces/{workspace_id}/nodes/{node_id}/topic-segment-lengths",
         "get_topic_segment_lengths",

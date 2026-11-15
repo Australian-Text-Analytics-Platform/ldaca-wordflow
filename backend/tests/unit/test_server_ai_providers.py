@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from collections.abc import Iterator
@@ -628,6 +629,73 @@ async def test_end_user_comes_from_the_account_email_or_subject(
     assert await resolver.end_user(by_subject, user_id) == "fixture-user"
     nobody = ServerAiProvider.model_validate({**PROVIDER, "send_user": "none"})
     assert await resolver.end_user(nobody, user_id) == ""
+
+
+@pytest.mark.anyio
+async def test_username_is_the_sign_ins_login_name_and_the_email_until_known(
+    research_env: None, multi_user_test_client: TestClient
+) -> None:
+    """send_user: username (issue 474): one person under one id across apps."""
+    user_id = multi_user_test_client.get("/api/session").json()["user"]["id"]
+    resolver = server_ai._resolver
+    assert resolver is not None
+    by_username = ServerAiProvider.model_validate({**PROVIDER, "send_user": "username"})
+
+    # Signed in before the upgrade: no login name yet, so the email.
+    assert await resolver.end_user(by_username, user_id) == "fixture@example.test"
+
+    sessions = resolver._sessions
+    identity = {
+        "issuer": "https://accounts.google.com",
+        "subject": "fixture-user",
+        "email": "fixture@example.test",
+        "name": "Fixture User",
+        "picture": None,
+    }
+    await sessions.upsert_oidc_user(**identity, username=" ABCD1234 ")
+    assert await resolver.end_user(by_username, user_id) == "abcd1234"
+    # A later sign-in without one keeps it; the email setting is unchanged.
+    await sessions.upsert_oidc_user(**identity)
+    assert await resolver.end_user(by_username, user_id) == "abcd1234"
+    assert await resolver.end_user(_provider(), user_id) == "fixture@example.test"
+    assert await resolver.user_details(user_id) == {
+        "email": "fixture@example.test",
+        "name": "Fixture User",
+    }
+
+
+@pytest.mark.anyio
+async def test_user_details_label_requests_only_when_the_provider_asks(
+    research_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """send_user_details: app, email and name in LiteLLM's spend-log metadata header."""
+    calls = _install_fake_openai(monkeypatch, ['{"labels": ["Relevant"]}'] * 2)
+
+    class _Resolver:
+        async def user_details(self, user_id: str) -> dict[str, str]:
+            assert user_id == "user-a"
+            return {"email": "alice@uni.edu", "name": "Alice Ångström"}
+
+    labelled = {**PROVIDER, "send_user": "username", "send_user_details": True}
+    _write_providers(tmp_path, monkeypatch, labelled)
+    monkeypatch.setattr(server_ai, "_resolver", _Resolver())
+    await ServerAiAnnotationAdapter(ServerAiProvider.model_validate(labelled)).complete(
+        "qwen3-32b", _binding(end_user="abcd1234"), "system", "user", CONFIG
+    )
+    assert calls["creates"][-1]["user"] == "abcd1234"
+    header = calls["clients"][-1]["default_headers"]["x-litellm-spend-logs-metadata"]
+    assert header.isascii()
+    assert json.loads(header) == {
+        "app": "wordflow",
+        "email": "alice@uni.edu",
+        "name": "Alice Ångström",
+    }
+
+    _write_providers(tmp_path, monkeypatch, PROVIDER)
+    await ServerAiAnnotationAdapter(_provider()).complete(
+        "qwen3-32b", _binding(end_user="abcd1234"), "system", "user", CONFIG
+    )
+    assert calls["clients"][-1]["default_headers"] is None
 
 
 # One request at a time per user ------------------------------------------------------

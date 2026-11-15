@@ -5,6 +5,7 @@ import {
   Controls,
   type Node,
   type NodeProps,
+  NodeToolbar,
   type NodeTypes,
   Position,
   ReactFlow,
@@ -16,7 +17,6 @@ import {
 } from '@xyflow/react';
 import { Download, Eye, FilterX, LassoSelect, Minus, Plus, Scan } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { NodeTooltip, NodeTooltipContent, NodeTooltipTrigger } from '@/components/node-tooltip';
 import { ResponsiveWordCloud } from '@/features/views/common/components/ResponsiveWordCloud';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CHART_ZOOM_KEY } from '@/lib/chartZoom';
@@ -33,6 +33,7 @@ import {
 import { topicLabel, topicShortLabel } from '../../ungrouped';
 import { topicNameDisplay } from '../../topicNames';
 import { useTopicNames } from './topicNamesContext';
+import { BubblePopupContext, useBubblePopup, useBubblePopupContext } from './useBubblePopup';
 
 interface TopicBubbleNodeData extends Record<string, unknown> {
   bubble: TopicBubbleModel;
@@ -66,6 +67,10 @@ interface Props {
   onToggleTopicSelection: (topicId: number) => void;
   /** Right-click shows or stops showing a Topic's examples (issue 353). */
   onToggleShownTopic?: (topicId: number) => void;
+  /** Left-click on a word in a bubble's word cloud (adds or removes a search term). */
+  onWordClick?: (word: string) => void;
+  /** Right-click on a word in a bubble's word cloud (adds a stop word). */
+  onWordContextMenu?: (word: string) => void;
 }
 
 const NODE_ORIGIN: [number, number] = [0.5, 0.5];
@@ -144,9 +149,27 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
   // underlined so it reads as named; the tooltip shows the name.
   const { names } = useTopicNames();
   const display = topicNameDisplay(bubble.topic, names);
+  // One card open at a time, with open and close delays, so the pointer can
+  // move into the card and click its words (Chao, 15 Nov 2026).
+  const popup = useBubblePopupContext();
+  const wordsClickable = Boolean(popup.onWordClick ?? popup.onWordContextMenu);
+  // A faded bubble has no card, as before.
+  const cardOpen = popup.popupId === bubble.id && !bubble.filteredOut;
+  // The card renders in React Flow's toolbar layer but is still inside this
+  // node in React's tree: keep its clicks from selecting the Topic or
+  // toggling its examples.
+  const stop = (event: { stopPropagation: () => void }) => {
+    event.stopPropagation();
+  };
   return (
-    <NodeTooltip className="size-full">
-      <NodeTooltipTrigger
+    <div className="size-full">
+      <div
+        onMouseEnter={() => {
+          popup.bubbleEnter(bubble.id);
+        }}
+        onMouseLeave={() => {
+          popup.bubbleLeave(bubble.id);
+        }}
         data-testid={`topic-flow-node-${String(bubble.id)}`}
         data-topic-id={bubble.id}
         // Only the drawn circle takes the pointer (issue 314): the node box is
@@ -238,8 +261,9 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             </g>
           ) : null}
         </svg>
-      </NodeTooltipTrigger>
-      <NodeTooltipContent
+      </div>
+      <NodeToolbar
+        isVisible={cardOpen}
         align={
           bubble.position.y < plane.height / 3
             ? 'start'
@@ -252,7 +276,21 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
         role="tooltip"
         tabIndex={-1}
         data-testid={`topic-flow-tooltip-${String(bubble.id)}`}
-        className="pointer-events-none w-[min(18rem,calc(100%-1rem))] rounded-md border border-surface-border bg-surface p-3 text-label-secondary text-surface-foreground"
+        className={cn(
+          // nopan and nowheel keep a drag or wheel in the card from moving the chart.
+          'nopan nowheel nodrag w-[min(18rem,calc(100%-1rem))] rounded-md border border-surface-border bg-surface p-3 text-label-secondary text-surface-foreground',
+          wordsClickable ? 'pointer-events-auto' : 'pointer-events-none',
+        )}
+        onMouseEnter={popup.popupEnter}
+        onMouseLeave={popup.popupLeave}
+        onClick={stop}
+        onDoubleClick={stop}
+        onMouseDown={stop}
+        onPointerDown={stop}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
       >
         <div className="text-body font-semibold">
           {display.name ?? topicLabel(bubble.topic.id)}
@@ -271,13 +309,17 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             words={bubble.topic.representative_words.map((term) => ({
               text: term.word,
               value: term.occurrence_count,
-              // Search matches: bold, in their term's colour, as in the topic lists (issues 342, 434).
+              // Search matches in their term's colour (issues 342, 434). Not bold:
+              // bold changes the words' widths and so the whole layout, and a
+              // click on one word would move the others (Chao, 15 Nov 2026).
               ...(Object.hasOwn(bubble.matchedWords, term.word)
-                ? { color: topicMatchColor(bubble.matchedWords[term.word]), bold: true }
+                ? { color: topicMatchColor(bubble.matchedWords[term.word]) }
                 : {}),
             }))}
             minWidth={180}
             aspectRatio={0.48}
+            onWordClick={popup.onWordClick}
+            onWordContextMenu={popup.onWordContextMenu}
           />
         </div>
         <span className="sr-only">
@@ -294,13 +336,20 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             {...corpusPresentation}
           />
         </div>
-        {examplesShortcut ? (
-          <div className="mt-2 text-description">
-            {bubble.shown ? 'Right-click to stop showing examples' : 'Right-click to show examples'}
+        {wordsClickable ? (
+          <div className="mt-2 text-description" data-testid="topic-flow-tooltip-word-hint">
+            Click a word to search, right-click to hide it. Shift keeps this open.
           </div>
         ) : null}
-      </NodeTooltipContent>
-    </NodeTooltip>
+        {examplesShortcut ? (
+          <div className="mt-1 text-description">
+            {bubble.shown
+              ? 'Right-click the bubble to hide examples'
+              : 'Right-click the bubble for examples'}
+          </div>
+        ) : null}
+      </NodeToolbar>
+    </div>
   );
 }
 
@@ -527,8 +576,11 @@ function TopicModelingFlowChartInner({
   onViewReady,
   onToggleTopicSelection,
   onToggleShownTopic,
+  onWordClick,
+  onWordContextMenu,
 }: Props) {
   const flowRef = useRef<HTMLDivElement | null>(null);
+  const popup = useBubblePopup(!lassoMode);
   const fittedViewportRef = useRef(true);
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
   const [paneSize, setPaneSize] = useState({ width: 1, height: 1 });
@@ -700,121 +752,127 @@ function TopicModelingFlowChartInner({
 
   return (
     <div ref={flowRef} className="relative size-full">
-      <ReactFlow<TopicFlowNode>
-        nodes={nodes}
-        edges={EMPTY_EDGES}
-        nodeTypes={TOPIC_NODE_TYPES}
-        nodeOrigin={NODE_ORIGIN}
-        minZoom={0.05}
-        maxZoom={4}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        nodesFocusable={false}
-        edgesFocusable={false}
-        elementsSelectable={false}
-        deleteKeyCode={null}
-        panOnDrag={!lassoMode}
-        panOnScroll={false}
-        zoomOnScroll={false}
-        zoomActivationKeyCode={CHART_ZOOM_KEY}
-        zoomOnPinch
-        zoomOnDoubleClick
-        preventScrolling={zoomKeyPressed}
-        onNodeClick={(_event, node) => {
-          if (!lassoMode && !node.data.bubble.filteredOut) {
-            onToggleTopicSelection(node.data.bubble.id);
-          }
-        }}
-        onNodeContextMenu={(event, node) => {
-          // A faded bubble has no examples shortcut, like its hover card
-          // (issue 353); the examples pane's close button still works.
-          if (!onToggleShownTopic || lassoMode || node.data.bubble.filteredOut) return;
-          event.preventDefault();
-          onToggleShownTopic(node.data.bubble.id);
-        }}
-        onMoveStart={(event) => {
-          if (event) fittedViewportRef.current = false;
-        }}
-        onMoveEnd={(_event, nextViewport) => {
-          setViewport(nextViewport);
-        }}
-        fitView
-        fitViewOptions={FIT_VIEW_OPTIONS}
-        attributionPosition="bottom-left"
-        className="bg-surface"
-      >
-        <Controls
-          orientation="vertical"
-          position="top-left"
-          showZoom={false}
-          showFitView={false}
-          showInteractive={false}
-          className="overflow-hidden rounded-md border border-surface-border bg-editor"
-          style={{ zIndex: 20 }}
-          aria-label="Topic graph controls"
+      <BubblePopupContext value={{ ...popup, onWordClick, onWordContextMenu }}>
+        <ReactFlow<TopicFlowNode>
+          nodes={nodes}
+          edges={EMPTY_EDGES}
+          nodeTypes={TOPIC_NODE_TYPES}
+          nodeOrigin={NODE_ORIGIN}
+          minZoom={0.05}
+          maxZoom={4}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          nodesFocusable={false}
+          edgesFocusable={false}
+          elementsSelectable={false}
+          deleteKeyCode={null}
+          // Shift keeps a bubble's word cloud open (Chao, 15 Nov 2026), so it
+          // must not also start React Flow's selection box.
+          selectionKeyCode={null}
+          multiSelectionKeyCode={null}
+          panOnDrag={!lassoMode}
+          panOnScroll={false}
+          zoomOnScroll={false}
+          zoomActivationKeyCode={CHART_ZOOM_KEY}
+          zoomOnPinch
+          zoomOnDoubleClick
+          preventScrolling={zoomKeyPressed}
+          onNodeClick={(_event, node) => {
+            if (!lassoMode && !node.data.bubble.filteredOut) {
+              onToggleTopicSelection(node.data.bubble.id);
+            }
+          }}
+          onNodeContextMenu={(event, node) => {
+            // A faded bubble has no examples shortcut, like its hover card
+            // (issue 353); the examples pane's close button still works.
+            if (!onToggleShownTopic || lassoMode || node.data.bubble.filteredOut) return;
+            event.preventDefault();
+            onToggleShownTopic(node.data.bubble.id);
+          }}
+          onMoveStart={(event) => {
+            if (event) fittedViewportRef.current = false;
+          }}
+          onMoveEnd={(_event, nextViewport) => {
+            setViewport(nextViewport);
+          }}
+          fitView
+          fitViewOptions={FIT_VIEW_OPTIONS}
+          attributionPosition="bottom-left"
+          className="bg-surface"
         >
-          <TooltipProvider delayDuration={500} skipDelayDuration={300} disableHoverableContent>
-            <TopicGraphControlButton
-              accessibleLabel="Zoom in"
-              label="Zoom in"
-              onClick={() => {
-                fittedViewportRef.current = false;
-                void zoomIn();
-              }}
-            >
-              <Plus aria-hidden="true" />
-            </TopicGraphControlButton>
-            <TopicGraphControlButton
-              accessibleLabel="Zoom out"
-              label="Zoom out"
-              onClick={() => {
-                fittedViewportRef.current = false;
-                void zoomOut();
-              }}
-            >
-              <Minus aria-hidden="true" />
-            </TopicGraphControlButton>
-            <TopicGraphControlButton
-              accessibleLabel="Fit view"
-              label="Fit view"
-              onClick={() => {
-                fittedViewportRef.current = true;
-                void fitBubbles().then(() => {
-                  setViewport(getViewport());
-                });
-              }}
-            >
-              <Scan aria-hidden="true" />
-            </TopicGraphControlButton>
-            <TopicGraphControlButton
-              accessibleLabel={lassoMode ? 'Disable additive lasso' : 'Enable additive lasso'}
-              label="Select topics"
-              pressed={lassoMode}
-              active={lassoMode}
-              onClick={onToggleLassoMode}
-            >
-              <LassoSelect aria-hidden="true" />
-            </TopicGraphControlButton>
-            <TopicGraphControlButton
-              accessibleLabel="Clear lasso filter"
-              label="Clear filter"
-              disabled={!lassoFilterActive}
-              onClick={onClearLassoFilter}
-            >
-              <FilterX aria-hidden="true" />
-            </TopicGraphControlButton>
-            <TopicGraphControlButton
-              accessibleLabel="Download chart"
-              label="Download chart"
-              disabled={exportDisabled}
-              onClick={onDownload}
-            >
-              <Download aria-hidden="true" />
-            </TopicGraphControlButton>
-          </TooltipProvider>
-        </Controls>
-        <TopicLassoCanvas enabled={lassoMode} bubbles={bubbles} onComplete={onAddLassoTopics} />
-      </ReactFlow>
+          <Controls
+            orientation="vertical"
+            position="top-left"
+            showZoom={false}
+            showFitView={false}
+            showInteractive={false}
+            className="overflow-hidden rounded-md border border-surface-border bg-editor"
+            style={{ zIndex: 20 }}
+            aria-label="Topic graph controls"
+          >
+            <TooltipProvider delayDuration={500} skipDelayDuration={300} disableHoverableContent>
+              <TopicGraphControlButton
+                accessibleLabel="Zoom in"
+                label="Zoom in"
+                onClick={() => {
+                  fittedViewportRef.current = false;
+                  void zoomIn();
+                }}
+              >
+                <Plus aria-hidden="true" />
+              </TopicGraphControlButton>
+              <TopicGraphControlButton
+                accessibleLabel="Zoom out"
+                label="Zoom out"
+                onClick={() => {
+                  fittedViewportRef.current = false;
+                  void zoomOut();
+                }}
+              >
+                <Minus aria-hidden="true" />
+              </TopicGraphControlButton>
+              <TopicGraphControlButton
+                accessibleLabel="Fit view"
+                label="Fit view"
+                onClick={() => {
+                  fittedViewportRef.current = true;
+                  void fitBubbles().then(() => {
+                    setViewport(getViewport());
+                  });
+                }}
+              >
+                <Scan aria-hidden="true" />
+              </TopicGraphControlButton>
+              <TopicGraphControlButton
+                accessibleLabel={lassoMode ? 'Disable additive lasso' : 'Enable additive lasso'}
+                label="Select topics"
+                pressed={lassoMode}
+                active={lassoMode}
+                onClick={onToggleLassoMode}
+              >
+                <LassoSelect aria-hidden="true" />
+              </TopicGraphControlButton>
+              <TopicGraphControlButton
+                accessibleLabel="Clear lasso filter"
+                label="Clear filter"
+                disabled={!lassoFilterActive}
+                onClick={onClearLassoFilter}
+              >
+                <FilterX aria-hidden="true" />
+              </TopicGraphControlButton>
+              <TopicGraphControlButton
+                accessibleLabel="Download chart"
+                label="Download chart"
+                disabled={exportDisabled}
+                onClick={onDownload}
+              >
+                <Download aria-hidden="true" />
+              </TopicGraphControlButton>
+            </TooltipProvider>
+          </Controls>
+          <TopicLassoCanvas enabled={lassoMode} bubbles={bubbles} onComplete={onAddLassoTopics} />
+        </ReactFlow>
+      </BubblePopupContext>
       <TopicExportSvg
         bubbles={bubbles}
         viewport={viewport}

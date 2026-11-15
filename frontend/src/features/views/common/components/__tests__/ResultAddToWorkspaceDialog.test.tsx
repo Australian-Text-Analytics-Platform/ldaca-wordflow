@@ -512,4 +512,50 @@ describe('ResultAddToWorkspaceDialog', () => {
       'csv',
     );
   });
+
+  describe('summary before the column list', () => {
+    const source = (id: string, name: string) => ({
+      node_id: id,
+      node_name: name,
+      document_column: 'text',
+      metadata_columns: [],
+      analysis_columns: ['CONC_matched_text', 'CONC_extraction'],
+      internal_columns: [],
+      record_count: 3,
+      table: { table_id: `${id}-result`, rows_url: '/rows', schema_url: '/schema' },
+    });
+
+    it.each([
+      [
+        'match' as const,
+        undefined,
+        1,
+        'Each match becomes one row in the new Data Block. Choose the columns to keep. The Result and the original Data Block stay as they are.',
+      ],
+      ['match' as const, 'quotation', 1, 'Each quotation becomes one row in the new Data Block.'],
+      [
+        'document' as const,
+        undefined,
+        2,
+        'Each document with a match becomes one row in each new Data Block, with its matches together in one column.',
+      ],
+    ])('says what a row is (%s, %s, %i sources)', (mode, rowUnit, count, expected) => {
+      const sources = [source('node-1', 'First'), source('node-2', 'Second')].slice(0, count);
+      render(
+        <ResultAddToWorkspaceDialog
+          open
+          onOpenChange={vi.fn()}
+          title="Add Results"
+          nameSuffix="concordance"
+          sources={sources}
+          isSubmitting={false}
+          onSubmit={vi.fn()}
+          mode={mode}
+          rowUnit={rowUnit}
+        />,
+      );
+      expect(screen.getByText(expected, { exact: false })).toBeInTheDocument();
+      expect(screen.queryByText(/immutable/i)).not.toBeInTheDocument();
+    });
+  });
 });

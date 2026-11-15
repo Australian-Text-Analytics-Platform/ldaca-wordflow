@@ -32,6 +32,8 @@ interface Props {
   /** Add to Project passes only the sources; Download also passes the format. */
   onSubmit: (sources: SortedDataBlockCreationSource[], format?: DataBlockExportFormat) => void;
   mode?: 'match' | 'document';
+  /** What one row stands for in match mode, named in the summary ("match", "quotation"). */
+  rowUnit?: string;
   allowSourceSelection?: boolean;
   /** Download the same table as a CSV or Excel file instead (issue 352). */
   purpose?: 'add' | 'download';
@@ -154,6 +156,19 @@ const createResultSource = (
   };
 };
 
+/**
+ * Says what the new Data Blocks will hold before the column list, so the row
+ * unit is clear without reading the generated column names.
+ */
+const addSummary = (mode: 'match' | 'document', rowUnit: string, sourceCount: number): string => {
+  const target = sourceCount > 1 ? 'each new Data Block' : 'the new Data Block';
+  const rows =
+    mode === 'document'
+      ? `Each document with a match becomes one row in ${target}, with its matches together in one column.`
+      : `Each ${rowUnit} becomes one row in ${target}.`;
+  return `${rows} Choose the columns to keep. The Result and the original Data Block stay as they are.`;
+};
+
 /** Adapts Concordance and Quotation Results to the shared Add-to-Workspace dialog. */
 export function ResultAddToWorkspaceDialog({
   open,
@@ -164,6 +179,7 @@ export function ResultAddToWorkspaceDialog({
   isSubmitting,
   onSubmit,
   mode = 'match',
+  rowUnit = 'match',
   allowSourceSelection = false,
   purpose = 'add',
   columnOrder = [],
@@ -178,7 +194,7 @@ export function ResultAddToWorkspaceDialog({
       description={
         purpose === 'download'
           ? 'Choose which Result columns go in the file. It holds the same table Add to Project would create.'
-          : 'Choose which immutable Result columns create new Project Data Blocks.'
+          : addSummary(mode, rowUnit, sources.length)
       }
       sources={sources.map((source) => createResultSource(source, mode, nameSuffix, columnOrder))}
       isSubmitting={isSubmitting}

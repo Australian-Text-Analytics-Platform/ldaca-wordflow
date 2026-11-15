@@ -20,10 +20,15 @@ document conflicts with executable configuration.
 
 ## Branches
 
-- `main`: the latest release. Change it only through an approved pull request
-  from `v0.7` after a release; never commit to it directly.
+- `main`: the latest release. Change it only through a pull request from
+  `v0.7` after a release; never commit to it directly.
 - `v0.7`: 0.7.x development. Start fix and feature branches from `v0.7`.
 - `v0.8`: Wordflow 0.8, in development until it is released.
+
+`v0.7` and `v0.8` are development branches: small changes go straight to them
+after the local checks, without waiting for CI. CI runs on pull requests,
+release commits, pushes with `[ci]` in a commit message, and by hand, not on
+every push (see [Continuous Integration](docs/runbooks/wordflow-release.md#continuous-integration)).
 
 Details are in [the release runbook](docs/runbooks/wordflow-release.md#branches).
 

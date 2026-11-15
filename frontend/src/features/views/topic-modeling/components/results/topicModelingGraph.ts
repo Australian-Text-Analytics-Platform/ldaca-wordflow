@@ -182,7 +182,12 @@ interface BuildTopicBubbleModelsOptions {
   lassoTopicIds: Set<number>;
   hoveredTopicId: number | null;
   shownTopicId?: number | null;
+  /** The search box's text: its matches are coloured at once. */
   topicSearchQuery: string;
+  /** The search last applied: topics that don't match fade. Defaults to the box's text. */
+  appliedTopicSearchQuery?: string;
+  /** Each term's colour slot, so a term keeps its colour (see matchedTopicWords). */
+  topicSearchTermSlots?: ReadonlyMap<string, number>;
   colorScheme?: TopicColorScheme | null;
   /** The canvas-shaped plane to lay topics out in (issue 308). */
   plane?: TopicGraphPlane;
@@ -563,6 +568,8 @@ export function buildTopicBubbleModels({
   hoveredTopicId,
   shownTopicId = null,
   topicSearchQuery,
+  appliedTopicSearchQuery = topicSearchQuery,
+  topicSearchTermSlots,
   colorScheme = null,
   plane = DEFAULT_TOPIC_GRAPH_PLANE,
 }: BuildTopicBubbleModelsOptions): TopicBubbleModel[] {
@@ -601,7 +608,7 @@ export function buildTopicBubbleModels({
     nodeColors,
     defaultPalette,
   );
-  const hasSearchFilter = topicSearchQuery.trim().length > 0;
+  const hasSearchFilter = appliedTopicSearchQuery.trim().length > 0;
   const hasLassoFilter = lassoTopicIds.size > 0;
 
   // Larger bubbles first, so smaller ones are drawn on top (issue 189).
@@ -642,6 +649,7 @@ export function buildTopicBubbleModels({
           topic.representative_words.map((term) => term.word),
           topicSearchQuery,
           matchChecklistOption,
+          topicSearchTermSlots,
         ),
       ),
       // Faded exactly when the Topic list leaves it out: outside the lasso, or
@@ -652,7 +660,7 @@ export function buildTopicBubbleModels({
         (hasSearchFilter &&
           !matchTopicWords(
             topic.representative_words.map((term) => term.word),
-            topicSearchQuery,
+            appliedTopicSearchQuery,
             matchChecklistOption,
             topicSearchTerms,
           )),

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { SettingsSectionHeading } from '@/components/dialogs/SettingsSectionHeading';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { getUpdatePreferences, setAutomaticUpdateChecks } from './desktopUpdater';
@@ -42,7 +43,11 @@ export function DesktopUpdateSettings() {
   return (
     <section className="space-y-3 border-t border-surface-border/60 pt-4">
       <div>
-        <h3 className="text-body font-semibold">Desktop updates</h3>
+        <SettingsSectionHeading
+          title="Desktop updates"
+          helpKey="settings.desktop-updates"
+          helpLabel="About desktop updates"
+        />
         <p className="text-body text-description">
           Check for a signed Wordflow update when Wordflow starts, and daily while it stays open.
         </p>

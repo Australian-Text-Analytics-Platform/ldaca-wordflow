@@ -45,21 +45,26 @@ export function matchTopicWords(
 }
 
 /**
- * The words of a topic that match the search, each with the index of the
- * first term it matches, so the list and the bubble's word cloud can colour
- * each term's matches alike (issues 342, 434).
+ * The words of a topic that match the search, each with the colour slot of
+ * the first term it matches, so the list and the bubble's word cloud can
+ * colour each term's matches alike (issues 342, 434). `termSlots` (keyed by
+ * lower-case term) keeps a term's colour while others are added in front of
+ * it; without it, the slot is the term's position.
  */
 export function matchedTopicWords(
   words: readonly string[],
   query: string,
   matchOption: (label: string, query: string) => boolean,
+  termSlots?: ReadonlyMap<string, number>,
 ): Map<string, number> {
   const terms = topicSearchTerms(query);
   const matched = new Map<string, number>();
   if (terms.length === 0) return matched;
   for (const word of words) {
     const index = terms.findIndex((term) => matchOption(word, term));
-    if (index >= 0) matched.set(word, index);
+    if (index < 0) continue;
+    const term = terms[index] ?? '';
+    matched.set(word, termSlots?.get(term.toLocaleLowerCase()) ?? index);
   }
   return matched;
 }

@@ -1,5 +1,5 @@
 import { ListPlus, OctagonX, Plus, Search, Trash2, X } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspac
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
 import { useNodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
+import { registerDataBlockDropTarget, useDataBlockDragStore } from '@/stores/dataBlockDragStore';
 import type { NodeAddRejection, ResolvedNodeInput } from '../nodeInputs/nodeInputsCore';
 import { VIZ_PALETTE } from '../vizPalette';
 import { NodeColorPicker } from './NodeColorPicker';
@@ -250,12 +251,41 @@ export function NodeInputsPanel({
 
   const count = selectionItems.length;
   const countLabel = maxNodes != null ? `${String(count)}/${String(maxNodes)}` : String(count);
+  // A Data Block dragged from the Project Graph can be dropped anywhere on
+  // this box (Chao, 15 Nov 2026): it is added like Add Data Block, as the
+  // next block, whatever is already here.
+  const dropTargetId = useId();
+  const dropBlockedReason = disabled
+    ? `${title} can't be changed right now.`
+    : !canAddMore
+      ? `${title} is already full.`
+      : undefined;
+  const dragActive = useDataBlockDragStore((state) => state.drag !== null);
+  const dragOver = useDataBlockDragStore(
+    (state) =>
+      state.drag?.resolution.kind === 'target' && state.drag.resolution.id === dropTargetId,
+  );
+  // Registered afresh after each render, so a drop always uses the current
+  // title, state and add handler.
+  useEffect(() =>
+    registerDataBlockDropTarget(dropTargetId, {
+      title,
+      blockedReason: dropBlockedReason,
+      add: (nodeId) => {
+        handleAdd([nodeId]);
+      },
+    }),
+  );
   const showInputRequestTarget = pendingInputRequest !== undefined;
   const inputRequestTargetFilled = !canAddMore;
   const inputRequestTargetDisabled = disabled || !canAddMore;
 
   return (
-    <div className="@container/node-inputs relative flex flex-col gap-2">
+    <div
+      className="@container/node-inputs relative flex flex-col gap-2"
+      data-testid="node-inputs-panel"
+      data-data-block-drop-target={dropTargetId}
+    >
       <div
         data-guidance={guidanceTarget}
         role="group"
@@ -282,7 +312,7 @@ export function NodeInputsPanel({
               aria-label="Remove all Data Blocks"
             >
               <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-              Clear
+              Remove all
             </Button>
           )}
 
@@ -375,8 +405,9 @@ export function NodeInputsPanel({
           {emptyMessage ?? (
             <>
               No Data Blocks added yet. Use{' '}
-              <span className="font-medium not-italic">Add Data Block</span>, or carry one here from
-              a Data Block&apos;s <span className="not-italic">+</span> button.
+              <span className="font-medium not-italic">Add Data Block</span>, drag one here from the
+              sidebar or the Project Graph, or carry one here from a Data Block&apos;s{' '}
+              <span className="not-italic">+</span> button.
             </>
           )}
         </div>
@@ -397,6 +428,33 @@ export function NodeInputsPanel({
           added.
         </div>
       )}
+      {dragActive ? (
+        // Shown while a Data Block is dragged from the graph. It ignores the
+        // pointer: the drop is resolved from the box underneath.
+        <div
+          aria-hidden="true"
+          data-testid="node-inputs-drop-highlight"
+          data-drag-over={dragOver || undefined}
+          className={cn(
+            'pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 text-center text-body font-medium',
+            // Nearly opaque, so the label reads over the box's own content.
+            dropBlockedReason
+              ? dragOver
+                ? 'border-error/70 bg-surface/95 text-error'
+                : 'border-surface-border-foreground/25 bg-editor/90 text-description'
+              : dragOver
+                ? 'border-button bg-surface/95 text-foreground'
+                : 'border-surface-border-foreground/40 bg-editor/90 text-description',
+          )}
+        >
+          {dropBlockedReason ? (
+            <OctagonX className="size-5 shrink-0" aria-hidden="true" />
+          ) : (
+            <Plus className="size-5 shrink-0" aria-hidden="true" />
+          )}
+          {dropBlockedReason ?? `Drop here to add to ${title}`}
+        </div>
+      ) : null}
       {showInputRequestTarget ? (
         <div className="absolute inset-0 z-10 rounded-lg bg-editor/75 p-1">
           <button

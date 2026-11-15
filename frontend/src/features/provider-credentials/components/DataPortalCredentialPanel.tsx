@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { SettingsSectionHeading } from '@/components/dialogs/SettingsSectionHeading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,9 +58,15 @@ export function DataPortalCredentialPanel({
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        <h3 className="text-body font-semibold">LDaCA access token</h3>
-        <Badge variant={configured || deploymentConfigured ? 'outline' : 'secondary'}>
+      <SettingsSectionHeading
+        title="LDaCA access token"
+        helpKey="settings.portal"
+        helpLabel="About the LDaCA access token"
+      >
+        <Badge
+          variant={configured || deploymentConfigured ? 'outline' : 'secondary'}
+          className="ml-1"
+        >
           {configured
             ? credentials.storage === 'browser'
               ? 'Configured in this browser'
@@ -68,7 +75,7 @@ export function DataPortalCredentialPanel({
               ? 'Set by the server'
               : 'Not configured'}
         </Badge>
-      </div>
+      </SettingsSectionHeading>
       <p className="text-body text-description">
         {credentials.storage === 'browser'
           ? "Your token is saved in this web browser, not on the Wordflow server, and only for the account you're signed in with. " +

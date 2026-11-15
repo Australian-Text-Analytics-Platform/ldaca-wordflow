@@ -734,10 +734,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
               isRunningAll: analysisActionLifecycle.isRunningAll,
               isStopping,
               isClearing,
-              clearHelp: {
-                targetKey: 'analysis.quotation.clear-results',
-                label: 'Clear results',
-              },
+              help: { targetKey: 'analysis.quotation.run' },
             }}
             actionsGuidanceTarget="quotation-actions"
             parametersLocked={analysisActionLifecycle.parametersLocked}
@@ -937,6 +934,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
           onOpenChange={setAddToWorkspaceDialogOpen}
           title="Add Quotation Results to Project"
           nameSuffix="quotation"
+          rowUnit="quotation"
           sources={[runAllSource]}
           isSubmitting={isAddingToWorkspace}
           columnOrder={exportColumnOrder(runAllSource.document_column)}

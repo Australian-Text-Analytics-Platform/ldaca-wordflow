@@ -119,10 +119,13 @@ does not mean the word is absent: choose **Run** to search every document.
 
 ![Preview footer: matches found so far and Documents per page](tutorials/assets/concordance/documents_per_page.png)
 
-<h2 id="help-concordance-run">Step 5: Preview</h2>
+<h2 id="help-concordance-run">Step 5: Preview and Run</h2>
 
 Choose **Preview** to see the first pages of matches. Each page is worked out
-when you open it, from the data as it was when you chose Preview. See
+when you open it, from the data as it was when you chose Preview. Choose
+**Run** for every match; see [Run and Concordance Results](#help-concordance-run-all).
+**Clear results**, at the end of the same row, removes this tab's results; see
+[Clear results](#help-concordance-clear-results). See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-concordance-results">Result panel</h2>
@@ -348,7 +351,8 @@ is correct and opens properly in LibreOffice Calc, Numbers and other programs.
 See [Excel's cell limit](./export.md#help-export-excel-limit).
 
 Use **Add to Project** to create new Data Blocks after reviewing the
-result. The new Data Block, or the downloaded file, is named after the Data
+result. The window opens with one line saying what each row of the new Data
+Block will be, before the list of columns. The new Data Block, or the downloaded file, is named after the Data
 Block and the search, for example *speeches_concordance_climate* (the first 20
 characters of the search term), so several searches of one Data Block can be
 told apart. You can change the name before adding.
@@ -394,9 +398,9 @@ example stacked `CONC_extraction` text, the Result keeps it as `CONC_source`
 
 <h3 id="help-concordance-clear-results">Clear results</h3>
 
-**Clear** removes this tab's Preview and Run results. Settings are locked while
+**Clear results** removes this tab's Preview and Run results. Settings are locked while
 Preview or Run is working, and **Stop** cancels it. After a failure or a stop,
-Preview and Run stay off until you choose **Clear**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+Preview and Run stay off until you choose **Clear results**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-concordance-troubleshooting">Troubleshooting</h2>
 

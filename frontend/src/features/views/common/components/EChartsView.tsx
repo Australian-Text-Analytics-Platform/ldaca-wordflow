@@ -440,6 +440,8 @@ function EChartsInstance({
       </div>
       <div
         ref={plotRef}
+        // Image downloads find the chart's SVG by this (findSvgInContainer).
+        data-chart-plot=""
         role="group"
         aria-roledescription="interactive chart"
         aria-label={ariaLabel}

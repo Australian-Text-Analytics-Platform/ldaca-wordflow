@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as ServerAiProvidersModule from '@/features/server-ai-providers/serverAiProviders';
@@ -57,7 +58,9 @@ import { AiProvidersPreferencesPanel } from '@/features/views/annotation/compone
 const renderPanel = () =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <AiProvidersPreferencesPanel />
+      <TooltipProvider>
+        <AiProvidersPreferencesPanel />
+      </TooltipProvider>
     </QueryClientProvider>,
   );
 

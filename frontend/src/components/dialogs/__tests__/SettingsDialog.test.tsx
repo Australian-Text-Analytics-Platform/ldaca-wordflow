@@ -2,7 +2,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { DataRootContext } from '@/features/bootstrap/DataRootContext';
+import { useUIStore } from '@/stores';
 import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 import { SettingsDialog } from '../SettingsDialog';
 
@@ -90,7 +92,9 @@ function renderSettingsDialog(
             configureDataRoot: vi.fn(),
           }}
         >
-          <SettingsDialog open onOpenChange={vi.fn()} initialTab={initialTab} />
+          <TooltipProvider>
+            <SettingsDialog open onOpenChange={vi.fn()} initialTab={initialTab} />
+          </TooltipProvider>
         </DataRootContext.Provider>
       </QueryClientProvider>,
     ),
@@ -249,6 +253,51 @@ describe('SettingsDialog', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Show suggestions' }));
     expect(mocks.updatePreferences).toHaveBeenCalledWith({ nudges_enabled: false });
     expect(useSettingsDialogStore.getState().guide).toBeNull();
+  });
+
+  it('has one help icon for each group of settings, opening the Settings Help page (issue 488)', async () => {
+    const user = userEvent.setup();
+    renderSettingsDialog();
+    const openDocument = vi.spyOn(useUIStore.getState(), 'openDocument');
+
+    const iconsOnTab = async (tab: string, names: string[]) => {
+      await user.click(screen.getByRole('tab', { name: tab }));
+      for (const name of names) {
+        expect(await screen.findByRole('button', { name })).toBeInTheDocument();
+      }
+    };
+
+    expect(screen.getByRole('button', { name: 'About Settings' })).toBeInTheDocument();
+    await iconsOnTab('General', ['About Appearance', 'About Preference sync', 'About multi-tab']);
+    await iconsOnTab('Portal', ['About the LDaCA access token']);
+    await iconsOnTab('Servers', ['About Generative AI servers', 'About Topic Modelling servers']);
+    await iconsOnTab('Project', [
+      'About the data folder',
+      'About tool caches',
+      'About Favourite Projects',
+    ]);
+    await iconsOnTab('Views', ['About visible views']);
+    await iconsOnTab('Guidance', ['About Contextual Hints', 'About Suggestions']);
+
+    // Monika: the icon after the reset button says how acknowledged hints come back.
+    await user.click(
+      screen.getByRole('button', { name: 'About resetting Contextual Hint history' }),
+    );
+    expect(openDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: 'tutorials/settings.md',
+        anchor: 'help-settings-reset-hints',
+      }),
+    );
+    // The icons sit beside the options, not inside their labels.
+    expect(screen.getByRole('checkbox', { name: 'Show contextual hints' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Show suggestions' })).toBeInTheDocument();
+  });
+
+  it('shows no Account badge, which looked like a button and did nothing', () => {
+    renderSettingsDialog();
+
+    expect(screen.queryByText('Account')).not.toBeInTheDocument();
   });
 
   it('renders update preferences only in the desktop runtime', async () => {

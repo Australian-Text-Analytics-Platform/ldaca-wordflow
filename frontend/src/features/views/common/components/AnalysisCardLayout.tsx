@@ -40,8 +40,12 @@ interface AnalysisCardLayoutProps {
     isStopping?: boolean;
     isClearing?: boolean;
     runAllLabel?: string;
-    runAllHelp?: HelpConfig<'tutorial'>;
-    clearHelp?: HelpConfig<'tutorial'>;
+    /**
+     * One help icon for the whole Preview, Run and Clear row, at its end,
+     * pointing to the tool's Run step in Help. One icon per row, not one per
+     * button, keeps the number of help icons down (Chao).
+     */
+    help?: HelpConfig<'tutorial'>;
   };
   children: React.ReactNode;
   parametersLocked?: boolean;
@@ -101,6 +105,9 @@ export function AnalysisCardLayout({
         ? 'Stop the running analysis before clearing results'
         : (actions.clearDisabledReason ?? 'There are no results to clear')
     : undefined;
+  const actionsHelpLabel = actions?.onPreview
+    ? 'About Preview, Run and Clear results'
+    : 'About Run and Clear results';
   const stopDisabledReason = actions?.isStopping
     ? 'A stop request is already in progress'
     : undefined;
@@ -180,13 +187,6 @@ export function AnalysisCardLayout({
                 {runAllLabel}
               </Button>
             </DisabledReasonTooltip>
-            {actions.runAllHelp ? (
-              <HelpIcon
-                targetKey={actions.runAllHelp.targetKey}
-                label={actions.runAllHelp.label}
-                tooltip={actions.runAllHelp.tooltip}
-              />
-            ) : null}
           </div>
 
           <div className="flex items-center gap-2">
@@ -198,21 +198,20 @@ export function AnalysisCardLayout({
                 }}
                 variant="destructive"
                 disabled={actions.clearDisabled}
-                aria-label="Clear results"
               >
                 {actions.isClearing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                 )}
-                Clear
+                Clear results
               </Button>
             </DisabledReasonTooltip>
-            {actions.clearHelp ? (
+            {actions.help ? (
               <HelpIcon
-                targetKey={actions.clearHelp.targetKey}
-                label={actions.clearHelp.label}
-                tooltip={actions.clearHelp.tooltip}
+                targetKey={actions.help.targetKey}
+                label={actions.help.label ?? actionsHelpLabel}
+                tooltip={actions.help.tooltip}
               />
             ) : null}
           </div>

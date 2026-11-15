@@ -1019,6 +1019,8 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
         task_group_owner.register_execution_shutdown(analysis_execution.close)
         annotation_service = AnnotationService(
             credentials=provider_credential_store,
+            workspaces=workspace_service,
+            io_limiter=io_limiter,
         )
         sample_data_service = SampleDataService(
             user_file_store,

@@ -16,7 +16,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { StopWordsEnabledSwitch } from '@/features/views/common/components/StopWordsEnabledSwitch';
 import { StopWordsLanguageSelect } from '@/features/views/common/components/StopWordsLanguageSelect';
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
-import { formatStopWords, parseStopWordsText } from '@/features/views/common/utils/stopWords';
+import {
+  formatStopWords,
+  parseStopWordsText,
+  sortStopWords,
+  stopWordsPreview,
+} from '@/features/views/common/utils/stopWords';
 
 interface TopicModelingStopWordsControlProps {
   enabled: boolean;
@@ -38,6 +43,9 @@ interface TopicModelingStopWordsControlProps {
  * words to the saved list; the switch only controls whether that list
  * participates in the current Result projection. The switch has no visible
  * label: the dropdown's resting text, "Use stop words", names it (issue 353).
+ * While the list is in use, a line under the control names the first eight
+ * hidden words and counts the rest, newest first, as in Frequency (Chao,
+ * 15 Nov 2026). The editing window has Sort, as Frequency does.
  */
 export function TopicModelingStopWordsControl({
   enabled,
@@ -73,56 +81,69 @@ export function TopicModelingStopWordsControl({
     }
   };
 
+  const hiddenWords = enabled ? stopWordsPreview(savedWords) : '';
   return (
     <>
-      <div
-        className={
-          fill
-            ? 'flex min-h-8 w-full min-w-0 items-center gap-2'
-            : 'flex min-h-8 flex-wrap items-center gap-2'
-        }
-      >
-        <StopWordsEnabledSwitch
-          checked={enabled}
-          onCheckedChange={onEnabledChange}
-          label="Use stop words"
-          hideLabel
-        />
-        <StopWordsLanguageSelect
-          words={savedWords}
-          onWordsChange={onSavedWordsChange}
-          workspaceId={workspaceId}
-          nodeId={nodeId}
-          column={column}
-          sources={sources}
-          disabled={isSavingEditor}
-          onListAdded={() => {
-            if (!enabled) onEnabledChange(true);
-          }}
-          restingLabel="Use stop words"
-          widthClassName={fill ? 'min-w-0 flex-1' : undefined}
-          active={enabled}
-          onDeactivate={() => {
-            onEnabledChange(false);
-          }}
-        />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Edit stop words"
-              disabled={isSavingEditor}
-              onClick={() => {
-                handleEditorOpenChange(true);
-              }}
-            >
-              <Pencil data-icon="inline-start" aria-hidden="true" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Edit stop words</TooltipContent>
-        </Tooltip>
+      <div className={fill ? 'w-full min-w-0' : 'min-w-0'}>
+        <div
+          className={
+            fill
+              ? 'flex min-h-8 w-full min-w-0 items-center gap-2'
+              : 'flex min-h-8 flex-wrap items-center gap-2'
+          }
+        >
+          <StopWordsEnabledSwitch
+            checked={enabled}
+            onCheckedChange={onEnabledChange}
+            label="Use stop words"
+            hideLabel
+          />
+          <StopWordsLanguageSelect
+            words={savedWords}
+            onWordsChange={onSavedWordsChange}
+            workspaceId={workspaceId}
+            nodeId={nodeId}
+            column={column}
+            sources={sources}
+            disabled={isSavingEditor}
+            onListAdded={() => {
+              if (!enabled) onEnabledChange(true);
+            }}
+            restingLabel="Use stop words"
+            widthClassName={fill ? 'min-w-0 flex-1' : undefined}
+            active={enabled}
+            onDeactivate={() => {
+              onEnabledChange(false);
+            }}
+          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Edit stop words"
+                disabled={isSavingEditor}
+                onClick={() => {
+                  handleEditorOpenChange(true);
+                }}
+              >
+                <Pencil data-icon="inline-start" aria-hidden="true" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Edit stop words</TooltipContent>
+          </Tooltip>
+        </div>
+        {hiddenWords ? (
+          // Wraps rather than truncates, so the count stays readable in the
+          // narrow column beside the chart.
+          <p
+            className="mt-1 break-words text-label-secondary text-description"
+            data-testid="topic-stop-words-preview"
+          >
+            Hidden words: {hiddenWords}
+          </p>
+        ) : null}
       </div>
 
       <Dialog open={editorOpen} onOpenChange={handleEditorOpenChange}>
@@ -146,9 +167,22 @@ export function TopicModelingStopWordsControl({
                 setEditorDraft(event.target.value);
               }}
             />
-            <p className="text-label-secondary text-description">
-              {String(normalizedEditorWordCount)} normalized words
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-label-secondary text-description">
+                {String(normalizedEditorWordCount)} normalized words
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSavingEditor || normalizedEditorWordCount === 0}
+                onClick={() => {
+                  setEditorDraft(formatStopWords(sortStopWords(parseStopWordsText(editorDraft))));
+                }}
+              >
+                Sort
+              </Button>
+            </div>
           </div>
           <DialogFooter>
             <Button

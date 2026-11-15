@@ -45,11 +45,12 @@ Below the tool list, the **Data Blocks** panel shows every Data Block in the act
 ![Data Blocks list with a pinned Data Block (candidate_info) and two selected Data Blocks](tutorials/assets/ui/data_blocks_list.png)
 
 - Selected Data Blocks open as tabs in the Data Editor (section 5).
-- Hover a Data Block to show its buttons: the pin, **More options** (the sliders icon, with **Rename**, **Make a copy**, and **Delete**), and **+**. The pin keeps it at the top of this list; click it again to unpin. In the Project Graph, hovering a Data Block shows **More options** and **+** below it. The **+** button (**Add to tool**) adds it to the inputs of the tool you are using. When the tool has one inputs panel, the Data Block is added straight away; when it has several (for example Annotation's Annotation, Codebook, and Example Data Blocks), the Data Block follows the pointer until you click the panel you want (press Esc or right-click to cancel). You can also use **Add Data Block** in the tool's inputs panel.
+- Hover a Data Block to show its buttons: the pin, **More options** (the sliders icon, with **Rename**, **Make a copy**, and **Delete**), and **+**. The pin keeps it at the top of this list; click it again to unpin. In the Project Graph, hovering a Data Block shows **More options** and **+** below it. The **+** button (**Add to tool**) adds it to the inputs of the tool you are using. When the tool has one inputs panel, the Data Block is added straight away; when it has several (for example Annotation's Annotation, Codebook, and Example Data Blocks), the Data Block follows the pointer until you click the panel you want (press Esc or right-click to cancel). You can also use **Add Data Block** in the tool's inputs panel, or drag the Data Block onto the tool from this list or from the Project Graph (on a touch screen, drag sideways from the list; an up or down swipe scrolls it).
 
 ![Buttons shown when you hover a Data Block, with More options open](tutorials/assets/ui/data_block_menu.png)
 
-- Most tools can only process a limited number of Data Blocks at a time, shown in their inputs panel.
+- Selecting a Data Block opens it in the Data Editor so you can look at it. It does not add it to the tool you are using: a tool works only on the Data Blocks in its own inputs panel. To add it, drag it onto the tool, use its **+** button, or use **Add Data Block** in the tool's inputs panel.
+- Most tools can only process a limited number of Data Blocks at a time, shown in their inputs panel. **Remove all** in the panel's heading takes every Data Block out of the tool; it does not delete them from the Project.
 
 <h2 id="help-ui-task-centre">3. Tasks</h2>
 
@@ -120,6 +121,7 @@ To switch Projects without going to the Data Loader, use **Switch Project** at t
 - Click a node to select that Data Block across the entire interface. Click it again to deselect. Selections made here are reflected immediately in the Data Blocks panel (section 2) and vice versa.
 - Each Data Block shows its name. When you zoom in far enough, it also shows its size, for example **2,380 rows × 21 columns**.
 - Hover a Data Block and open its settings menu (the sliders icon below it) to **Rename**, **Make a copy**, **Export**, **Undo**, **Redo**, or **Delete** it. The **+** beside it adds the Data Block to the inputs of the tool you are using.
+- Drag a Data Block from the Project Graph, or from the **Data Blocks** list in the sidebar, onto a tool to add it there. The Data Block itself stays where it is: a small label follows the pointer and says where it will go, and the tool's inputs boxes are highlighted. Release it on a box, such as **Data Blocks (1/2)** or Annotation's **Codebook**, to add it as the next Data Block in that box; a box that is full says so and refuses it. If the tool has only one inputs box, you can release anywhere on the tool. Releasing anywhere else, or pressing Esc, cancels. This works with a mouse, a trackpad or a touch screen.
 
 ![A Data Block in the Project Graph, zoomed in, with its settings menu open](tutorials/assets/ui/graph_node_menu.png)
 
@@ -135,7 +137,7 @@ To switch Projects without going to the Data Loader, use **Switch Project** at t
   - <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="13" height="13" style="display:inline;vertical-align:text-bottom"><path d="M32 18.133H18.133V32h-4.266V18.133H0v-4.266h13.867V0h4.266v13.867H32z"/></svg> **Zoom in**: increases the zoom level.
   - <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 5" width="13" height="2" style="display:inline;vertical-align:middle"><path d="M0 0h32v4.2H0z"/></svg> **Zoom out**: decreases the zoom level.
   - <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 30" width="13" height="12" style="display:inline;vertical-align:text-bottom"><path d="M3.692 4.63c0-.53.4-.938.939-.938h5.215V0H4.631A4.63 4.63 0 0 0 0 4.63v5.216h3.692V4.631zM27.354 0h-5.2v3.692h5.215c.53 0 .938.4.938.939v5.215H32V4.631A4.63 4.63 0 0 0 27.354 0zm.954 24.746c0 .53-.4.938-.939.938h-5.215V29.338h5.215A4.63 4.63 0 0 0 32 24.708v-5.215h-3.692v5.253zm-23.677.938a.939.939 0 0 1-.939-.938v-5.253H0v5.215A4.63 4.63 0 0 0 4.631 30h5.215v-3.692H4.631v.376z"/></svg> **Fit view**: shows the whole graph if its Data Block names can still be read. A large graph is shown from its first Data Blocks instead; scroll to see the rest. When zoomed out, Data Blocks show only their names and sit closer together.
-  - **Drag to pan / Drag to select**: chooses what dragging an empty part of the graph does. **Drag to pan** (the default, a hand icon) moves the graph; **Drag to select** (a dashed box) draws a selection box. Click the button to switch.
+  - **Drag to pan / Drag to select**: chooses what dragging an empty part of the graph does. **Drag to pan** (the default, a hand icon) moves the graph when you drag its background (dragging a Data Block carries it to a tool instead); **Drag to select** (a dashed box) draws a selection box. Click the button to switch.
   - **⊘ Clear selection**: deselects all currently selected Data Blocks at once. Greyed out when nothing is selected.
   - **Delete (n)**: asks for confirmation, then deletes the selected Data Blocks. The confirmation lists them with a tick each: untick any you selected by mistake to keep them (they stay selected), then click **Delete**. Analysis tabs that use a deleted Data Block close too, with their results; Data Blocks made from it stay. Greyed out when nothing is selected.
 - Selected Data Blocks are outlined.
@@ -266,7 +268,7 @@ The analysis tools share three buttons.
 - **Run** works through all of your data. Use it for the final result, for
   sorting on every column, for charts of the whole result, and before
   **Add to Project**.
-- **Clear** removes this tab's Preview and Run results so you can start again.
+- **Clear results** removes this tab's Preview and Run results so you can start again.
   It does not remove Data Blocks you have already added to the Project, and it
   does not undo changes written to a Data Block (use **Undo** in the Data Editor
   for that).
@@ -284,9 +286,9 @@ What to expect:
 - **Settings are locked while a task runs.** Use **Stop** to cancel it. The
   running task also appears in **Tasks**.
 - **After a failure or a stop**, you can edit the settings again, but Preview
-  and Run stay off until you choose **Clear**. Annotation is the exception: its
+  and Run stay off until you choose **Clear results**. Annotation is the exception: its
   Preview and Run replace the tab's earlier results, so they turn on again
-  without **Clear**. The message explains what went wrong; **Details** has the technical text for a feedback report.
+  without **Clear results**. The message explains what went wrong; **Details** has the technical text for a feedback report.
 - **Results stay with the tab.** They are still there when you move to another
   tool, or close and reopen the Project.
 
@@ -351,9 +353,10 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
 - Contextual Hints are turned off, and back on, under **Settings → Guidance**.
   A hint's **Turn off hints…** shows the way there: it points at the Settings
   gear at the top right, then Settings points out **Guidance** and the
-  **Show contextual hints** option, which you untick yourself. The same page
-  can reset acknowledgement history for the current user, causing eligible hint
-  versions to appear again on this device.
+  **Show contextual hints** option, which you untick yourself. A hint you have
+  acknowledged does not appear again until you choose
+  **Reset Contextual Hint history** there: see
+  [Bringing acknowledged hints back](./settings.md#help-settings-reset-hints).
 - A replayable **Guided Tour** is shown in Help only when one is available. A
   tour is started deliberately and is unaffected by the Contextual Hint switch.
 
@@ -364,24 +367,11 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
   you carry on with other things (typing in a field does not count), or choose
   **Dismiss** to close one at once. Either way it comes back when the same
   situation happens again. Buttons that lose work, such as
-  **Clear** and **Stop**, are named but never marked. Suggestions appear when:
-  - a Concordance **Preview** finds no matches in the documents it checked,
-    while the Data Block has more: show more **Documents per page**, or
-    **Run** to search them all;
-  - Topic Modelling puts most passages in one topic (try a lower **Max topic
-    size**), finds only a few topics, or leaves 30% or more of the documents
-    [Ungrouped](./topic-modeling.md#help-topic-modeling-ungrouped) (under
-    **Advanced**, set
-    [Ungrouped passages](./topic-modeling.md#help-topic-modeling-ungrouped-passages)
-    to **Join a topic they fit**), then **Run** again;
-  - a Topic Modelling run is still splitting or reading the text after five
-    minutes: reading takes most of a first run, so **Stop**, then lower
-    **Sampling** to read fewer documents;
-  - a Topic Modelling input is large (from about 15,700 documents or 66,000
-    passages): a sample of documents or passages gives a faster first run;
-  - a Trends rate divides by a reference Data Block that lacks one of the
-    Group By columns, so its groups share each period's total: the note under
-    the chart says which columns the totals are grouped by.
+  **Clear results** and **Stop**, are named but never marked. For example, a
+  suggestion appears when a Concordance **Preview** finds no matches on the
+  page it checked, or when Topic Modelling puts most passages in one topic.
+  [Suggestions](./settings.md#help-settings-suggestions) in the Settings page
+  lists every situation and what each one suggests.
 - Clicking a disabled **Run** outlines what it is waiting for, such as an
   empty **Tokeniser model** in Frequency.
 - Suggestions are turned off, and back on, under **Settings → Guidance**

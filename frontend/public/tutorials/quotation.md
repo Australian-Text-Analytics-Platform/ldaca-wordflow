@@ -40,12 +40,16 @@ needs a new Preview.
 - Range: 0–2000.
 - Use 0 to keep the display close to the extracted speaker, quote, and verb.
 
-<h2 id="help-quotation-run">Step 4: Preview</h2>
+<h2 id="help-quotation-run">Step 4: Preview and Run</h2>
 
 Choose **Preview** to see the first pages of quotations. Each page is worked out
 when you open it, from the data as it was when you chose Preview. After a
 Preview, the button turns on again when you change the Data Block, text column
-or engine. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+or engine. Choose **Run** for every quotation; see
+[Run and Quotation Results](#help-quotation-run-all). **Clear results**, at the
+end of the same row, removes this tab's results; see
+[Clear results](#help-quotation-clear-results). See
+[How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-quotation-results">Result panel</h2>
 
@@ -110,7 +114,7 @@ and come back.
 
 While such quotations are kept for the selected Data Block, text column and
 engine, **Run** reads **Resume**: it continues from where the last Run
-stopped, without choosing **Clear** first. To check every document again
+stopped, without choosing **Clear results** first. To check every document again
 instead, choose **Remove** on the note about the kept quotations; the button
 then reads **Run**. A complete Run removes the kept quotations.
 
@@ -130,7 +134,7 @@ is correct and opens properly in LibreOffice Calc, Numbers and other programs.
 See [Excel's cell limit](./export.md#help-export-excel-limit).
 
 Use **Add to Project** to publish selected Result columns as a new Data
-Block. The document column and the analysis columns start selected, and
+Block, with one row for each quotation. The document column and the analysis columns start selected, and
 metadata columns start unselected; unticking the document column also leaves
 out its character positions. `QUOTE_extraction` is not offered: in the Result
 table it is the document with its quotes highlighted, and in a Data Block or a
@@ -174,9 +178,9 @@ in other software.
 <h3 id="help-quotation-clear-results">Clear results</h3>
 
 The tab keeps its results when you move to another tool or reopen the Project.
-**Clear** removes them. Settings are locked while Preview or Run is working,
+**Clear results** removes them. Settings are locked while Preview or Run is working,
 and **Stop** stops it (a Run keeps what it found, see above). After a failure
-or a Run ended with a second **Stop**, Preview and Run stay off until you choose **Clear**
+or a Run ended with a second **Stop**, Preview and Run stay off until you choose **Clear results**
 (unless **Resume** is offered). See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-quotation-troubleshooting">Troubleshooting</h2>

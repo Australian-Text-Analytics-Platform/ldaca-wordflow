@@ -29,6 +29,14 @@ Topic Modelling model the endpoint serves to its name there; leave a model out
 when the endpoint doesn't serve it. ``default`` ticks Remote GPU in new
 Topic Modelling tabs.
 
+``send_user`` is what the OpenAI ``user`` field carries, from the signed-in
+account: ``email``, ``subject`` (the sign-in's stable id), ``username`` (the
+sign-in's preferred_username, such as a UniKey; the email until the person
+next signs in, or when the sign-in has none; issue 474) or ``none``.
+``send_user_details: true`` also labels each Annotation request with the app,
+the account's email and name, in LiteLLM's ``x-litellm-spend-logs-metadata``
+header, for gateways that bill and invoice per person.
+
 See docs/runbooks/server-ai-providers.md.
 """
 
@@ -53,6 +61,7 @@ PLACEHOLDER_HOST_SUFFIX = ".server-ai.invalid"
 _ID_NAMESPACE = uuid.UUID("5f0b8a4e-2b9c-4f7e-9d61-0c3a2e8b7d15")
 _SLUG = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?")
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
+SendUser = Literal["email", "subject", "username", "none"]
 
 
 class ServerAiProvider(BaseModel):
@@ -72,7 +81,10 @@ class ServerAiProvider(BaseModel):
     default_model: str | None = None
     model_descriptions: dict[str, str] = Field(default_factory=dict)
     # The OpenAI ``user`` field, from the signed-in account; never from the client.
-    send_user: Literal["email", "subject", "none"] = "email"
+    send_user: SendUser = "email"
+    # Label Annotation requests with the app, email and name (LiteLLM spend-log
+    # metadata header).
+    send_user_details: bool = False
     # Requests at once per person; empty means the Run's own setting.
     max_requests_per_user: int | None = Field(default=None, ge=1, le=32)
 
@@ -173,7 +185,7 @@ class ServerEmbeddingEndpoint(BaseModel):
     api_key_env: str
     # Topic Modelling model id -> the name the endpoint serves it under.
     models: dict[str, str]
-    send_user: Literal["email", "subject", "none"] = "email"
+    send_user: SendUser = "email"
     batch_size: int | None = Field(default=None, ge=1, le=2048)
     concurrency: int | None = Field(default=None, ge=1, le=32)
     # Ticks Remote GPU in new Topic Modelling tabs.

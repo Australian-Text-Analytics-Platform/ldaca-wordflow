@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -53,7 +54,9 @@ import { AiProvidersPreferencesPanel } from '../components/AiProvidersPreference
 const renderPanel = () =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <AiProvidersPreferencesPanel />
+      <TooltipProvider>
+        <AiProvidersPreferencesPanel />
+      </TooltipProvider>
     </QueryClientProvider>,
   );
 

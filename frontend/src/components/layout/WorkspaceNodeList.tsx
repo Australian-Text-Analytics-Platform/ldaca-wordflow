@@ -5,6 +5,7 @@ import { GREY } from '@/features/views/common/vizPalette';
 import { DataBlockName } from '@/components/DataBlockName';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
 import { usePinnedNodesStore } from '@/stores/pinnedNodesStore';
+import { startDataBlockDragGesture } from '@/stores/dataBlockDragStore';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { WorkspaceGraphNode } from '@/api';
 
@@ -33,7 +34,8 @@ const isActivationKey = (event: React.KeyboardEvent<HTMLDivElement>): boolean =>
  * Rendered by: the sidebar Data Blocks section because graph selection and
  * fresh-node acknowledgement must stay aligned with visible rows.
  * Flow: read fresh state and pinned ids, order pinned/selected/regular nodes,
- * then render toggleable node rows.
+ * then render toggleable node rows. A row can also be dragged onto a tool to
+ * add its Data Block there, as from the Project Graph (Chao, 15 Nov 2026).
  */
 function WorkspaceNodeList({
   workspaceId,
@@ -108,6 +110,15 @@ function WorkspaceNodeList({
                   <Tooltip key={node.id}>
                     <TooltipTrigger asChild>
                       <div
+                        // A drag carries the Data Block to a tool; a click
+                        // still toggles selection. The row's own buttons
+                        // stop the press before it gets here.
+                        onPointerDown={(event) => {
+                          startDataBlockDragGesture(event, {
+                            nodeId: node.id,
+                            name: displayName,
+                          });
+                        }}
                         onClick={() => {
                           handleToggle(node.id);
                         }}
@@ -122,7 +133,7 @@ function WorkspaceNodeList({
                         tabIndex={0}
                         aria-pressed={checked}
                         aria-label={`${checked ? 'Deselect' : 'Select'} ${displayName}`}
-                        className="group/row relative block w-full rounded-md text-left focus-visible:outline-hidden"
+                        className="group/row relative block w-full touch-pan-y rounded-md text-left select-none focus-visible:outline-hidden"
                       >
                         {/* Inner box carries the identity surface and selection halo. */}
                         <div

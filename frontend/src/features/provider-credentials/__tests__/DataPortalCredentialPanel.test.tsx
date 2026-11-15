@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -32,7 +33,7 @@ describe('DataPortalCredentialPanel', () => {
 
   it('owns Data Portal credential writes without rendering LLM provider setup', async () => {
     const user = userEvent.setup();
-    render(<DataPortalCredentialPanel />);
+    render(<DataPortalCredentialPanel />, { wrapper: TooltipProvider });
 
     expect(screen.queryByRole('button', { name: 'Add provider' })).not.toBeInTheDocument();
     await user.type(screen.getByLabelText('LDaCA access token'), 'portal-token');
@@ -47,7 +48,7 @@ describe('DataPortalCredentialPanel', () => {
   it('clears an explicitly configured Data Portal token', async () => {
     mocks.configured = true;
     const user = userEvent.setup();
-    render(<DataPortalCredentialPanel />);
+    render(<DataPortalCredentialPanel />, { wrapper: TooltipProvider });
 
     await user.click(screen.getByRole('button', { name: 'Clear' }));
 

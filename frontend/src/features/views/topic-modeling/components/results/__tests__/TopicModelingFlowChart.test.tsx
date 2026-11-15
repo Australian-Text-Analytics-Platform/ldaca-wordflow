@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type * as XYFlowReact from '@xyflow/react';
 import type { ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   type TopicFlowNode,
@@ -9,8 +9,15 @@ import {
   TopicModelingFlowChart,
 } from '../TopicModelingFlowChart';
 import { DEFAULT_TOPIC_GRAPH_PLANE, type TopicBubbleModel } from '../topicModelingGraph';
+import { BUBBLE_POPUP_CLOSE_DELAY_MS, BUBBLE_POPUP_OPEN_DELAY_MS } from '../useBubblePopup';
 
 const flowProps = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+const cloudProps = vi.hoisted(() => ({
+  current: {} as {
+    onWordClick?: (word: string) => void;
+    onWordContextMenu?: (word: string) => void;
+  },
+}));
 
 const flowStore = vi.hoisted(() => {
   let state = { width: 0, height: 0 };
@@ -111,19 +118,34 @@ vi.mock('@xyflow/react', async (importOriginal) => {
 vi.mock('@/features/views/common/components/ResponsiveWordCloud', () => ({
   ResponsiveWordCloud: ({
     words,
+    onWordClick,
+    onWordContextMenu,
   }: {
     words: { text: string; value: number; color?: string; bold?: boolean }[];
-  }) => (
-    <div>
-      {words
-        .map(
-          (word) =>
-            `${word.text}:${String(word.value)}${word.bold ? ` bold ${word.color ?? ''}` : ''}`,
-        )
-        .join(', ')}
-    </div>
-  ),
+    onWordClick?: (word: string) => void;
+    onWordContextMenu?: (word: string) => void;
+  }) => {
+    cloudProps.current = { onWordClick, onWordContextMenu };
+    return (
+      <div>
+        {words
+          .map(
+            (word) =>
+              `${word.text}:${String(word.value)}${word.bold ? ' bold' : ''}${word.color ? ` ${word.color}` : ''}`,
+          )
+          .join(', ')}
+      </div>
+    );
+  },
 }));
+
+/** Hover a bubble long enough for its card to open. */
+const hoverBubble = (element: HTMLElement) => {
+  fireEvent.mouseEnter(element);
+  act(() => {
+    vi.advanceTimersByTime(BUBBLE_POPUP_OPEN_DELAY_MS);
+  });
+};
 
 const bubble: TopicBubbleModel = {
   id: 7,
@@ -323,6 +345,7 @@ describe('TopicModelingFlowChart', () => {
   });
 
   it('keeps one node-anchored tooltip visible through pointer movement and data refreshes', () => {
+    vi.useFakeTimers();
     const view = render(
       <TopicModelingFlowChart
         plane={DEFAULT_TOPIC_GRAPH_PLANE}
@@ -349,7 +372,7 @@ describe('TopicModelingFlowChart', () => {
     const node = screen.getByTestId('topic-flow-node-7');
     expect(screen.queryByTestId('topic-flow-tooltip-7')).not.toBeInTheDocument();
 
-    fireEvent.mouseEnter(node);
+    hoverBubble(node);
     const tooltip = screen.getByTestId('topic-flow-tooltip-7');
     expect(tooltip).toHaveAttribute('role', 'tooltip');
     expect(tooltip).toHaveAttribute('data-align', 'start');
@@ -398,10 +421,14 @@ describe('TopicModelingFlowChart', () => {
     expect(screen.getByText('= 14')).toBeInTheDocument();
 
     fireEvent.mouseLeave(screen.getByTestId('topic-flow-node-7'));
+    act(() => {
+      vi.advanceTimersByTime(BUBBLE_POPUP_CLOSE_DELAY_MS);
+    });
     expect(screen.queryByTestId('topic-flow-tooltip-7')).not.toBeInTheDocument();
   });
 
-  it('shows search matches bold, in each term colour, in the hover word cloud (issues 342, 434)', () => {
+  it('shows search matches in each term colour, not bold, in the hover word cloud (issues 342, 434)', () => {
+    vi.useFakeTimers();
     render(
       <TopicModelingFlowChart
         plane={DEFAULT_TOPIC_GRAPH_PLANE}
@@ -439,10 +466,111 @@ describe('TopicModelingFlowChart', () => {
       />,
     );
 
-    fireEvent.mouseEnter(screen.getByTestId('topic-flow-node-7'));
+    hoverBubble(screen.getByTestId('topic-flow-node-7'));
     expect(screen.getByTestId('topic-flow-tooltip-7')).toHaveTextContent(
-      'family:5 bold #d18616, care:3, home:2 bold #1a5cff, policy:1',
+      // Not bold, so clicking a word recolours it without moving the others.
+      'family:5 #d18616, care:3, home:2 #1a5cff, policy:1',
     );
+  });
+
+  it('opens the word cloud after a pause, keeps it while the pointer is in it, and passes word clicks on', () => {
+    vi.useFakeTimers();
+    const onWordClick = vi.fn();
+    const onWordContextMenu = vi.fn();
+    render(
+      <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
+        bubbles={[bubble]}
+        corpusPresentation={{
+          corpusCount: 1,
+          panelNodeIds: ['corpus-1'],
+          nodeColors: { 'corpus-1': '#2563eb' },
+          defaultPalette: ['#2563eb'],
+        }}
+        projectionKey="analysis-1:7"
+        lassoMode={false}
+        lassoFilterActive={false}
+        exportDisabled={false}
+        onToggleLassoMode={vi.fn()}
+        onClearLassoFilter={vi.fn()}
+        onAddLassoTopics={vi.fn()}
+        onDownload={vi.fn()}
+        onViewReady={vi.fn()}
+        onToggleTopicSelection={vi.fn()}
+        onWordClick={onWordClick}
+        onWordContextMenu={onWordContextMenu}
+      />,
+    );
+
+    const node = screen.getByTestId('topic-flow-node-7');
+    // Passing over a bubble opens nothing.
+    fireEvent.mouseEnter(node);
+    act(() => {
+      vi.advanceTimersByTime(BUBBLE_POPUP_OPEN_DELAY_MS - 50);
+    });
+    fireEvent.mouseLeave(node);
+    act(() => {
+      vi.advanceTimersByTime(BUBBLE_POPUP_OPEN_DELAY_MS);
+    });
+    expect(screen.queryByTestId('topic-flow-tooltip-7')).not.toBeInTheDocument();
+
+    hoverBubble(node);
+    const card = screen.getByTestId('topic-flow-tooltip-7');
+    // With word clicks wired, the card takes the pointer and says what clicks do.
+    expect(card).toHaveClass('pointer-events-auto', 'nopan');
+    expect(screen.getByTestId('topic-flow-tooltip-word-hint')).toHaveTextContent(
+      'Click a word to search, right-click to hide it.',
+    );
+
+    // Leaving the bubble for the card keeps it open.
+    fireEvent.mouseLeave(node);
+    fireEvent.mouseEnter(card);
+    act(() => {
+      vi.advanceTimersByTime(BUBBLE_POPUP_CLOSE_DELAY_MS * 3);
+    });
+    expect(screen.getByTestId('topic-flow-tooltip-7')).toBe(card);
+
+    cloudProps.current.onWordClick?.('topic');
+    cloudProps.current.onWordContextMenu?.('topic');
+    expect(onWordClick).toHaveBeenCalledWith('topic');
+    expect(onWordContextMenu).toHaveBeenCalledWith('topic');
+
+    // Leaving the card closes it after the delay.
+    fireEvent.mouseLeave(card);
+    act(() => {
+      vi.advanceTimersByTime(BUBBLE_POPUP_CLOSE_DELAY_MS - 50);
+    });
+    expect(screen.getByTestId('topic-flow-tooltip-7')).toBe(card);
+    act(() => {
+      vi.advanceTimersByTime(50);
+    });
+    expect(screen.queryByTestId('topic-flow-tooltip-7')).not.toBeInTheDocument();
+  });
+
+  it('does not let Shift start React Flow selection, since it keeps the card open', () => {
+    render(
+      <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
+        bubbles={[bubble]}
+        corpusPresentation={{
+          corpusCount: 1,
+          panelNodeIds: ['corpus-1'],
+          nodeColors: { 'corpus-1': '#2563eb' },
+          defaultPalette: ['#2563eb'],
+        }}
+        projectionKey="analysis-1:7"
+        lassoMode={false}
+        lassoFilterActive={false}
+        exportDisabled={false}
+        onToggleLassoMode={vi.fn()}
+        onClearLassoFilter={vi.fn()}
+        onAddLassoTopics={vi.fn()}
+        onDownload={vi.fn()}
+        onViewReady={vi.fn()}
+        onToggleTopicSelection={vi.fn()}
+      />,
+    );
+    expect(flowProps.current.selectionKeyCode).toBeNull();
   });
 
   it('keeps filtered bubbles non-interactive and puts lasso above node tooltips', () => {
@@ -507,6 +635,10 @@ describe('TopicModelingFlowChart', () => {
       'visiblePainted',
     );
   });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('TopicModelingFlowChart examples shortcut (#353)', () => {

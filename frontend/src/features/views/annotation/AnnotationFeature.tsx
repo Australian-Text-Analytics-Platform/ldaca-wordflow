@@ -26,6 +26,7 @@ import {
 } from '@/features/provider-credentials/providerCredentialRequests';
 import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
 import { DEFAULT_INTERCODER_RELIABILITY_METRIC } from '@/features/views/common/columnComparisonModel';
+import HelpIcon from '@/components/help/HelpIcon';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
 import type { NodeInputColumnAddonArgs } from '@/features/views/common/components/NodeInputsPanel';
 import { NodeInputsPanel } from '@/features/views/common/components/NodeInputsPanel';
@@ -63,6 +64,11 @@ import {
 } from './annotationAdvanced';
 import { AnnotationAiSettings } from './components/AnnotationAiSettings';
 import { AnnotationClassDescriptionsEditor } from './components/AnnotationClassDescriptionsEditor';
+import {
+  CODE_DESIGNER_SETTINGS_KEY,
+  type CodeDesignerSettings,
+  parseCodeDesignerSettings,
+} from './codebookDesigner';
 import { checkCodebook, codeKey } from './codebookChecks';
 import { AnnotationExampleSamplingControls } from './components/AnnotationExampleSamplingControls';
 import { AnnotationInferenceSettings } from './components/AnnotationInferenceSettings';
@@ -521,6 +527,18 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   // Source node drives manual and AI annotation through one selected, existing
   // annotation column. Creating a column is a separate immediate Data Block edit.
   const sourceNode = sourceNodeInputs.resolvedNodes[0] ?? null;
+  // The AI Code Designer's brief and settings, kept with the tab on this
+  // device and never sent with annotation (Chao, 15 Nov 2026).
+  const codeDesignerSettings = parseCodeDesignerSettings(host.settings[CODE_DESIGNER_SETTINGS_KEY]);
+  const updateCodeDesignerSettings = (patch: Partial<CodeDesignerSettings>) => {
+    host.setSetting(
+      CODE_DESIGNER_SETTINGS_KEY,
+      JSON.stringify({
+        ...parseCodeDesignerSettings(host.settings[CODE_DESIGNER_SETTINGS_KEY]),
+        ...patch,
+      }),
+    );
+  };
   const sourceColumns = sourceNode?.columnOptions.map((option) => option.name) ?? [];
   const { defaultPalette, nodeColors, setNodeColor, ensureNodeColors } = useNodeColorControls({
     nodeIds: sourceNode ? [sourceNode.id] : [],
@@ -1107,6 +1125,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                           onPreview: runFreshAiAnalysis,
                           onRunAll: handleRunAll,
                           onStop: activeAnalysis ? stopAiTask : undefined,
+                          help: { targetKey: 'analysis.annotation.run' },
                           onClear: async () => {
                             await clearAiResults();
                             await host.clearCorrectionColumns();
@@ -1140,28 +1159,35 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                   }
                   footer={
                     annotationMode === 'manual' ? (
-                      <DisabledReasonTooltip
-                        reason={
-                          !manualReviewSnapshot && (!sourceNode || !selectedAnnotationColumnExists)
-                            ? 'Select an Annotation Data Block and annotation column first'
-                            : undefined
-                        }
-                      >
-                        <Button
-                          type="button"
-                          disabled={
+                      <div className="flex items-center gap-2">
+                        <DisabledReasonTooltip
+                          reason={
                             !manualReviewSnapshot &&
-                            (!sourceNode ||
-                              !selectedAnnotationColumnExists ||
-                              isStartingManualReview)
+                            (!sourceNode || !selectedAnnotationColumnExists)
+                              ? 'Select an Annotation Data Block and annotation column first'
+                              : undefined
                           }
-                          onClick={() => {
-                            void handleManualReviewToggle();
-                          }}
                         >
-                          {manualReviewSnapshot ? 'Close' : 'Start'}
-                        </Button>
-                      </DisabledReasonTooltip>
+                          <Button
+                            type="button"
+                            disabled={
+                              !manualReviewSnapshot &&
+                              (!sourceNode ||
+                                !selectedAnnotationColumnExists ||
+                                isStartingManualReview)
+                            }
+                            onClick={() => {
+                              void handleManualReviewToggle();
+                            }}
+                          >
+                            {manualReviewSnapshot ? 'Close' : 'Start'}
+                          </Button>
+                        </DisabledReasonTooltip>
+                        <HelpIcon
+                          targetKey="analysis.annotation.manual"
+                          label="About Start and Close"
+                        />
+                      </div>
                     ) : undefined
                   }
                   footerGuidanceTarget={
@@ -1248,6 +1274,22 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                           nodeId={classDescriptionNode?.id ?? null}
                           classColumn={classDescriptionClassColumn}
                           descriptionColumn={classDescriptionDescriptionColumn}
+                          designer={{
+                            tabId: host.tabId,
+                            settings: codeDesignerSettings,
+                            onSettingsChange: updateCodeDesignerSettings,
+                            source: sourceNode?.column
+                              ? {
+                                  nodeId: sourceNode.id,
+                                  name: sourceNode.name,
+                                  textColumn: sourceNode.column,
+                                }
+                              : null,
+                            configurations: providerCredentials.annotationProviders,
+                            providerModels,
+                            fallbackProviderId: aiProviderConfigurationId,
+                            fallbackModel: aiModel,
+                          }}
                         />
                       </section>
                     </div>

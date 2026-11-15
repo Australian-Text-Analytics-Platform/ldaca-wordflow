@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EmbeddingEndpointsPanel } from '../EmbeddingEndpointsPanel';
@@ -61,7 +62,7 @@ describe('EmbeddingEndpointsPanel', () => {
   });
 
   it("shows the server's endpoint read-only and the person's own with actions", () => {
-    render(<EmbeddingEndpointsPanel />);
+    render(<EmbeddingEndpointsPanel />, { wrapper: TooltipProvider });
 
     expect(
       screen.getByText('Provided by this Wordflow server · English (minilm-l6)'),
@@ -82,7 +83,7 @@ describe('EmbeddingEndpointsPanel', () => {
       available: { [ENGLISH]: true, [MULTILINGUAL]: false },
       message: `Multilingual: ${MULTILINGUAL}: Lab GPU doesn't have this model (HTTP 404)`,
     });
-    render(<EmbeddingEndpointsPanel />);
+    render(<EmbeddingEndpointsPanel />, { wrapper: TooltipProvider });
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Check' })[1] as HTMLElement);
 
@@ -99,7 +100,7 @@ describe('EmbeddingEndpointsPanel', () => {
       suggested: { [ENGLISH]: 'minilm-en', [MULTILINGUAL]: 'minilm-multilingual' },
       message: null,
     });
-    render(<EmbeddingEndpointsPanel />);
+    render(<EmbeddingEndpointsPanel />, { wrapper: TooltipProvider });
     expect(
       screen.getByText('No Topic Modelling servers. Topic Modelling reads text on this computer.'),
     ).toBeInTheDocument();
@@ -145,7 +146,7 @@ describe('EmbeddingEndpointsPanel', () => {
       suggested: {},
       message: 'gateway.example refused the API key; check it.',
     });
-    render(<EmbeddingEndpointsPanel />);
+    render(<EmbeddingEndpointsPanel />, { wrapper: TooltipProvider });
     fireEvent.click(screen.getByRole('button', { name: 'Add server' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Lab GPU' } });
@@ -184,7 +185,7 @@ describe('EmbeddingEndpointsPanel', () => {
       suggested: { [ENGLISH]: ENGLISH, [MULTILINGUAL]: MULTILINGUAL },
       message: null,
     });
-    render(<EmbeddingEndpointsPanel />);
+    render(<EmbeddingEndpointsPanel />, { wrapper: TooltipProvider });
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
 
     expect(await screen.findByText('Found 2 models.')).toBeInTheDocument();
@@ -197,7 +198,7 @@ describe('EmbeddingEndpointsPanel', () => {
   it('a shared server only lists its own endpoints', () => {
     state.endpoints = [server];
     state.canAdd = false;
-    render(<EmbeddingEndpointsPanel />);
+    render(<EmbeddingEndpointsPanel />, { wrapper: TooltipProvider });
 
     expect(
       screen.getByText("This Wordflow server provides these; they can't be changed here."),

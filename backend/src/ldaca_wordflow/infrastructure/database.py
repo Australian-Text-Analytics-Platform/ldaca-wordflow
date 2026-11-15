@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT NOT NULL,
     last_login TEXT,
     storage_quota_bytes INTEGER DEFAULT 32212254720
-        CHECK (storage_quota_bytes IS NULL OR storage_quota_bytes > 0)
+        CHECK (storage_quota_bytes IS NULL OR storage_quota_bytes > 0),
+    username TEXT
 )
 """
 
@@ -74,10 +75,13 @@ CREATE TABLE IF NOT EXISTS oauth_transactions (
 )
 """
 
-_SCHEMA_VERSION = 7
-# 0.7.6 servers wrote version 6 with the same tables; it is upgraded in place
-# when it passes every version-7 check (issue 250).
-_UPGRADABLE_SCHEMA_VERSION = 6
+_SCHEMA_VERSION = 8
+# 0.7.6 servers wrote version 6 with the same tables as version 7 (issue 250).
+# Version 8 adds users.username, the sign-in's preferred_username (a
+# university login such as a UniKey), sent to server AI providers that ask
+# for it (issue 474). Both are upgraded in place and then checked as version 8.
+_UPGRADABLE_SCHEMA_VERSIONS = (6, 7)
+_ADD_USERNAME = "ALTER TABLE users ADD COLUMN username TEXT"
 _EXPECTED_COLUMNS = {
     "users": [
         ("id", "TEXT", 0, None, 1),
@@ -88,6 +92,7 @@ _EXPECTED_COLUMNS = {
         ("created_at", "TEXT", 1, None, 0),
         ("last_login", "TEXT", 0, None, 0),
         ("storage_quota_bytes", "INTEGER", 0, "32212254720", 0),
+        ("username", "TEXT", 0, None, 0),
     ],
     "user_identities": [
         ("issuer", "TEXT", 1, None, 1),
@@ -161,9 +166,11 @@ class Database:
                         "CREATE INDEX idx_sessions_expiry ON user_sessions(expires_at)"
                     )
                     await connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
-                elif version == _UPGRADABLE_SCHEMA_VERSION and tables:
-                    # Relabel inside this transaction, then validate the whole
-                    # schema as version 7; any failure rolls the label back.
+                elif version in _UPGRADABLE_SCHEMA_VERSIONS and tables:
+                    # Add the column and relabel inside this transaction, then
+                    # validate the whole schema as version 8; any failure rolls
+                    # both back.
+                    await connection.execute(_ADD_USERNAME)
                     await connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
                 elif version != _SCHEMA_VERSION:
                     raise RuntimeError("Unsupported database schema version")

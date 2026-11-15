@@ -4,7 +4,7 @@
 
 - `main` is the latest release. It is the default branch, so it is what GitHub
   shows, what Dependabot scans and where hand-run workflows are found. It
-  changes only through an approved pull request from `v0.7` after a release
+  changes only through a pull request from `v0.7` after a release
   (see Post-release). Nobody commits to it directly.
 - `v0.7` is where 0.7.x releases are prepared. Fix and feature branches start
   here, and release commits and tags are made here.
@@ -32,10 +32,31 @@ ignored; workflows recreate them with `pnpm deploy_frontend_to_backend`.
 
 ## Continuous Integration
 
-Root `.github/workflows/ci.yml` validates frontend and backend source together
-on every push and pull request. Backend jobs run on Linux, macOS, and Windows
-and use normal locked `uv sync`, so `[tool.uv.sources]` determines whether a
-dependency comes from a checked-out sibling or a registry.
+Root `.github/workflows/ci.yml` validates frontend and backend source together.
+Backend jobs run on Linux, macOS, and Windows and use normal locked `uv sync`,
+so `[tool.uv.sources]` determines whether a dependency comes from a
+checked-out sibling or a registry. A full run takes about an hour (Windows),
+so CI checks major changes and releases, not every commit. Its Scope job
+(`scripts/ci-scope.mjs`, tested by `pnpm test:ci-scope`) decides:
+
+| Change | CI |
+|---|---|
+| Push to `v0.7` or `v0.8` | Skipped, unless a commit in the push has the subject `Release X.Y.Z` (everything) or `[ci]` in its message |
+| Pull request | Runs, unless it changes only documentation (`*.md`, `docs/`, `specs/`, help pages) |
+| Pull request into `main` | Everything |
+| Push to `main` (merging that pull request) | Skipped: the pull request was just checked |
+| By hand: `gh workflow run ci.yml --ref <branch>` | Everything |
+| Push to any other branch | None; such branches are checked through their pull request |
+
+When CI runs, the backend jobs are skipped if only frontend and documentation
+files changed, except for a release or a pull request into `main`.
+
+Small changes go straight to `v0.7` or `v0.8` after the local checks (`pnpm -C
+frontend check`, and `uv run pytest` in `backend/` for backend changes); CI
+does not need to pass first. Check major changes on all three systems before
+they build up: open a pull request, add `[ci]` to the commit message, or run CI
+by hand. Dependency updates, packaging, workflow and Rust changes count as
+major.
 
 Before release, publish any supporting-package version required by backend
 metadata. Source-aware CI can succeed while release validation correctly fails
@@ -49,6 +70,8 @@ the monorepo.
 
 1. Bump and review the shared version and release notes.
 2. Run `pnpm check-versions` and require root CI to pass on the release commit.
+   CI runs when the release commit is pushed if its subject is
+   `Release X.Y.Z`; otherwise run it by hand on that commit's branch.
 3. Confirm every declared registry dependency is published for all supported
    platforms.
 4. Manually dispatch `Backend Package Release` from the exact release commit
@@ -144,8 +167,8 @@ gh workflow run desktop-release.yml --repo Australian-Text-Analytics-Platform/ld
   prevented while download or installation is active.
 - Update `README.md` on `v0.7` (stable release line, "Use Wordflow" links and a
   "Release history" row with the master repository's Binder pin), then open a
-  pull request from `v0.7` to `main` titled "Release X.Y.Z". After approval,
-  merge it with a merge commit, not squash or rebase, so the release tag stays
+  pull request from `v0.7` to `main` titled "Release X.Y.Z" and merge it
+  with a merge commit, not squash or rebase, so the release tag stays
   reachable from `main`.
 - Deploy the tagged root commit and current supporting-package pointers.
 - Verify `/health/live`, `/health/ready`, hosted login, one Workspace read, and `/api/events`

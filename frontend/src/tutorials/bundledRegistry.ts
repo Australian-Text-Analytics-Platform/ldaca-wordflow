@@ -341,6 +341,11 @@ const tutorial = {
     anchor: 'help-token-frequency-run',
     label: 'Run Frequency',
   },
+  'analysis.concordance.run': {
+    file: 'tutorials/concordance.md',
+    anchor: 'help-concordance-run',
+    label: 'Preview and Run Concordance',
+  },
   'analysis.concordance.tab': {
     file: 'tutorials/concordance.md',
     anchor: 'help-concordance-section',
@@ -375,6 +380,11 @@ const tutorial = {
     file: 'tutorials/concordance.md',
     anchor: 'help-concordance-regex-toggle',
     label: 'Regex mode toggle',
+  },
+  'analysis.topic-modeling.run': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-run',
+    label: 'Run Topic Modelling',
   },
   'analysis.topic-modeling.tab': {
     file: 'tutorials/topic-modeling.md',
@@ -476,6 +486,11 @@ const tutorial = {
     anchor: 'help-topic-modeling-color-by',
     label: 'Colour by',
   },
+  'analysis.sequential-analysis.run': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-run',
+    label: 'Run Trends',
+  },
   'analysis.sequential-analysis.tab': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-section',
@@ -536,10 +551,30 @@ const tutorial = {
     anchor: 'help-sequential-show-as',
     label: 'Show as',
   },
+  'analysis.quotation.run': {
+    file: 'tutorials/quotation.md',
+    anchor: 'help-quotation-run',
+    label: 'Preview and Run Quotation',
+  },
   'analysis.quotation.tab': {
     file: 'tutorials/quotation.md',
     anchor: 'help-quotation-section',
     label: 'Quotation extraction overview',
+  },
+  'analysis.annotation.code-designer': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-code-designer',
+    label: 'AI Code Designer',
+  },
+  'analysis.annotation.manual': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-manual',
+    label: 'Manual annotation',
+  },
+  'analysis.annotation.run': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-preview',
+    label: 'Preview and Run Annotation',
   },
   'analysis.annotation.tab': {
     file: 'tutorials/annotation.md',
@@ -615,6 +650,91 @@ const tutorial = {
     file: 'tutorials/export.md',
     anchor: 'help-export-excel-limit',
     label: "Excel's cell limit",
+  },
+  'glossary.overview': {
+    file: 'tutorials/glossary.md',
+    anchor: 'help-glossary-section',
+    label: 'Glossary',
+  },
+  'settings.overview': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-section',
+    label: 'Settings',
+  },
+  'settings.appearance': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-appearance',
+    label: 'Appearance',
+  },
+  'settings.preference-sync': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-preference-sync',
+    label: 'Preference sync',
+  },
+  'settings.multi-tab': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-multi-tab',
+    label: 'Enable multi-tab',
+  },
+  'settings.desktop-updates': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-desktop-updates',
+    label: 'Desktop updates',
+  },
+  'settings.portal': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-portal',
+    label: 'LDaCA access token',
+  },
+  'settings.servers-ai': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-servers-ai',
+    label: 'Generative AI servers',
+  },
+  'settings.servers-topic': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-servers-topic',
+    label: 'Topic Modelling servers',
+  },
+  'settings.data-folder': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-data-folder',
+    label: 'Data folder',
+  },
+  'settings.tool-caches': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-tool-caches',
+    label: 'Tool caches',
+  },
+  'settings.favourite-projects': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-favourite-projects',
+    label: 'Favourite Projects',
+  },
+  'settings.views': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-views',
+    label: 'Visible views',
+  },
+  'settings.guidance': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-guidance',
+    label: 'Contextual Hints and Suggestions',
+  },
+  'settings.contextual-hints': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-contextual-hints',
+    label: 'Contextual Hints',
+  },
+  'settings.reset-hints': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-reset-hints',
+    label: 'Reset Contextual Hint history',
+  },
+  'settings.suggestions': {
+    file: 'tutorials/settings.md',
+    anchor: 'help-settings-suggestions',
+    label: 'Suggestions',
   },
 } as const satisfies Record<string, DocTarget>;
 

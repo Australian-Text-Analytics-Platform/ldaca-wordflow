@@ -4,6 +4,7 @@ import type {
   AnnotationProviderConfigurationResource,
   AnnotationResultQueryWritable,
   AnnotationRunAllSubmissionWritable,
+  CodebookDraftRequestWritable,
   ConcordanceAnalysisRequest,
   DataPortalImportSubmitRequest,
   QuotationAnalysisRequest,
@@ -13,6 +14,7 @@ import type {
   TopicModelingAnalysisRequest,
 } from '@/api';
 import {
+  draftCodebook,
   listAnnotationModels,
   listDataPortalCollections,
   queryAnalysisResult,
@@ -63,6 +65,34 @@ export const listAnnotationModelsWithProviderCredential = (
     },
     signal,
     throwOnError: true,
+  });
+};
+
+/**
+ * Starts one AI Code Designer request as a server-sent event stream (Chao,
+ * 15 Nov 2026). The browser-held key, if any, is added here. One attempt
+ * only: a retry would send the texts, and spend the model's time, again.
+ */
+export const draftCodebookWithProviderCredential = ({
+  workspaceId,
+  nodeId,
+  request,
+  signal,
+  onSseError,
+}: {
+  workspaceId: string;
+  nodeId: string;
+  request: Omit<CodebookDraftRequestWritable, 'api_key'>;
+  signal: AbortSignal;
+  onSseError: (error: unknown) => void;
+}) => {
+  const apiKey = annotationCredential(request.provider_configuration_id);
+  return draftCodebook({
+    path: { workspace_id: workspaceId, node_id: nodeId },
+    body: { ...request, ...(apiKey ? { api_key: apiKey } : {}) },
+    signal,
+    sseMaxRetryAttempts: 1,
+    onSseError,
   });
 };
 

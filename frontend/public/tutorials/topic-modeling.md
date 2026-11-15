@@ -356,8 +356,10 @@ Settings are locked while **Run** works. After it finishes, Run turns on again
 only when you change a setting that affects the topics. Words per topic, stop
 words, search, selection, and chart controls only change what is shown, so they
 do not turn Run on. After a failure or a stop, Run stays off until you choose
-**Clear**; your **Passages** setting, token cap, and Min topic size stay
-selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+**Clear results** (at the end of the same row; see
+[Clear results](#help-topic-modeling-clear-results)); your **Passages** setting,
+token cap, and Min topic size stay selected. See
+[How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-topic-modeling-results">Result panel</h2>
 
@@ -374,7 +376,7 @@ options to widen or narrow the chart (double-click it to go back). The panel ico
 right of the Display options heading moves the options below the chart, in a
 compact row, and back beside it. On a narrower panel they always sit below the
 chart. Click **Display options** to fold them to one summary line, such as "2
-topics per doc · 15 words per topic · Colour: Data Block · Stop words on"; the
+topics per doc · 15 words per topic · Colour: Data Block · Stop words on (12)"; the
 search term and Add to Project stay available. The tab remembers these choices
 on this computer. Below the chart and options, the topic list takes the left third and the
 [examples of one topic](#help-topic-modeling-examples) the rest; drag the
@@ -571,6 +573,11 @@ off, the dropdown reads **Use stop words**. Choosing a list from the dropdown
 switches it on, and the dropdown then shows **Saved list (N words)**. To stop
 using the list, turn the switch off or choose **Don't use stop words**; the
 saved list is kept for next time. You can edit the list while it is off.
+While the list is in use, a line under the stop word controls names the first
+eight hidden words, newest first, and counts the rest, for example "Hidden
+words: council, the, and, of, a, to, in, is and 12 more". The pencil button
+opens the list for editing; **Sort** in that window sorts it alphabetically,
+and **Save** keeps the change.
 The dropdown's **From other tabs** group lists stop words saved in your other
 Frequency or Topic Modelling tabs; **Wordflow classic lists** offers the built-in
 lists earlier Wordflow versions used; **Languages (stopword library)** offers
@@ -623,10 +630,29 @@ documents (6.7%) weighs about as much as 296 of 3,729 (7.9%).
 
 ![Hovering over a bubble shows its representative words and its counts in each corpus](tutorials/assets/topic_modelling/bubble_hover.png)
 
-Hover for a representative-word cloud. Word order reflects c-TF-IDF
-distinctiveness, while word size reflects occurrences in assigned
-passages. Because passages do not overlap, source tokens are not counted twice. These are
-not source-document frequencies.
+Rest the pointer on a bubble for a representative-word cloud. Word order
+reflects c-TF-IDF distinctiveness, while word size reflects occurrences in
+assigned passages. Because passages do not overlap, source tokens are not
+counted twice. These are not source-document frequencies.
+
+The card opens after a short pause, so moving across the chart doesn't cover
+the bubble you are aiming at. It stays open for a moment after the pointer
+leaves the bubble, and for as long as the pointer is inside it, so you can
+move into the card and use its words. While it closes, crossing another bubble
+doesn't replace it. Hold Shift to keep the card open. While the pointer is in a
+card, bubbles under it can't be hovered; move out and the card closes.
+
+- **Click a word** in the card to add it to the start of the **Search term**,
+  or to remove it if it is already a term. Its matches are coloured straight
+  away in every card and in the topic list, but the bubbles are filtered only
+  when you apply the search (see below). A clicked word works like the same
+  word typed, so it also colours longer words that contain it. The other words
+  in the card stay where they are, so you can click several in turn. Clicking a word
+  that is coloured only because of a longer term, such as *household* while
+  the term is *house*, adds it as its own term. Terms you typed with `*` or
+  `?` are never removed by a click.
+- **Right-click a word** to add it to the start of the stop words. The stop
+  words switch turns on if it was off.
 
 Drag empty graph space to pan. To zoom, pinch on a trackpad, or hold ⌘ on a Mac (Ctrl elsewhere) while scrolling; a plain scroll scrolls the page, even over the graph. The graph initially
 fits every bubble; use **Fit view** to restore that complete view after moving
@@ -635,19 +661,29 @@ several Topic centres. Lasso mode remains active and later strokes add to the
 filter of the topic list; use **Clear filter** in the graph toolbar to
 remove that accumulated filter without changing manually selected Topics.
 A **Search term** further narrows the list and fades the other topics in the
-graph. Spaces, commas and other punctuation separate several terms, and a topic
+graph. Words that match are coloured as you type, but the list and the bubbles
+are filtered only when you click **Apply** beside the box or press Enter.
+Clicking away from the box does not apply it. Emptying the box removes the
+filter straight away. **Apply** is available only while the box differs from
+what was last applied. Hover over the magnifier for a reminder of how terms
+work; when there are more terms than the box can show, hover over them to see
+the whole list. Spaces, commas and other punctuation separate several terms, and a topic
 matches when any one of its words contains any one term: `chil, home` finds
 topics with *child*, *children* or *chill*, and topics with *home* or
 *homeless*. `*` (any letters) and `?` (one letter) match a whole word, so `gs*`
 and `gs?` both find topics with *gst* wherever it is in their list. Matching
-words are bold in the topic list and in a bubble's word cloud, in one colour
-per term: orange for the first term, then blue, green, purple, red and yellow.
+words are coloured in a bubble's word cloud, and bold as well in the topic
+list, in one colour per term: orange, blue, green, purple, red and yellow, then repeating. A term
+keeps its colour until you remove it, and a new term takes the first colour
+not in use, so adding a word at the start does not change the others'
+colours.
 
 <h3 id="help-topic-modeling-topic-list">Topic list</h3>
 
 The list heading counts the topics, for example **Topics 249**. While Find
 topics or the lasso is filtering, it shows how many match out of all of them,
-for example **Topics 15 / 249**. Click a topic in the chart or in the list to
+for example **Topics 15 / 249**. It follows the applied search, not the text
+still being typed. Click a topic in the chart or in the list to
 select it; click it again to deselect it, or use **Clear** to deselect them all.
 Selected topics move to the **Selected** group at the top of the list, the
 latest selected first. The group scrolls on its own, so the **Others** below
@@ -768,7 +804,9 @@ browser, offline. It shows the graph exactly as on screen (positions, colours,
 selection rings and faded topics) and keeps three things to explore: hover a
 bubble for its words, sized by count, and the same size chips as the app
 (per colour-by value, or per Data Block); type a **Search term** to highlight
-matching topics, with the same rules as the app's search; and drag to move, or
+matching topics as you type, with the same matching rules as the app's search
+(the page starts with the app's search box text, and colours terms in order);
+and drag to move, or
 hold Command (Mac) or Control (Windows) while scrolling to zoom. Once zoomed in,
 plain scrolling moves the graph in any direction; at full size it scrolls the
 page. **Reset view** returns to the whole graph. The last line
@@ -777,7 +815,7 @@ add anything to a Project.
 
 <h3 id="help-topic-modeling-clear-results">Clear results</h3>
 
-**Clear** removes this tab's result. The selected
+**Clear results** removes this tab's result. The selected
 **Passages** method, **Max tokens** value, and **Topic size** range remain
 available for the next run.
 

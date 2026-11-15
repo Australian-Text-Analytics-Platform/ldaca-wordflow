@@ -981,6 +981,18 @@ describe('ConcordanceFeature', () => {
     unmount();
   });
 
+  it('names both context-length inputs for assistive technology', () => {
+    const { unmount } = renderConcordanceFeature('analysis-1');
+
+    expect(screen.getByRole('spinbutton', { name: 'Left context (tokens)' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'Right context (tokens)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear results' })).toHaveTextContent(
+      'Clear results',
+    );
+
+    unmount();
+  });
+
   it('defaults whole-word on and disables it when regex is enabled', () => {
     const { unmount } = renderConcordanceFeature('analysis-1');
 

@@ -4,7 +4,8 @@
 
 Welcome to Wordflow. This Help guide provides written instructions for
 the interface and each analysis feature. Open it at any time from **Help** in
-the sidebar or jump directly to a section with a **?** icon.
+the sidebar or jump directly to a section with a **?** icon. If a word is
+unfamiliar, the [Glossary](./glossary.md) says what it means.
 
 ## Overview
 
@@ -66,6 +67,8 @@ Data Builder tools (such as filtering, grouping, joining, sampling, and stacking
 - [Quotation extraction](./quotation.md): capture quoted segments with context.
 - [Annotation](./annotation.md): label text manually or with a configured AI provider.
 - [Export](./export.md): download tables or reports.
+- [Settings](./settings.md): what each setting does, and when Contextual Hints and Suggestions appear.
+- [Glossary](./glossary.md): what Wordflow's own words and the technical terms mean, such as Data Block, passage, token and tokeniser.
 
 ## Questions to check your understanding
 

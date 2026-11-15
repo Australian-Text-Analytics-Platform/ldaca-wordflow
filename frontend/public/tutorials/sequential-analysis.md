@@ -71,7 +71,7 @@ To split the trend into multiple lines (one per category), add up to three colum
 
 Click **Add group** to add a column selector row. A badge next to each selector shows the number of unique values in that column, which helps you judge how many series will be produced. **Remove** takes that column out again.
 
-Trends draws at most 1,000 groups. A column with more different values, such as the text of each line, turns its badge red and **Run** stays unavailable until you choose another column. Several group columns together can also give more than 1,000 groups; then the run stops straight away and says so. A result saved with more groups (from an earlier version) is not drawn: the tab says so, and **Clear** removes it.
+Trends draws at most 1,000 groups. A column with more different values, such as the text of each line, turns its badge red and **Run** stays unavailable until you choose another column. Several group columns together can also give more than 1,000 groups; then the run stops straight away and says so. A result saved with more groups (from an earlier version) is not drawn: the tab says so, and **Clear results** removes it.
 
 ![Group By Columns with gender, which has 2 unique values](tutorials/assets/sequential_analysis/group_by.png)
 
@@ -141,7 +141,9 @@ to see it.
 Choose **Run** to start. Settings are locked while it works. After it finishes,
 Run turns on again only when you change a setting that affects the counts.
 Minimum group count, Chart, Spacing, Show as, selection, visibility, and
-Ignore capitals only change what is shown, so they do not turn Run on. See
+Ignore capitals only change what is shown, so they do not turn Run on.
+**Clear results**, at the end of the same row, removes this tab's results; see
+[Clear results](#help-sequential-clear-results). See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-sequential-results">Result panel</h2>
@@ -296,8 +298,8 @@ source rows and selected periods will be added.
 <h3 id="help-sequential-clear-results">Clear results</h3>
 
 The tab keeps its result when you move to another tool or reopen the Project.
-**Clear** removes it and resets the tab. After a failure or a stop, the settings
-stay editable but Run stays off until you choose **Clear**. See
+**Clear results** removes it and resets the tab. After a failure or a stop, the settings
+stay editable but Run stays off until you choose **Clear results**. See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear). Clearing or replacing the
 result restores Minimum group count to **10** and clears manual legend
 visibility.
