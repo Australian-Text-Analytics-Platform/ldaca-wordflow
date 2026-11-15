@@ -412,7 +412,10 @@ export function ConcordanceParameterPanel({
                 Clear results
               </Button>
             </DisabledReasonTooltip>
-            <HelpIcon targetKey="analysis.concordance.clear-results" label="Clear results" />
+            <HelpIcon
+              targetKey="analysis.concordance.run"
+              label="About Preview, Run and Clear results"
+            />
           </div>
 
           {handleStopTask && (isSearching || isRunningAll) ? (

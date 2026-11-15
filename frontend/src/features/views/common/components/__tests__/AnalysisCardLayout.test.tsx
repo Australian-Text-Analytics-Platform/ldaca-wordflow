@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
+
 import { AnalysisCardLayout } from '../AnalysisCardLayout';
 
 describe('AnalysisCardLayout', () => {
@@ -37,6 +39,47 @@ describe('AnalysisCardLayout', () => {
     expect(screen.getByRole('button', { name: 'Clear results' })).toHaveTextContent(
       'Clear results',
     );
+  });
+
+  it('gives the Preview, Run and Clear row one help icon, named for the row', () => {
+    const { rerender } = render(
+      <TooltipProvider>
+        <AnalysisCardLayout
+          title="Example Analysis"
+          actions={{
+            onPreview: vi.fn(),
+            onRunAll: vi.fn(),
+            onClear: vi.fn(),
+            help: { targetKey: 'analysis.concordance.run' },
+          }}
+        >
+          <div>Parameters</div>
+        </AnalysisCardLayout>
+      </TooltipProvider>,
+    );
+
+    expect(
+      screen.getAllByRole('button', { name: 'About Preview, Run and Clear results' }),
+    ).toHaveLength(1);
+    // The help icon no longer shares its name with the Clear results button.
+    expect(screen.getAllByRole('button', { name: 'Clear results' })).toHaveLength(1);
+
+    rerender(
+      <TooltipProvider>
+        <AnalysisCardLayout
+          title="Example Analysis"
+          actions={{
+            onRunAll: vi.fn(),
+            onClear: vi.fn(),
+            help: { targetKey: 'analysis.topic-modeling.run' },
+          }}
+        >
+          <div>Parameters</div>
+        </AnalysisCardLayout>
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: 'About Run and Clear results' })).toBeInTheDocument();
   });
 
   it('hides Stop when the analysis is not running', () => {

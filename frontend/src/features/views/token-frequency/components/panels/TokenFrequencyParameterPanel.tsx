@@ -178,8 +178,7 @@ export const TokenFrequencyParameterPanel = ({
         isRunningAll: isAnalyzing,
         isStopping,
         runAllLabel: 'Run',
-        runAllHelp: { targetKey: 'analysis.token-frequency.run', label: 'Run Frequency' },
-        clearHelp: { targetKey: 'analysis.token-frequency.clear-results', label: 'Clear results' },
+        help: { targetKey: 'analysis.token-frequency.run' },
       }}
       actionsGuidanceTarget="token-frequency-actions"
       parametersLocked={parametersLocked}

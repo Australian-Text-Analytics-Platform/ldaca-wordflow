@@ -55,7 +55,9 @@ The sources and licences of the ready-made lists are listed under **Stop-word li
 Choose **Run** to start. Settings are locked while it works. After it finishes,
 Run turns on again only when you change a setting that affects the counts.
 Stop words and the Cloud and List display limits only change what is shown, so
-they do not turn Run on. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+they do not turn Run on. **Clear results**, at the end of the same row, removes
+this tab's results; see [Clear results](#help-token-frequency-clear-results).
+See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-token-frequency-results">Result panel</h2>
 

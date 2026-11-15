@@ -631,10 +631,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
               isRunningAll: isAnalyzing,
               isStopping,
               runAllLabel: 'Run',
-              clearHelp: {
-                targetKey: 'analysis.sequential-analysis.clear-results',
-                label: 'Clear results',
-              },
+              help: { targetKey: 'analysis.sequential-analysis.run' },
             }}
             actionsGuidanceTarget="trends-actions"
             parametersLocked={parametersLocked}

@@ -141,7 +141,9 @@ to see it.
 Choose **Run** to start. Settings are locked while it works. After it finishes,
 Run turns on again only when you change a setting that affects the counts.
 Minimum group count, Chart, Spacing, Show as, selection, visibility, and
-Ignore capitals only change what is shown, so they do not turn Run on. See
+Ignore capitals only change what is shown, so they do not turn Run on.
+**Clear results**, at the end of the same row, removes this tab's results; see
+[Clear results](#help-sequential-clear-results). See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-sequential-results">Result panel</h2>

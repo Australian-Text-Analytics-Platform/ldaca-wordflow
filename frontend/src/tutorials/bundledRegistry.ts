@@ -341,6 +341,11 @@ const tutorial = {
     anchor: 'help-token-frequency-run',
     label: 'Run Frequency',
   },
+  'analysis.concordance.run': {
+    file: 'tutorials/concordance.md',
+    anchor: 'help-concordance-run',
+    label: 'Preview and Run Concordance',
+  },
   'analysis.concordance.tab': {
     file: 'tutorials/concordance.md',
     anchor: 'help-concordance-section',
@@ -375,6 +380,11 @@ const tutorial = {
     file: 'tutorials/concordance.md',
     anchor: 'help-concordance-regex-toggle',
     label: 'Regex mode toggle',
+  },
+  'analysis.topic-modeling.run': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-run',
+    label: 'Run Topic Modelling',
   },
   'analysis.topic-modeling.tab': {
     file: 'tutorials/topic-modeling.md',
@@ -476,6 +486,11 @@ const tutorial = {
     anchor: 'help-topic-modeling-color-by',
     label: 'Colour by',
   },
+  'analysis.sequential-analysis.run': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-run',
+    label: 'Run Trends',
+  },
   'analysis.sequential-analysis.tab': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-section',
@@ -536,10 +551,25 @@ const tutorial = {
     anchor: 'help-sequential-show-as',
     label: 'Show as',
   },
+  'analysis.quotation.run': {
+    file: 'tutorials/quotation.md',
+    anchor: 'help-quotation-run',
+    label: 'Preview and Run Quotation',
+  },
   'analysis.quotation.tab': {
     file: 'tutorials/quotation.md',
     anchor: 'help-quotation-section',
     label: 'Quotation extraction overview',
+  },
+  'analysis.annotation.manual': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-manual',
+    label: 'Manual annotation',
+  },
+  'analysis.annotation.run': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-preview',
+    label: 'Preview and Run Annotation',
   },
   'analysis.annotation.tab': {
     file: 'tutorials/annotation.md',
