@@ -67,7 +67,7 @@ The results panel starts with the stop words in one row, which wraps onto more l
 
 ![Filter tokens, then the Cloud display limit beside the Cloud view and List view selector](tutorials/assets/token_frequency/display_limits.png)
 
-The **Cloud display limit** (range 10–100, default 50) sets the maximum number of tokens shown in the word clouds. Type a number, or use the arrows, then click **Apply**. Changing this value also updates the List display limit to the same number (capped at 100).
+The **Cloud display limit** (range 10–100, default 40) sets the maximum number of tokens shown in the word clouds. It shows in Cloud view. Type a number, or use the arrows, then press Enter or click away to apply it. Changing this value also updates the List display limit to the same number (capped at 100).
 
 <h3 id="help-token-frequency-list-limit">List display limit</h3>
 
@@ -187,8 +187,8 @@ stay editable but Run stays off until you choose **Clear results**. See [How Pre
 | Corpus role switches | First selected Data Block is the Study corpus | Swaps which Data Block is OS/%S and which is OR/%R in the statistics table                                                                         |
 | Stop words           | Empty                                | Pick a language from the **Select language** dropdown for default stop words                                                                  |
 | Token filter         | Empty                                | Applies to every Cloud/List result and download; `*` matches any sequence of characters                                                       |
-| Cloud display limit  | 50                                   | Range 10–100; mirrors to list limit                                                                                                           |
-| List display limit   | 50                                   | Range 10 to vocabulary size; values > 100 diverge from cloud                                                                                   |
+| Cloud display limit  | 40                                   | Range 10–100; mirrors to list limit                                                                                                           |
+| List display limit   | 40                                   | Range 10 to vocabulary size; values > 100 diverge from cloud                                                                                   |
 
 ## Practice exercise
 

@@ -114,7 +114,7 @@ class TokenFrequencyAnalysisRequest(_StrictModel):
     kind: Literal["token_frequency"] = "token_frequency"
     node_ids: list[uuid.UUID] = Field(min_length=1, max_length=2)
     node_columns: dict[uuid.UUID, ColumnName]
-    token_limit: int = Field(default=25, ge=1, le=5000)
+    token_limit: int = Field(default=40, ge=1, le=5000)
     node_tokenizer_models: dict[uuid.UUID, NonEmptyText]
 
     @model_validator(mode="after")

@@ -11000,7 +11000,7 @@
             "type": "object"
           },
           "token_limit": {
-            "default": 25,
+            "default": 40,
             "maximum": 5000.0,
             "minimum": 1.0,
             "title": "Token Limit",
