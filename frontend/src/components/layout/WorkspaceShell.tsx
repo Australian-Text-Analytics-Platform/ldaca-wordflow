@@ -17,6 +17,7 @@ import { ViewRouteSync } from '@/components/layout/ViewRouteSync';
 import { ViewRouter } from '@/components/layout/ViewRouter';
 import { isTabbedMainView } from '@/features/views/viewRegistry';
 import { GuidanceProvider } from '@/features/guidance/GuidanceProvider';
+import { DataBlockDragLayer } from '@/components/layout/DataBlockDragLayer';
 import { NodeInputPointerCarrier } from '@/components/layout/NodeInputPointerCarrier';
 import { ResizeHandle } from '@/components/layout/ResizeHandle';
 import { AccountThemeSynchronizer } from '@/features/theme/AccountThemeSynchronizer';
@@ -81,6 +82,7 @@ function WorkspaceShellContent() {
           >
             <DocumentModalHost />
             <NodeInputPointerCarrier />
+            <DataBlockDragLayer />
             <RefreshStatusBanner />
             <div className="flex h-full w-full overflow-hidden" ref={sidebarHostRef}>
               <div className={regions.sidebarHidden ? 'hidden' : 'contents'}>
@@ -136,7 +138,12 @@ function WorkspaceShellContent() {
                           : 'overflow-y-auto scrollbar-none p-4'
                       }
                     >
-                      <div className="mx-0 flex min-h-0 w-full max-w-none flex-1">
+                      {/* A Data Block dropped anywhere on the tool goes to its only
+                          inputs box, when it has just one (Chao, 15 Nov 2026). */}
+                      <div
+                        className="mx-0 flex min-h-0 w-full max-w-none flex-1"
+                        data-data-block-drop-zone=""
+                      >
                         <WorkspaceDownloadsProvider>
                           <ViewRouter />
                         </WorkspaceDownloadsProvider>
