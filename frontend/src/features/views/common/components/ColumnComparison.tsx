@@ -49,17 +49,33 @@ const reliabilityMethod = (metric: IntercoderReliabilityMetric, ordered: boolean
 };
 
 /** A cell tinted by how far apart its two codes are on the scale; none for categories. */
-const distanceShading = (
+/** Agreement on the diagonal, in light green, for every matrix (Chao, 16 Nov 2026). */
+const AGREEMENT_SHADE = 'color-mix(in srgb, var(--color-chart-3) 28%, transparent)';
+
+/**
+ * A cell's shade: light green where the two columns agree; on a scale, a
+ * disagreement in orange by how far apart its two codes are.
+ */
+const cellShading = (
   scale: OrderedScale | null,
   reference: string,
   comparison: string,
 ): CSSProperties | undefined => {
+  if (reference === comparison) return { backgroundColor: AGREEMENT_SHADE };
   const distance = scale ? scaleDistance(scale, reference, comparison) : null;
   if (!distance) return undefined;
   return {
     backgroundColor: `color-mix(in srgb, var(--color-chart-4) ${String(Math.round(12 + 48 * distance))}%, transparent)`,
   };
 };
+
+const ShadeSwatch = ({ background }: { background: string }) => (
+  <span
+    aria-hidden="true"
+    className="inline-block h-3 w-4 shrink-0 rounded-sm"
+    style={{ background }}
+  />
+);
 
 interface ColumnComparisonHeaderProps {
   label?: string;
@@ -215,7 +231,7 @@ export function ColumnComparisonHeader({
                           <td
                             key={comparisonLabel}
                             className="min-w-8 rounded-sm px-1 text-center font-medium"
-                            style={distanceShading(scale, referenceLabel, comparisonLabel)}
+                            style={cellShading(scale, referenceLabel, comparisonLabel)}
                           >
                             {countByPair.get(JSON.stringify([referenceLabel, comparisonLabel])) ??
                               0}
@@ -225,23 +241,29 @@ export function ColumnComparisonHeader({
                     ))}
                   </tbody>
                 </table>
-                {ordered ? (
-                  <p
-                    className="col-start-2 row-start-3 mt-1 flex max-w-sm items-center gap-1.5 whitespace-normal text-label-secondary text-widget-foreground/80"
-                    data-testid="reliability-shading-key"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="inline-block h-3 w-8 shrink-0 rounded-sm"
-                      style={{
-                        background:
-                          'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-chart-4) 60%, transparent))',
-                      }}
-                    />
-                    Shading: how far apart the two codes are on the scale. Darkest: the two ends, or
-                    a code outside the scale.
+                <div
+                  className="col-start-2 row-start-3 mt-1 max-w-sm space-y-0.5 whitespace-normal text-label-secondary text-widget-foreground/80"
+                  data-testid="reliability-shading-key"
+                >
+                  <p className="flex items-center gap-1.5">
+                    <ShadeSwatch background={AGREEMENT_SHADE} />
+                    Green: both columns agree.
                   </p>
-                ) : null}
+                  {ordered ? (
+                    <p className="flex items-center gap-1.5">
+                      <span
+                        aria-hidden="true"
+                        className="inline-block h-3 w-8 shrink-0 rounded-sm"
+                        style={{
+                          background:
+                            'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-chart-4) 60%, transparent))',
+                        }}
+                      />
+                      Orange: how far apart the two codes are on the scale. Darkest: the two ends,
+                      or a code outside the scale.
+                    </p>
+                  ) : null}
+                </div>
               </div>
             )}
           </TooltipContent>

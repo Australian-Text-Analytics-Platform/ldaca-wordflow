@@ -106,13 +106,13 @@ describe('ColumnComparison', () => {
     const lowRow = within(matrix).getByRole('row', { name: /^Low/ });
     const [same, near, far, outside] = within(lowRow).getAllByRole('cell');
     const shade = (cell: HTMLElement | undefined) => cell?.getAttribute('style') ?? '';
-    expect(shade(same)).toBe('');
+    expect(shade(same)).toContain('--color-chart-3');
     expect(shade(near)).toContain('36%');
     expect(shade(far)).toContain('60%');
     expect(shade(outside)).toContain('60%');
   });
 
-  it('says a categorical score counts only exact matches, with no shading', async () => {
+  it('says a categorical score counts only exact matches, with agreement in green', async () => {
     const user = userEvent.setup();
     render(
       <ColumnComparisonHeader
@@ -131,7 +131,20 @@ describe('ColumnComparison', () => {
     expect(method).toHaveTextContent(
       'Krippendorff’s Alpha on categories: only exact matches agree.',
     );
-    expect(screen.queryByTestId('reliability-shading-key')).toBeNull();
+    // Agreement is green; disagreements stay plain, with no scale to measure them on.
+    const [key] = screen.getAllByTestId('reliability-shading-key');
+    expect(key).toHaveTextContent('Green: both columns agree.');
+    expect(key).not.toHaveTextContent('Orange');
+    const [matrix] = screen.getAllByRole('table', {
+      name: 'annotation versus review confusion matrix',
+    });
+    if (!matrix) throw new Error('Expected a confusion matrix.');
+    const shaded = (token: string) =>
+      within(matrix)
+        .getAllByRole('cell')
+        .filter((cell) => cell.getAttribute('style')?.includes(token));
+    expect(shaded('--color-chart-3')).toHaveLength(2);
+    expect(shaded('--color-chart-4')).toHaveLength(0);
   });
 
   it('stacks Cohen’s Kappa above the column name and shows plain matrix counts on hover', async () => {

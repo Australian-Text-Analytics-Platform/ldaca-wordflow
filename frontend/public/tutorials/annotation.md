@@ -146,8 +146,8 @@ With an ordered scale:
   outside the scale is not near any level: against a level it counts as much
   as the lowest against the highest level. Percent Agreement still counts exact
   matches only. The confusion matrix lists the levels in scale order, then the
-  codes outside the scale, and shades each disagreement by how far apart the
-  two codes are: the farther apart, the darker. The first line of the score's
+  codes outside the scale, and shades each disagreement in orange by how far
+  apart the two codes are: the farther apart, the darker. The first line of the score's
   tooltip names the method, so a scale score and a category score can't be
   mistaken for each other. Turning the scale on or off changes the statistics
   of earlier Previews and Runs too, as long as the Codebook still has the same
@@ -181,7 +181,7 @@ open Manual snapshot.
 Use **Compare to** to add another coder or model. Each comparison starts masked
 as `•••` so you can code without seeing how individual rows were coded. Its
 header always shows the reliability score (hover or focus it for the confusion
-matrix) and the row-filter menu; reveal the column from the eye button to show
+matrix, with agreement down its diagonal in green) and the row-filter menu; reveal the column from the eye button to show
 its values and difference colours. Removing the filtered column clears the
 filter; hiding it does not. Reliability statistics summarise agreement but do
 not explain why labels differ. Choose the statistic at the top of the **Compare
