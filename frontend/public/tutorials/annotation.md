@@ -66,7 +66,9 @@ The AI Code Designer drafts a first Codebook for you to review and tune. It
 reads a sample of your texts and a short **Brief**, and suggests codes with
 definitions, plus a code named **Other** for texts that fit none of them. When
 **Ordered scale** is on, it drafts levels from the lowest to the highest
-instead, plus a **Not applicable** code outside the scale. It
+instead, plus a **Not applicable** code outside the scale. Each level is
+defined by what one text shows, across the whole range your Brief implies,
+not only the range the sample happens to contain. It
 also shows how to describe a coding task to an AI model in plain language. It
 works in both Manual and AI mode, and it only drafts: the thinking and the
 checking stay with you.

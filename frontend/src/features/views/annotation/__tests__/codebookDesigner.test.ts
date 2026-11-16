@@ -11,6 +11,7 @@ vi.mock('@/features/provider-credentials/providerCredentialRequests', () => ({
 import {
   codebookSignature,
   countWords,
+  DEFAULT_SCALE_DESIGNER_PROMPT,
   describeDesignerConnectionError,
   parseCodeDesignerSettings,
   runCodebookDesigner,
@@ -166,5 +167,24 @@ describe('runCodebookDesigner', () => {
     expect(mocks.draft).toHaveBeenLastCalledWith(
       expect.objectContaining({ workspaceId: 'ws', nodeId: 'node', request }),
     );
+  });
+});
+
+describe('DEFAULT_SCALE_DESIGNER_PROMPT', () => {
+  it('anchors levels in one text and covers the whole range, not just the sample', () => {
+    // Batch-relative levels are the scale's main risk (Chao, 16 and 17 Nov 2026).
+    expect(DEFAULT_SCALE_DESIGNER_PROMPT).toContain(
+      'Anchor every level in what can be seen in a single text',
+    );
+    expect(DEFAULT_SCALE_DESIGNER_PROMPT).toContain(
+      'cover the whole range the brief implies, including ends the sample may not show',
+    );
+    expect(DEFAULT_SCALE_DESIGNER_PROMPT).toContain(
+      "never set a level by how the sample's texts rank against each other",
+    );
+    expect(DEFAULT_SCALE_DESIGNER_PROMPT).toContain(
+      'not because the sample lacks an end of the scale',
+    );
+    expect(DEFAULT_SCALE_DESIGNER_PROMPT).not.toContain('Use fewer if the sample does not support');
   });
 });

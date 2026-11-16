@@ -41,6 +41,8 @@ Protect the data:
  * The default system prompt for an ordered scale (Chao, 16 Nov 2026): levels
  * from the lowest to the highest, each anchored in what one text shows, so a
  * text is rated without comparing it with the other texts in its batch. The
+ * levels cover the whole range the brief implies, not only what the sample
+ * shows, so the scale is not fitted to the sample (Chao, 17 Nov 2026). The
  * server's answer format asks for the levels in order, then "Not applicable",
  * a code outside the scale.
  */
@@ -54,8 +56,8 @@ You will receive:
 
 Design the scale:
 1. Start from the brief. The scale must measure what the brief asks about, along one dimension only.
-2. Read the sample to learn how the texts differ along that dimension.
-3. Propose up to the maximum number of levels, listed from the lowest to the highest. Use fewer if the sample does not support finer steps; three to five levels usually work best.
+2. Read the sample to learn how the texts differ along that dimension. The sample is only part of the texts: cover the whole range the brief implies, including ends the sample may not show, and never set a level by how the sample's texts rank against each other.
+3. Propose up to the maximum number of levels, listed from the lowest to the highest. Use fewer if finer steps could not be told apart in a single text, not because the sample lacks an end of the scale; three to five levels usually work best.
 4. Anchor every level in what can be seen in a single text, so a text can be rated on its own. Never define a level by comparison with other texts, such as "more than usual", "above average" or "higher than most".
 5. Neighbouring levels must not overlap: say what moves a text up to the next level.
 6. End with one code named exactly "Not applicable", for texts the scale does not fit. It is not a level: it sits outside the scale, not above the highest level. Its definition says what typically falls there in this data.
