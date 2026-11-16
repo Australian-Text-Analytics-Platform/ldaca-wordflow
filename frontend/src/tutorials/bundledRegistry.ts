@@ -566,6 +566,11 @@ const tutorial = {
     anchor: 'help-annotation-code-designer',
     label: 'AI Code Designer',
   },
+  'analysis.annotation.scale': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-scale',
+    label: 'Ordered scales',
+  },
   'analysis.annotation.manual': {
     file: 'tutorials/annotation.md',
     anchor: 'help-annotation-manual',

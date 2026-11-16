@@ -14,6 +14,7 @@ import {
   countWords,
   DESIGNER_MAX_CLASSES,
 } from '../codebookDesigner';
+import { OrderedScaleSwitch } from './OrderedScaleSwitch';
 
 interface CodeDesignerBriefProps {
   settings: CodeDesignerSettings;
@@ -23,6 +24,8 @@ interface CodeDesignerBriefProps {
   disabled?: boolean;
   /** The codebook is an ordered scale: the maximum counts levels, plus “Not applicable”. */
   scale?: boolean;
+  /** Turns the Ordered scale switch on the Brief's line on or off; no switch without it. */
+  onScaleChange?: (scale: boolean) => void;
   onDesign: () => void;
 }
 
@@ -38,6 +41,7 @@ export function CodeDesignerBrief({
   blockedReason,
   disabled = false,
   scale = false,
+  onScaleChange,
   onDesign,
 }: CodeDesignerBriefProps) {
   const [maxClassesDraft, setMaxClassesDraft] = useState<string | null>(null);
@@ -53,16 +57,29 @@ export function CodeDesignerBrief({
 
   return (
     <div className="space-y-1.5" data-testid="code-designer-brief">
-      <div className="flex items-center gap-1.5">
-        <Label htmlFor="codebook-brief">
-          Brief for the AI Code Designer{' '}
-          <span className="font-normal text-description">(optional)</span>
-        </Label>
-        <HelpIcon
-          targetKey="analysis.annotation.code-designer"
-          label="About the AI Code Designer"
-          tooltip="Let an AI model draft a first codebook from your brief and a sample of your texts."
-        />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor="codebook-brief">
+            Brief for the AI Code Designer{' '}
+            <span className="font-normal text-description">(optional)</span>
+          </Label>
+          <HelpIcon
+            targetKey="analysis.annotation.code-designer"
+            label="About the AI Code Designer"
+            tooltip="Let an AI model draft a first codebook from your brief and a sample of your texts."
+          />
+        </div>
+        {onScaleChange ? (
+          // Follows the designer button (Chao, 16 Nov 2026): disabled with the same reason.
+          <span className="ml-auto">
+            <OrderedScaleSwitch
+              checked={scale}
+              onCheckedChange={onScaleChange}
+              disabled={disabled || reason !== undefined}
+              disabledReason={reason}
+            />
+          </span>
+        ) : null}
       </div>
       <Textarea
         id="codebook-brief"
@@ -125,14 +142,9 @@ export function CodeDesignerBrief({
           </span>
         </div>
         <DisabledReasonTooltip reason={reason}>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled || reason !== undefined}
-            onClick={onDesign}
-          >
-            <Sparkles className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+          {/* A primary button at the size of the controls beside it, so it stands out when it can run. */}
+          <Button type="button" disabled={disabled || reason !== undefined} onClick={onDesign}>
+            <Sparkles aria-hidden="true" />
             AI Code Designer
           </Button>
         </DisabledReasonTooltip>

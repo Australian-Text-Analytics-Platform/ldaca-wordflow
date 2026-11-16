@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useCodebookDraftStore } from '../../codebookDraftStore';
 import { AnnotationClassDescriptionsEditor } from '../AnnotationClassDescriptionsEditor';
 
@@ -28,14 +29,17 @@ vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({
   useWorkspaceActions: () => ({ saveAnnotationClasses: mocks.save }),
 }));
 
+// The app provides tooltips from its layout; the help icons need one here.
 const renderEditor = () =>
   render(
-    <AnnotationClassDescriptionsEditor
-      workspaceId="ws"
-      nodeId="codebook"
-      classColumn="class"
-      descriptionColumn="description"
-    />,
+    <TooltipProvider>
+      <AnnotationClassDescriptionsEditor
+        workspaceId="ws"
+        nodeId="codebook"
+        classColumn="class"
+        descriptionColumn="description"
+      />
+    </TooltipProvider>,
   );
 
 describe('AnnotationClassDescriptionsEditor codebook check (issue 389)', () => {

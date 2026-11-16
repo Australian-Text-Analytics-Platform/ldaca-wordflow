@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -62,6 +61,7 @@ import type { AnnotationProviderConfigurationView } from '@/features/provider-cr
 import { type CodeDesignerSettings, codebookSignature } from '../codebookDesigner';
 import { codebookDraftKey, useCodebookDraftStore } from '../codebookDraftStore';
 import { CodeDesignerBrief } from './CodeDesignerBrief';
+import { OrderedScaleSwitch } from './OrderedScaleSwitch';
 import { CodebookDesignerDialog } from './CodebookDesignerDialog';
 
 /** What the Edit codebook window needs from its Annotation tab for the AI Code Designer. */
@@ -385,30 +385,24 @@ export function AnnotationClassDescriptionsEditor({
                 Add, rename, or remove annotation codes and their descriptions.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="codebook-scale"
-                  checked={editorScale}
-                  disabled={isSaving}
-                  onCheckedChange={(checked) => {
-                    writeDraft({ scale: checked });
-                  }}
-                  aria-describedby="codebook-scale-note"
-                />
-                <Label htmlFor="codebook-scale">Ordered scale</Label>
-              </div>
-              <p id="codebook-scale-note" className="text-label-secondary text-description">
-                {editorScale
-                  ? 'The codes are levels, from the lowest (top) to the highest (bottom). The AI rates each text against the level definitions, texts the scale doesn’t fit stay empty, and Compare to uses weighted Kappa and ordinal Alpha.'
-                  : 'Turn on when the codes are levels from low to high, such as a rating, rather than separate categories.'}
-              </p>
-            </div>
+            {designer ? null : (
+              // Without an Annotation tab there is no designer, so the switch stands alone.
+              <OrderedScaleSwitch
+                checked={editorScale}
+                disabled={isSaving}
+                onCheckedChange={(checked) => {
+                  writeDraft({ scale: checked });
+                }}
+              />
+            )}
             {designer ? (
               <CodeDesignerBrief
                 settings={designer.settings}
                 onSettingsChange={designer.onSettingsChange}
                 scale={editorScale}
+                onScaleChange={(checked) => {
+                  writeDraft({ scale: checked });
+                }}
                 disabled={isSaving}
                 blockedReason={
                   designer.source

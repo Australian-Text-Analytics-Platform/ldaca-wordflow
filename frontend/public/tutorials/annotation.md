@@ -113,8 +113,9 @@ draft exactly as the designer wrote it doesn't do this.
 
 Some coding places each text on a scale, such as how urgent, how positive or
 how certain it is, rather than sorting it into categories. Turn on **Ordered
-scale** in the Edit dialog, and the codes become levels: the first is the
-lowest and the last the highest. Use the arrows beside each level to put them
+scale**, on the Brief's line in the Edit dialog, and the codes become levels:
+the first is the lowest and the last the highest. Like the **AI Code
+Designer** button, the switch waits until the Brief is written. Use the arrows beside each level to put them
 in order.
 
 A code for texts the scale doesn't fit, such as **Not applicable**, is not a

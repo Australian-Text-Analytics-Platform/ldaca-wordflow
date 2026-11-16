@@ -189,6 +189,25 @@ describe('AI Code Designer in the Edit codebook window (Chao, 15 Nov 2026)', () 
     );
   });
 
+  it('puts Ordered scale on the Brief line and enables it only with the designer', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const editor = screen.getByRole('dialog');
+    const brief = within(editor).getByTestId('code-designer-brief');
+
+    expect(within(brief).getByRole('switch', { name: 'Ordered scale' })).toBeDisabled();
+    expect(within(brief).getByRole('button', { name: 'AI Code Designer' })).toBeDisabled();
+    expect(within(editor).getAllByRole('switch', { name: 'Ordered scale' })).toHaveLength(1);
+
+    await user.type(within(editor).getByLabelText(/Brief for the AI Code Designer/), 'Urgency');
+    const scaleSwitch = within(brief).getByRole('switch', { name: 'Ordered scale' });
+    expect(scaleSwitch).toBeEnabled();
+    await user.click(scaleSwitch);
+    expect(within(brief).getByText('Maximum levels')).toBeVisible();
+    expect(within(editor).getByTestId('codebook-unsaved-badge')).toBeVisible();
+  });
+
   it('designs an ordered scale when the codebook is a scale', async () => {
     const user = userEvent.setup();
     mocks.scale = true;
