@@ -146,7 +146,10 @@ With an ordered scale:
   outside the scale is not near any level: against a level it counts as much
   as the lowest against the highest level. Percent Agreement still counts exact
   matches only. The confusion matrix lists the levels in scale order, then the
-  codes outside the scale.
+  codes outside the scale, and shades each disagreement by how far apart the
+  two codes are: the farther apart, the darker. The first line of the score's
+  tooltip names the method, so a scale score and a category score can't be
+  mistaken for each other.
 - Write each level so it can be judged from one text alone. Wording such as
   "more than usual" or "above average" asks the model to compare texts it
   cannot see, and the same text can then get different levels in different

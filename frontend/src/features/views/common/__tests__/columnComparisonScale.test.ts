@@ -9,6 +9,7 @@ import {
   calculateWeightedKappa,
   formatIntercoderReliability,
   intercoderReliabilityLabel,
+  scaleDistance,
 } from '../columnComparisonModel';
 
 const ORDER = { levels: ['Low', 'Medium', 'High'], outside: [] };
@@ -127,6 +128,15 @@ describe('ordered-scale reliability', () => {
     expect(value(calculateOrdinalAlpha(nearMiss, WITH_NA))).toBeGreaterThan(
       value(calculateOrdinalAlpha(notApplicable, WITH_NA)),
     );
+  });
+
+  it('measures how far apart two codes are on the scale, for shading', () => {
+    expect(scaleDistance(WITH_NA, 'Low', 'Low')).toBe(0);
+    expect(scaleDistance(WITH_NA, 'Low', 'Medium')).toBe(0.5);
+    expect(scaleDistance(WITH_NA, 'High', 'Low')).toBe(1);
+    expect(scaleDistance(WITH_NA, 'Not applicable', 'Medium')).toBe(1);
+    expect(scaleDistance(WITH_NA, 'Not applicable', 'Not applicable')).toBe(0);
+    expect(scaleDistance(WITH_NA, 'Sarcasm', 'Low')).toBeNull();
   });
 
   it('names and marks the scale statistics', () => {

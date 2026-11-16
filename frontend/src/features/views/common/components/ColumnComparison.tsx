@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { ArrowDown, ArrowRight, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import {
   intercoderReliabilitySymbol,
   isIntercoderReliabilityMetric,
   type OrderedScale,
+  scaleDistance,
 } from '@/features/views/common/columnComparisonModel';
 import { AnnotationColumnFilterMenu } from './AnnotationColumnFilterMenu';
 import { COLUMN_MENU_CLASS, COLUMN_MENU_ITEM_CLASS } from './columnMenuStyles';
@@ -30,6 +32,34 @@ import { COLUMN_MENU_CLASS, COLUMN_MENU_ITEM_CLASS } from './columnMenuStyles';
 export type { ConfusionCount } from '@/features/views/common/columnComparisonModel';
 
 const displayLabel = (value: string): string => (value === '' ? '(blank)' : value);
+
+/** The method behind the score, in words, so a scale and categories can't be mistaken. */
+const reliabilityMethod = (metric: IntercoderReliabilityMetric, ordered: boolean): string => {
+  if (metric === 'percent_agreement') {
+    return ordered
+      ? 'Percent Agreement on an ordered scale: only exact matches agree.'
+      : 'Percent Agreement on categories: only exact matches agree.';
+  }
+  if (!ordered) {
+    return `${intercoderReliabilityLabel(metric)} on categories: only exact matches agree.`;
+  }
+  return metric === 'cohens_kappa'
+    ? 'Weighted Cohen’s Kappa on an ordered scale: a near miss counts as partial agreement (quadratic weights).'
+    : 'Ordinal Krippendorff’s Alpha on an ordered scale: a near miss counts as partial agreement.';
+};
+
+/** A cell tinted by how far apart its two codes are on the scale; none for categories. */
+const distanceShading = (
+  scale: OrderedScale | null,
+  reference: string,
+  comparison: string,
+): CSSProperties | undefined => {
+  const distance = scale ? scaleDistance(scale, reference, comparison) : null;
+  if (!distance) return undefined;
+  return {
+    backgroundColor: `color-mix(in srgb, var(--color-chart-4) ${String(Math.round(12 + 48 * distance))}%, transparent)`,
+  };
+};
 
 interface ColumnComparisonHeaderProps {
   label?: string;
@@ -125,6 +155,11 @@ export function ColumnComparisonHeader({
             </Badge>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-none p-3">
+            {/* Says which method the score uses, since the scale setting is a
+                hidden codebook row (Chao, 16 Nov 2026). */}
+            <p className="mb-2 max-w-sm whitespace-normal" data-testid="reliability-method">
+              {reliabilityMethod(metric, ordered)}
+            </p>
             {isLoading ? (
               <p>Loading comparison…</p>
             ) : isError || !rows ? (
@@ -179,7 +214,8 @@ export function ColumnComparisonHeader({
                         {labels.map((comparisonLabel) => (
                           <td
                             key={comparisonLabel}
-                            className="min-w-8 px-1 text-center font-medium"
+                            className="min-w-8 rounded-sm px-1 text-center font-medium"
+                            style={distanceShading(scale, referenceLabel, comparisonLabel)}
                           >
                             {countByPair.get(JSON.stringify([referenceLabel, comparisonLabel])) ??
                               0}
@@ -189,6 +225,23 @@ export function ColumnComparisonHeader({
                     ))}
                   </tbody>
                 </table>
+                {ordered ? (
+                  <p
+                    className="col-start-2 row-start-3 mt-1 flex max-w-sm items-center gap-1.5 whitespace-normal text-label-secondary text-widget-foreground/80"
+                    data-testid="reliability-shading-key"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="inline-block h-3 w-8 shrink-0 rounded-sm"
+                      style={{
+                        background:
+                          'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-chart-4) 60%, transparent))',
+                      }}
+                    />
+                    Shading: how far apart the two codes are on the scale. Darkest: the two ends, or
+                    a code outside the scale.
+                  </p>
+                ) : null}
               </div>
             )}
           </TooltipContent>

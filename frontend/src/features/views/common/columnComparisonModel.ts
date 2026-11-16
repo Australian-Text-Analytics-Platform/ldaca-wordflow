@@ -134,6 +134,29 @@ export const orderedScale = (
 });
 
 /**
+ * How far apart two codes are on a scale, from 0 (the same code) to 1: levels
+ * by their distance in levels over the width of the scale, and a code outside
+ * the scale 1 from every other code. Null for a label that is neither. Used to
+ * shade the confusion matrix (Chao, 16 Nov 2026).
+ */
+export const scaleDistance = (
+  scale: OrderedScale,
+  first: string,
+  second: string,
+): number | null => {
+  if (first === second) return 0;
+  const firstLevel = scale.levels.indexOf(first);
+  const secondLevel = scale.levels.indexOf(second);
+  if (firstLevel >= 0 && secondLevel >= 0) {
+    return scale.levels.length < 2
+      ? 0
+      : Math.abs(firstLevel - secondLevel) / (scale.levels.length - 1);
+  }
+  const known = (label: string) => scale.levels.includes(label) || scale.outside.includes(label);
+  return known(first) && known(second) ? 1 : null;
+};
+
+/**
  * Ordered-scale statistics. A near miss between levels is a smaller
  * disagreement than a far one, scaled so the lowest against the highest
  * level costs 1. A code outside the scale is not near any level: against a

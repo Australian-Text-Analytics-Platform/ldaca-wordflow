@@ -62,6 +62,78 @@ describe('ColumnComparison', () => {
     ).toBe(rows);
   });
 
+  it('names the method and shades the matrix by scale distance on an ordered scale', async () => {
+    const user = userEvent.setup();
+    const scaleRows = [
+      { reference: 'Low', comparison: 'Low', count: 4 },
+      { reference: 'Low', comparison: 'Medium', count: 1 },
+      { reference: 'Low', comparison: 'High', count: 1 },
+      { reference: 'High', comparison: 'Not applicable', count: 1 },
+    ];
+    render(
+      <ColumnComparisonHeader
+        metric="cohens_kappa"
+        referenceColumn="annotation"
+        comparisonColumn="review"
+        rows={scaleRows}
+        isLoading={false}
+        isError={false}
+        revealed
+        onRevealedChange={vi.fn()}
+        scale={{ levels: ['Low', 'Medium', 'High'], outside: ['Not applicable'] }}
+      />,
+    );
+
+    const score = screen.getByRole('button', { name: /Cohen’s Kappa \(weighted\)/ });
+    expect(score).toHaveTextContent(/^κw /);
+    await user.hover(score);
+
+    const [method] = await screen.findAllByTestId('reliability-method');
+    expect(method).toHaveTextContent(
+      'Weighted Cohen’s Kappa on an ordered scale: a near miss counts as partial agreement',
+    );
+    expect(screen.getAllByTestId('reliability-shading-key')[0]).toBeVisible();
+    const [matrix] = screen.getAllByRole('table', {
+      name: 'annotation versus review confusion matrix',
+    });
+    if (!matrix) throw new Error('Expected a confusion matrix.');
+    // Levels in scale order, then the code outside the scale.
+    expect(
+      within(matrix)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Row label', 'Low', 'Medium', 'High', 'Not applicable']);
+    const lowRow = within(matrix).getByRole('row', { name: /^Low/ });
+    const [same, near, far, outside] = within(lowRow).getAllByRole('cell');
+    const shade = (cell: HTMLElement | undefined) => cell?.getAttribute('style') ?? '';
+    expect(shade(same)).toBe('');
+    expect(shade(near)).toContain('36%');
+    expect(shade(far)).toContain('60%');
+    expect(shade(outside)).toContain('60%');
+  });
+
+  it('says a categorical score counts only exact matches, with no shading', async () => {
+    const user = userEvent.setup();
+    render(
+      <ColumnComparisonHeader
+        metric="krippendorffs_alpha"
+        referenceColumn="annotation"
+        comparisonColumn="review"
+        rows={rows}
+        isLoading={false}
+        isError={false}
+        revealed
+        onRevealedChange={vi.fn()}
+      />,
+    );
+    await user.hover(screen.getByRole('button', { name: /Krippendorff’s Alpha/ }));
+    const [method] = await screen.findAllByTestId('reliability-method');
+    expect(method).toHaveTextContent(
+      'Krippendorff’s Alpha on categories: only exact matches agree.',
+    );
+    expect(screen.queryByTestId('reliability-shading-key')).toBeNull();
+  });
+
   it('stacks Cohen’s Kappa above the column name and shows plain matrix counts on hover', async () => {
     const user = userEvent.setup();
     render(
