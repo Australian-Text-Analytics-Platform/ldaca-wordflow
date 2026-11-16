@@ -453,9 +453,20 @@ export function AnnotationClassDescriptionsEditor({
                   <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
                     {editorRows.map((row, index) => (
                       <Fragment key={index}>
+                        {/* On a scale, two labelled groups: the levels, then a divider
+                            with the codes outside the scale below it (Chao, 16 Nov 2026). */}
+                        {editorScale && index === 0 && !row.outsideScale ? (
+                          <p className="text-label-secondary font-medium text-description">
+                            Levels, from the lowest (top) to the highest
+                          </p>
+                        ) : null}
                         {editorScale && index === firstOutside ? (
-                          <p className="pt-1 text-label-secondary font-medium text-description">
-                            Outside the scale (not levels)
+                          <p
+                            className="flex items-center gap-1.5 border-t border-surface-border pt-2 text-label-secondary font-medium text-description"
+                            data-testid="codebook-outside-scale-heading"
+                          >
+                            <Ban aria-hidden="true" className="size-3.5 shrink-0 text-chart-4" />
+                            Outside the scale: the codes below are not levels
                           </p>
                         ) : null}
                         <SortableCodeRow
@@ -492,31 +503,39 @@ export function AnnotationClassDescriptionsEditor({
                             }}
                           />
                           {editorScale ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className={cn(
-                                'shrink-0',
-                                row.outsideScale ? 'text-foreground' : 'text-description',
-                              )}
-                              aria-pressed={Boolean(row.outsideScale)}
-                              aria-label={
-                                row.outsideScale
-                                  ? `Make code ${String(index + 1)} a level`
-                                  : `Move code ${String(index + 1)} outside the scale`
-                              }
-                              title={
-                                row.outsideScale
-                                  ? 'Make this code a level of the scale'
-                                  : 'Outside the scale: not a level, such as Not applicable'
-                              }
-                              onClick={() => {
-                                handleToggleOutside(index);
-                              }}
-                            >
-                              <Ban className="h-4 w-4" aria-hidden="true" />
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  // Orange, the theme colour of the unsaved badge, marks
+                                  // a code outside the scale (Chao, 16 Nov 2026).
+                                  className={cn(
+                                    'shrink-0',
+                                    row.outsideScale
+                                      ? 'text-chart-4 hover:text-chart-4'
+                                      : 'text-description',
+                                  )}
+                                  aria-pressed={Boolean(row.outsideScale)}
+                                  aria-label={
+                                    row.outsideScale
+                                      ? `Make code ${String(index + 1)} a level`
+                                      : `Move code ${String(index + 1)} outside the scale`
+                                  }
+                                  onClick={() => {
+                                    handleToggleOutside(index);
+                                  }}
+                                >
+                                  <Ban className="h-4 w-4" aria-hidden="true" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs whitespace-normal">
+                                {row.outsideScale
+                                  ? 'Outside the scale: not a level. Click to make it a level again.'
+                                  : 'Move outside the scale, for a code that is not a level, such as Not applicable.'}
+                              </TooltipContent>
+                            </Tooltip>
                           ) : null}
                           <Button
                             type="button"

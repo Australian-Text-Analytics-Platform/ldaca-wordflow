@@ -242,7 +242,24 @@ describe('AnnotationClassDescriptionsEditor ordered scale (Chao, 16 Nov 2026)', 
     await user.click(within(dialog).getByRole('switch', { name: 'Ordered scale' }));
     await user.click(within(dialog).getByRole('button', { name: 'Move code 1 outside the scale' }));
     // It moved below the levels, under its own heading.
-    expect(within(dialog).getByText('Outside the scale (not levels)')).toBeVisible();
+    expect(within(dialog).getByText('Levels, from the lowest (top) to the highest')).toBeVisible();
+    expect(within(dialog).getByTestId('codebook-outside-scale-heading')).toHaveTextContent(
+      'Outside the scale: the codes below are not levels',
+    );
+    // The heading sits right above the codes outside the scale.
+    expect(
+      within(dialog)
+        .getByTestId('codebook-outside-scale-heading')
+        .compareDocumentPosition(within(dialog).getByLabelText('Code 3')),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    await user.hover(within(dialog).getByRole('button', { name: 'Make code 3 a level' }));
+    expect(
+      (
+        await screen.findAllByText(
+          'Outside the scale: not a level. Click to make it a level again.',
+        )
+      )[0],
+    ).toBeInTheDocument();
     expect(within(dialog).getByLabelText('Code 3')).toHaveValue('Not applicable');
     expect(within(dialog).getByRole('button', { name: 'Make code 3 a level' })).toHaveAttribute(
       'aria-pressed',

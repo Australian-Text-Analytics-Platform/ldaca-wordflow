@@ -122,8 +122,10 @@ levels in order.
 
 A code for texts the scale doesn't fit, such as **Not applicable**, is not a
 level: it is not above the highest level or below the lowest. Mark it with the
-**Outside the scale** button (a crossed circle) beside it, and it moves below
-the levels. Dragging a code among the codes outside the scale takes it off the
+**Outside the scale** button (a crossed circle) beside it: the button turns
+orange and the code moves under the heading "Outside the scale: the codes
+below are not levels". Every code under that heading is outside the scale;
+every code above it is a level. Dragging a code among the codes outside the scale takes it off the
 scale, and dragging it among the levels makes it a level. Keep one
 such code, as categories keep Other: an empty label means "not coded yet", so a
 text the scale doesn't fit needs a code of its own.
