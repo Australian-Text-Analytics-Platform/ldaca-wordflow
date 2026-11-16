@@ -45,9 +45,10 @@ either directly or with predictions from a configured AI provider.
    Codebook Data Block it is one row named `__task_context__`; that row is
    never a code.
 
-   Turn on **Ordered scale** when the codes are levels from low to high, such
-   as a rating, rather than separate categories. See
-   [Ordered scales](#help-annotation-scale).
+   A Codebook is either [categories](#help-annotation-categories), the
+   default, or an [ordered scale](#help-annotation-scale): turn on **Ordered
+   scale** when the codes are levels from low to high, such as a rating. The
+   two code differently and measure agreement differently.
 
    The Edit dialog keeps unsaved changes, whether typed or drafted by the AI
    Code Designer, until you choose **Save** or discard them. Closing the
@@ -116,6 +117,28 @@ designer waits: the Brief no longer describes your codes. You can still select
 and copy it, and editing it makes it the Brief for the next draft. Saving a
 draft exactly as the designer wrote it doesn't do this.
 
+<h3 id="help-annotation-categories">Categories</h3>
+
+By default the codes are categories: separate kinds of text, such as
+*promise*, *cuts* and *other*, with no order between them. Their order in the
+Codebook only sets the order of the code lists.
+
+- Each text gets exactly one code. Write descriptions that don't overlap, and
+  where two codes are easy to confuse, say which one wins.
+- Keep a catch-all code such as **Other** for texts that fit none of the rest.
+  AI annotation gives every text a code and never leaves it empty, since an
+  empty label means "not coded yet"; without a catch-all, the model picks the
+  closest code.
+- AI annotation classifies each text into one of the codes. Example labels
+  that are not in the Codebook are sent too and can be used as codes.
+- The [AI Code Designer](#help-annotation-code-designer) drafts up to
+  **Maximum classes** codes, then **Other**.
+- **Reliability: only an exact match agrees.** Every disagreement counts the
+  same, whichever two codes differ: Cohen's Kappa and Krippendorff's Alpha are
+  the standard (nominal) forms, shown as κ and α. In the confusion matrix,
+  agreement runs down the diagonal in green and disagreements are not shaded.
+  See [Reliability statistics](#help-annotation-reliability).
+
 <h3 id="help-annotation-scale">Ordered scales</h3>
 
 Some coding places each text on a scale, such as how urgent, how positive or
@@ -146,9 +169,18 @@ With an ordered scale:
   against the other texts sent with it, and gives a text the scale doesn't fit
   a code outside the scale. Examples whose label is not in the Codebook are not
   sent.
-- **Compare to** uses weighted Kappa and ordinal Alpha, which count a near
-  miss as a smaller disagreement than a far one, and shades the confusion
-  matrix by how far apart the codes are. See
+- The [AI Code Designer](#help-annotation-code-designer) drafts up to
+  **Maximum levels** levels, from the lowest to the highest, then **Not
+  applicable**, each defined by what one text shows.
+- **Reliability: a near miss counts as partial agreement.** Rating a text
+  Medium rather than High is a smaller disagreement than Low rather than High.
+  Kappa is weighted (κw): a disagreement costs the square of its distance in
+  levels. Alpha is ordinal (αo): its distance also counts how many coded texts
+  lie between the two levels. A code outside the scale is as far from every
+  level as the two ends of the scale are from each other. Percent Agreement
+  still counts exact matches only. In the confusion matrix the levels come in
+  scale order, agreement runs down the diagonal in green, and each
+  disagreement is shaded orange by how far apart the two codes are. See
   [Reliability statistics](#help-annotation-reliability).
 - Write each level so it can be judged from one text alone. Wording such as
   "more than usual" or "above average" asks the model to compare texts it
@@ -270,9 +302,21 @@ disagreeing rows too.
   suggests relying on data with an Alpha of 0.8 or more, and drawing only
   tentative conclusions from 0.667 to 0.8.
 
-With an [ordered scale](#help-annotation-scale), rating a text Medium rather
-than High is a smaller disagreement than Low rather than High, so Kappa and
-Alpha take the distance into account:
+The same three statistics are worked out differently for
+[categories](#help-annotation-categories) and for an
+[ordered scale](#help-annotation-scale):
+
+| | Categories | Ordered scale |
+|---|---|---|
+| What agrees | Only the same code | The same level fully; a near miss partly |
+| Cohen's Kappa | κ: every disagreement costs the same | κw: a disagreement costs the square of its distance in levels |
+| Krippendorff's Alpha | α (nominal): every disagreement costs the same | αo (ordinal): the distance also counts how many coded texts lie between the levels |
+| Not applicable or Other | An ordinary code | Outside the scale: as far from every level as the two ends are |
+| Percent Agreement | Exact matches | Exact matches |
+| Confusion matrix | Codes A to Z, agreement in green | Levels in scale order, agreement in green, disagreements in orange by distance |
+| Alpha across all coders | α | αo |
+
+With an ordered scale, Kappa and Alpha take the distance into account:
 
 - **Weighted Kappa** (shown as κw) gives partial credit for a near miss. A
   disagreement costs the square of its distance in levels (quadratic weights):

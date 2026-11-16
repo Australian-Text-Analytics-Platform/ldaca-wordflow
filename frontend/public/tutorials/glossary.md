@@ -48,8 +48,10 @@ See [AI Code Designer](./annotation.md#help-annotation-code-designer) and
 The list of codes you want to apply in Annotation, each with a description
 that says when it applies. In Wordflow a Codebook is a Data Block with a column
 of codes and a column of descriptions, so it can be edited, exported and
-reused. See
-[Set up the source and Codebook](./annotation.md#help-annotation-setup).
+reused. Its codes are either categories, with no order, or the levels of an
+[ordered scale](#help-glossary-ordered-scale). See
+[Set up the source and Codebook](./annotation.md#help-annotation-setup) and
+[Categories](./annotation.md#help-annotation-categories).
 
 <h3 id="help-glossary-contextual-hint">Contextual Hint</h3>
 
