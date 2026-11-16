@@ -133,7 +133,7 @@ function Sidebar() {
     else hiddenViews.delete(view);
     updatePreferences.mutate({ hidden_views: [...hiddenViews] });
   };
-  const { currentWorkspaceId } = useWorkspaceData();
+  const { currentWorkspaceId, currentWorkspace } = useWorkspaceData();
   const { user, logout, isMultiUserMode } = useAuth();
   const queryClient = useQueryClient();
   /** Called by: the Sidebar footer/header Logout button onClick prop. */
@@ -520,6 +520,14 @@ function Sidebar() {
                                     onDelete={(id) => {
                                       void deleteNode(id);
                                     }}
+                                    exportProject={
+                                      currentWorkspaceId
+                                        ? {
+                                            workspaceId: currentWorkspaceId,
+                                            workspaceName: currentWorkspace?.name ?? '',
+                                          }
+                                        : undefined
+                                    }
                                   />
                                 )}
                               />
