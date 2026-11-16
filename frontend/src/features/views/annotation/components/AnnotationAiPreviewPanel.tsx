@@ -30,7 +30,10 @@ import {
   ColumnComparisonSelector,
   type ConfusionCount,
 } from '@/features/views/common/components/ColumnComparison';
-import type { IntercoderReliabilityMetric } from '@/features/views/common/columnComparisonModel';
+import type {
+  IntercoderReliabilityMetric,
+  OrderedScale,
+} from '@/features/views/common/columnComparisonModel';
 import { MetadataColumnSelector } from '@/features/views/common/components/MetadataColumnSelector';
 import { PaginatedTableProcessingRow } from '@/features/views/common/components/PaginatedTableProcessingRow';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
@@ -67,8 +70,8 @@ interface AnnotationAiPreviewPanelProps {
     onColumnsChange: (columns: string[]) => void;
     metric: IntercoderReliabilityMetric;
     onMetricChange: (metric: IntercoderReliabilityMetric) => void;
-    /** The Preview's codebook is an ordered scale (the classes are its levels, lowest first). */
-    scale?: boolean;
+    /** The Preview's codebook as an ordered scale; null for categories. */
+    scale?: OrderedScale | null;
   };
   metadata: {
     columns: string[];
@@ -287,7 +290,7 @@ export function AnnotationAiPreviewPanel({
             }}
             metric={comparison.metric}
             onMetricChange={comparison.onMetricChange}
-            ordered={comparison.scale === true}
+            ordered={Boolean(comparison.scale)}
             disabled={predictions.query.isFetching || preview.comparison.query.isFetching}
             disabledColumns={activeMetadataColumns}
           />
@@ -423,7 +426,7 @@ export function AnnotationAiPreviewPanel({
                         {activeComparisonColumns.includes(column) ? (
                           <ColumnComparisonHeader
                             metric={comparison.metric}
-                            scaleOrder={comparison.scale ? classOptions : null}
+                            scale={comparison.scale ?? null}
                             referenceColumn={previewColumn}
                             comparisonColumn={column}
                             rows={comparisonRows.get(column)}

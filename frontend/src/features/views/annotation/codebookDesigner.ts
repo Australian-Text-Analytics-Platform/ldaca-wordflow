@@ -41,7 +41,8 @@ Protect the data:
  * The default system prompt for an ordered scale (Chao, 16 Nov 2026): levels
  * from the lowest to the highest, each anchored in what one text shows, so a
  * text is rated without comparing it with the other texts in its batch. The
- * server's answer format asks for the levels in order and no "Other".
+ * server's answer format asks for the levels in order, then "Not applicable",
+ * a code outside the scale.
  */
 export const DEFAULT_SCALE_DESIGNER_PROMPT = `You are helping a researcher design a first-draft ordered scale for rating texts. The researcher will review and rewrite it, so aim for a clear, sensible starting point, not a finished scheme.
 
@@ -57,7 +58,7 @@ Design the scale:
 3. Propose up to the maximum number of levels, listed from the lowest to the highest. Use fewer if the sample does not support finer steps; three to five levels usually work best.
 4. Anchor every level in what can be seen in a single text, so a text can be rated on its own. Never define a level by comparison with other texts, such as "more than usual", "above average" or "higher than most".
 5. Neighbouring levels must not overlap: say what moves a text up to the next level.
-6. Do not add an "Other" or "Not applicable" level. Texts the scale does not fit are left uncoded.
+6. End with one code named exactly "Not applicable", for texts the scale does not fit. It is not a level: it sits outside the scale, not above the highest level. Its definition says what typically falls there in this data.
 
 Write each level:
 - Name: one to three plain words that show the order, for example "1 Low", "2 Medium", "3 High".
@@ -164,8 +165,15 @@ export function codebookSignature(rows: readonly AnnotationClassDescriptionRow[]
 
 export type DesignerStage = 'sampling' | 'waiting' | 'reading';
 
+/** One drafted code; on a scale, ``outsideScale`` marks Not applicable, which is not a level. */
+export interface DesignedCode {
+  name: string;
+  definition: string;
+  outsideScale: boolean;
+}
+
 export type DesignerOutcome =
-  | { kind: 'draft'; codes: { name: string; definition: string }[]; sampled: number }
+  | { kind: 'draft'; codes: DesignedCode[]; sampled: number }
   | { kind: 'error'; message: string; detail?: string }
   | { kind: 'stopped' };
 
@@ -227,6 +235,7 @@ export async function runCodebookDesigner({
           codes: event.codes.filter(isRecord).map((code) => ({
             name: typeof code.name === 'string' ? code.name : '',
             definition: typeof code.definition === 'string' ? code.definition : '',
+            outsideScale: code.outside_scale === true,
           })),
           sampled: typeof event.sampled === 'number' ? event.sampled : 0,
         };

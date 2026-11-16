@@ -6,7 +6,7 @@ import asyncio
 import json
 import re
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field, replace
 from functools import partial
 from typing import cast
@@ -119,26 +119,35 @@ async def list_model_options(
     return [ModelOption(model) for model in await adapter.list_models(api_key)]
 
 
+def _class_lines(classes: list[AnnotationClass]) -> str:
+    return "\n".join(
+        f"- {option.name}: {option.description.strip()}"
+        if option.description.strip()
+        else f"- {option.name}"
+        for option in classes
+    )
+
+
 def build_annotation_system_prompt(
     instruction: str,
     classes: list[AnnotationClass],
     examples: list[AnnotationExample] | None = None,
     task_context: str = "",
     scale: bool = False,
+    outside_scale: Collection[str] = (),
 ) -> str:
     """Assemble the instruction, Task context, classes, examples, and strict JSON contract.
 
+    Every text gets a class; the model is never asked for null, since an
+    empty label means "not coded" (Chao, 16 Nov 2026).
+
     With ``scale`` the classes are the levels of an ordered scale, lowest
-    first: each text is judged against the level definitions on its own, not
-    against the other texts in its batch, and examples cannot add labels.
+    first, except those named in ``outside_scale`` (such as Not applicable),
+    which are listed apart. Each text is judged against the level definitions
+    on its own, not against the other texts in its batch, and examples cannot
+    add labels.
     """
 
-    class_lines = "\n".join(
-        f"- {option.name}: {option.description.strip()}"
-        if option.description.strip()
-        else f"- {option.name}"
-        for option in classes
-    )
     parts = [instruction.strip(), ""]
     if task_context.strip():
         # The codebook's Task context (issue 408): what the texts are and
@@ -150,25 +159,38 @@ def build_annotation_system_prompt(
         "",
     ]
     if scale:
+        outside = [option for option in classes if option.name in outside_scale]
+        levels = [option for option in classes if option.name not in outside_scale]
         parts += [
             "Rate each input text on this ordered scale. The levels run from the "
             "lowest (first) to the highest (last):",
-            class_lines,
+            _class_lines(levels),
+        ]
+        if outside:
+            parts += ["", "Outside the scale (these codes are not levels):", _class_lines(outside)]
+        parts += [
             "",
             "Rules:",
-            "- Use the exact level name shown above for each text.",
+            "- Use the exact name of a level or of a code outside the scale for each text."
+            if outside
+            else "- Use the exact level name shown above for each text.",
             "- Judge each text against the level definitions on its own, not against "
             "the other texts in this batch.",
-            "- If the scale does not apply to a text, use null.",
+            "- If the scale does not apply to a text, use a code outside the scale. "
+            "Never answer null."
+            if outside
+            else "- Give every text the closest level. Never answer null.",
         ]
     else:
         parts += [
             "Classify each input text into exactly one of these classes:",
-            class_lines,
+            _class_lines(classes),
             "",
             "Rules:",
             "- Use the exact class name shown above for each text.",
-            "- If no class applies, use null.",
+            "- Give every text one class. Never answer null. If no class fits well, use "
+            'the class for texts that fit none of the others, such as "Other", if there '
+            "is one; otherwise use the closest class.",
         ]
     parts += [
         '- Respond with ONLY a JSON object of the form {"labels": [...]} containing one',
@@ -209,7 +231,9 @@ def build_labels_schema(labels: list[str], count: int) -> dict[str, object]:
     """The answer for one batch as a strict JSON schema (issue 406).
 
     ``labels`` is an array of exactly ``count`` items, each one of the known
-    labels (the classes, plus labels the examples add) or null.
+    labels (the classes, plus labels the examples add). Null is not offered:
+    every text gets a class, since an empty label means "not coded" (Chao,
+    16 Nov 2026). A model that answers null anyway leaves its row empty.
     """
 
     known = list(dict.fromkeys(labels))
@@ -222,7 +246,7 @@ def build_labels_schema(labels: list[str], count: int) -> dict[str, object]:
                 "type": "array",
                 "minItems": count,
                 "maxItems": count,
-                "items": {"enum": [*known, None]},
+                "items": {"enum": known},
             }
         },
     }
@@ -339,13 +363,14 @@ async def _annotate_batch(
     *,
     task_context: str = "",
     scale: bool = False,
+    outside_scale: Collection[str] = (),
 ) -> list[str | None]:
     """Classify one batch with shared prompt, retry, and label policy."""
 
     if not texts:
         return []
     system = build_annotation_system_prompt(
-        instruction, classes, examples, task_context, scale
+        instruction, classes, examples, task_context, scale, outside_scale
     )
     user = build_annotation_user_prompt(texts)
     known_labels = _known_labels(classes, examples)
@@ -399,6 +424,7 @@ async def _token_budget(
             examples,
             source.task_context,
             source.scale,
+            source.outside_scale,
         )
     ) + estimate_tokens(json.dumps(build_labels_schema(known_labels, 1)))
     return TokenBudget(
@@ -517,6 +543,7 @@ async def _annotate_texts(
                 examples,
                 task_context=source.task_context,
                 scale=source.scale,
+                outside_scale=source.outside_scale,
             )
         except AnnotationAiError as error:
             refused_for_size = isinstance(error, AnnotationContextLimitError)

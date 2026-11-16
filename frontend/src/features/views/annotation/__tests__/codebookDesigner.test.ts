@@ -111,8 +111,8 @@ describe('runCodebookDesigner', () => {
     expect(outcome).toEqual({
       kind: 'draft',
       codes: [
-        { name: 'Promise', definition: 'Jobs created.' },
-        { name: 'Other', definition: 'Anything else.' },
+        { name: 'Promise', definition: 'Jobs created.', outsideScale: false },
+        { name: 'Other', definition: 'Anything else.', outsideScale: false },
       ],
       sampled: 100,
     });

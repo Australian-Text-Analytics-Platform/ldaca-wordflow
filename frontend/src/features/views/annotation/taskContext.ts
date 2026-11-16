@@ -8,17 +8,23 @@ import type { AnnotationClassDescriptionRow } from '@/api';
  * - Task context (issue 408): what the texts are and what the codes are for.
  *   One row with this code and the text in the description column, written
  *   only when the Task context is filled in.
- * - Scale (Chao, 16 Nov 2026): the codes are levels of an ordered scale, from
- *   the lowest (first row) to the highest (last row). The row's presence is
- *   the setting; its description only explains it to people reading the
- *   Data Block.
+ * - Scale (Chao, 16 Nov 2026): the codes above this row are levels of an
+ *   ordered scale, from the lowest (first row) to the highest; codes below it
+ *   are outside the scale, such as Not applicable. The row's presence is the
+ *   setting; its description only explains it to people reading the Data
+ *   Block.
  */
 const TASK_CONTEXT_CODE = '__task_context__';
 /** The codebook's description limit. */
 export const TASK_CONTEXT_MAX_CHARS = 2000;
 const SCALE_CODE = '__scale__';
 const SCALE_ROW_DESCRIPTION =
-  'Ordered scale: the codes are levels, from the lowest (first row) to the highest (last row). Delete this row to make them categories again.';
+  'Ordered scale: the codes above this row are levels, from the lowest (first row) to the highest. Codes below it, such as Not applicable, are outside the scale. Delete this row to make them all categories again.';
+
+/** A code in the Edit codebook window; on a scale, ``outsideScale`` marks a code that is not a level. */
+export interface CodebookRow extends AnnotationClassDescriptionRow {
+  outsideScale?: boolean;
+}
 
 const normalized = (code: string): string => code.trim().toLowerCase();
 
@@ -27,29 +33,52 @@ const isScaleCode = (code: string): boolean => normalized(code) === SCALE_CODE;
 export const isReservedCodebookCode = (code: string): boolean =>
   isTaskContextCode(code) || isScaleCode(code);
 
-/** The codes without the reserved rows, the Task context ('' when none), and whether it is a scale. */
+/**
+ * The codes without the reserved rows, the Task context ('' when none),
+ * whether it is a scale, and the codes outside the scale (below its row).
+ */
 export function splitCodebookRows(rows: AnnotationClassDescriptionRow[]): {
   codes: AnnotationClassDescriptionRow[];
   taskContext: string;
   scale: boolean;
+  outsideScale: string[];
 } {
   const contextRow = rows.find((row) => isTaskContextCode(row.class));
+  const scaleIndex = rows.findIndex((row) => isScaleCode(row.class));
   return {
     codes: rows.filter((row) => !isReservedCodebookCode(row.class)),
     taskContext: contextRow?.description ?? '',
-    scale: rows.some((row) => isScaleCode(row.class)),
+    scale: scaleIndex >= 0,
+    outsideScale:
+      scaleIndex < 0
+        ? []
+        : rows
+            .slice(scaleIndex + 1)
+            .filter((row) => !isReservedCodebookCode(row.class))
+            .map((row) => row.class.trim()),
   };
 }
 
-/** The rows to save: the codes, then the scale row when on, then the Task context row when there is text. */
+/**
+ * The rows to save. On a scale: the levels, the scale row, then the codes
+ * outside the scale; otherwise the codes. Then the Task context row when
+ * there is text.
+ */
 export function withCodebookRows(
-  codes: AnnotationClassDescriptionRow[],
+  codes: CodebookRow[],
   { taskContext, scale }: { taskContext: string; scale: boolean },
 ): AnnotationClassDescriptionRow[] {
+  const plain = (rows: CodebookRow[]) =>
+    rows.map((row) => ({ class: row.class, description: row.description }));
   const text = taskContext.trim();
   return [
-    ...codes,
-    ...(scale ? [{ class: SCALE_CODE, description: SCALE_ROW_DESCRIPTION }] : []),
+    ...(scale
+      ? [
+          ...plain(codes.filter((row) => !row.outsideScale)),
+          { class: SCALE_CODE, description: SCALE_ROW_DESCRIPTION },
+          ...plain(codes.filter((row) => row.outsideScale)),
+        ]
+      : plain(codes)),
     ...(text ? [{ class: TASK_CONTEXT_CODE, description: text }] : []),
   ];
 }

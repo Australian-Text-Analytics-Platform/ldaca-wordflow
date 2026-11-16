@@ -29,6 +29,7 @@ import {
   DEFAULT_SCALE_DESIGNER_PROMPT,
   DESIGNER_EFFORTS,
   DESIGNER_SAMPLE_SIZE,
+  type DesignedCode,
   type DesignerEffort,
   type DesignerStage,
   runCodebookDesigner,
@@ -58,9 +59,9 @@ interface CodebookDesignerDialogProps {
   source: CodebookDesignerSource;
   brief: string;
   taskContext: string;
-  /** Design an ordered scale (levels, lowest first, no "Other") instead of categories. */
+  /** Design an ordered scale (levels, lowest first, then Not applicable) instead of categories. */
   scale: boolean;
-  onDraft: (codes: { name: string; definition: string }[]) => void;
+  onDraft: (codes: DesignedCode[]) => void;
 }
 
 const formatElapsed = (seconds: number): string =>
@@ -228,7 +229,7 @@ export function CodebookDesignerDialog({
           </div>
           <DialogDescription>
             {scale
-              ? `Drafts an ordered scale of up to ${String(settings.maxClasses)} levels, from the lowest to the highest, from your brief and a sample of your texts.`
+              ? `Drafts an ordered scale of up to ${String(settings.maxClasses)} levels, from the lowest to the highest, and a “Not applicable” code outside the scale, from your brief and a sample of your texts.`
               : `Drafts up to ${String(settings.maxClasses)} codes and an “Other” code from your brief and a sample of your texts.`}
           </DialogDescription>
         </DialogHeader>
@@ -396,7 +397,7 @@ export function CodebookDesignerDialog({
                 />
                 <p className="text-label-secondary text-description">
                   {scale
-                    ? 'Wordflow adds the answer format after this prompt: a JSON list of levels from the lowest to the highest, at most the maximum, with no “Other”.'
+                    ? 'Wordflow adds the answer format after this prompt: a JSON list of levels from the lowest to the highest, at most the maximum, then “Not applicable”.'
                     : 'Wordflow adds the answer format after this prompt: a JSON list of codes, at most the maximum, then “Other”.'}
                 </p>
               </div>

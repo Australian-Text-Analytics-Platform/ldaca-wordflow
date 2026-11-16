@@ -390,6 +390,11 @@ class _AnnotationInferenceFields(AnnotationProviderSnapshot):
     # levels, lowest first. Left out of stored records when false, like
     # task_context, so earlier versions still read Projects that don't use it.
     scale: bool = Field(default=False, exclude_if=lambda value: value is False)
+    # On a scale, the classes that are not levels (codebook rows below the
+    # __scale__ row), such as Not applicable. Left out when empty.
+    outside_scale: list[NonEmptyText] = Field(
+        default_factory=list, max_length=200, exclude_if=lambda value: not value
+    )
     temperature: float = Field(default=0.0, ge=0.0, le=2.0, allow_inf_nan=False)
     max_retries_per_batch: int = Field(default=2, ge=0, le=10)
     reasoning_enabled: bool = False
@@ -403,6 +408,14 @@ class _AnnotationInferenceFields(AnnotationProviderSnapshot):
         for reserved in RESERVED_CODEBOOK_CODES.intersection(normalized):
             purpose = "the Task context" if reserved == TASK_CONTEXT_CODE else "the scale setting"
             raise ValueError(f"{reserved} is reserved for {purpose}")
+        if self.outside_scale:
+            if not self.scale:
+                raise ValueError("Codes outside the scale need an ordered-scale codebook")
+            names = {item.name for item in self.classes}
+            if not set(self.outside_scale) <= names:
+                raise ValueError("Codes outside the scale must be classes")
+            if len(set(self.outside_scale)) >= len(names):
+                raise ValueError("An ordered scale needs at least one level")
         if self.correction_column in {self.text_column, self.annotation_column}:
             raise ValueError(
                 "Annotation correction column must differ from text and annotation columns"

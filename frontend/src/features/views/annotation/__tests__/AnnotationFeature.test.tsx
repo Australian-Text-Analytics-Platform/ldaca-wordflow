@@ -66,6 +66,7 @@ const mocks = vi.hoisted(() => ({
   classRows: [] as { class: string; description: string }[],
   taskContext: '',
   scale: false,
+  outsideScale: [] as string[],
   providerConfigurations: [] as {
     id: string;
     name: string;
@@ -293,6 +294,7 @@ vi.mock('../hooks/useAnnotationClassDescriptions', () => ({
     rows: mocks.classRows,
     taskContext: mocks.taskContext,
     scale: mocks.scale,
+    outsideScale: mocks.outsideScale,
     query: {},
   }),
 }));
@@ -380,6 +382,7 @@ describe('AnnotationFeature', () => {
     mocks.classRows = [];
     mocks.taskContext = '';
     mocks.scale = false;
+    mocks.outsideScale = [];
     mocks.providerConfigurations = [];
     mocks.sourceColumnNames = ['text'];
     mocks.workspaceNodes = [];
@@ -438,9 +441,13 @@ describe('AnnotationFeature', () => {
     const user = userEvent.setup();
     mocks.exampleSelected = true;
     mocks.classSelected = true;
-    mocks.classRows = [{ class: 'support', description: 'Supports the claim' }];
+    mocks.classRows = [
+      { class: 'support', description: 'Supports the claim' },
+      { class: 'Not applicable', description: 'Not about the claim' },
+    ];
     mocks.taskContext = '  Posts from a workers forum.  ';
     mocks.scale = true;
+    mocks.outsideScale = ['Not applicable'];
     mocks.providerConfigurations = [
       {
         id: 'provider-1',
@@ -499,9 +506,11 @@ describe('AnnotationFeature', () => {
       task_context: 'Posts from a workers forum.',
       // An ordered-scale codebook rates the texts on its levels.
       scale: true,
+      outside_scale: ['Not applicable'],
     });
     expect(previewRequest.classes).toEqual([
       { name: 'support', description: 'Supports the claim' },
+      { name: 'Not applicable', description: 'Not about the claim' },
     ]);
 
     await user.click(screen.getByRole('button', { name: 'Run' }));

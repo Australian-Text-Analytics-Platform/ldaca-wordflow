@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import type { AnnotationClassDescriptionRow } from '@/api';
+import { Fragment, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +25,16 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Ban,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import {
@@ -44,7 +52,12 @@ import {
   resolveCode,
   withoutRepeatedRows,
 } from '../codebookChecks';
-import { isReservedCodebookCode, TASK_CONTEXT_MAX_CHARS, withCodebookRows } from '../taskContext';
+import {
+  type CodebookRow,
+  isReservedCodebookCode,
+  TASK_CONTEXT_MAX_CHARS,
+  withCodebookRows,
+} from '../taskContext';
 import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
 import { type CodeDesignerSettings, codebookSignature } from '../codebookDesigner';
 import { codebookDraftKey, useCodebookDraftStore } from '../codebookDraftStore';
@@ -143,27 +156,31 @@ export function AnnotationClassDescriptionsEditor({
   });
 
   const savedRows = classDescriptions.rows;
-  const editorRows = draft?.rows ?? normalizeClassDescriptionRows(savedRows);
+  const savedScale = classDescriptions.scale;
+  // On a scale, codes below the scale row are outside it; they come after the levels.
+  const savedOutside = new Set(classDescriptions.outsideScale);
+  const savedEditorRows: CodebookRow[] = normalizeClassDescriptionRows(savedRows).map((row) =>
+    savedScale && savedOutside.has(row.class.trim()) ? { ...row, outsideScale: true } : row,
+  );
+  const editorRows = draft?.rows ?? savedEditorRows;
   const savedTaskContext = classDescriptions.taskContext.trim();
   const editorTaskContext = draft?.taskContext ?? classDescriptions.taskContext;
-  const savedScale = classDescriptions.scale;
   const editorScale = draft?.scale ?? savedScale;
+  const outsideSignature = (rows: CodebookRow[]) =>
+    JSON.stringify(rows.map((row) => Boolean(row.outsideScale)));
   const savedSignature = codebookSignature(savedRows);
   // Changes worth keeping: different codes, Task context or scale setting.
   const dirty =
     draft !== undefined &&
     (codebookSignature(draft.rows) !== savedSignature ||
       draft.taskContext.trim() !== savedTaskContext ||
-      draft.scale !== savedScale);
+      draft.scale !== savedScale ||
+      (draft.scale && outsideSignature(draft.rows) !== outsideSignature(savedEditorRows)));
   const isAiDraft =
     dirty &&
     draft.designedSignature !== null &&
     codebookSignature(draft.rows) === draft.designedSignature;
-  const writeDraft = (patch: {
-    rows?: AnnotationClassDescriptionRow[];
-    taskContext?: string;
-    scale?: boolean;
-  }) => {
+  const writeDraft = (patch: { rows?: CodebookRow[]; taskContext?: string; scale?: boolean }) => {
     setDraft(draftKey, {
       rows: patch.rows ?? editorRows,
       taskContext: patch.taskContext ?? editorTaskContext,
@@ -191,8 +208,14 @@ export function AnnotationClassDescriptionsEditor({
     });
   };
 
+  // On a scale the codes outside it stay last, so a new code joins the levels.
+  const firstOutside = editorScale ? editorRows.findIndex((row) => row.outsideScale) : -1;
+  const levelCount = firstOutside < 0 ? editorRows.length : firstOutside;
+
   const handleAddClass = () => {
-    writeDraft({ rows: [...editorRows, { class: '', description: '' }] });
+    const rows = [...editorRows];
+    rows.splice(levelCount, 0, { class: '', description: '' });
+    writeDraft({ rows });
   };
 
   // Remove the row from the draft; Save persists the remaining classes.
@@ -203,12 +226,28 @@ export function AnnotationClassDescriptionsEditor({
   // On a scale the row order is the level order, lowest first.
   const handleMoveClass = (rowIndex: number, offset: -1 | 1) => {
     const target = rowIndex + offset;
-    if (target < 0 || target >= editorRows.length) return;
+    if (target < 0 || target >= levelCount) return;
     const rows = [...editorRows];
     const [moved] = rows.splice(rowIndex, 1);
     if (!moved) return;
     rows.splice(target, 0, moved);
     writeDraft({ rows });
+  };
+
+  // A code outside the scale (such as Not applicable) is not a level: it
+  // moves below the levels, and back to the top of the scale when it becomes one.
+  const handleToggleOutside = (rowIndex: number) => {
+    const row = editorRows[rowIndex];
+    if (!row) return;
+    const rest = editorRows.filter((_, index) => index !== rowIndex);
+    if (row.outsideScale) {
+      const { outsideScale: _outside, ...level } = row;
+      const restFirstOutside = rest.findIndex((item) => item.outsideScale);
+      rest.splice(restFirstOutside < 0 ? rest.length : restFirstOutside, 0, level);
+      writeDraft({ rows: rest });
+    } else {
+      writeDraft({ rows: [...rest, { ...row, outsideScale: true }] });
+    }
   };
 
   // Closing (×, Esc, a click outside) keeps unsaved changes for later.
@@ -231,9 +270,10 @@ export function AnnotationClassDescriptionsEditor({
 
   const handleSave = async () => {
     if (!nodeId || !classColumn || !descriptionColumn) return;
-    const normalized = normalizeClassDescriptionRows(editorRows).map((row) => ({
+    const normalized: CodebookRow[] = editorRows.map((row) => ({
       class: row.class.trim(),
       description: row.description,
+      ...(row.outsideScale ? { outsideScale: true } : {}),
     }));
     if (normalized.some((row) => row.class.length === 0)) {
       toast.error('Every annotation code needs a name.');
@@ -247,6 +287,10 @@ export function AnnotationClassDescriptionsEditor({
     const uniqueNames = new Set(normalized.map((row) => codeKey(row.class)));
     if (uniqueNames.size !== normalized.length) {
       toast.error('Each code can appear only once. Follow the suggestion below the codes.');
+      return;
+    }
+    if (editorScale && normalized.filter((row) => !row.outsideScale).length < 2) {
+      toast.error('An ordered scale needs at least two levels.');
       return;
     }
     setIsSaving(true);
@@ -400,76 +444,113 @@ export function AnnotationClassDescriptionsEditor({
                 </p>
               ) : (
                 editorRows.map((row, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <Input
-                      aria-label={`${editorScale ? 'Level' : 'Code'} ${String(index + 1)}`}
-                      value={row.class}
-                      placeholder={editorScale ? 'Level' : 'Code'}
-                      data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
-                      className={cn('w-1/3', draftCheck.rowsToMark.has(index) && 'border-warning')}
-                      disabled={false}
-                      onChange={(event) => {
-                        updateDraftCell(index, 'class', event.target.value);
-                      }}
-                    />
-                    <Textarea
-                      aria-label={`Description ${String(index + 1)}`}
-                      value={row.description}
-                      rows={2}
-                      placeholder="Description"
-                      disabled={false}
-                      data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
-                      className={cn(
-                        'min-h-9 flex-1 resize-y',
-                        draftCheck.rowsToMark.has(index) && 'border-warning',
-                      )}
-                      onChange={(event) => {
-                        updateDraftCell(index, 'description', event.target.value);
-                      }}
-                    />
-                    {editorScale ? (
-                      <div className="flex shrink-0 flex-col">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-7 text-description"
-                          aria-label={`Move level ${String(index + 1)} toward the lowest`}
-                          disabled={index === 0}
-                          onClick={() => {
-                            handleMoveClass(index, -1);
-                          }}
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-7 text-description"
-                          aria-label={`Move level ${String(index + 1)} toward the highest`}
-                          disabled={index === editorRows.length - 1}
-                          onClick={() => {
-                            handleMoveClass(index, 1);
-                          }}
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                      </div>
+                  <Fragment key={index}>
+                    {editorScale && index === firstOutside ? (
+                      <p className="pt-1 text-label-secondary font-medium text-description">
+                        Outside the scale (not levels)
+                      </p>
                     ) : null}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete code ${String(index + 1)}`}
-                      className="shrink-0 text-description hover:text-error"
-                      onClick={() => {
-                        handleDeleteClass(index);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </div>
+                    <div className="flex items-start gap-2">
+                      <Input
+                        aria-label={`${editorScale && !row.outsideScale ? 'Level' : 'Code'} ${String(index + 1)}`}
+                        value={row.class}
+                        placeholder={editorScale && !row.outsideScale ? 'Level' : 'Code'}
+                        data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                        className={cn(
+                          'w-1/3',
+                          draftCheck.rowsToMark.has(index) && 'border-warning',
+                        )}
+                        disabled={false}
+                        onChange={(event) => {
+                          updateDraftCell(index, 'class', event.target.value);
+                        }}
+                      />
+                      <Textarea
+                        aria-label={`Description ${String(index + 1)}`}
+                        value={row.description}
+                        rows={2}
+                        placeholder="Description"
+                        disabled={false}
+                        data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                        className={cn(
+                          'min-h-9 flex-1 resize-y',
+                          draftCheck.rowsToMark.has(index) && 'border-warning',
+                        )}
+                        onChange={(event) => {
+                          updateDraftCell(index, 'description', event.target.value);
+                        }}
+                      />
+                      {editorScale ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'shrink-0',
+                            row.outsideScale ? 'text-foreground' : 'text-description',
+                          )}
+                          aria-pressed={Boolean(row.outsideScale)}
+                          aria-label={
+                            row.outsideScale
+                              ? `Make code ${String(index + 1)} a level`
+                              : `Move code ${String(index + 1)} outside the scale`
+                          }
+                          title={
+                            row.outsideScale
+                              ? 'Make this code a level of the scale'
+                              : 'Outside the scale: not a level, such as Not applicable'
+                          }
+                          onClick={() => {
+                            handleToggleOutside(index);
+                          }}
+                        >
+                          <Ban className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      ) : null}
+                      {editorScale && !row.outsideScale ? (
+                        <div className="flex shrink-0 flex-col">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-7 text-description"
+                            aria-label={`Move level ${String(index + 1)} toward the lowest`}
+                            disabled={index === 0}
+                            onClick={() => {
+                              handleMoveClass(index, -1);
+                            }}
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-7 text-description"
+                            aria-label={`Move level ${String(index + 1)} toward the highest`}
+                            disabled={index === levelCount - 1}
+                            onClick={() => {
+                              handleMoveClass(index, 1);
+                            }}
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Button>
+                        </div>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete code ${String(index + 1)}`}
+                        className="shrink-0 text-description hover:text-error"
+                        onClick={() => {
+                          handleDeleteClass(index);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </Fragment>
                 ))
               )}
             </div>
@@ -644,7 +725,11 @@ export function AnnotationClassDescriptionsEditor({
           taskContext={editorTaskContext}
           scale={editorScale}
           onDraft={(codes) => {
-            const rows = codes.map((code) => ({ class: code.name, description: code.definition }));
+            const rows: CodebookRow[] = codes.map((code) => ({
+              class: code.name,
+              description: code.definition,
+              ...(code.outsideScale ? { outsideScale: true } : {}),
+            }));
             setDraft(draftKey, {
               rows,
               taskContext: editorTaskContext,
@@ -673,6 +758,9 @@ export function AnnotationClassDescriptionsEditor({
         <p className="text-label-secondary text-description" data-testid="codebook-scale-note">
           <span className="font-medium text-foreground">Ordered scale:</span> levels from the lowest
           to the highest, in this order.
+          {classDescriptions.outsideScale.length > 0
+            ? ` Outside the scale: ${classDescriptions.outsideScale.join(', ')}.`
+            : null}
         </p>
       ) : null}
       {savedTaskContext ? (

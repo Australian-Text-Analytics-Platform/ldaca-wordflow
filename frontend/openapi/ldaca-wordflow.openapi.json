@@ -599,6 +599,15 @@
             "title": "Node Id",
             "type": "string"
           },
+          "outside_scale": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Outside Scale",
+            "type": "array"
+          },
           "provider": {
             "enum": [
               "openai",
@@ -837,6 +846,15 @@
             "format": "uuid",
             "title": "Node Id",
             "type": "string"
+          },
+          "outside_scale": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Outside Scale",
+            "type": "array"
           },
           "provider": {
             "enum": [

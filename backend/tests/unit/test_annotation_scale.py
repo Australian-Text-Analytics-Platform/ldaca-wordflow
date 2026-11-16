@@ -23,6 +23,7 @@ from ldaca_wordflow.infrastructure.providers.annotation_ai import (
     build_annotation_system_prompt,
 )
 from ldaca_wordflow.infrastructure.providers.codebook_designer import (
+    NOT_APPLICABLE_CODE,
     OTHER_CODE,
     CodebookAnswerError,
     build_designer_system_prompt,
@@ -35,6 +36,7 @@ from ldaca_wordflow.models.annotations import CodebookDraftRequest
 from ldaca_wordflow.models.node_resources import AnnotationClassesNodeEditRequest
 
 LEVELS = [AnnotationClass(name="Low"), AnnotationClass(name="Medium"), AnnotationClass(name="High")]
+NOT_APPLICABLE = AnnotationClass(name="Not applicable", description="Not a request")
 
 
 def _request(**update: Any) -> AnnotationAnalysisRequest:
@@ -59,20 +61,37 @@ def _request(**update: Any) -> AnnotationAnalysisRequest:
 
 
 def test_a_scale_prompt_lists_the_levels_lowest_first_and_judges_texts_alone() -> None:
-    prompt = build_annotation_system_prompt("Rate.", LEVELS, scale=True)
+    prompt = build_annotation_system_prompt(
+        "Rate.", [*LEVELS, NOT_APPLICABLE], scale=True, outside_scale=["Not applicable"]
+    )
 
     assert "ordered scale" in prompt
     assert "lowest (first) to the highest (last)" in prompt
     assert prompt.index("- Low") < prompt.index("- Medium") < prompt.index("- High")
+    # Not applicable is listed apart, after the levels, not as the top level.
+    assert prompt.index("- High") < prompt.index("Outside the scale (these codes are not levels):")
+    assert prompt.index("Outside the scale") < prompt.index("- Not applicable: Not a request")
     assert "not against the other texts in this batch" in prompt
-    assert "If the scale does not apply to a text, use null." in prompt
+    assert "If the scale does not apply to a text, use a code outside the scale." in prompt
+    assert "Never answer null." in prompt
+    assert "use null" not in prompt
     assert "Classify each input text" not in prompt
 
 
-def test_a_category_prompt_is_unchanged_by_the_scale_rules() -> None:
+def test_a_scale_without_codes_outside_it_asks_for_the_closest_level() -> None:
+    prompt = build_annotation_system_prompt("Rate.", LEVELS, scale=True)
+
+    assert "Outside the scale" not in prompt
+    assert "Give every text the closest level. Never answer null." in prompt
+
+
+def test_a_category_prompt_asks_for_a_class_for_every_text() -> None:
     prompt = build_annotation_system_prompt("Classify.", LEVELS)
 
     assert "Classify each input text into exactly one of these classes:" in prompt
+    assert "Give every text one class. Never answer null." in prompt
+    assert '"Other", if there is one; otherwise use the closest class.' in prompt
+    assert "use null" not in prompt
     assert "ordered scale" not in prompt
 
 
@@ -90,10 +109,29 @@ def test_on_a_scale_examples_do_not_extend_the_levels() -> None:
 def test_stored_requests_leave_out_a_false_scale() -> None:
     # Earlier versions refuse unknown fields; a category codebook must not
     # stop them reading a Project saved by a newer build.
-    assert "scale" not in _request().model_dump(mode="json")
-    stored = _request(scale=True).model_dump(mode="json")
+    stored = _request().model_dump(mode="json")
+    assert "scale" not in stored
+    assert "outside_scale" not in stored
+    stored = _request(
+        scale=True, classes=[*LEVELS, NOT_APPLICABLE], outside_scale=["Not applicable"]
+    ).model_dump(mode="json")
     assert stored["scale"] is True
-    assert AnnotationAnalysisRequest.model_validate(stored).scale is True
+    assert stored["outside_scale"] == ["Not applicable"]
+    restored = AnnotationAnalysisRequest.model_validate(stored)
+    assert (restored.scale, restored.outside_scale) == (True, ["Not applicable"])
+
+
+@pytest.mark.parametrize(
+    ("update", "message"),
+    [
+        ({"outside_scale": ["Low"]}, "need an ordered-scale codebook"),
+        ({"scale": True, "outside_scale": ["Unknown"]}, "must be classes"),
+        ({"scale": True, "outside_scale": ["Low", "Medium", "High"]}, "at least one level"),
+    ],
+)
+def test_codes_outside_the_scale_are_checked(update: dict[str, Any], message: str) -> None:
+    with pytest.raises(ValidationError, match=message):
+        _request(**update)
 
 
 @pytest.mark.parametrize("name", ["__scale__", "__SCALE__", "__task_context__"])
@@ -117,7 +155,9 @@ async def test_preview_and_run_rate_on_the_scale_with_level_examples_only(
             return []
 
     monkeypatch.setattr(annotation_ai, "resolve_provider_adapter", lambda *_args: _Adapter())
-    request = _request(scale=True)
+    request = _request(
+        scale=True, classes=[*LEVELS, NOT_APPLICABLE], outside_scale=["Not applicable"]
+    )
     examples = [
         AnnotationExample(text="a level example", label="Medium"),
         AnnotationExample(text="an off-scale example", label="Sarcasm"),
@@ -131,9 +171,15 @@ async def test_preview_and_run_rate_on_the_scale_with_level_examples_only(
     assert len(calls) == 2
     for system, schema in calls:
         assert "ordered scale" in system
+        assert "Outside the scale" in system
         assert "a level example" in system
         assert "an off-scale example" not in system
-        assert schema["properties"]["labels"]["items"]["enum"] == ["Low", "Medium", "High", None]
+        assert schema["properties"]["labels"]["items"]["enum"] == [
+            "Low",
+            "Medium",
+            "High",
+            "Not applicable",
+        ]
 
 
 def test_a_codebook_holds_200_codes_plus_both_reserved_rows() -> None:
@@ -152,13 +198,15 @@ def test_a_codebook_holds_200_codes_plus_both_reserved_rows() -> None:
 # --- the designer --------------------------------------------------------------
 
 
-def test_designer_scale_format_asks_for_ordered_levels_without_other() -> None:
+def test_designer_scale_format_asks_for_ordered_levels_then_not_applicable() -> None:
     prompt = build_designer_system_prompt("Design.", 5, scale=True)
 
     assert "between 2 and 5 levels of one ordered scale" in prompt
     assert "from the lowest to the highest" in prompt
+    assert f'named exactly "{NOT_APPLICABLE_CODE}" as the last code' in prompt
+    assert "It is not a level." in prompt
     assert f'named exactly "{OTHER_CODE}"' not in prompt
-    assert codebook_schema(5, scale=True)["properties"]["codes"]["maxItems"] == 5
+    assert codebook_schema(5, scale=True)["properties"]["codes"]["maxItems"] == 6
     assert codebook_schema(5)["properties"]["codes"]["maxItems"] == 6
 
 
@@ -171,7 +219,7 @@ def test_designer_scale_user_prompt_counts_levels() -> None:
         scale=True,
     )
 
-    assert "Maximum levels: 4" in prompt
+    assert f'Maximum levels: 4 (not counting "{NOT_APPLICABLE_CODE}")' in prompt
     assert OTHER_CODE not in prompt
 
 
@@ -179,17 +227,20 @@ def _answer(*names: str) -> str:
     return json.dumps({"codes": [{"name": name, "definition": f"{name} def"} for name in names]})
 
 
-def test_designer_scale_keeps_the_model_order_and_adds_no_other() -> None:
+def test_designer_scale_keeps_the_level_order_and_ends_with_not_applicable() -> None:
     codes = parse_codebook_answer(
-        _answer("None", "Some", "Other", "Strong", "Extreme"), 4, scale=True
+        _answer("None", "not applicable", "Some", "Strong", "Extreme"), 2, scale=True
     )
 
-    assert [code.name for code in codes] == ["None", "Some", "Other", "Strong"]
+    assert [code.name for code in codes] == ["None", "Some", "Not applicable"]
+    assert [code.outside_scale for code in codes] == [False, False, True]
+    assert codes[-1].definition == "not applicable def"
 
 
-def test_designer_scale_drops_reserved_names_and_needs_two_levels() -> None:
+def test_designer_scale_adds_a_missing_not_applicable() -> None:
     codes = parse_codebook_answer(_answer("Low", "__scale__", "High"), 5, scale=True)
-    assert [code.name for code in codes] == ["Low", "High"]
+    assert [code.name for code in codes] == ["Low", "High", "Not applicable"]
+    assert codes[-1].outside_scale is True
     with pytest.raises(CodebookAnswerError, match="fewer than two levels"):
         parse_codebook_answer(_answer("Only"), 5, scale=True)
 

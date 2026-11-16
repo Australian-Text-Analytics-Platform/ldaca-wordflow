@@ -279,10 +279,12 @@ Preview, and Run All. Two reserved rows are settings, never codes:
 Scale.
 
 **Ordered Scale**:
-A Codebook whose codes are levels in row order, from the lowest to the
-highest, rather than unordered categories. AI annotation rates each text
-against the level definitions alone, and Compare to uses weighted Kappa and
-ordinal Alpha. Annotation labels stay text.
+A Codebook whose codes above its `__scale__` row are levels in row order, from
+the lowest to the highest, rather than unordered categories. Codes below the
+row, such as Not applicable, are outside the scale: not levels, and as far
+from every level as the two most distant levels are from each other. AI
+annotation rates each text against the level definitions alone, and Compare to
+uses weighted Kappa and ordinal Alpha. Annotation labels stay text.
 _Avoid_: ordinal codebook, rating codebook
 _Avoid_: class descriptions, class-description node
 

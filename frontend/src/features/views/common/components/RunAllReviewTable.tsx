@@ -27,7 +27,10 @@ import {
   ColumnComparisonHeader,
   ColumnComparisonSelector,
 } from '@/features/views/common/components/ColumnComparison';
-import { type IntercoderReliabilityMetric } from '@/features/views/common/columnComparisonModel';
+import {
+  type IntercoderReliabilityMetric,
+  type OrderedScale,
+} from '@/features/views/common/columnComparisonModel';
 import { MetadataColumnSelector } from '@/features/views/common/components/MetadataColumnSelector';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
 import { useFullColumnComparisons } from '@/features/views/common/hooks/useFullColumnComparisons';
@@ -89,8 +92,8 @@ interface RunAllReviewTableProps {
     disabled?: boolean;
   };
   rowCount: number;
-  /** The Run's codebook is an ordered scale (the classes are its levels, lowest first). */
-  scale?: boolean;
+  /** The Run's codebook as an ordered scale; null for categories. */
+  scale?: OrderedScale | null;
   /** Column order from dragged headers, and how to save a new one (issue 373). */
   columnOrder?: readonly string[];
   onReorderColumns?: (order: string[]) => void;
@@ -119,7 +122,7 @@ export function RunAllReviewTable({
   onComparisonColumnsChange,
   reliabilityMetric,
   onReliabilityMetricChange,
-  scale = false,
+  scale = null,
   metadataColumns,
   onMetadataColumnsChange,
   correction,
@@ -328,7 +331,7 @@ export function RunAllReviewTable({
               }}
               metric={reliabilityMetric}
               onMetricChange={onReliabilityMetricChange}
-              ordered={scale}
+              ordered={scale !== null}
               disabledColumns={activeMetadataColumns}
             />
             <AnnotationCorrectionColumnControl
@@ -427,7 +430,7 @@ export function RunAllReviewTable({
                           ) : activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
                               metric={reliabilityMetric}
-                              scaleOrder={scale ? classOptions : null}
+                              scale={scale}
                               referenceColumn={comparisonColumn}
                               comparisonColumn={column}
                               rows={comparisonQueryByColumn.get(column)?.data}
@@ -475,7 +478,7 @@ export function RunAllReviewTable({
                           {activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
                               metric={reliabilityMetric}
-                              scaleOrder={scale ? classOptions : null}
+                              scale={scale}
                               referenceColumn={comparisonColumn}
                               comparisonColumn={column}
                               rows={comparisonQueryByColumn.get(column)?.data}

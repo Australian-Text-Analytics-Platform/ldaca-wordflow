@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   rows: [] as { class: string; description: string }[],
   taskContext: '',
   scale: false,
+  outsideScale: [] as string[],
   save: vi.fn(),
   run: vi.fn(),
 }));
@@ -31,6 +32,7 @@ vi.mock('../../hooks/useAnnotationClassDescriptions', () => ({
     rows: mocks.rows,
     taskContext: mocks.taskContext,
     scale: mocks.scale,
+    outsideScale: mocks.outsideScale,
     query: { isError: false, isLoading: false },
   }),
 }));
@@ -118,6 +120,7 @@ describe('AI Code Designer in the Edit codebook window (Chao, 15 Nov 2026)', () 
     mocks.rows = [];
     mocks.taskContext = '';
     mocks.scale = false;
+    mocks.outsideScale = [];
     mocks.save.mockReset().mockResolvedValue(undefined);
     mocks.run.mockReset();
     onSettingsChange.mockReset();
@@ -192,8 +195,9 @@ describe('AI Code Designer in the Edit codebook window (Chao, 15 Nov 2026)', () 
     mocks.run.mockResolvedValue({
       kind: 'draft',
       codes: [
-        { name: '1 Low', definition: 'No time pressure.' },
-        { name: '2 High', definition: 'Asks for action today.' },
+        { name: '1 Low', definition: 'No time pressure.', outsideScale: false },
+        { name: '2 High', definition: 'Asks for action today.', outsideScale: false },
+        { name: 'Not applicable', definition: 'Not a request.', outsideScale: true },
       ],
       sampled: 100,
     } satisfies DesignerOutcome);
@@ -201,7 +205,7 @@ describe('AI Code Designer in the Edit codebook window (Chao, 15 Nov 2026)', () 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     const editor = screen.getByRole('dialog');
     expect(within(editor).getByLabelText('Maximum levels')).toBeVisible();
-    expect(within(editor).queryByText('plus “Other”')).toBeNull();
+    expect(within(editor).getByText('plus “Not applicable”')).toBeVisible();
     await user.click(within(editor).getByRole('button', { name: 'AI Code Designer' }));
 
     const designer = await screen.findByTestId('codebook-designer-dialog');
@@ -224,6 +228,11 @@ describe('AI Code Designer in the Edit codebook window (Chao, 15 Nov 2026)', () 
       }),
     );
     expect(within(editor).getByLabelText('Level 1')).toHaveValue('1 Low');
+    expect(within(editor).getByLabelText('Code 3')).toHaveValue('Not applicable');
+    expect(within(editor).getByRole('button', { name: 'Make code 3 a level' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     expect(within(editor).getByRole('switch', { name: 'Ordered scale' })).toBeChecked();
   });
 

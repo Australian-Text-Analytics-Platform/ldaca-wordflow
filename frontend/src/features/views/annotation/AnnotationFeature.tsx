@@ -25,7 +25,10 @@ import {
   submitTabAnalysisWithProviderCredential,
 } from '@/features/provider-credentials/providerCredentialRequests';
 import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
-import { DEFAULT_INTERCODER_RELIABILITY_METRIC } from '@/features/views/common/columnComparisonModel';
+import {
+  DEFAULT_INTERCODER_RELIABILITY_METRIC,
+  orderedScale,
+} from '@/features/views/common/columnComparisonModel';
 import HelpIcon from '@/components/help/HelpIcon';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
 import type { NodeInputColumnAddonArgs } from '@/features/views/common/components/NodeInputsPanel';
@@ -761,6 +764,10 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
             ? { task_context: classDescriptions.taskContext.trim() }
             : {}),
           ...(classDescriptions.scale ? { scale: true } : {}),
+          // Codes below the scale row, such as Not applicable, are not levels.
+          ...(classDescriptions.scale && classDescriptions.outsideScale.length > 0
+            ? { outside_scale: classDescriptions.outsideScale }
+            : {}),
           temperature: sent.aiTemperature,
           max_retries_per_batch: sent.aiMaxRetriesPerBatch,
           max_examples_per_class: sent.aiMaxExamplesPerClass,
@@ -1608,7 +1615,14 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                 sourceColumns={reviewSourceColumns}
                 sourceColor={reviewSourceNode.color ?? GREY}
                 rowCount={reviewSourceNode.shape?.[0] ?? 0}
-                scale={annotationRunAllSource.scale === true}
+                scale={
+                  annotationRunAllSource.scale
+                    ? orderedScale(
+                        annotationRunAllSource.classes.map((item) => item.name),
+                        annotationRunAllSource.outside_scale ?? [],
+                      )
+                    : null
+                }
                 title="Annotation"
                 guidanceTarget="annotation-ai-run-all-results"
                 requiredColumns={[
@@ -1672,7 +1686,12 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                 onMetricChange: (metric) => {
                   setAnnotationReliabilityMetric(serverAiRequest.node_id, metric);
                 },
-                scale: serverAiRequest.scale === true,
+                scale: serverAiRequest.scale
+                  ? orderedScale(
+                      serverAiRequest.classes.map((item) => item.name),
+                      serverAiRequest.outside_scale ?? [],
+                    )
+                  : null,
               }}
               metadata={{
                 columns: annotationMetadataColumns[serverAiRequest.node_id] ?? [],

@@ -11,7 +11,8 @@ import {
   intercoderReliabilityLabel,
 } from '../columnComparisonModel';
 
-const ORDER = ['Low', 'Medium', 'High'];
+const ORDER = { levels: ['Low', 'Medium', 'High'], outside: [] };
+const WITH_NA = { levels: ['Low', 'Medium', 'High'], outside: ['Not applicable'] };
 
 // Reference values from scikit-learn's cohen_kappa_score(weights='quadratic')
 // and the krippendorff package (level_of_measurement='ordinal'), same data.
@@ -77,11 +78,11 @@ describe('ordered-scale reliability', () => {
       { reference: 'Yes', comparison: 'No', count: 1 },
       { reference: 'Yes', comparison: 'Yes', count: 5 },
     ];
-    expect(calculateWeightedKappa(rows, ['No', 'Yes'])).toBeCloseTo(
+    expect(calculateWeightedKappa(rows, { levels: ['No', 'Yes'], outside: [] })).toBeCloseTo(
       value(calculateCohensKappa(rows)),
       12,
     );
-    expect(calculateOrdinalAlpha(rows, ['No', 'Yes'])).toBeCloseTo(
+    expect(calculateOrdinalAlpha(rows, { levels: ['No', 'Yes'], outside: [] })).toBeCloseTo(
       value(calculateKrippendorffsAlpha(rows)),
       12,
     );
@@ -92,7 +93,40 @@ describe('ordered-scale reliability', () => {
     expect(calculateWeightedKappa(withStray, ORDER)).toBeCloseTo(0.6610169491525424, 12);
     expect(calculateOrdinalAlpha([], ORDER)).toBeNull();
     expect(calculateWeightedKappa([], ORDER)).toBeNull();
-    expect(calculateWeightedKappa(ROWS, ['Low'])).toBeNull();
+    expect(calculateWeightedKappa(ROWS, { levels: ['Low'], outside: [] })).toBeNull();
+  });
+
+  it('counts Not applicable against a level as much as the two farthest levels', () => {
+    // Reference: a NumPy weighted Kappa with the same weight table, and the
+    // krippendorff package with the same distance (ordinal between levels,
+    // scaled by the widest; 1 against Not applicable).
+    const rows: ConfusionCount[] = [
+      ...ROWS,
+      { reference: 'Not applicable', comparison: 'Not applicable', count: 3 },
+      { reference: 'Not applicable', comparison: 'High', count: 1 },
+      { reference: 'Low', comparison: 'Not applicable', count: 1 },
+    ];
+    expect(calculateWeightedKappa(rows, WITH_NA)).toBeCloseTo(0.66996699669967, 12);
+    expect(calculateOrdinalAlpha(rows, WITH_NA)).toBeCloseTo(0.6715289476928135, 12);
+
+    // Not applicable is not near any level: it costs more than a near miss.
+    const base: ConfusionCount[] = [
+      { reference: 'Low', comparison: 'Low', count: 4 },
+      { reference: 'Medium', comparison: 'Medium', count: 4 },
+      { reference: 'High', comparison: 'High', count: 4 },
+      { reference: 'Not applicable', comparison: 'Not applicable', count: 4 },
+    ];
+    const nearMiss = [...base, { reference: 'Low', comparison: 'Medium', count: 2 }];
+    const notApplicable = [
+      ...base,
+      { reference: 'Not applicable', comparison: 'Medium', count: 2 },
+    ];
+    expect(value(calculateWeightedKappa(nearMiss, WITH_NA))).toBeGreaterThan(
+      value(calculateWeightedKappa(notApplicable, WITH_NA)),
+    );
+    expect(value(calculateOrdinalAlpha(nearMiss, WITH_NA))).toBeGreaterThan(
+      value(calculateOrdinalAlpha(notApplicable, WITH_NA)),
+    );
   });
 
   it('names and marks the scale statistics', () => {

@@ -117,9 +117,7 @@ export function codebookSuggestions(
 }
 
 /** The rows without the ones that repeat an earlier row. */
-export function withoutRepeatedRows(
-  rows: AnnotationClassDescriptionRow[],
-): AnnotationClassDescriptionRow[] {
+export function withoutRepeatedRows<Row extends AnnotationClassDescriptionRow>(rows: Row[]): Row[] {
   const repeated = new Set(checkCodebook(rows).repeatedRows);
   return rows.filter((_, index) => !repeated.has(index));
 }
@@ -132,11 +130,11 @@ export const mergedDescription = (descriptions: string[]) =>
  * Keep one row for the code `key`, where it first appears, with `description`;
  * the code's other rows are removed. Other codes are left as they are.
  */
-export function resolveCode(
-  rows: AnnotationClassDescriptionRow[],
+export function resolveCode<Row extends AnnotationClassDescriptionRow>(
+  rows: Row[],
   key: string,
   description: string,
-): AnnotationClassDescriptionRow[] {
+): Row[] {
   let kept = false;
   return rows.flatMap((row) => {
     if (codeKey(row.class) !== key) return [row];

@@ -226,7 +226,11 @@ class AnnotationService:
             return
         yield CodebookDraftResultEvent(
             codes=[
-                CodebookDraftCode(name=code.name, definition=code.definition)
+                CodebookDraftCode(
+                    name=code.name,
+                    definition=code.definition,
+                    outside_scale=code.outside_scale,
+                )
                 for code in codes
             ],
             sampled=len(sample.texts),

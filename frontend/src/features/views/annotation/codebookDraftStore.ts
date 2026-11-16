@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { AnnotationClassDescriptionRow } from '@/api';
+import type { CodebookRow } from './taskContext';
 
 /**
  * Unsaved changes in the Edit codebook window, kept per Annotation tab and
@@ -11,7 +11,7 @@ import type { AnnotationClassDescriptionRow } from '@/api';
  * Project.
  */
 interface CodebookEditorDraft {
-  rows: AnnotationClassDescriptionRow[];
+  rows: CodebookRow[];
   taskContext: string;
   /** The codes are levels of an ordered scale, lowest first. */
   scale: boolean;

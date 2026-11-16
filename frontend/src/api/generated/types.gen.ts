@@ -299,6 +299,10 @@ export type AnnotationAnalysisRequest = {
      */
     node_id: string;
     /**
+     * Outside Scale
+     */
+    outside_scale?: Array<string>;
+    /**
      * Provider
      */
     provider: 'openai' | 'openrouter' | 'anthropic' | 'google' | 'custom';
@@ -410,6 +414,10 @@ export type AnnotationAnalysisSubmission = {
      * Node Id
      */
     node_id: string;
+    /**
+     * Outside Scale
+     */
+    outside_scale?: Array<string>;
     /**
      * Provider
      */
@@ -7649,6 +7657,10 @@ export type AnnotationAnalysisSubmissionWritable = {
      * Node Id
      */
     node_id: string;
+    /**
+     * Outside Scale
+     */
+    outside_scale?: Array<string>;
     /**
      * Provider
      */

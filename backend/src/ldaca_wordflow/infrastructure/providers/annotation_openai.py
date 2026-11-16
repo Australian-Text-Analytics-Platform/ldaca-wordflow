@@ -41,7 +41,7 @@ class OpenAIAnnotationAdapter:
     # model that thinks by default, such as Qwen, follows the Reasoning switch.
     send_thinking_switch: bool = False
     # Send the batch's labels schema as a strict json_schema response_format,
-    # so the server enforces one known label (or null) per text (issue 406).
+    # so the server enforces one known label per text (issue 406).
     send_labels_schema: bool = False
     # Also look for model descriptions in LiteLLM's /model/info (Custom only).
     describe_from_model_info: bool = False

@@ -21,7 +21,7 @@ interface CodeDesignerBriefProps {
   /** Why the designer can't start yet, apart from the brief itself. */
   blockedReason?: string;
   disabled?: boolean;
-  /** The codebook is an ordered scale: the maximum counts levels, with no “Other”. */
+  /** The codebook is an ordered scale: the maximum counts levels, plus “Not applicable”. */
   scale?: boolean;
   onDesign: () => void;
 }
@@ -120,9 +120,9 @@ export function CodeDesignerBrief({
               setMaxClassesDraft(null);
             }}
           />
-          {scale ? null : (
-            <span className="text-label-secondary text-description">plus “Other”</span>
-          )}
+          <span className="text-label-secondary text-description">
+            {scale ? 'plus “Not applicable”' : 'plus “Other”'}
+          </span>
         </div>
         <DisabledReasonTooltip reason={reason}>
           <Button

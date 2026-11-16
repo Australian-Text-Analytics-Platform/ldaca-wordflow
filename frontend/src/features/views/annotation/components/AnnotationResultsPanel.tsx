@@ -23,6 +23,7 @@ import {
   applyReferenceComparisonEdit,
   type ConfusionCount,
   type IntercoderReliabilityMetric,
+  orderedScale,
 } from '@/features/views/common/columnComparisonModel';
 import { AnnotationColumnFilterMenu } from '@/features/views/common/components/AnnotationColumnFilterMenu';
 import {
@@ -176,8 +177,10 @@ export function AnnotationResultsPanel({
   const classOptions = normalizeAnnotationClassOptions(
     classDescriptions.rows.map((row) => cellText(row.class)),
   );
-  // An ordered-scale codebook: its levels, lowest first, for the reliability statistics.
-  const scaleOrder = classDescriptions.scale ? classOptions : null;
+  // An ordered-scale codebook: its levels and the codes outside it, for the reliability statistics.
+  const codebookScale = classDescriptions.scale
+    ? orderedScale(classOptions, classDescriptions.outsideScale)
+    : null;
   // Columns the annotation-column difference filter compares against; excludes role conflicts.
   const queryComparisonColumns = comparisonColumns.filter(
     (column) =>
@@ -367,7 +370,7 @@ export function AnnotationResultsPanel({
               }}
               metric={reliabilityMetric}
               onMetricChange={onReliabilityMetricChange}
-              ordered={scaleOrder !== null}
+              ordered={codebookScale !== null}
               disabledColumns={activeMetadataColumns}
             />
             <AnnotationCorrectionColumnControl
@@ -494,7 +497,7 @@ export function AnnotationResultsPanel({
                           {activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
                               metric={reliabilityMetric}
-                              scaleOrder={scaleOrder}
+                              scale={codebookScale}
                               referenceColumn={annotationColumn}
                               comparisonColumn={column}
                               rows={comparisonQueryByColumn.get(column)?.data}

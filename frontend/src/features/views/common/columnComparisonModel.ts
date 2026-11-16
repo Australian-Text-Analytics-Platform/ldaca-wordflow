@@ -116,85 +116,127 @@ export const calculateKrippendorffsAlpha = (rows: ConfusionCount[]): number | nu
 };
 
 /**
- * Ordered-scale statistics (Chao, 16 Nov 2026). On a scale codebook the codes
- * are levels from the lowest to the highest, so a near miss is a smaller
- * disagreement than a far one. ``order`` is the codebook's levels, lowest
- * first; pairs with a label outside it are left out (the comparison queries
- * already keep only codebook labels).
+ * An ordered-scale codebook (Chao, 16 Nov 2026): its levels, lowest first,
+ * and the codes outside the scale, such as Not applicable.
  */
-const orderedPairs = (rows: ConfusionCount[], order: readonly string[]) => {
-  const position = new Map(order.map((label, index) => [label, index] as const));
-  return rows.flatMap((row) => {
+export interface OrderedScale {
+  levels: readonly string[];
+  outside: readonly string[];
+}
+
+/** A scale codebook's classes, in order: those named in ``outside`` are not levels. */
+export const orderedScale = (
+  classes: readonly string[],
+  outside: readonly string[],
+): OrderedScale => ({
+  levels: classes.filter((name) => !outside.includes(name)),
+  outside: classes.filter((name) => outside.includes(name)),
+});
+
+/**
+ * Ordered-scale statistics. A near miss between levels is a smaller
+ * disagreement than a far one, scaled so the lowest against the highest
+ * level costs 1. A code outside the scale is not near any level: against a
+ * level or another outside code it costs 1, as much as the two most distant
+ * levels, and against itself 0. Pairs with a label that is neither are left
+ * out (the comparison queries already keep only codebook labels).
+ */
+const scalePairs = (rows: ConfusionCount[], scale: OrderedScale) => {
+  const codes = [...scale.levels, ...scale.outside];
+  const position = new Map(codes.map((label, index) => [label, index] as const));
+  const pairs = rows.flatMap((row) => {
     const reference = position.get(row.reference);
     const comparison = position.get(row.comparison);
     return reference === undefined || comparison === undefined || row.count <= 0
       ? []
       : [{ reference, comparison, count: row.count }];
   });
+  return { codeCount: codes.length, levelCount: scale.levels.length, pairs };
 };
 
-/** Cohen’s Kappa with quadratic weights: a disagreement costs the squared distance in levels. */
+/**
+ * Cohen’s Kappa with quadratic weights: a disagreement between levels costs
+ * the squared distance in levels, over the squared width of the scale.
+ */
 export const calculateWeightedKappa = (
   rows: ConfusionCount[],
-  order: readonly string[],
+  scale: OrderedScale,
 ): number | null => {
-  const levels = order.length;
-  if (levels < 2) return null;
-  const referenceTotals = new Array<number>(levels).fill(0);
-  const comparisonTotals = new Array<number>(levels).fill(0);
+  const { codeCount, levelCount, pairs } = scalePairs(rows, scale);
+  if (levelCount < 2) return null;
+  const weight = (first: number, second: number): number =>
+    first < levelCount && second < levelCount
+      ? ((first - second) / (levelCount - 1)) ** 2
+      : first === second
+        ? 0
+        : 1;
+  const referenceTotals = new Array<number>(codeCount).fill(0);
+  const comparisonTotals = new Array<number>(codeCount).fill(0);
   let total = 0;
   let observed = 0;
-  orderedPairs(rows, order).forEach(({ reference, comparison, count }) => {
+  pairs.forEach(({ reference, comparison, count }) => {
     total += count;
     referenceTotals[reference] = (referenceTotals[reference] ?? 0) + count;
     comparisonTotals[comparison] = (comparisonTotals[comparison] ?? 0) + count;
-    observed += (reference - comparison) ** 2 * count;
+    observed += weight(reference, comparison) * count;
   });
   if (total === 0) return null;
   let expected = 0;
   referenceTotals.forEach((referenceCount, reference) => {
     comparisonTotals.forEach((comparisonCount, comparison) => {
-      expected += ((reference - comparison) ** 2 * referenceCount * comparisonCount) / total;
+      expected += (weight(reference, comparison) * referenceCount * comparisonCount) / total;
     });
   });
   if (expected === 0) return null;
   return 1 - observed / expected;
 };
 
-/** Krippendorff’s Alpha with the ordinal distance, for two annotation columns. */
+/**
+ * Krippendorff’s Alpha with the ordinal distance between levels, scaled so
+ * the lowest against the highest level is 1, for two annotation columns.
+ */
 export const calculateOrdinalAlpha = (
   rows: ConfusionCount[],
-  order: readonly string[],
+  scale: OrderedScale,
 ): number | null => {
-  const levels = order.length;
-  if (levels < 2) return null;
+  const { codeCount, levelCount, pairs } = scalePairs(rows, scale);
+  if (levelCount < 2) return null;
   // Coincidence matrix: each coded pair counts once in each direction.
-  const coincidences = Array.from({ length: levels }, () => new Array<number>(levels).fill(0));
+  const coincidences = Array.from({ length: codeCount }, () =>
+    new Array<number>(codeCount).fill(0),
+  );
   const coincide = (first: number, second: number, count: number) => {
     const row = coincidences[first];
     if (row) row[second] = (row[second] ?? 0) + count;
   };
-  orderedPairs(rows, order).forEach(({ reference, comparison, count }) => {
+  pairs.forEach(({ reference, comparison, count }) => {
     coincide(reference, comparison, count);
     coincide(comparison, reference, count);
   });
-  const levelTotals = coincidences.map((row) => row.reduce((sum, count) => sum + count, 0));
-  const valueCount = levelTotals.reduce((sum, count) => sum + count, 0);
+  const codeTotals = coincidences.map((row) => row.reduce((sum, count) => sum + count, 0));
+  const valueCount = codeTotals.reduce((sum, count) => sum + count, 0);
   if (valueCount < 2) return null;
-  const levelTotal = (level: number): number => levelTotals[level] ?? 0;
+  const codeTotal = (code: number): number => codeTotals[code] ?? 0;
   // Ordinal distance: the values lying between two levels, inclusive, minus half of each end.
-  const distance = (low: number, high: number): number => {
+  const ordinal = (low: number, high: number): number => {
     let between = 0;
-    for (let level = low; level <= high; level += 1) between += levelTotal(level);
-    return (between - (levelTotal(low) + levelTotal(high)) / 2) ** 2;
+    for (let level = low; level <= high; level += 1) between += codeTotal(level);
+    return (between - (codeTotal(low) + codeTotal(high)) / 2) ** 2;
   };
+  const widest = ordinal(0, levelCount - 1);
+  const distance = (first: number, second: number): number =>
+    first < levelCount && second < levelCount
+      ? widest === 0
+        ? 0
+        : ordinal(first, second) / widest
+      : 1;
   let observed = 0;
   let expected = 0;
-  for (let first = 0; first < levels; first += 1) {
-    for (let second = first + 1; second < levels; second += 1) {
+  for (let first = 0; first < codeCount; first += 1) {
+    for (let second = first + 1; second < codeCount; second += 1) {
       const squared = distance(first, second);
       observed += 2 * (coincidences[first]?.[second] ?? 0) * squared;
-      expected += 2 * levelTotal(first) * levelTotal(second) * squared;
+      expected += 2 * codeTotal(first) * codeTotal(second) * squared;
     }
   }
   if (expected === 0) return null;
@@ -202,19 +244,19 @@ export const calculateOrdinalAlpha = (
 };
 
 /**
- * The chosen statistic. With ``scaleOrder`` (an ordered-scale codebook),
- * Kappa is weighted and Alpha ordinal; Percent Agreement stays exact matches.
+ * The chosen statistic. With an ordered ``scale``, Kappa is weighted and
+ * Alpha ordinal; Percent Agreement stays exact matches.
  */
 export const calculateIntercoderReliability = (
   rows: ConfusionCount[],
   metric: IntercoderReliabilityMetric,
-  scaleOrder?: readonly string[] | null,
+  scale?: OrderedScale | null,
 ): number | null => {
   if (metric === 'percent_agreement') return calculatePercentAgreement(rows);
   if (metric === 'krippendorffs_alpha') {
-    return scaleOrder ? calculateOrdinalAlpha(rows, scaleOrder) : calculateKrippendorffsAlpha(rows);
+    return scale ? calculateOrdinalAlpha(rows, scale) : calculateKrippendorffsAlpha(rows);
   }
-  return scaleOrder ? calculateWeightedKappa(rows, scaleOrder) : calculateCohensKappa(rows);
+  return scale ? calculateWeightedKappa(rows, scale) : calculateCohensKappa(rows);
 };
 
 /** The statistic's name; on a scale, Kappa is weighted and Alpha ordinal. */

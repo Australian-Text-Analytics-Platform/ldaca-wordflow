@@ -22,6 +22,7 @@ import {
   intercoderReliabilityLabel,
   intercoderReliabilitySymbol,
   isIntercoderReliabilityMetric,
+  type OrderedScale,
 } from '@/features/views/common/columnComparisonModel';
 import { AnnotationColumnFilterMenu } from './AnnotationColumnFilterMenu';
 import { COLUMN_MENU_CLASS, COLUMN_MENU_ITEM_CLASS } from './columnMenuStyles';
@@ -44,10 +45,10 @@ interface ColumnComparisonHeaderProps {
   filter?: AnnotationRowFilterValue;
   onFilterChange?: (filter: AnnotationRowFilterValue) => void;
   /**
-   * The levels of an ordered-scale codebook, lowest first: Kappa is then
-   * weighted, Alpha ordinal, and the matrix follows the scale.
+   * An ordered-scale codebook: Kappa is then weighted, Alpha ordinal, and
+   * the matrix lists the levels in order, then the codes outside the scale.
    */
-  scaleOrder?: readonly string[] | null;
+  scale?: OrderedScale | null;
 }
 
 /**
@@ -69,10 +70,14 @@ export function ColumnComparisonHeader({
   onRevealedChange,
   filter,
   onFilterChange,
-  scaleOrder = null,
+  scale = null,
 }: ColumnComparisonHeaderProps) {
-  const ordered = Boolean(scaleOrder && scaleOrder.length > 0);
-  const scalePosition = new Map((scaleOrder ?? []).map((label, index) => [label, index] as const));
+  const ordered = scale !== null;
+  const scalePosition = new Map(
+    [...(scale?.levels ?? []), ...(scale?.outside ?? [])].map(
+      (label, index) => [label, index] as const,
+    ),
+  );
   const labels = Array.from(
     new Set((rows ?? []).flatMap((row) => [row.reference, row.comparison])),
   ).toSorted(
@@ -86,9 +91,7 @@ export function ColumnComparisonHeader({
     label: intercoderReliabilityLabel(metric, ordered),
     symbol: intercoderReliabilitySymbol(metric, ordered),
   };
-  const reliability = rows
-    ? calculateIntercoderReliability(rows, metric, ordered ? scaleOrder : null)
-    : null;
+  const reliability = rows ? calculateIntercoderReliability(rows, metric, scale) : null;
   const accessibleScore =
     reliability == null
       ? null

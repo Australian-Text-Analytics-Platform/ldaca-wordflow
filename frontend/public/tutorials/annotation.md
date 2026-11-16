@@ -30,6 +30,11 @@ either directly or with predictions from a configured AI provider.
    code's descriptions or merge them, or give each code its own description.
    AI Preview and Run wait until each code has one description.
 
+   AI annotation gives every text one of the codes and never leaves it empty,
+   since an empty label means "not coded yet". Keep a code such as **Other**
+   for texts that fit none of the rest; without one, the model picks the
+   closest code.
+
    **Task context** (optional, at the top of the Edit dialog) says what the
    texts are and what the codes are for, for example "Posts from a workers'
    forum, 2019 to 2023; the codes record attitudes to working from home". It
@@ -59,7 +64,7 @@ The AI Code Designer drafts a first Codebook for you to review and tune. It
 reads a sample of your texts and a short **Brief**, and suggests codes with
 definitions, plus a code named **Other** for texts that fit none of them. When
 **Ordered scale** is on, it drafts levels from the lowest to the highest
-instead, with no Other. It
+instead, plus a **Not applicable** code outside the scale. It
 also shows how to describe a coding task to an AI model in plain language. It
 works in both Manual and AI mode, and it only drafts: the thinking and the
 checking stay with you.
@@ -70,7 +75,7 @@ checking stay with you.
    with this tab on this computer and is never sent with annotation.
 2. Set **Maximum classes** (2 to 10, default 3). Other comes on top, so the
    default gives at most four codes. The model may suggest fewer. For an
-   ordered scale this is **Maximum levels**, with nothing on top.
+   ordered scale this is **Maximum levels**, with Not applicable on top.
 3. Choose **AI Code Designer**. If the Codebook already has codes, a warning
    comes first: the draft replaces them, and starting a fresh Codebook with
    **Create new** keeps them. Choose **Continue** to go on.
@@ -110,19 +115,32 @@ Some coding places each text on a scale, such as how urgent, how positive or
 how certain it is, rather than sorting it into categories. Turn on **Ordered
 scale** in the Edit dialog, and the codes become levels: the first is the
 lowest and the last the highest. Use the arrows beside each level to put them
-in order. In the Codebook Data Block the setting is one row named
-`__scale__`; deleting that row makes the codes categories again.
+in order.
+
+A code for texts the scale doesn't fit, such as **Not applicable**, is not a
+level: it is not above the highest level or below the lowest. Mark it with the
+**Outside the scale** button (a crossed circle) beside it, and it moves below
+the levels. Keep one
+such code, as categories keep Other: an empty label means "not coded yet", so a
+text the scale doesn't fit needs a code of its own.
+
+In the Codebook Data Block the setting is one row named `__scale__`: the codes
+above it are the levels, in order, and the codes below it are outside the
+scale. Deleting that row makes all the codes categories again.
 
 With an ordered scale:
 
 - AI annotation rates each text against the level definitions on its own, not
-  against the other texts sent with it. A text the scale doesn't fit is left
-  empty. Examples whose label is not one of the levels are not sent.
+  against the other texts sent with it, and gives a text the scale doesn't fit
+  a code outside the scale. Examples whose label is not in the Codebook are not
+  sent.
 - **Compare to** counts a near miss as a smaller disagreement than a far one:
   **Cohen's Kappa** is weighted (quadratic weights, shown as κw) and
-  **Krippendorff's Alpha** uses the ordinal distance (shown as αo). Percent
-  Agreement still counts exact matches only. The confusion matrix lists the
-  levels in scale order.
+  **Krippendorff's Alpha** uses the ordinal distance (shown as αo). A code
+  outside the scale is not near any level: against a level it counts as much
+  as the lowest against the highest level. Percent Agreement still counts exact
+  matches only. The confusion matrix lists the levels in scale order, then the
+  codes outside the scale.
 - Write each level so it can be judged from one text alone. Wording such as
   "more than usual" or "above average" asks the model to compare texts it
   cannot see, and the same text can then get different levels in different
