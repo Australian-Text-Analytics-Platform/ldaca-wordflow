@@ -252,7 +252,11 @@ describe('AnnotationClassDescriptionsEditor ordered scale (Chao, 16 Nov 2026)', 
         .getByTestId('codebook-outside-scale-heading')
         .compareDocumentPosition(within(dialog).getByLabelText('Code 3')),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    await user.hover(within(dialog).getByRole('button', { name: 'Make code 3 a level' }));
+    // The clicked button moved down with its row; Radix shows its tooltip again
+    // once the pointer has left it.
+    const makeLevel = within(dialog).getByRole('button', { name: 'Make code 3 a level' });
+    await user.hover(within(dialog).getByTestId('codebook-outside-scale-heading'));
+    await user.hover(makeLevel);
     expect(
       (
         await screen.findAllByText(

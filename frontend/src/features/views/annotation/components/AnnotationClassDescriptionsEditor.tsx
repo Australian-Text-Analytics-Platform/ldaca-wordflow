@@ -31,6 +31,7 @@ import {
   DndContext,
   type DragEndEvent,
   KeyboardSensor,
+  type Modifier,
   PointerSensor,
   useSensor,
   useSensors,
@@ -60,6 +61,7 @@ import {
   type CodebookRow,
   isReservedCodebookCode,
   moveCodebookRow,
+  newCodebookRowId,
   TASK_CONTEXT_MAX_CHARS,
   withCodebookRows,
 } from '../taskContext';
@@ -70,6 +72,9 @@ import { CodeDesignerBrief } from './CodeDesignerBrief';
 import { OrderedScaleSwitch } from './OrderedScaleSwitch';
 import { SortableCodeRow } from './SortableCodeRow';
 import { CodebookDesignerDialog } from './CodebookDesignerDialog';
+
+/** Codes move up and down only, never sideways. */
+const verticalOnly: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 
 /** What the Edit codebook window needs from its Annotation tab for the AI Code Designer. */
 interface CodebookDesignerContext {
@@ -166,8 +171,12 @@ export function AnnotationClassDescriptionsEditor({
   const savedScale = classDescriptions.scale;
   // On a scale, codes below the scale row are outside it; they come after the levels.
   const savedOutside = new Set(classDescriptions.outsideScale);
-  const savedEditorRows: CodebookRow[] = normalizeClassDescriptionRows(savedRows).map((row) =>
-    savedScale && savedOutside.has(row.class.trim()) ? { ...row, outsideScale: true } : row,
+  const savedEditorRows: CodebookRow[] = normalizeClassDescriptionRows(savedRows).map(
+    (row, index) => ({
+      ...row,
+      id: `saved-${String(index)}`,
+      ...(savedScale && savedOutside.has(row.class.trim()) ? { outsideScale: true } : {}),
+    }),
   );
   const editorRows = draft?.rows ?? savedEditorRows;
   const savedTaskContext = classDescriptions.taskContext.trim();
@@ -221,7 +230,7 @@ export function AnnotationClassDescriptionsEditor({
 
   const handleAddClass = () => {
     const rows = [...editorRows];
-    rows.splice(levelCount, 0, { class: '', description: '' });
+    rows.splice(levelCount, 0, { id: newCodebookRowId(), class: '', description: '' });
     writeDraft({ rows });
   };
 
@@ -231,17 +240,35 @@ export function AnnotationClassDescriptionsEditor({
   };
 
   // Dragging a code reorders the codebook; on a scale it also sets the group.
-  const rowIds = editorRows.map((_, index) => `code-${String(index)}`);
+  // Each row keeps its own identity, so the row being dragged is the one that lands.
+  const rowIds = editorRows.map((row, index) => row.id ?? `row-${String(index)}`);
+  const [isDragging, setIsDragging] = useState(false);
   const dragSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setIsDragging(false);
     if (!over || active.id === over.id) return;
     const from = rowIds.indexOf(String(active.id));
     const to = rowIds.indexOf(String(over.id));
     if (from < 0 || to < 0) return;
-    writeDraft({ rows: moveCodebookRow(editorRows, from, to, editorScale) });
+    const rows = moveCodebookRow(editorRows, from, to, editorScale);
+    writeDraft({ rows });
+    // Dropping into the other group changes what the code is, so say so (Chao, 16 Nov 2026).
+    const before = editorRows[from];
+    const after = rows[to];
+    if (
+      editorScale &&
+      before &&
+      after &&
+      Boolean(before.outsideScale) !== Boolean(after.outsideScale)
+    ) {
+      const name = after.class.trim() || `Code ${String(to + 1)}`;
+      toast.info(
+        after.outsideScale ? `“${name}” is now outside the scale.` : `“${name}” is now a level.`,
+      );
+    }
   };
 
   // A code outside the scale (such as Not applicable) is not a level: it
@@ -439,7 +466,13 @@ export function AnnotationClassDescriptionsEditor({
                 Saved with this codebook and sent to the AI with every request, after the prompt.
               </p>
             </div>
-            <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+            <div
+              className={cn(
+                'max-h-[60vh] space-y-2 overflow-y-auto pr-1',
+                // Dragging over the fields must not select their text.
+                isDragging && 'select-none',
+              )}
+            >
               {editorRows.length === 0 ? (
                 <p className="rounded-md border border-dashed border-surface-border px-4 py-6 text-center text-body text-description">
                   No codes yet. Use “Add code” to create one.
@@ -448,11 +481,18 @@ export function AnnotationClassDescriptionsEditor({
                 <DndContext
                   sensors={dragSensors}
                   collisionDetection={closestCenter}
+                  modifiers={[verticalOnly]}
+                  onDragStart={() => {
+                    setIsDragging(true);
+                  }}
+                  onDragCancel={() => {
+                    setIsDragging(false);
+                  }}
                   onDragEnd={handleDragEnd}
                 >
                   <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
                     {editorRows.map((row, index) => (
-                      <Fragment key={index}>
+                      <Fragment key={rowIds[index]}>
                         {/* On a scale, two labelled groups: the levels, then a divider
                             with the codes outside the scale below it (Chao, 16 Nov 2026). */}
                         {editorScale && index === 0 && !row.outsideScale ? (
@@ -728,6 +768,7 @@ export function AnnotationClassDescriptionsEditor({
           scale={editorScale}
           onDraft={(codes) => {
             const rows: CodebookRow[] = codes.map((code) => ({
+              id: newCodebookRowId(),
               class: code.name,
               description: code.definition,
               ...(code.outsideScale ? { outsideScale: true } : {}),

@@ -31,7 +31,12 @@ export function SortableCodeRow({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn('flex items-start gap-2', isDragging && 'relative z-10 opacity-80')}
+      // The lifted row is solid, with a shadow, so the rows it passes over don't show through.
+      className={cn(
+        'flex items-start gap-2 rounded-md',
+        isDragging &&
+          'relative z-10 bg-widget shadow-[var(--vscode-shadow-lg)] ring-1 ring-surface-border',
+      )}
     >
       <button
         type="button"

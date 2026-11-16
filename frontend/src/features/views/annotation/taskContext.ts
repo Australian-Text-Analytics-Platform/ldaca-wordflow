@@ -24,7 +24,19 @@ const SCALE_ROW_DESCRIPTION =
 /** A code in the Edit codebook window; on a scale, ``outsideScale`` marks a code that is not a level. */
 export interface CodebookRow extends AnnotationClassDescriptionRow {
   outsideScale?: boolean;
+  /**
+   * The row's identity while it is edited, so a dragged row keeps its place
+   * on screen as the order changes. Never saved.
+   */
+  id?: string;
 }
+
+let lastRowId = 0;
+/** A fresh identity for a code added or drafted in the Edit codebook window. */
+export const newCodebookRowId = (): string => {
+  lastRowId += 1;
+  return `new-${String(lastRowId)}`;
+};
 
 const normalized = (code: string): string => code.trim().toLowerCase();
 

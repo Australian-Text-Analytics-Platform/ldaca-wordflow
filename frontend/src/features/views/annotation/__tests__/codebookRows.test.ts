@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type CodebookRow,
   moveCodebookRow,
+  newCodebookRowId,
   splitCodebookRows,
   withCodebookRows,
 } from '../taskContext';
@@ -17,6 +18,16 @@ describe('moveCodebookRow (dragging codes into order)', () => {
     const rows = [code('A'), code('B'), code('C')];
     expect(names(moveCodebookRow(rows, 0, 2, false))).toEqual(['B', 'C', 'A']);
     expect(names(moveCodebookRow(rows, 2, 0, false))).toEqual(['C', 'A', 'B']);
+  });
+
+  it('keeps each row identity, so the dragged row is the one that lands', () => {
+    const rows = [
+      { ...code('Low'), id: 'a' },
+      { ...code('High'), id: 'b' },
+      { ...code('Not applicable', true), id: 'c' },
+    ];
+    expect(moveCodebookRow(rows, 0, 2, true).map((row) => row.id)).toEqual(['b', 'c', 'a']);
+    expect(newCodebookRowId()).not.toEqual(newCodebookRowId());
   });
 
   it('leaves the rows alone when nothing moves', () => {
@@ -75,7 +86,7 @@ describe('codebook reserved rows', () => {
       scale: true,
     });
     expect(written.map((row) => row.class)).toEqual(saved.map((row) => row.class));
-    expect(written.every((row) => !('outsideScale' in row))).toBe(true);
+    expect(written.every((row) => !('outsideScale' in row) && !('id' in row))).toBe(true);
   });
 
   it('without the scale row nothing is outside, and turning it off keeps every code', () => {
