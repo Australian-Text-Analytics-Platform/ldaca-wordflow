@@ -19,7 +19,8 @@ either directly or with predictions from a configured AI provider.
 3. Under **Codebook**, add a Data Block and map its code and description
    columns. Use **Create new** when you need an empty Codebook, then click
    **Edit** beside **Codes** to add, rename, or remove codes and their
-   descriptions before labelling. The [AI Code Designer](#help-annotation-code-designer)
+   descriptions before labelling. Drag a code by its grip to change the
+   order; the code lists and the Codes card follow it. The [AI Code Designer](#help-annotation-code-designer)
    can draft a first set of codes for you.
 
    ![Edit codebook dialog with three codes](tutorials/assets/annotation/edit_codebook.png)
@@ -113,15 +114,17 @@ draft exactly as the designer wrote it doesn't do this.
 
 Some coding places each text on a scale, such as how urgent, how positive or
 how certain it is, rather than sorting it into categories. Turn on **Ordered
-scale**, on the Brief's line in the Edit dialog, and the codes become levels:
-the first is the lowest and the last the highest. Like the **AI Code
-Designer** button, the switch waits until the Brief is written. Use the arrows beside each level to put them
-in order.
+scale**, at the top right of the Edit dialog, and the codes become levels: the
+first is the lowest and the last the highest. It is a setting of the whole
+Codebook: Save writes it into the Codebook, and AI annotation, the AI Code
+Designer and Compare to all follow it. Drag a level by its grip to put the
+levels in order.
 
 A code for texts the scale doesn't fit, such as **Not applicable**, is not a
 level: it is not above the highest level or below the lowest. Mark it with the
 **Outside the scale** button (a crossed circle) beside it, and it moves below
-the levels. Keep one
+the levels. Dragging a code among the codes outside the scale takes it off the
+scale, and dragging it among the levels makes it a level. Keep one
 such code, as categories keep Other: an empty label means "not coded yet", so a
 text the scale doesn't fit needs a code of its own.
 

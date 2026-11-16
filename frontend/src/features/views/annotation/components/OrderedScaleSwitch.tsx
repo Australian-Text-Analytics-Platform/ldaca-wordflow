@@ -1,5 +1,4 @@
 import HelpIcon from '@/components/help/HelpIcon';
-import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 
@@ -7,37 +6,30 @@ interface OrderedScaleSwitchProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
-  /** Why the switch is disabled, shown on hover. */
-  disabledReason?: string;
 }
 
 /**
- * The codebook's Ordered scale setting (Chao, 16 Nov 2026), with its
- * explanation in a help icon. In the Edit codebook window it sits on the
- * Brief's line and follows the AI Code Designer button: when the designer
- * can't run, the switch is disabled with the same reason.
+ * The codebook's Ordered scale setting (Chao, 16 Nov 2026), on the Edit
+ * codebook title line, with its explanation in a help icon. It belongs to the
+ * whole codebook: Save writes or removes the __scale__ row, which AI
+ * annotation, the AI Code Designer and Compare to all follow.
  */
 export function OrderedScaleSwitch({
   checked,
   onCheckedChange,
   disabled = false,
-  disabledReason,
 }: OrderedScaleSwitchProps) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <DisabledReasonTooltip reason={disabled ? disabledReason : undefined}>
-        <span className="inline-flex items-center gap-1.5">
-          <Switch
-            id="codebook-scale"
-            checked={checked}
-            disabled={disabled}
-            onCheckedChange={onCheckedChange}
-          />
-          <Label htmlFor="codebook-scale" className="font-normal">
-            Ordered scale
-          </Label>
-        </span>
-      </DisabledReasonTooltip>
+      <Switch
+        id="codebook-scale"
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+      />
+      <Label htmlFor="codebook-scale" className="font-normal">
+        Ordered scale
+      </Label>
       <HelpIcon
         targetKey="analysis.annotation.scale"
         label="About ordered scales"

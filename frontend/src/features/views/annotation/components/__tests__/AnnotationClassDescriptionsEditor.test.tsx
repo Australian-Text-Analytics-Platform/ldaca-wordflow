@@ -66,7 +66,8 @@ describe('AnnotationClassDescriptionsEditor codebook check (issue 389)', () => {
     expect(within(dialog).getByRole('group', { name: 'Description for “protest”' })).toBeVisible();
     await user.click(within(dialog).getByRole('button', { name: 'Use description 2 for protest' }));
 
-    expect(within(dialog).queryByRole('status')).toBeNull();
+    // Matched by text: the dialog also holds the drag-and-drop live region (role status).
+    expect(within(dialog).queryByText(/different descriptions/)).toBeNull();
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
     expect(mocks.save.mock.calls[0]?.[3]).toEqual([
@@ -87,7 +88,7 @@ describe('AnnotationClassDescriptionsEditor codebook check (issue 389)', () => {
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     const dialog = screen.getByRole('dialog');
 
-    expect(within(dialog).getByRole('status')).toHaveTextContent(
+    expect(within(dialog).getByText(/appears more than once/)).toHaveTextContent(
       '“other” appears more than once with the same description. Remove the repeated rows.',
     );
     await user.click(
@@ -184,29 +185,25 @@ describe('AnnotationClassDescriptionsEditor ordered scale (Chao, 16 Nov 2026)', 
     useCodebookDraftStore.setState({ drafts: {} });
   });
 
-  it('turns the codes into levels, orders them and saves the scale row before the Task context', async () => {
+  it('turns the codes into levels and saves the scale row before the Task context', async () => {
     const user = userEvent.setup();
     renderEditor();
     expect(screen.queryByTestId('codebook-scale-note')).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).queryByRole('button', { name: /Move level/ })).toBeNull();
+    // Every code can be dragged into order, categories too.
+    expect(within(dialog).getByRole('button', { name: 'Drag code 1 to reorder' })).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: 'Drag code 2 to reorder' })).toBeVisible();
     await user.click(within(dialog).getByRole('switch', { name: 'Ordered scale' }));
     expect(within(dialog).getByTestId('codebook-unsaved-badge')).toBeVisible();
-    expect(
-      within(dialog).getByRole('button', { name: 'Move level 1 toward the lowest' }),
-    ).toBeDisabled();
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Move level 1 toward the highest' }),
-    );
-    expect(within(dialog).getByLabelText('Level 1')).toHaveValue('Low');
+    expect(within(dialog).getByLabelText('Level 1')).toHaveValue('High');
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
     expect(mocks.save.mock.calls[0]?.[3]).toEqual([
-      { class: 'Low', description: 'No time pressure' },
       { class: 'High', description: 'Asks for action today' },
+      { class: 'Low', description: 'No time pressure' },
       { class: '__scale__', description: expect.stringContaining('Ordered scale') },
       { class: '__task_context__', description: 'Support emails.' },
     ]);
@@ -235,8 +232,8 @@ describe('AnnotationClassDescriptionsEditor ordered scale (Chao, 16 Nov 2026)', 
     const user = userEvent.setup();
     mocks.rows = [
       { class: 'Not applicable', description: 'Not a request' },
-      { class: 'High', description: 'Asks for action today' },
       { class: 'Low', description: 'No time pressure' },
+      { class: 'High', description: 'Asks for action today' },
     ];
     renderEditor();
 
@@ -244,22 +241,12 @@ describe('AnnotationClassDescriptionsEditor ordered scale (Chao, 16 Nov 2026)', 
     const dialog = screen.getByRole('dialog');
     await user.click(within(dialog).getByRole('switch', { name: 'Ordered scale' }));
     await user.click(within(dialog).getByRole('button', { name: 'Move code 1 outside the scale' }));
-    // It moved below the levels, under its own heading, with no arrows.
+    // It moved below the levels, under its own heading.
     expect(within(dialog).getByText('Outside the scale (not levels)')).toBeVisible();
     expect(within(dialog).getByLabelText('Code 3')).toHaveValue('Not applicable');
     expect(within(dialog).getByRole('button', { name: 'Make code 3 a level' })).toHaveAttribute(
       'aria-pressed',
       'true',
-    );
-    expect(
-      within(dialog).queryByRole('button', { name: 'Move level 3 toward the lowest' }),
-    ).toBeNull();
-    // A level can't move below a code outside the scale.
-    expect(
-      within(dialog).getByRole('button', { name: 'Move level 2 toward the highest' }),
-    ).toBeDisabled();
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Move level 1 toward the highest' }),
     );
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 

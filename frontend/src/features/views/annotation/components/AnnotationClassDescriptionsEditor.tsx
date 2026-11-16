@@ -24,17 +24,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  ArrowDown,
-  ArrowUp,
-  Ban,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-  TriangleAlert,
-} from 'lucide-react';
+import { Ban, Loader2, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import {
   normalizeClassDescriptionRows,
@@ -54,6 +59,7 @@ import {
 import {
   type CodebookRow,
   isReservedCodebookCode,
+  moveCodebookRow,
   TASK_CONTEXT_MAX_CHARS,
   withCodebookRows,
 } from '../taskContext';
@@ -62,6 +68,7 @@ import { type CodeDesignerSettings, codebookSignature } from '../codebookDesigne
 import { codebookDraftKey, useCodebookDraftStore } from '../codebookDraftStore';
 import { CodeDesignerBrief } from './CodeDesignerBrief';
 import { OrderedScaleSwitch } from './OrderedScaleSwitch';
+import { SortableCodeRow } from './SortableCodeRow';
 import { CodebookDesignerDialog } from './CodebookDesignerDialog';
 
 /** What the Edit codebook window needs from its Annotation tab for the AI Code Designer. */
@@ -223,15 +230,18 @@ export function AnnotationClassDescriptionsEditor({
     writeDraft({ rows: editorRows.filter((_, index) => index !== rowIndex) });
   };
 
-  // On a scale the row order is the level order, lowest first.
-  const handleMoveClass = (rowIndex: number, offset: -1 | 1) => {
-    const target = rowIndex + offset;
-    if (target < 0 || target >= levelCount) return;
-    const rows = [...editorRows];
-    const [moved] = rows.splice(rowIndex, 1);
-    if (!moved) return;
-    rows.splice(target, 0, moved);
-    writeDraft({ rows });
+  // Dragging a code reorders the codebook; on a scale it also sets the group.
+  const rowIds = editorRows.map((_, index) => `code-${String(index)}`);
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = rowIds.indexOf(String(active.id));
+    const to = rowIds.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    writeDraft({ rows: moveCodebookRow(editorRows, from, to, editorScale) });
   };
 
   // A code outside the scale (such as Not applicable) is not a level: it
@@ -366,43 +376,41 @@ export function AnnotationClassDescriptionsEditor({
             }}
           >
             <DialogHeader>
-              <DialogTitle className="flex flex-wrap items-center gap-2">
-                Edit codebook
-                {dirty ? (
-                  // Orange, so an unsaved draft stands out (Chao, 15 Nov 2026):
-                  // the theme's orange as border, icon and a tint behind the
-                  // normal text colour, readable in light and dark themes.
-                  <Badge
-                    data-testid="codebook-unsaved-badge"
-                    className="gap-1 border-chart-4 bg-[color-mix(in_srgb,var(--color-chart-4)_22%,transparent)] font-semibold text-foreground"
-                  >
-                    <TriangleAlert aria-hidden="true" className="size-3 text-chart-4" />
-                    {isAiDraft ? 'AI draft, not saved' : 'Unsaved changes'}
-                  </Badge>
-                ) : null}
-              </DialogTitle>
+              {/* Ordered scale is a setting of the whole codebook, so it sits on the
+                  title line, clear of the close button (Chao, 16 Nov 2026). */}
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 pr-6">
+                <DialogTitle className="flex flex-wrap items-center gap-2">
+                  Edit codebook
+                  {dirty ? (
+                    // Orange, so an unsaved draft stands out (Chao, 15 Nov 2026):
+                    // the theme's orange as border, icon and a tint behind the
+                    // normal text colour, readable in light and dark themes.
+                    <Badge
+                      data-testid="codebook-unsaved-badge"
+                      className="gap-1 border-chart-4 bg-[color-mix(in_srgb,var(--color-chart-4)_22%,transparent)] font-semibold text-foreground"
+                    >
+                      <TriangleAlert aria-hidden="true" className="size-3 text-chart-4" />
+                      {isAiDraft ? 'AI draft, not saved' : 'Unsaved changes'}
+                    </Badge>
+                  ) : null}
+                </DialogTitle>
+                <OrderedScaleSwitch
+                  checked={editorScale}
+                  disabled={isSaving}
+                  onCheckedChange={(checked) => {
+                    writeDraft({ scale: checked });
+                  }}
+                />
+              </div>
               <DialogDescription>
                 Add, rename, or remove annotation codes and their descriptions.
               </DialogDescription>
             </DialogHeader>
-            {designer ? null : (
-              // Without an Annotation tab there is no designer, so the switch stands alone.
-              <OrderedScaleSwitch
-                checked={editorScale}
-                disabled={isSaving}
-                onCheckedChange={(checked) => {
-                  writeDraft({ scale: checked });
-                }}
-              />
-            )}
             {designer ? (
               <CodeDesignerBrief
                 settings={designer.settings}
                 onSettingsChange={designer.onSettingsChange}
                 scale={editorScale}
-                onScaleChange={(checked) => {
-                  writeDraft({ scale: checked });
-                }}
                 disabled={isSaving}
                 blockedReason={
                   designer.source
@@ -437,115 +445,96 @@ export function AnnotationClassDescriptionsEditor({
                   No codes yet. Use “Add code” to create one.
                 </p>
               ) : (
-                editorRows.map((row, index) => (
-                  <Fragment key={index}>
-                    {editorScale && index === firstOutside ? (
-                      <p className="pt-1 text-label-secondary font-medium text-description">
-                        Outside the scale (not levels)
-                      </p>
-                    ) : null}
-                    <div className="flex items-start gap-2">
-                      <Input
-                        aria-label={`${editorScale && !row.outsideScale ? 'Level' : 'Code'} ${String(index + 1)}`}
-                        value={row.class}
-                        placeholder={editorScale && !row.outsideScale ? 'Level' : 'Code'}
-                        data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
-                        className={cn(
-                          'w-1/3',
-                          draftCheck.rowsToMark.has(index) && 'border-warning',
-                        )}
-                        disabled={false}
-                        onChange={(event) => {
-                          updateDraftCell(index, 'class', event.target.value);
-                        }}
-                      />
-                      <Textarea
-                        aria-label={`Description ${String(index + 1)}`}
-                        value={row.description}
-                        rows={2}
-                        placeholder="Description"
-                        disabled={false}
-                        data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
-                        className={cn(
-                          'min-h-9 flex-1 resize-y',
-                          draftCheck.rowsToMark.has(index) && 'border-warning',
-                        )}
-                        onChange={(event) => {
-                          updateDraftCell(index, 'description', event.target.value);
-                        }}
-                      />
-                      {editorScale ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            'shrink-0',
-                            row.outsideScale ? 'text-foreground' : 'text-description',
-                          )}
-                          aria-pressed={Boolean(row.outsideScale)}
-                          aria-label={
-                            row.outsideScale
-                              ? `Make code ${String(index + 1)} a level`
-                              : `Move code ${String(index + 1)} outside the scale`
-                          }
-                          title={
-                            row.outsideScale
-                              ? 'Make this code a level of the scale'
-                              : 'Outside the scale: not a level, such as Not applicable'
-                          }
-                          onClick={() => {
-                            handleToggleOutside(index);
-                          }}
+                <DndContext
+                  sensors={dragSensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+                    {editorRows.map((row, index) => (
+                      <Fragment key={index}>
+                        {editorScale && index === firstOutside ? (
+                          <p className="pt-1 text-label-secondary font-medium text-description">
+                            Outside the scale (not levels)
+                          </p>
+                        ) : null}
+                        <SortableCodeRow
+                          id={rowIds[index] ?? ''}
+                          handleLabel={`Drag code ${String(index + 1)} to reorder`}
                         >
-                          <Ban className="h-4 w-4" aria-hidden="true" />
-                        </Button>
-                      ) : null}
-                      {editorScale && !row.outsideScale ? (
-                        <div className="flex shrink-0 flex-col">
+                          <Input
+                            aria-label={`${editorScale && !row.outsideScale ? 'Level' : 'Code'} ${String(index + 1)}`}
+                            value={row.class}
+                            placeholder={editorScale && !row.outsideScale ? 'Level' : 'Code'}
+                            data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                            className={cn(
+                              'w-1/3',
+                              draftCheck.rowsToMark.has(index) && 'border-warning',
+                            )}
+                            disabled={false}
+                            onChange={(event) => {
+                              updateDraftCell(index, 'class', event.target.value);
+                            }}
+                          />
+                          <Textarea
+                            aria-label={`Description ${String(index + 1)}`}
+                            value={row.description}
+                            rows={2}
+                            placeholder="Description"
+                            disabled={false}
+                            data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                            className={cn(
+                              'min-h-9 flex-1 resize-y',
+                              draftCheck.rowsToMark.has(index) && 'border-warning',
+                            )}
+                            onChange={(event) => {
+                              updateDraftCell(index, 'description', event.target.value);
+                            }}
+                          />
+                          {editorScale ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                'shrink-0',
+                                row.outsideScale ? 'text-foreground' : 'text-description',
+                              )}
+                              aria-pressed={Boolean(row.outsideScale)}
+                              aria-label={
+                                row.outsideScale
+                                  ? `Make code ${String(index + 1)} a level`
+                                  : `Move code ${String(index + 1)} outside the scale`
+                              }
+                              title={
+                                row.outsideScale
+                                  ? 'Make this code a level of the scale'
+                                  : 'Outside the scale: not a level, such as Not applicable'
+                              }
+                              onClick={() => {
+                                handleToggleOutside(index);
+                              }}
+                            >
+                              <Ban className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                          ) : null}
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-5 w-7 text-description"
-                            aria-label={`Move level ${String(index + 1)} toward the lowest`}
-                            disabled={index === 0}
+                            aria-label={`Delete code ${String(index + 1)}`}
+                            className="shrink-0 text-description hover:text-error"
                             onClick={() => {
-                              handleMoveClass(index, -1);
+                              handleDeleteClass(index);
                             }}
                           >
-                            <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
                           </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-7 text-description"
-                            aria-label={`Move level ${String(index + 1)} toward the highest`}
-                            disabled={index === levelCount - 1}
-                            onClick={() => {
-                              handleMoveClass(index, 1);
-                            }}
-                          >
-                            <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
-                          </Button>
-                        </div>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete code ${String(index + 1)}`}
-                        className="shrink-0 text-description hover:text-error"
-                        onClick={() => {
-                          handleDeleteClass(index);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </Fragment>
-                ))
+                        </SortableCodeRow>
+                      </Fragment>
+                    ))}
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
             {hasCodebookProblems(draftCheck) ? (

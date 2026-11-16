@@ -82,3 +82,25 @@ export function withCodebookRows(
     ...(text ? [{ class: TASK_CONTEXT_CODE, description: text }] : []),
   ];
 }
+
+/**
+ * Moves one code from ``from`` to ``to`` (Chao, 16 Nov 2026: codes can be
+ * dragged into order). On a scale the moved code joins the group it lands in:
+ * dropped among the codes outside the scale it leaves the scale, and dropped
+ * among the levels it becomes one, so the levels always come first.
+ */
+export function moveCodebookRow(
+  rows: CodebookRow[],
+  from: number,
+  to: number,
+  scale: boolean,
+): CodebookRow[] {
+  const target = rows[to];
+  if (from === to || !rows[from] || !target) return rows;
+  const next = [...rows];
+  const [moved] = next.splice(from, 1);
+  if (!moved) return rows;
+  const { outsideScale: _outside, ...code } = moved;
+  next.splice(to, 0, scale && target.outsideScale ? { ...code, outsideScale: true } : code);
+  return next;
+}
