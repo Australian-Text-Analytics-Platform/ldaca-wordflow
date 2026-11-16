@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Analysis } from '@/api';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import type { RunAnalysisOptions } from '../../common/hooks/useAnalysisFeature';
 import { DEFAULT_ANNOTATION_PROMPT } from '../components/AnnotationPromptInput';
 import {
@@ -286,7 +287,14 @@ vi.mock('../components/AnnotationResultsPanel', () => ({
 }));
 
 vi.mock('@/features/views/common/components/RunAllReviewTable', () => ({
-  RunAllReviewTable: () => <div>Run All review table</div>,
+  RunAllReviewTable: ({ correction }: { correction: { onUseAsExample: () => void } }) => (
+    <div>
+      Run All review table
+      <button type="button" onClick={correction.onUseAsExample}>
+        Use as example
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('../hooks/useAnnotationClassDescriptions', () => ({
@@ -1053,5 +1061,53 @@ describe('AnnotationFeature', () => {
       'Annotation completed with 2 failed rows across 1 failed batch',
     );
     expect(screen.getByText('Run All review table')).toBeInTheDocument();
+  });
+
+  it('shows the Example Data Block after Use as example: back from maximised, scrolled and pulsing', async () => {
+    const user = userEvent.setup();
+    mocks.workspaceNodes = [{ id: 'source-1', color: '#2563eb', shape: [3, 2] }];
+    mocks.runAllResult = { failed_row_count: 0, failed_batch_count: 0 };
+    useLayoutFocusStore.setState({ maximised: 'analysis' });
+    const scrollIntoView = vi.spyOn(window.HTMLElement.prototype, 'scrollIntoView');
+    // jsdom has no matchMedia; the scroll asks it about reduced motion.
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: false })),
+    );
+    render(
+      <AnnotationFeature
+        host={{
+          tabId: 'tab-1',
+          analyses: [],
+          latestPreview: null,
+          latestRunAll: runAllAnalysis('succeeded'),
+          activeAnalysis: null,
+          inputSets: {},
+          settings: advancedSettings({ annotationMode: 'ai' }),
+          correctionColumns: { 'source-1': 'review' },
+          setInputSet: mocks.setInputSet,
+          setSetting: mocks.setSetting,
+          setCorrectionColumn: vi.fn(),
+          clearCorrectionColumns: vi.fn(),
+          refreshAnalyses: vi.fn(),
+        }}
+      />,
+    );
+    const section = screen.getByTestId('annotation-example-section');
+    expect(section).not.toHaveAttribute('data-fresh-item');
+
+    await user.click(screen.getByRole('button', { name: 'Use as example' }));
+
+    expect(useLayoutFocusStore.getState().maximised).toBeNull();
+    expect(section).toHaveAttribute('data-fresh-item', 'true');
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalled();
+    });
+    // Like a new upload, it pulses until clicked.
+    await user.click(section);
+    expect(section).not.toHaveAttribute('data-fresh-item');
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
+    scrollIntoView.mockRestore();
+    vi.unstubAllGlobals();
   });
 });

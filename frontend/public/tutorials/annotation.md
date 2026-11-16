@@ -242,7 +242,8 @@ the toolbar opens this section.
   there as Data Block Edits.
 - **Use as example** makes this Data Block, with the correction column as its
   codes, the Example Data Block for AI annotation, and turns on **Advanced**.
-  See [AI workflow](#help-annotation-ai).
+  The Example Data Block then scrolls into view in the parameters and pulses
+  until you click it. See [AI workflow](#help-annotation-ai).
 - **Show metadata** shows more of the Data Block's columns beside the codes,
   for context. A column can be compared or shown as metadata, not both.
 - The **download** button saves the annotated Data Block as CSV or Excel. See

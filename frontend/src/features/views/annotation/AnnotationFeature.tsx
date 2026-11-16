@@ -1,7 +1,8 @@
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import { tabColumnLayout } from '@/features/views/common/columnOrder';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import { toast } from 'sonner';
 import type { Analysis, AnnotationResult, AnnotationRunAllResult } from '@/api';
 import { sqlIdentifier, sqlTable } from '@/api';
@@ -660,6 +661,28 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     setCreateColumnDialog({ kind: 'correction', nodeId, annotationColumn, columns });
   };
 
+  const [exampleFresh, setExampleFresh] = useState(false);
+  const [exampleScrollRequest, setExampleScrollRequest] = useState(0);
+  const exampleSectionRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (exampleScrollRequest === 0) return;
+    // Two frames: Advanced and the restored parameters render first.
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        exampleSectionRef.current?.scrollIntoView({
+          block: 'center',
+          behavior: reduceMotion ? 'auto' : 'smooth',
+        });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [exampleScrollRequest]);
+
   const handleUseCorrectionColumnAsExample = (
     nodeId: string,
     textColumn: string,
@@ -667,6 +690,14 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   ) => {
     if (!correctionColumn) return;
     setAdvanced(true);
+    // Show what changed (Chao, 17 Nov 2026), as for a new upload: the
+    // parameters come back if results are maximised, the Example Data Block
+    // scrolls into view and pulses until it is clicked.
+    if (useLayoutFocusStore.getState().maximised === 'analysis') {
+      useLayoutFocusStore.getState().restore();
+    }
+    setExampleFresh(true);
+    setExampleScrollRequest((current) => current + 1);
     onTabInputSetChange(
       EXAMPLE_NODE_SELECTOR_ID,
       nodeInputsFromSelections([{ nodeId, column: textColumn }]),
@@ -1420,7 +1451,16 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                             </>
                           }
                         >
-                          <div className="space-y-2">
+                          <div
+                            ref={exampleSectionRef}
+                            // Pulses after Use as example until clicked, like a new upload.
+                            data-fresh-item={exampleFresh || undefined}
+                            data-testid="annotation-example-section"
+                            className="-m-2 space-y-2 rounded-md p-2"
+                            onPointerDown={() => {
+                              setExampleFresh(false);
+                            }}
+                          >
                             <Label className="block text-label-secondary font-medium text-description">
                               Example Data Block
                               <span className="ml-1 font-normal">(optional)</span>
