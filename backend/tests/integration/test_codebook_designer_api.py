@@ -48,9 +48,11 @@ class _Adapter:
     def __init__(self, answer: str | Exception) -> None:
         self.answer = answer
         self.calls: list[tuple[str, str, str]] = []
+        self.api_keys: list[str | None] = []
 
-    async def complete(self, model, _api_key, system, user, config):
+    async def complete(self, model, api_key, system, user, config):
         self.calls.append((model, system, user))
+        self.api_keys.append(api_key)
         self.config = config
         if isinstance(self.answer, Exception):
             raise self.answer
@@ -136,6 +138,8 @@ def test_designer_streams_stages_then_the_draft(tmp_path: Path, monkeypatch) -> 
     assert response.headers["content-type"].startswith("text/event-stream")
     events = _events(response.text)
     assert [name for name, _ in events] == ["stage", "stage", "stage", "draft"]
+    # A person's own provider: their key goes to the model unchanged.
+    assert adapter.api_keys == ["provider-secret"]
     assert [data.get("stage") for _, data in events[:3]] == [
         "sampling",
         "waiting",

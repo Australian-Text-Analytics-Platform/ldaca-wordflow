@@ -10,7 +10,9 @@ import anyio
 import polars as pl
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 
+from .. import server_ai
 from ..domain.annotation import provider_failure_message
+from ..server_ai.gate import ServerAiRunActiveError
 from ..infrastructure.providers.annotation_adapter import (
     InferenceConfig,
 )
@@ -168,6 +170,11 @@ class AnnotationService:
                 request,
                 supplied=request.api_key,
             )
+            # A server AI provider's credential is a key-free marker; like a
+            # Preview, the request goes out bound to this person, under their
+            # one-request-at-a-time limit and with their user labels (#474,
+            # #492). A person's own key passes unchanged.
+            api_key = await server_ai.bind_credential(api_key, user_id, "preview")
             adapter = resolve_provider_adapter(
                 request.provider,
                 request.provider_base_url,
@@ -208,6 +215,15 @@ class AnnotationService:
                     else provider_failure_message(exc.code, request.provider)
                 ),
                 detail=str(exc),
+            )
+            return
+        except ServerAiRunActiveError as exc:
+            yield CodebookDraftErrorEvent(
+                message=(
+                    f"Your {exc.provider_name} run is still going, and "
+                    f"{exc.provider_name} takes a limited number of requests at a "
+                    "time. Use the AI Code Designer when the run has finished."
+                )
             )
             return
         except AppError as exc:
