@@ -7,6 +7,7 @@ import {
   calculateKrippendorffsAlpha,
   calculateOrdinalAlpha,
   calculateWeightedKappa,
+  comparisonScale,
   formatIntercoderReliability,
   intercoderReliabilityLabel,
   scaleDistance,
@@ -128,6 +129,41 @@ describe('ordered-scale reliability', () => {
     expect(value(calculateOrdinalAlpha(nearMiss, WITH_NA))).toBeGreaterThan(
       value(calculateOrdinalAlpha(notApplicable, WITH_NA)),
     );
+  });
+
+  it('follows the codebook as it is now when it holds the Run’s codes', () => {
+    const run = { classes: ['Cuts', 'Promise', 'Other'], scale: false };
+    // Turned on after the Run (Chao's case): Review uses the scale.
+    expect(
+      comparisonScale(run, {
+        classes: ['Cuts', 'Promise', 'Other'],
+        scale: true,
+        outsideScale: ['Other'],
+      }),
+    ).toEqual({ levels: ['Cuts', 'Promise'], outside: ['Other'] });
+    // The order of the levels comes from the codebook too.
+    expect(
+      comparisonScale(run, {
+        classes: ['Promise', 'Cuts', 'Other'],
+        scale: true,
+        outsideScale: [],
+      }),
+    ).toEqual({ levels: ['Promise', 'Cuts', 'Other'], outside: [] });
+    // Turned off after a scale Run: categories.
+    expect(
+      comparisonScale(
+        { ...run, scale: true },
+        { classes: ['Cuts', 'Promise', 'Other'], scale: false, outsideScale: [] },
+      ),
+    ).toBeNull();
+  });
+
+  it('keeps the Run’s own setting when the codebook now has other codes, or is not loaded', () => {
+    const run = { classes: ['Low', 'High', 'N/A'], scale: true, outside_scale: ['N/A'] };
+    const changed = { classes: ['Low', 'Medium', 'High'], scale: false, outsideScale: [] };
+    expect(comparisonScale(run, changed)).toEqual({ levels: ['Low', 'High'], outside: ['N/A'] });
+    expect(comparisonScale(run, null)).toEqual({ levels: ['Low', 'High'], outside: ['N/A'] });
+    expect(comparisonScale({ classes: ['A', 'B'] }, null)).toBeNull();
   });
 
   it('measures how far apart two codes are on the scale, for shading', () => {

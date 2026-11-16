@@ -149,7 +149,11 @@ With an ordered scale:
   codes outside the scale, and shades each disagreement by how far apart the
   two codes are: the farther apart, the darker. The first line of the score's
   tooltip names the method, so a scale score and a category score can't be
-  mistaken for each other.
+  mistaken for each other. Turning the scale on or off changes the statistics
+  of earlier Previews and Runs too, as long as the Codebook still has the same
+  codes. The AI labels themselves don't change: a Run made before the scale was
+  turned on was asked to classify, not to rate, so run it again to have the
+  texts rated on the scale.
 - Write each level so it can be judged from one text alone. Wording such as
   "more than usual" or "above average" asks the model to compare texts it
   cannot see, and the same text can then get different levels in different

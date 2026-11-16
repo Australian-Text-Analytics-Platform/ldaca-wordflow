@@ -134,6 +134,29 @@ export const orderedScale = (
 });
 
 /**
+ * The scale Compare to uses for a Preview or Run (Chao, 16 Nov 2026). Ordered
+ * scale is a setting of the codebook, so the codebook as it is now decides,
+ * also for a Run made before the setting was turned on or off, as long as it
+ * holds the same codes as the Run. A codebook since changed to other codes
+ * can't speak for the Run, which then keeps the setting it was made with.
+ */
+export const comparisonScale = (
+  run: {
+    classes: readonly string[];
+    scale?: boolean | null;
+    outside_scale?: readonly string[] | null;
+  },
+  codebook: { classes: readonly string[]; scale: boolean; outsideScale: readonly string[] } | null,
+): OrderedScale | null => {
+  const codes = (names: readonly string[]) =>
+    JSON.stringify(names.map((name) => name.trim()).toSorted());
+  if (codebook && codes(codebook.classes) === codes(run.classes)) {
+    return codebook.scale ? orderedScale(codebook.classes, codebook.outsideScale) : null;
+  }
+  return run.scale ? orderedScale(run.classes, run.outside_scale ?? []) : null;
+};
+
+/**
  * How far apart two codes are on a scale, from 0 (the same code) to 1: levels
  * by their distance in levels over the width of the scale, and a code outside
  * the scale 1 from every other code. Null for a label that is neither. Used to

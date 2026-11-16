@@ -26,8 +26,8 @@ import {
 } from '@/features/provider-credentials/providerCredentialRequests';
 import { useProviderCredentials } from '@/features/provider-credentials/useProviderCredentials';
 import {
+  comparisonScale,
   DEFAULT_INTERCODER_RELIABILITY_METRIC,
-  orderedScale,
 } from '@/features/views/common/columnComparisonModel';
 import HelpIcon from '@/components/help/HelpIcon';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
@@ -716,6 +716,16 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     },
     [],
   );
+  // The codebook as it is now, for a Preview or Run made with it: Compare to
+  // follows its Ordered scale setting (Chao, 16 Nov 2026).
+  const codebookFor = (classNodeId: string) =>
+    classDescriptionNode?.id === classNodeId && classDescriptions.query.isSuccess
+      ? {
+          classes: aiClasses.map((item) => item.name),
+          scale: classDescriptions.scale,
+          outsideScale: classDescriptions.outsideScale,
+        }
+      : null;
   const normalizedReasoningEffort: 'low' | 'medium' | 'high' =
     sent.aiReasoningEffort === 'low' || sent.aiReasoningEffort === 'high'
       ? sent.aiReasoningEffort
@@ -1615,14 +1625,13 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                 sourceColumns={reviewSourceColumns}
                 sourceColor={reviewSourceNode.color ?? GREY}
                 rowCount={reviewSourceNode.shape?.[0] ?? 0}
-                scale={
-                  annotationRunAllSource.scale
-                    ? orderedScale(
-                        annotationRunAllSource.classes.map((item) => item.name),
-                        annotationRunAllSource.outside_scale ?? [],
-                      )
-                    : null
-                }
+                scale={comparisonScale(
+                  {
+                    ...annotationRunAllSource,
+                    classes: annotationRunAllSource.classes.map((item) => item.name),
+                  },
+                  codebookFor(annotationRunAllSource.class_node_id),
+                )}
                 title="Annotation"
                 guidanceTarget="annotation-ai-run-all-results"
                 requiredColumns={[
@@ -1686,12 +1695,13 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                 onMetricChange: (metric) => {
                   setAnnotationReliabilityMetric(serverAiRequest.node_id, metric);
                 },
-                scale: serverAiRequest.scale
-                  ? orderedScale(
-                      serverAiRequest.classes.map((item) => item.name),
-                      serverAiRequest.outside_scale ?? [],
-                    )
-                  : null,
+                scale: comparisonScale(
+                  {
+                    ...serverAiRequest,
+                    classes: serverAiRequest.classes.map((item) => item.name),
+                  },
+                  codebookFor(serverAiRequest.class_node_id),
+                ),
               }}
               metadata={{
                 columns: annotationMetadataColumns[serverAiRequest.node_id] ?? [],
