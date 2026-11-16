@@ -24,7 +24,7 @@ either directly or with predictions from a configured AI provider.
    [AI Code Designer](#help-annotation-code-designer) can draft a first set of
    codes for you.
 
-   ![Edit codebook dialog with three codes](tutorials/assets/annotation/edit_codebook.png)
+   ![Edit codebook dialog: the Ordered scale switch at the top right, the Brief for the AI Code Designer with Maximum classes and the AI Code Designer button, and Task context above the codes](tutorials/assets/annotation/edit_codebook.png)
 
    Each code should appear once, with its own description. If a code is
    repeated, or two codes share a description, the Codes card and the Edit
@@ -91,6 +91,9 @@ checking stay with you.
    applies when the model supports thinking. Turn on **Advanced** at the top
    right to read or change the system prompt; **Restore default** brings back
    Wordflow's. Categories and ordered scales each keep their own prompt.
+
+   ![AI Code Designer window: what is sent where, the Provider and Model, Sample size, Sample seed and Thinking effort, and Design codebook](tutorials/assets/annotation/code_designer.png)
+
 5. Choose **Design codebook**. The window stays open and shows what it is
    doing and for how long. Thinking models can take several minutes, and
    local models longer; **Stop** cancels the request. A request that runs
@@ -180,6 +183,51 @@ of the **Compare to** list; see
 
 ![Compare to list with the reliability statistic and the columns to compare](tutorials/assets/annotation/compare_to_menu.png)
 
+The funnel button in the annotation column header and in each comparison header
+opens a filter menu with two independent conditions: **Differs** and a value
+radio (**All rows**, **Has value**, **Empty**). On a comparison column, Differs
+keeps rows whose label differs from the annotation column; on the annotation
+column it keeps rows that differ from at least one selected comparison column.
+Conditions combine, so Differs with Has value narrows further, while Empty greys
+out Differs because an empty cell never differs. Only one column carries a filter
+at a time; setting a filter on another column replaces it. Filtered rows and
+counts are calculated before server pagination. Preview has no row filter
+because its rows are chosen by the AI request.
+
+![Row filter menu of the annotation column](tutorials/assets/annotation/row_filter_menu.png)
+
+A cell counts as **empty** when it is blank or holds a value that is not a
+code in the Codebook (for example `P` instead of `promise`, or a date pasted by
+accident). Such values are still displayed, in muted italics, but they never
+count as differences, never contribute to reliability, and match **Empty**
+rather than **Has value**. Matching is exact after trimming spaces; `Promise`
+is not `promise`. Without a Codebook only the blank rule applies.
+
+The table fills the space below the parameters, so dragging the bar between
+the parameters and the results shows more or fewer rows. To set the table's own
+height, drag its bottom-right corner; double-click the corner to let it fill the
+space again. The height is shared by Manual, Preview, and Review, and the table
+scrolls inside its frame when a page does not fit.
+
+Drag a column header's grip to move the column; a correction column and its
+arrow stay beside the annotation column. The tab remembers the order.
+
+**Compare to** and **Show metadata** are exclusive roles: a selected column is
+disabled in the other menu, and **Select all** skips disabled columns. The
+active correction column appears in neither menu. Add a correction column when
+you want reviewed decisions kept separately, and use metadata columns to retain
+useful source context in the table.
+
+<span id="help-annotation-row-viewer"></span>
+Long metadata values wrap within their column. To read a whole row, select the
+**View row** button (the expand icon, **View the whole row**) at the start of
+the row in the Manual, Preview, and Review tables. It opens Row Details with
+the full text and every visible column in table order: the annotation (or the
+predicted label beside the existing annotation), any correction, Compare to
+columns, and metadata. Comparison values stay
+hidden until you reveal that column, and the viewer is read-only; use
+**Previous** and **Next** to move between rows.
+
 <h3 id="help-annotation-reliability">Reliability statistics</h3>
 
 The score in each comparison header says how well the two columns agree,
@@ -244,50 +292,28 @@ apart, the darker.
 
 ![Confusion matrix of an ordered scale: agreement in green down the diagonal, and disagreements shaded orange by distance on the scale](tutorials/assets/annotation/scale_confusion_matrix.png)
 
-The funnel button in the annotation column header and in each comparison header
-opens a filter menu with two independent conditions: **Differs** and a value
-radio (**All rows**, **Has value**, **Empty**). On a comparison column, Differs
-keeps rows whose label differs from the annotation column; on the annotation
-column it keeps rows that differ from at least one selected comparison column.
-Conditions combine, so Differs with Has value narrows further, while Empty greys
-out Differs because an empty cell never differs. Only one column carries a filter
-at a time; setting a filter on another column replaces it. Filtered rows and
-counts are calculated before server pagination. Preview has no row filter
-because its rows are chosen by the AI request.
+**Which to report.** Kappa and Alpha share one idea: the disagreement you see,
+set against the disagreement chance alone would give. They read chance
+differently. Kappa lets each coder keep their own habits, such as one coder
+using a code more often than the other; Alpha pools both coders' codes, so a
+difference in habits counts as disagreement. Alpha also corrects slightly for
+small samples. On the same two columns the two scores are usually close but not
+equal.
 
-![Row filter menu of the annotation column](tutorials/assets/annotation/row_filter_menu.png)
+- Pick one statistic and use it throughout a study.
+- **Alpha** is the standard in content analysis, and it is the one that works
+  for more than two coders and for texts only some coders coded, which is why
+  the score across all coders uses it.
+- **Kappa** is more common in machine-learning and annotation research, and it
+  is what many readers expect for two coders.
+- If Kappa and Alpha differ a lot for the same columns, look at the confusion
+  matrix: one coder is probably using a code much more often than the other.
 
-A cell counts as **empty** when it is blank or holds a value that is not a
-code in the Codebook (for example `P` instead of `promise`, or a date pasted by
-accident). Such values are still displayed, in muted italics, but they never
-count as differences, never contribute to reliability, and match **Empty**
-rather than **Has value**. Matching is exact after trimming spaces; `Promise`
-is not `promise`. Without a Codebook only the blank rule applies.
-
-The table fills the space below the parameters, so dragging the bar between
-the parameters and the results shows more or fewer rows. To set the table's own
-height, drag its bottom-right corner; double-click the corner to let it fill the
-space again. The height is shared by Manual, Preview, and Review, and the table
-scrolls inside its frame when a page does not fit.
-
-Drag a column header's grip to move the column; a correction column and its
-arrow stay beside the annotation column. The tab remembers the order.
-
-**Compare to** and **Show metadata** are exclusive roles: a selected column is
-disabled in the other menu, and **Select all** skips disabled columns. The
-active correction column appears in neither menu. Add a correction column when
-you want reviewed decisions kept separately, and use metadata columns to retain
-useful source context in the table.
-
-<span id="help-annotation-row-viewer"></span>
-Long metadata values wrap within their column. To read a whole row, select the
-**View row** button (the expand icon, **View the whole row**) at the start of
-the row in the Manual, Preview, and Review tables. It opens Row Details with
-the full text and every visible column in table order: the annotation (or the
-predicted label beside the existing annotation), any correction, Compare to
-columns, and metadata. Comparison values stay
-hidden until you reveal that column, and the viewer is read-only; use
-**Previous** and **Next** to move between rows.
+For the details of each method, see
+[Cohen's kappa](https://en.wikipedia.org/wiki/Cohen%27s_kappa), including
+[weighted kappa](https://en.wikipedia.org/wiki/Cohen%27s_kappa#Weighted_kappa),
+and [Krippendorff's alpha](https://en.wikipedia.org/wiki/Krippendorff%27s_alpha),
+including its coincidence matrix and ordinal distance.
 
 <h2 id="help-annotation-ai">AI workflow</h2>
 
