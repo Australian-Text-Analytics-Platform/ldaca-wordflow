@@ -40,7 +40,11 @@ import { AnnotationRowViewButton } from '@/features/views/common/components/Anno
 import { buildAnnotationRowDetailPayload } from '@/features/views/common/components/annotationRowDetail';
 import { useAnnotationRowViewer } from '@/features/views/common/hooks/useAnnotationRowViewer';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
-import { useFullColumnComparisons } from '@/features/views/common/hooks/useFullColumnComparisons';
+import {
+  useCodeCombinations,
+  useFullColumnComparisons,
+} from '@/features/views/common/hooks/useFullColumnComparisons';
+import { MultiCoderAlphaBadge } from '@/features/views/common/components/MultiCoderAlphaBadge';
 import { type ServerColumnDef, useServerTable } from '@/features/views/common/hooks/useServerTable';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { queryKeys } from '@/lib/queryKeys';
@@ -346,6 +350,19 @@ export function AnnotationResultsPanel({
     comparisonColumns: activeComparisonColumns,
     classOptions,
   });
+  // With Alpha chosen and two or more comparisons, the annotation column shows
+  // Alpha across every coder (Chao, 16 Nov 2026).
+  const coderColumns = [annotationColumn, ...activeComparisonColumns];
+  const showMultiCoderAlpha =
+    reliabilityMetric === 'krippendorffs_alpha' && activeComparisonColumns.length >= 2;
+  const codeCombinations = useCodeCombinations({
+    workspaceId,
+    nodeIds: [nodeId],
+    sql: sourceSql,
+    columns: coderColumns,
+    classOptions,
+    enabled: showMultiCoderAlpha,
+  });
   const comparisonQueryByColumn = new Map(
     activeComparisonColumns.map((column, index) => [column, comparisonQueries[index]]),
   );
@@ -459,18 +476,29 @@ export function AnnotationResultsPanel({
                           label={annotationColumn}
                           className="w-px whitespace-nowrap"
                         >
-                          <span className="inline-flex items-center gap-1.5">
-                            <span>{annotationColumn}</span>
-                            <AnnotationColumnFilterMenu
-                              column={annotationColumn}
-                              value={filterValueFor(annotationColumn)}
-                              onChange={(value) => {
-                                setColumnFilter(annotationColumn, value);
-                              }}
-                              differsLabel="Differs from any comparison column"
-                              differsDisabled={activeComparisonColumns.length === 0}
-                              differsDisabledReason="Select a Compare to column first"
-                            />
+                          <span className="inline-flex flex-col items-start gap-1">
+                            {showMultiCoderAlpha ? (
+                              <MultiCoderAlphaBadge
+                                columns={coderColumns}
+                                combinations={codeCombinations.data}
+                                scale={codebookScale}
+                                isLoading={codeCombinations.isLoading}
+                                isError={codeCombinations.isError}
+                              />
+                            ) : null}
+                            <span className="inline-flex items-center gap-1.5">
+                              <span>{annotationColumn}</span>
+                              <AnnotationColumnFilterMenu
+                                column={annotationColumn}
+                                value={filterValueFor(annotationColumn)}
+                                onChange={(value) => {
+                                  setColumnFilter(annotationColumn, value);
+                                }}
+                                differsLabel="Differs from any comparison column"
+                                differsDisabled={activeComparisonColumns.length === 0}
+                                differsDisabledReason="Select a Compare to column first"
+                              />
+                            </span>
                           </span>
                         </DraggableTableHead>
                         {correctionColumn ? (
@@ -654,6 +682,14 @@ export function AnnotationResultsPanel({
                                           type: 'active',
                                         });
                                       }
+                                    });
+                                    // The multi-coder Alpha counts this column too.
+                                    void queryClient.invalidateQueries({
+                                      queryKey: [
+                                        'workspaces',
+                                        workspaceId ?? '',
+                                        'annotation-coder-agreement',
+                                      ],
                                     });
                                     return nodePage.refreshFilteredRows();
                                   })

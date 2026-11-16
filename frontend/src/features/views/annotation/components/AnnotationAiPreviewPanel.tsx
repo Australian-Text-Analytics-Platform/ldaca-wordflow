@@ -31,9 +31,11 @@ import {
   type ConfusionCount,
 } from '@/features/views/common/components/ColumnComparison';
 import type {
+  CodeCombination,
   IntercoderReliabilityMetric,
   OrderedScale,
 } from '@/features/views/common/columnComparisonModel';
+import { MultiCoderAlphaBadge } from '@/features/views/common/components/MultiCoderAlphaBadge';
 import { MetadataColumnSelector } from '@/features/views/common/components/MetadataColumnSelector';
 import { PaginatedTableProcessingRow } from '@/features/views/common/components/PaginatedTableProcessingRow';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
@@ -179,6 +181,28 @@ export function AnnotationAiPreviewPanel({
     });
     comparisonRows.set(targetColumn, Array.from(counts.values()));
   });
+  // With Alpha chosen and two or more comparisons, the preview column shows
+  // Alpha across every coder on this page (Chao, 16 Nov 2026).
+  const showMultiCoderAlpha =
+    comparison.metric === 'krippendorffs_alpha' && activeComparisonColumns.length >= 2;
+  const pageCombinations = new Map<string, CodeCombination>();
+  if (showMultiCoderAlpha) {
+    page.rows.forEach((row, index) => {
+      const rowPosition = page.pagination.pageIndex * page.pagination.pageSize + index;
+      const values = [
+        normalizeAnnotationLabel(predictions.labels[index], classOptions),
+        ...activeComparisonColumns.map((targetColumn) => {
+          const selectionKey = `${targetColumn}:${String(rowPosition)}`;
+          return normalizeAnnotationLabel(
+            Object.hasOwn(selections, selectionKey) ? selections[selectionKey] : row[targetColumn],
+            classOptions,
+          );
+        }),
+      ];
+      const key = JSON.stringify(values);
+      pageCombinations.set(key, { values, count: (pageCombinations.get(key)?.count ?? 0) + 1 });
+    });
+  }
   const tableColumns: ServerColumnDef<AnnotationPreviewRow>[] = [
     { id: columns.text, accessorFn: (row) => row[columns.text] },
     { id: 'annotation_preview', accessorFn: (row) => row[columns.annotation] },
@@ -400,7 +424,19 @@ export function AnnotationAiPreviewPanel({
                         label={columns.annotation}
                         className="w-px whitespace-nowrap"
                       >
-                        {columns.annotation} (preview)
+                        <span className="inline-flex flex-col items-start gap-1">
+                          {showMultiCoderAlpha ? (
+                            <MultiCoderAlphaBadge
+                              columns={[previewColumn, ...activeComparisonColumns]}
+                              combinations={Array.from(pageCombinations.values())}
+                              scale={comparison.scale ?? null}
+                              isLoading={comparisonLoading}
+                              isError={comparisonError}
+                              pageOnly
+                            />
+                          ) : null}
+                          <span>{columns.annotation} (preview)</span>
+                        </span>
                       </DraggableTableHead>
                       {showCorrectionColumn ? (
                         <>

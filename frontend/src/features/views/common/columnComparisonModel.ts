@@ -333,3 +333,93 @@ export const formatIntercoderReliability = (
   metric === 'percent_agreement'
     ? `${(value * 100).toFixed(1)}%`
     : `${intercoderReliabilitySymbol(metric, ordered)} ${value.toFixed(3)}`;
+
+/** One combination of codes the coders gave the same texts (null: no code), and how many texts got it. */
+export interface CodeCombination {
+  values: readonly (string | null)[];
+  count: number;
+}
+
+export interface MultiCoderAgreement {
+  alpha: number | null;
+  /**
+   * Krippendorff's coincidence matrix: every pair of codes two different
+   * coders gave the same text, each text's pairs sharing one unit of weight
+   * per code (1/(m-1) each, for m codes on the text).
+   */
+  coincidences: ConfusionCount[];
+  /** Texts with codes from at least two coders: the ones Alpha counts. */
+  pairableTexts: number;
+}
+
+/**
+ * Krippendorff's Alpha across any number of coders (Chao, 16 Nov 2026), from
+ * the coincidence matrix of their codes. A text counts when at least two
+ * coders gave it a code, so coders who each coded only some texts still
+ * count. Nominal for categories; on an ordered ``scale``, the same distances
+ * as the two-column ordinal Alpha (codes outside the scale 1 from the rest).
+ * With two coders and every text coded by both, it equals the two-column
+ * Alpha.
+ */
+export const multiCoderAgreement = (
+  combinations: readonly CodeCombination[],
+  scale: OrderedScale | null,
+): MultiCoderAgreement => {
+  const scaleCodes = scale ? [...scale.levels, ...scale.outside] : null;
+  const keep = scaleCodes ? new Set(scaleCodes) : null;
+  const matrix = new Map<string, number>();
+  const totals = new Map<string, number>();
+  let pairableTexts = 0;
+  combinations.forEach(({ values, count }) => {
+    const codes = values.filter(
+      (value): value is string => value !== null && (keep === null || keep.has(value)),
+    );
+    if (codes.length < 2 || count <= 0) return;
+    pairableTexts += count;
+    const weight = count / (codes.length - 1);
+    codes.forEach((first, firstIndex) => {
+      codes.forEach((second, secondIndex) => {
+        if (firstIndex === secondIndex) return;
+        const key = JSON.stringify([first, second]);
+        matrix.set(key, (matrix.get(key) ?? 0) + weight);
+        totals.set(first, (totals.get(first) ?? 0) + weight);
+      });
+    });
+  });
+  const coincidences = Array.from(matrix, ([key, count]) => {
+    const [reference = '', comparison = ''] = JSON.parse(key) as string[];
+    return { reference, comparison, count };
+  });
+  const total = (code: string): number => totals.get(code) ?? 0;
+  const valueCount = Array.from(totals.values()).reduce((sum, count) => sum + count, 0);
+  const codes = scaleCodes ?? Array.from(totals.keys());
+  if (valueCount < 2 || (scale && scale.levels.length < 2)) {
+    return { alpha: null, coincidences, pairableTexts };
+  }
+  // Squared distance between two codes: 1 between categories; on a scale, the
+  // ordinal distance between levels over the widest, and 1 for a code outside.
+  const levelCount = scale?.levels.length ?? 0;
+  const ordinal = (low: number, high: number): number => {
+    let between = 0;
+    for (let level = low; level <= high; level += 1) between += total(codes[level] ?? '');
+    return (between - (total(codes[low] ?? '') + total(codes[high] ?? '')) / 2) ** 2;
+  };
+  const widest = scale ? ordinal(0, levelCount - 1) : 0;
+  const distance = (first: number, second: number): number => {
+    if (!scale || first >= levelCount || second >= levelCount) return 1;
+    if (widest === 0) return 0;
+    return ordinal(Math.min(first, second), Math.max(first, second)) / widest;
+  };
+  let observed = 0;
+  let expected = 0;
+  codes.forEach((first, firstIndex) => {
+    codes.forEach((second, secondIndex) => {
+      if (firstIndex === secondIndex) return;
+      const squared = distance(firstIndex, secondIndex);
+      observed += (matrix.get(JSON.stringify([first, second])) ?? 0) * squared;
+      expected += total(first) * total(second) * squared;
+    });
+  });
+  if (expected === 0) return { alpha: null, coincidences, pairableTexts };
+  return { alpha: 1 - ((valueCount - 1) * observed) / expected, coincidences, pairableTexts };
+};

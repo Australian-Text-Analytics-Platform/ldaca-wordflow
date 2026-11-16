@@ -211,6 +211,23 @@ Alpha take the distance into account:
   against a level it costs as much as the two ends of the scale.
 - Percent Agreement still counts exact matches only.
 
+**Alpha across all coders.** With **Krippendorff's Alpha** chosen and two or
+more columns in **Compare to**, the annotation column shows one more score:
+Alpha across every coder at once, such as **α 0.907 · 3 coders** (αo on an
+ordered scale). Each comparison column keeps its own score against the
+annotation column. A text counts when at least two of the coders gave it a
+Codebook code, so coders who each coded only part of the texts still count. In
+Preview the score covers the page on screen. Cohen's Kappa and Percent
+Agreement compare two columns only, so with them chosen the annotation column
+shows no score.
+
+Its tooltip shows the coincidence matrix, Krippendorff's way of showing where
+several coders agree: code against code, each cell counting the pairs of codes
+two different coders gave the same text. The pairs from a text with three codes
+count half each, so a text adds as much as it has codes. Agreement runs down
+the diagonal in green, and on a scale disagreements are shaded orange as in the
+confusion matrix.
+
 The first line of the score's tooltip names the method, such as "Weighted
 Cohen's Kappa on an ordered scale" or "Cohen's Kappa on categories", so the two
 can't be mistaken for each other. Turning the scale on or off changes the

@@ -1,5 +1,4 @@
-import type { CSSProperties } from 'react';
-import { ArrowDown, ArrowRight, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,14 +23,12 @@ import {
   intercoderReliabilitySymbol,
   isIntercoderReliabilityMetric,
   type OrderedScale,
-  scaleDistance,
 } from '@/features/views/common/columnComparisonModel';
+import { AgreementMatrix } from './AgreementMatrix';
 import { AnnotationColumnFilterMenu } from './AnnotationColumnFilterMenu';
 import { COLUMN_MENU_CLASS, COLUMN_MENU_ITEM_CLASS } from './columnMenuStyles';
 
 export type { ConfusionCount } from '@/features/views/common/columnComparisonModel';
-
-const displayLabel = (value: string): string => (value === '' ? '(blank)' : value);
 
 /** The method behind the score, in words, so a scale and categories can't be mistaken. */
 const reliabilityMethod = (metric: IntercoderReliabilityMetric, ordered: boolean): string => {
@@ -47,35 +44,6 @@ const reliabilityMethod = (metric: IntercoderReliabilityMetric, ordered: boolean
     ? 'Weighted Cohen’s Kappa on an ordered scale: a near miss counts as partial agreement (quadratic weights).'
     : 'Ordinal Krippendorff’s Alpha on an ordered scale: a near miss counts as partial agreement.';
 };
-
-/** A cell tinted by how far apart its two codes are on the scale; none for categories. */
-/** Agreement on the diagonal, in light green, for every matrix (Chao, 16 Nov 2026). */
-const AGREEMENT_SHADE = 'color-mix(in srgb, var(--color-chart-3) 28%, transparent)';
-
-/**
- * A cell's shade: light green where the two columns agree; on a scale, a
- * disagreement in orange by how far apart its two codes are.
- */
-const cellShading = (
-  scale: OrderedScale | null,
-  reference: string,
-  comparison: string,
-): CSSProperties | undefined => {
-  if (reference === comparison) return { backgroundColor: AGREEMENT_SHADE };
-  const distance = scale ? scaleDistance(scale, reference, comparison) : null;
-  if (!distance) return undefined;
-  return {
-    backgroundColor: `color-mix(in srgb, var(--color-chart-4) ${String(Math.round(12 + 48 * distance))}%, transparent)`,
-  };
-};
-
-const ShadeSwatch = ({ background }: { background: string }) => (
-  <span
-    aria-hidden="true"
-    className="inline-block h-3 w-4 shrink-0 rounded-sm"
-    style={{ background }}
-  />
-);
 
 interface ColumnComparisonHeaderProps {
   label?: string;
@@ -119,20 +87,6 @@ export function ColumnComparisonHeader({
   scale = null,
 }: ColumnComparisonHeaderProps) {
   const ordered = scale !== null;
-  const scalePosition = new Map(
-    [...(scale?.levels ?? []), ...(scale?.outside ?? [])].map(
-      (label, index) => [label, index] as const,
-    ),
-  );
-  const labels = Array.from(
-    new Set((rows ?? []).flatMap((row) => [row.reference, row.comparison])),
-  ).toSorted(
-    (a, b) =>
-      (scalePosition.get(a) ?? Infinity) - (scalePosition.get(b) ?? Infinity) || a.localeCompare(b),
-  );
-  const countByPair = new Map(
-    (rows ?? []).map((row) => [JSON.stringify([row.reference, row.comparison]), row.count]),
-  );
   const metricDefinition = {
     label: intercoderReliabilityLabel(metric, ordered),
     symbol: intercoderReliabilitySymbol(metric, ordered),
@@ -180,91 +134,17 @@ export function ColumnComparisonHeader({
               <p>Loading comparison…</p>
             ) : isError || !rows ? (
               <p>Couldn't load comparison.</p>
-            ) : labels.length === 0 ? (
+            ) : rows.length === 0 ? (
               <p>No rows contain values in both columns.</p>
             ) : (
-              <div className="grid grid-cols-[auto_auto] grid-rows-[auto_auto] gap-x-2 gap-y-1">
-                <div
-                  aria-label={`${comparisonColumn} column axis`}
-                  className="col-start-2 row-start-1 flex items-center justify-center gap-1 border-b border-widget-foreground/25 pb-1 font-medium"
-                >
-                  <span>{comparisonColumn}</span>
-                  <ArrowRight aria-hidden="true" className="size-3" />
-                </div>
-                <div
-                  aria-label={`${referenceColumn} row axis`}
-                  className="col-start-1 row-start-2 flex flex-col items-center justify-center gap-1 border-r border-widget-foreground/25 pr-1.5 font-medium"
-                >
-                  <span className="rotate-180 [writing-mode:vertical-rl]">{referenceColumn}</span>
-                  <ArrowDown aria-hidden="true" className="size-3" />
-                </div>
-                <table
-                  aria-label={`${referenceColumn} versus ${comparisonColumn} confusion matrix`}
-                  className="col-start-2 row-start-2 border-separate border-spacing-x-2 border-spacing-y-1 text-label-secondary tabular-nums"
-                >
-                  <caption className="sr-only">
-                    Rows are {referenceColumn}; columns are {comparisonColumn}.
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th className="px-1 font-normal" scope="col">
-                        <span className="sr-only">Row label</span>
-                      </th>
-                      {labels.map((comparisonLabel) => (
-                        <th
-                          key={comparisonLabel}
-                          className="px-1 text-center text-widget-foreground/80"
-                          scope="col"
-                        >
-                          {displayLabel(comparisonLabel)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {labels.map((referenceLabel) => (
-                      <tr key={referenceLabel}>
-                        <th className="pr-2 text-right text-widget-foreground/80" scope="row">
-                          {displayLabel(referenceLabel)}
-                        </th>
-                        {labels.map((comparisonLabel) => (
-                          <td
-                            key={comparisonLabel}
-                            className="min-w-8 rounded-sm px-1 text-center font-medium"
-                            style={cellShading(scale, referenceLabel, comparisonLabel)}
-                          >
-                            {countByPair.get(JSON.stringify([referenceLabel, comparisonLabel])) ??
-                              0}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div
-                  className="col-start-2 row-start-3 mt-1 max-w-sm space-y-0.5 whitespace-normal text-label-secondary text-widget-foreground/80"
-                  data-testid="reliability-shading-key"
-                >
-                  <p className="flex items-center gap-1.5">
-                    <ShadeSwatch background={AGREEMENT_SHADE} />
-                    Green: both columns agree.
-                  </p>
-                  {ordered ? (
-                    <p className="flex items-center gap-1.5">
-                      <span
-                        aria-hidden="true"
-                        className="inline-block h-3 w-8 shrink-0 rounded-sm"
-                        style={{
-                          background:
-                            'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-chart-4) 60%, transparent))',
-                        }}
-                      />
-                      Orange: how far apart the two codes are on the scale. Darkest: the two ends,
-                      or a code outside the scale.
-                    </p>
-                  ) : null}
-                </div>
-              </div>
+              <AgreementMatrix
+                rows={rows}
+                scale={scale}
+                rowAxis={referenceColumn}
+                columnAxis={comparisonColumn}
+                tableLabel={`${referenceColumn} versus ${comparisonColumn} confusion matrix`}
+                agreementKey="Green: both columns agree."
+              />
             )}
           </TooltipContent>
         </Tooltip>

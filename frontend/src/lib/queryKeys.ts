@@ -171,6 +171,21 @@ export const queryKeys = {
       },
     ] as const,
 
+  /** Every comparison's codes at once, for the multi-coder Alpha; edits refresh it by the prefix. */
+  annotationCoderAgreement: (
+    workspaceId: string,
+    nodeIds: string[],
+    sql: string,
+    columns: readonly string[],
+    classOptions: readonly string[],
+  ) =>
+    [
+      'workspaces',
+      workspaceId,
+      'annotation-coder-agreement',
+      { nodeIds: [...nodeIds], sql, columns: [...columns], classOptions: [...classOptions] },
+    ] as const,
+
   /** Authoritative Arrow schema for one Data Block. */
   nodeSchema: (workspaceId: string, nodeId: string) =>
     ['workspaces', workspaceId, 'nodes', nodeId, 'schema'] as const,

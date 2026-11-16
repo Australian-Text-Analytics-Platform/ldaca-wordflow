@@ -221,7 +221,8 @@ codes. **Percent Agreement** counts exact matches. **Cohen's Kappa** and
 give: 1 is perfect, 0 is no better than chance. On an
 [ordered scale](#help-glossary-ordered-scale), **weighted Kappa** and
 **ordinal Alpha** count a near miss, such as Medium against High, as a smaller
-disagreement than a far one. See
+disagreement than a far one. With three or more coders, Alpha can also be
+calculated across all of them at once. See
 [Reliability statistics](./annotation.md#help-annotation-reliability).
 
 <h3 id="help-glossary-keyword">Keyword analysis and log-likelihood</h3>

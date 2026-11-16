@@ -33,7 +33,11 @@ import {
 } from '@/features/views/common/columnComparisonModel';
 import { MetadataColumnSelector } from '@/features/views/common/components/MetadataColumnSelector';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
-import { useFullColumnComparisons } from '@/features/views/common/hooks/useFullColumnComparisons';
+import {
+  useCodeCombinations,
+  useFullColumnComparisons,
+} from '@/features/views/common/hooks/useFullColumnComparisons';
+import { MultiCoderAlphaBadge } from './MultiCoderAlphaBadge';
 import { type ServerColumnDef, useServerTable } from '@/features/views/common/hooks/useServerTable';
 import {
   annotationValuesDiffer,
@@ -228,6 +232,19 @@ export function RunAllReviewTable({
     comparisonColumns: activeComparisonColumns,
     classOptions,
   });
+  // With Alpha chosen and two or more comparisons, the annotation column shows
+  // Alpha across every coder (Chao, 16 Nov 2026).
+  const coderColumns = [comparisonColumn, ...activeComparisonColumns];
+  const showMultiCoderAlpha =
+    reliabilityMetric === 'krippendorffs_alpha' && activeComparisonColumns.length >= 2;
+  const codeCombinations = useCodeCombinations({
+    workspaceId,
+    nodeIds: [nodeId],
+    sql,
+    columns: coderColumns,
+    classOptions,
+    enabled: showMultiCoderAlpha,
+  });
   const comparisonQueryByColumn = new Map(
     activeComparisonColumns.map((column, index) => [column, comparisonQueries[index]]),
   );
@@ -414,18 +431,29 @@ export function RunAllReviewTable({
                           className={column === textColumn ? undefined : 'w-px whitespace-nowrap'}
                         >
                           {column === comparisonColumn ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <span>{column}</span>
-                              <AnnotationColumnFilterMenu
-                                column={column}
-                                value={filterValueFor(column)}
-                                onChange={(value) => {
-                                  setColumnFilter(column, value);
-                                }}
-                                differsLabel="Differs from any comparison column"
-                                differsDisabled={activeComparisonColumns.length === 0}
-                                differsDisabledReason="Select a Compare to column first"
-                              />
+                            <span className="inline-flex flex-col items-start gap-1">
+                              {showMultiCoderAlpha ? (
+                                <MultiCoderAlphaBadge
+                                  columns={coderColumns}
+                                  combinations={codeCombinations.data}
+                                  scale={scale}
+                                  isLoading={codeCombinations.isLoading}
+                                  isError={codeCombinations.isError}
+                                />
+                              ) : null}
+                              <span className="inline-flex items-center gap-1.5">
+                                <span>{column}</span>
+                                <AnnotationColumnFilterMenu
+                                  column={column}
+                                  value={filterValueFor(column)}
+                                  onChange={(value) => {
+                                    setColumnFilter(column, value);
+                                  }}
+                                  differsLabel="Differs from any comparison column"
+                                  differsDisabled={activeComparisonColumns.length === 0}
+                                  differsDisabledReason="Select a Compare to column first"
+                                />
+                              </span>
                             </span>
                           ) : activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
