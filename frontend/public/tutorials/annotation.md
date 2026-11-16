@@ -19,9 +19,10 @@ either directly or with predictions from a configured AI provider.
 3. Under **Codebook**, add a Data Block and map its code and description
    columns. Use **Create new** when you need an empty Codebook, then click
    **Edit** beside **Codes** to add, rename, or remove codes and their
-   descriptions before labelling. Drag a code by its grip to change the
-   order; the code lists and the Codes card follow it. The [AI Code Designer](#help-annotation-code-designer)
-   can draft a first set of codes for you.
+   descriptions before labelling. Drag a code by its grip to change the order;
+   the code lists and the Codes card follow it. The
+   [AI Code Designer](#help-annotation-code-designer) can draft a first set of
+   codes for you.
 
    ![Edit codebook dialog with three codes](tutorials/assets/annotation/edit_codebook.png)
 
@@ -125,10 +126,10 @@ level: it is not above the highest level or below the lowest. Mark it with the
 **Outside the scale** button (a crossed circle) beside it: the button turns
 orange and the code moves under the heading "Outside the scale: the codes
 below are not levels". Every code under that heading is outside the scale;
-every code above it is a level. Dragging a code among the codes outside the scale takes it off the
-scale, and dragging it among the levels makes it a level. Keep one
-such code, as categories keep Other: an empty label means "not coded yet", so a
-text the scale doesn't fit needs a code of its own.
+every code above it is a level. Dragging a code among the codes outside the
+scale takes it off the scale, and dragging it among the levels makes it a
+level. Keep one such code, as categories keep Other: an empty label means "not
+coded yet", so a text the scale doesn't fit needs a code of its own.
 
 In the Codebook Data Block the setting is one row named `__scale__`: the codes
 above it are the levels, in order, and the codes below it are outside the
@@ -140,20 +141,10 @@ With an ordered scale:
   against the other texts sent with it, and gives a text the scale doesn't fit
   a code outside the scale. Examples whose label is not in the Codebook are not
   sent.
-- **Compare to** counts a near miss as a smaller disagreement than a far one:
-  **Cohen's Kappa** is weighted (quadratic weights, shown as κw) and
-  **Krippendorff's Alpha** uses the ordinal distance (shown as αo). A code
-  outside the scale is not near any level: against a level it counts as much
-  as the lowest against the highest level. Percent Agreement still counts exact
-  matches only. The confusion matrix lists the levels in scale order, then the
-  codes outside the scale, and shades each disagreement in orange by how far
-  apart the two codes are: the farther apart, the darker. The first line of the score's
-  tooltip names the method, so a scale score and a category score can't be
-  mistaken for each other. Turning the scale on or off changes the statistics
-  of earlier Previews and Runs too, as long as the Codebook still has the same
-  codes. The AI labels themselves don't change: a Run made before the scale was
-  turned on was asked to classify, not to rate, so run it again to have the
-  texts rated on the scale.
+- **Compare to** uses weighted Kappa and ordinal Alpha, which count a near
+  miss as a smaller disagreement than a far one, and shades the confusion
+  matrix by how far apart the codes are. See
+  [Reliability statistics](#help-annotation-reliability).
 - Write each level so it can be judged from one text alone. Wording such as
   "more than usual" or "above average" asks the model to compare texts it
   cannot see, and the same text can then get different levels in different
@@ -180,16 +171,61 @@ open Manual snapshot.
 
 Use **Compare to** to add another coder or model. Each comparison starts masked
 as `•••` so you can code without seeing how individual rows were coded. Its
-header always shows the reliability score (hover or focus it for the confusion
-matrix, with agreement down its diagonal in green) and the row-filter menu; reveal the column from the eye button to show
-its values and difference colours. Removing the filtered column clears the
-filter; hiding it does not. Reliability statistics summarise agreement but do
-not explain why labels differ. Choose the statistic at the top of the **Compare
-to** list: **Percent Agreement**, **Cohen's Kappa** (the default), or
-**Krippendorff's Alpha**. With an [ordered scale](#help-annotation-scale),
-Kappa is weighted and Alpha ordinal.
+header always shows the reliability score (hover or focus it for the method
+and the confusion matrix) and the row-filter menu; reveal the column from the
+eye button to show its values and difference colours. Removing the filtered
+column clears the filter; hiding it does not. Choose the statistic at the top
+of the **Compare to** list; see
+[Reliability statistics](#help-annotation-reliability).
 
 ![Compare to list with the reliability statistic and the columns to compare](tutorials/assets/annotation/compare_to_menu.png)
+
+<h3 id="help-annotation-reliability">Reliability statistics</h3>
+
+The score in each comparison header says how well the two columns agree,
+counting only rows where both hold a Codebook code. Reliability statistics
+summarise agreement but do not explain why labels differ: read the
+disagreeing rows too.
+
+- **Percent Agreement** (%): the share of rows where both columns hold the same
+  code. It is easy to read, but two coders who guess still agree some of the
+  time.
+- **Cohen's Kappa** (κ, the default): agreement corrected for the agreement
+  chance alone would give. 1 is perfect agreement, 0 is no better than chance,
+  and below 0 is worse than chance.
+- **Krippendorff's Alpha** (α): another chance-corrected measure, widely used
+  in content analysis. It reads like Kappa. As a rough guide, Krippendorff
+  suggests relying on data with an Alpha of 0.8 or more, and drawing only
+  tentative conclusions from 0.667 to 0.8.
+
+With an [ordered scale](#help-annotation-scale), rating a text Medium rather
+than High is a smaller disagreement than Low rather than High, so Kappa and
+Alpha take the distance into account:
+
+- **Weighted Kappa** (shown as κw) gives partial credit for a near miss. A
+  disagreement costs the square of its distance in levels (quadratic weights):
+  on a five-level scale, one level apart costs a sixteenth of the two ends.
+- **Ordinal Alpha** (shown as αo) uses Krippendorff's ordinal distance, which
+  also counts how many coded texts lie between the two levels.
+- A code outside the scale, such as Not applicable, is not near any level:
+  against a level it costs as much as the two ends of the scale.
+- Percent Agreement still counts exact matches only.
+
+The first line of the score's tooltip names the method, such as "Weighted
+Cohen's Kappa on an ordered scale" or "Cohen's Kappa on categories", so the two
+can't be mistaken for each other. Turning the scale on or off changes the
+statistics of earlier Previews and Runs too, as long as the Codebook still has
+the same codes. The AI labels themselves don't change: a Run made before the
+scale was turned on was asked to classify, not to rate, so run it again to
+have the texts rated on the scale.
+
+In the confusion matrix, rows are the column you compare against and columns
+are the comparison. Agreement runs down the diagonal in green. On a scale, the
+levels come in scale order, then the codes outside the scale, and each
+disagreement is shaded orange by how far apart the two codes are: the farther
+apart, the darker.
+
+![Confusion matrix of an ordered scale: agreement in green down the diagonal, and disagreements shaded orange by distance on the scale](tutorials/assets/annotation/scale_confusion_matrix.png)
 
 The funnel button in the annotation column header and in each comparison header
 opens a filter menu with two independent conditions: **Differs** and a value
