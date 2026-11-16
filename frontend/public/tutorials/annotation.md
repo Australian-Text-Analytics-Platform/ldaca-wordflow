@@ -228,6 +228,27 @@ columns, and metadata. Comparison values stay
 hidden until you reveal that column, and the viewer is read-only; use
 **Previous** and **Next** to move between rows.
 
+<h3 id="help-annotation-table-toolbar">The table toolbar</h3>
+
+The Manual, Preview and Review tables share one toolbar above the table. Hover
+over or focus a control to see what it does; the question mark at the end of
+the toolbar opens this section.
+
+- **Compare to** adds other coders' or models' columns, each masked until you
+  reveal it, and chooses the reliability statistic. See
+  [Reliability statistics](#help-annotation-reliability).
+- **Correction** chooses a column for your corrections, kept apart from the
+  annotation column; **Create new…** makes one. Your corrections are written
+  there as Data Block Edits.
+- **Use as example** makes this Data Block, with the correction column as its
+  codes, the Example Data Block for AI annotation, and turns on **Advanced**.
+  See [AI workflow](#help-annotation-ai).
+- **Show metadata** shows more of the Data Block's columns beside the codes,
+  for context. A column can be compared or shown as metadata, not both.
+- The **download** button saves the annotated Data Block as CSV or Excel. See
+  [Results, Clear, and Undo](#help-annotation-results). Preview has no
+  download, as nothing is written until Run.
+
 <h3 id="help-annotation-reliability">Reliability statistics</h3>
 
 The score in each comparison header says how well the two columns agree,

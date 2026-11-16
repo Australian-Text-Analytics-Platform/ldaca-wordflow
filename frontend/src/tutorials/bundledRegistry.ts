@@ -571,6 +571,11 @@ const tutorial = {
     anchor: 'help-annotation-scale',
     label: 'Ordered scales',
   },
+  'analysis.annotation.table-toolbar': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-table-toolbar',
+    label: 'The table toolbar',
+  },
   'analysis.annotation.manual': {
     file: 'tutorials/annotation.md',
     anchor: 'help-annotation-manual',

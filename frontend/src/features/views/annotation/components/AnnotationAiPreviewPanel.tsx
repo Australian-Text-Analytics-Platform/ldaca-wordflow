@@ -347,6 +347,12 @@ export function AnnotationAiPreviewPanel({
             onSelectedColumnsChange={metadata.onColumnsChange}
             disabledColumns={activeComparisonColumns}
           />
+          {/* One help icon for the whole toolbar (Chao's one-per-row rule). */}
+          <HelpIcon
+            targetKey="analysis.annotation.table-toolbar"
+            label="About the table toolbar"
+            tooltip="What Compare to, Correction, Use as example, Show metadata and download do."
+          />
         </div>
       </div>
       <AnnotationTableFrame

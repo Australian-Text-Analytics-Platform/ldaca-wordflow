@@ -1,7 +1,6 @@
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { type ReactNode, useContext, useEffect, useRef, useState } from 'react';
 
-import HelpIcon from '@/components/help/HelpIcon';
 import { ResizeHandle } from '@/components/layout/ResizeHandle';
 import { Button } from '@/components/ui/button';
 import { AnalysisTabTitleContext } from '@/features/views/common/tabs/analysisTabTitleContext';
@@ -63,7 +62,7 @@ export interface AnalysisSplitLayoutProps {
  * natural height. The handle appears only once the results pane has content.
  * Main tables and lists use `useResultsFill` to take the results pane's spare
  * height, so the handle resizes them too.
- * Maximise results, beside the handle's help icon, gives the results the
+ * Maximise results, at the right end of the handle, gives the results the
  * whole window (Monika, Chao): the parameters and the handle are hidden, not
  * unmounted, under a bar that names the tool and tab and restores the
  * layout. The remembered parameters height is never changed by it. The
@@ -197,7 +196,7 @@ export function AnalysisSplitLayout({
           </Button>
         </div>
       ) : showHandle ? (
-        // The help icon floats at the right end so the handle keeps its height.
+        // Maximise floats at the right end so the handle keeps its height.
         <div className="relative my-1.5 shrink-0">
           <ResizeHandle
             orientation="horizontal"
@@ -256,12 +255,6 @@ export function AnalysisSplitLayout({
             >
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
-            <HelpIcon
-              targetKey="ui.analysis-layout"
-              label="About resizing parameters and results"
-              tooltip="Drag to share the height between parameters and results."
-              className="h-5 w-5 text-description"
-            />
           </div>
         </div>
       ) : null}

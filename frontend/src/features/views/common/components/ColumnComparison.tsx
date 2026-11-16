@@ -1,6 +1,8 @@
 import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -235,18 +237,28 @@ export function ColumnComparisonSelector({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={disabled || normalizedAvailableColumns.length === 0}
-          aria-label="Compare to"
-        >
-          Compare to ({normalizedSelectedColumns.length})
-          <ChevronDown className="ml-2 h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <DisabledReasonTooltip
+        reason={
+          !disabled && normalizedAvailableColumns.length === 0
+            ? 'There are no other columns to compare with.'
+            : undefined
+        }
+      >
+        <HintTooltip text="Compare this column with other coders or models, and choose the reliability statistic. Each comparison stays hidden until you reveal it.">
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled || normalizedAvailableColumns.length === 0}
+              aria-label="Compare to"
+            >
+              Compare to ({normalizedSelectedColumns.length})
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+        </HintTooltip>
+      </DisabledReasonTooltip>
       <DropdownMenuContent align="end" className={COLUMN_MENU_CLASS}>
         <DropdownMenuLabel>Intercoder reliability</DropdownMenuLabel>
         <DropdownMenuRadioGroup

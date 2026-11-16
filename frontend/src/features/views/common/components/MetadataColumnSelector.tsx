@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { normalizeMetadataColumns } from './metadataColumnSelection';
 import {
   COLUMN_MENU_CLASS as MENU_CLASS,
@@ -141,18 +142,20 @@ export function MetadataColumnSelector({
         }}
       >
         <DisabledReasonTooltip reason={triggerDisabled ? disabledReason : undefined}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={triggerDisabled}
-              aria-label="Show metadata"
-            >
-              Show metadata ({normalizedSelectedColumns.length})
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
+          <HintTooltip text="Show more of the Data Block's columns beside the results, for context.">
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={triggerDisabled}
+                aria-label="Show metadata"
+              >
+                Show metadata ({normalizedSelectedColumns.length})
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+          </HintTooltip>
         </DisabledReasonTooltip>
         <DropdownMenuContent ref={measureMenu} align="start" className={MENU_CLASS}>
           {showFilter ? (

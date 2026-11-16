@@ -377,4 +377,36 @@ describe('ColumnComparison', () => {
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'Select all' }));
     expect(onSelectedColumnsChange).toHaveBeenCalledWith(['review']);
   });
+
+  it('explains Compare to on hover, and says why it waits without columns', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ColumnComparisonSelector
+        availableColumns={['review']}
+        selectedColumns={[]}
+        onSelectedColumnsChange={vi.fn()}
+        metric="cohens_kappa"
+        onMetricChange={vi.fn()}
+      />,
+    );
+    await user.hover(screen.getByRole('button', { name: 'Compare to' }));
+    expect(
+      (await screen.findAllByText(/Compare this column with other coders or models/))[0],
+    ).toBeInTheDocument();
+
+    rerender(
+      <ColumnComparisonSelector
+        availableColumns={[]}
+        selectedColumns={[]}
+        onSelectedColumnsChange={vi.fn()}
+        metric="cohens_kappa"
+        onMetricChange={vi.fn()}
+      />,
+    );
+    // The disabled button's wrapper takes focus and shows why it waits.
+    await user.tab();
+    expect(
+      (await screen.findAllByText('There are no other columns to compare with.'))[0],
+    ).toBeInTheDocument();
+  });
 });

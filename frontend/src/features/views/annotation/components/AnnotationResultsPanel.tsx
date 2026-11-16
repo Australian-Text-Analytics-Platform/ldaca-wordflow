@@ -426,6 +426,12 @@ export function AnnotationResultsPanel({
                 label="Annotation table"
               />
             ) : null}
+            {/* One help icon for the whole toolbar (Chao's one-per-row rule). */}
+            <HelpIcon
+              targetKey="analysis.annotation.table-toolbar"
+              label="About the table toolbar"
+              tooltip="What Compare to, Correction, Use as example, Show metadata and download do."
+            />
           </div>
         ) : null}
       </div>
