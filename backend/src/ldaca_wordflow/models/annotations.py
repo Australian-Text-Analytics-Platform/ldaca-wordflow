@@ -65,6 +65,9 @@ class CodebookDraftRequest(AnnotationProviderSnapshot):
     brief: NonEmptyText = Field(max_length=4_000)
     task_context: str = Field(default="", max_length=TASK_CONTEXT_MAX_CHARS)
     max_classes: int = Field(default=3, ge=2, le=10)
+    # Design an ordered scale (levels from the lowest to the highest, no
+    # Other) instead of categories; max_classes is then the most levels.
+    scale: bool = False
     sample_size: int = Field(default=100, ge=20, le=300)
     sample_seed: int = Field(default=0, ge=0, le=2**31 - 1)
     reasoning_effort: CodebookDesignerEffort = "high"

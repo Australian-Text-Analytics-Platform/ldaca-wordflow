@@ -23,9 +23,10 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import {
@@ -43,12 +44,7 @@ import {
   resolveCode,
   withoutRepeatedRows,
 } from '../codebookChecks';
-import {
-  isTaskContextCode,
-  TASK_CONTEXT_CODE,
-  TASK_CONTEXT_MAX_CHARS,
-  withTaskContext,
-} from '../taskContext';
+import { isReservedCodebookCode, TASK_CONTEXT_MAX_CHARS, withCodebookRows } from '../taskContext';
 import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
 import { type CodeDesignerSettings, codebookSignature } from '../codebookDesigner';
 import { codebookDraftKey, useCodebookDraftStore } from '../codebookDraftStore';
@@ -150,20 +146,28 @@ export function AnnotationClassDescriptionsEditor({
   const editorRows = draft?.rows ?? normalizeClassDescriptionRows(savedRows);
   const savedTaskContext = classDescriptions.taskContext.trim();
   const editorTaskContext = draft?.taskContext ?? classDescriptions.taskContext;
+  const savedScale = classDescriptions.scale;
+  const editorScale = draft?.scale ?? savedScale;
   const savedSignature = codebookSignature(savedRows);
-  // Changes worth keeping: different codes or a different Task context.
+  // Changes worth keeping: different codes, Task context or scale setting.
   const dirty =
     draft !== undefined &&
     (codebookSignature(draft.rows) !== savedSignature ||
-      draft.taskContext.trim() !== savedTaskContext);
+      draft.taskContext.trim() !== savedTaskContext ||
+      draft.scale !== savedScale);
   const isAiDraft =
     dirty &&
     draft.designedSignature !== null &&
     codebookSignature(draft.rows) === draft.designedSignature;
-  const writeDraft = (patch: { rows?: AnnotationClassDescriptionRow[]; taskContext?: string }) => {
+  const writeDraft = (patch: {
+    rows?: AnnotationClassDescriptionRow[];
+    taskContext?: string;
+    scale?: boolean;
+  }) => {
     setDraft(draftKey, {
       rows: patch.rows ?? editorRows,
       taskContext: patch.taskContext ?? editorTaskContext,
+      scale: patch.scale ?? editorScale,
       designedSignature: draft?.designedSignature ?? null,
     });
   };
@@ -196,6 +200,17 @@ export function AnnotationClassDescriptionsEditor({
     writeDraft({ rows: editorRows.filter((_, index) => index !== rowIndex) });
   };
 
+  // On a scale the row order is the level order, lowest first.
+  const handleMoveClass = (rowIndex: number, offset: -1 | 1) => {
+    const target = rowIndex + offset;
+    if (target < 0 || target >= editorRows.length) return;
+    const rows = [...editorRows];
+    const [moved] = rows.splice(rowIndex, 1);
+    if (!moved) return;
+    rows.splice(target, 0, moved);
+    writeDraft({ rows });
+  };
+
   // Closing (×, Esc, a click outside) keeps unsaved changes for later.
   const handleOpenChange = (open: boolean) => {
     if (!open && !dirty) clearDraft(draftKey);
@@ -224,8 +239,9 @@ export function AnnotationClassDescriptionsEditor({
       toast.error('Every annotation code needs a name.');
       return;
     }
-    if (normalized.some((row) => isTaskContextCode(row.class))) {
-      toast.error(`“${TASK_CONTEXT_CODE}” is reserved for the Task context. Rename that code.`);
+    const reserved = normalized.find((row) => isReservedCodebookCode(row.class));
+    if (reserved) {
+      toast.error(`“${reserved.class}” is reserved for the codebook's settings. Rename that code.`);
       return;
     }
     const uniqueNames = new Set(normalized.map((row) => codeKey(row.class)));
@@ -239,7 +255,7 @@ export function AnnotationClassDescriptionsEditor({
         nodeId,
         classColumn,
         descriptionColumn,
-        withTaskContext(normalized, editorTaskContext),
+        withCodebookRows(normalized, { taskContext: editorTaskContext, scale: editorScale }),
       );
       if (designer) {
         // Saving the AI draft as it came keeps the brief in step; codes
@@ -325,10 +341,30 @@ export function AnnotationClassDescriptionsEditor({
                 Add, rename, or remove annotation codes and their descriptions.
               </DialogDescription>
             </DialogHeader>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="codebook-scale"
+                  checked={editorScale}
+                  disabled={isSaving}
+                  onCheckedChange={(checked) => {
+                    writeDraft({ scale: checked });
+                  }}
+                  aria-describedby="codebook-scale-note"
+                />
+                <Label htmlFor="codebook-scale">Ordered scale</Label>
+              </div>
+              <p id="codebook-scale-note" className="text-label-secondary text-description">
+                {editorScale
+                  ? 'The codes are levels, from the lowest (top) to the highest (bottom). The AI rates each text against the level definitions, texts the scale doesn’t fit stay empty, and Compare to uses weighted Kappa and ordinal Alpha.'
+                  : 'Turn on when the codes are levels from low to high, such as a rating, rather than separate categories.'}
+              </p>
+            </div>
             {designer ? (
               <CodeDesignerBrief
                 settings={designer.settings}
                 onSettingsChange={designer.onSettingsChange}
+                scale={editorScale}
                 disabled={isSaving}
                 blockedReason={
                   designer.source
@@ -366,9 +402,9 @@ export function AnnotationClassDescriptionsEditor({
                 editorRows.map((row, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <Input
-                      aria-label={`Code ${String(index + 1)}`}
+                      aria-label={`${editorScale ? 'Level' : 'Code'} ${String(index + 1)}`}
                       value={row.class}
-                      placeholder="Code"
+                      placeholder={editorScale ? 'Level' : 'Code'}
                       data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
                       className={cn('w-1/3', draftCheck.rowsToMark.has(index) && 'border-warning')}
                       disabled={false}
@@ -391,6 +427,36 @@ export function AnnotationClassDescriptionsEditor({
                         updateDraftCell(index, 'description', event.target.value);
                       }}
                     />
+                    {editorScale ? (
+                      <div className="flex shrink-0 flex-col">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-7 text-description"
+                          aria-label={`Move level ${String(index + 1)} toward the lowest`}
+                          disabled={index === 0}
+                          onClick={() => {
+                            handleMoveClass(index, -1);
+                          }}
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-7 text-description"
+                          aria-label={`Move level ${String(index + 1)} toward the highest`}
+                          disabled={index === editorRows.length - 1}
+                          onClick={() => {
+                            handleMoveClass(index, 1);
+                          }}
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    ) : null}
                     <Button
                       type="button"
                       variant="ghost"
@@ -522,7 +588,7 @@ export function AnnotationClassDescriptionsEditor({
             <AlertDialogDescription>
               {isAiDraft
                 ? "The AI Code Designer's draft hasn't been saved. Discarding it can't be undone."
-                : "Your changes to the codes and Task context haven't been saved. Discarding them can't be undone."}
+                : "Your changes to the codes, scale setting and Task context haven't been saved. Discarding them can't be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -576,11 +642,13 @@ export function AnnotationClassDescriptionsEditor({
           source={{ workspaceId, ...designer.source }}
           brief={designer.settings.brief}
           taskContext={editorTaskContext}
+          scale={editorScale}
           onDraft={(codes) => {
             const rows = codes.map((code) => ({ class: code.name, description: code.definition }));
             setDraft(draftKey, {
               rows,
               taskContext: editorTaskContext,
+              scale: editorScale,
               designedSignature: codebookSignature(rows),
             });
             toast.success('AI draft ready. Review the codes, then Save.');
@@ -601,6 +669,12 @@ export function AnnotationClassDescriptionsEditor({
         </p>
       ) : null}
 
+      {savedScale ? (
+        <p className="text-label-secondary text-description" data-testid="codebook-scale-note">
+          <span className="font-medium text-foreground">Ordered scale:</span> levels from the lowest
+          to the highest, in this order.
+        </p>
+      ) : null}
       {savedTaskContext ? (
         <p className="line-clamp-2 text-label-secondary text-description" title={savedTaskContext}>
           <span className="font-medium text-foreground">Task context:</span> {savedTaskContext}

@@ -124,8 +124,14 @@ def build_annotation_system_prompt(
     classes: list[AnnotationClass],
     examples: list[AnnotationExample] | None = None,
     task_context: str = "",
+    scale: bool = False,
 ) -> str:
-    """Assemble the instruction, Task context, classes, examples, and strict JSON contract."""
+    """Assemble the instruction, Task context, classes, examples, and strict JSON contract.
+
+    With ``scale`` the classes are the levels of an ordered scale, lowest
+    first: each text is judged against the level definitions on its own, not
+    against the other texts in its batch, and examples cannot add labels.
+    """
 
     class_lines = "\n".join(
         f"- {option.name}: {option.description.strip()}"
@@ -142,12 +148,29 @@ def build_annotation_system_prompt(
         "The batch and JSON response rules below take precedence over any conflicting "
         "response-format wording in the instruction.",
         "",
-        "Classify each input text into exactly one of these classes:",
-        class_lines,
-        "",
-        "Rules:",
-        "- Use the exact class name shown above for each text.",
-        "- If no class applies, use null.",
+    ]
+    if scale:
+        parts += [
+            "Rate each input text on this ordered scale. The levels run from the "
+            "lowest (first) to the highest (last):",
+            class_lines,
+            "",
+            "Rules:",
+            "- Use the exact level name shown above for each text.",
+            "- Judge each text against the level definitions on its own, not against "
+            "the other texts in this batch.",
+            "- If the scale does not apply to a text, use null.",
+        ]
+    else:
+        parts += [
+            "Classify each input text into exactly one of these classes:",
+            class_lines,
+            "",
+            "Rules:",
+            "- Use the exact class name shown above for each text.",
+            "- If no class applies, use null.",
+        ]
+    parts += [
         '- Respond with ONLY a JSON object of the form {"labels": [...]} containing one',
         "  entry per input text, in the same order. No prose, no markdown.",
     ]
@@ -155,7 +178,9 @@ def build_annotation_system_prompt(
         parts.extend(
             [
                 "",
-                "Examples (labels are authoritative and may extend the class list):",
+                "Examples (labels are authoritative):"
+                if scale
+                else "Examples (labels are authoritative and may extend the class list):",
                 json.dumps(
                     [
                         {"text": example.text, "label": example.label}
@@ -271,6 +296,28 @@ def align_labels(content: str, count: int, class_names: list[str]) -> list[str |
     return result
 
 
+def _known_labels(
+    classes: list[AnnotationClass], examples: list[AnnotationExample] | None
+) -> list[str]:
+    """The labels an answer may use: the classes, then labels the examples add."""
+
+    labels = [option.name for option in classes]
+    if examples is not None:
+        labels.extend(example.label for example in examples)
+    return labels
+
+
+def _scale_examples(
+    source: AnnotationAnalysisRequest, examples: list[AnnotationExample] | None
+) -> list[AnnotationExample] | None:
+    """On an ordered scale, only examples labelled with one of its levels."""
+
+    if not source.scale or examples is None:
+        return examples
+    levels = {option.name for option in source.classes}
+    return [example for example in examples if example.label in levels]
+
+
 def _inference_config(request: AnnotationAnalysisRequest) -> InferenceConfig:
     return InferenceConfig(
         temperature=request.temperature,
@@ -291,16 +338,17 @@ async def _annotate_batch(
     examples: list[AnnotationExample] | None = None,
     *,
     task_context: str = "",
+    scale: bool = False,
 ) -> list[str | None]:
     """Classify one batch with shared prompt, retry, and label policy."""
 
     if not texts:
         return []
-    system = build_annotation_system_prompt(instruction, classes, examples, task_context)
+    system = build_annotation_system_prompt(
+        instruction, classes, examples, task_context, scale
+    )
     user = build_annotation_user_prompt(texts)
-    known_labels = [option.name for option in classes]
-    if examples is not None:
-        known_labels.extend(example.label for example in examples)
+    known_labels = _known_labels(classes, examples)
     config = replace(
         config, labels_schema=build_labels_schema(known_labels, len(texts))
     )
@@ -343,12 +391,14 @@ async def _token_budget(
             window = await lookup(source.model, api_key)
         except Exception:  # noqa: BLE001 - a missing window must never stop a Run
             window = None
-    known_labels = [option.name for option in source.classes]
-    if examples is not None:
-        known_labels.extend(example.label for example in examples)
+    known_labels = _known_labels(source.classes, examples)
     overhead = estimate_tokens(
         build_annotation_system_prompt(
-            source.instruction, source.classes, examples, source.task_context
+            source.instruction,
+            source.classes,
+            examples,
+            source.task_context,
+            source.scale,
         )
     ) + estimate_tokens(json.dumps(build_labels_schema(known_labels, 1)))
     return TokenBudget(
@@ -381,6 +431,7 @@ async def _annotate_texts(
     adapter = resolve_provider_adapter(
         source.provider, source.provider_base_url, source.provider_configuration_id
     )
+    examples = _scale_examples(source, examples)
     config = _inference_config(source)
     budget = await _token_budget(adapter, source, api_key, examples, config)
     planner = BatchPlanner(texts, batch_size, budget)
@@ -465,6 +516,7 @@ async def _annotate_texts(
                 source.max_retries_per_batch,
                 examples,
                 task_context=source.task_context,
+                scale=source.scale,
             )
         except AnnotationAiError as error:
             refused_for_size = isinstance(error, AnnotationContextLimitError)

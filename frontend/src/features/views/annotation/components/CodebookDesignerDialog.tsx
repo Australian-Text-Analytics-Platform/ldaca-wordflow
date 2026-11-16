@@ -26,6 +26,7 @@ import { canListModels } from '../aiProviders';
 import {
   type CodeDesignerSettings,
   DEFAULT_CODEBOOK_DESIGNER_PROMPT,
+  DEFAULT_SCALE_DESIGNER_PROMPT,
   DESIGNER_EFFORTS,
   DESIGNER_SAMPLE_SIZE,
   type DesignerEffort,
@@ -57,6 +58,8 @@ interface CodebookDesignerDialogProps {
   source: CodebookDesignerSource;
   brief: string;
   taskContext: string;
+  /** Design an ordered scale (levels, lowest first, no "Other") instead of categories. */
+  scale: boolean;
   onDraft: (codes: { name: string; definition: string }[]) => void;
 }
 
@@ -82,6 +85,7 @@ export function CodebookDesignerDialog({
   source,
   brief,
   taskContext,
+  scale,
   onDraft,
 }: CodebookDesignerDialogProps) {
   const [advanced, setAdvanced] = useState(false);
@@ -109,7 +113,10 @@ export function CodebookDesignerDialog({
       : settings.providerConfigurationId === providerId && settings.model
         ? settings.model
         : (providerModels[providerId] ?? (providerId === fallbackProviderId ? fallbackModel : ''));
-  const systemPrompt = settings.systemPrompt || DEFAULT_CODEBOOK_DESIGNER_PROMPT;
+  // Categories and scales keep their own prompt, each with its own default.
+  const promptSetting = scale ? 'scaleSystemPrompt' : 'systemPrompt';
+  const defaultPrompt = scale ? DEFAULT_SCALE_DESIGNER_PROMPT : DEFAULT_CODEBOOK_DESIGNER_PROMPT;
+  const systemPrompt = settings[promptSetting] || defaultPrompt;
   const canStart = Boolean(provider && model.trim() && !running);
 
   // A running clock, so a slow model never looks stuck.
@@ -154,6 +161,7 @@ export function CodebookDesignerDialog({
         brief,
         task_context: taskContext,
         max_classes: settings.maxClasses,
+        scale,
         sample_size: settings.sampleSize,
         sample_seed: settings.sampleSeed,
         reasoning_effort: settings.effort,
@@ -219,8 +227,9 @@ export function CodebookDesignerDialog({
             )}
           </div>
           <DialogDescription>
-            Drafts up to {String(settings.maxClasses)} codes and an “Other” code from your brief and
-            a sample of your texts.
+            {scale
+              ? `Drafts an ordered scale of up to ${String(settings.maxClasses)} levels, from the lowest to the highest, from your brief and a sample of your texts.`
+              : `Drafts up to ${String(settings.maxClasses)} codes and an “Other” code from your brief and a sample of your texts.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -365,9 +374,9 @@ export function CodebookDesignerDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    disabled={!settings.systemPrompt}
+                    disabled={!settings[promptSetting]}
                     onClick={() => {
-                      onSettingsChange({ systemPrompt: '' });
+                      onSettingsChange({ [promptSetting]: '' });
                     }}
                   >
                     Restore default
@@ -381,13 +390,14 @@ export function CodebookDesignerDialog({
                   onChange={(event) => {
                     const value = event.target.value;
                     onSettingsChange({
-                      systemPrompt: value === DEFAULT_CODEBOOK_DESIGNER_PROMPT ? '' : value,
+                      [promptSetting]: value === defaultPrompt ? '' : value,
                     });
                   }}
                 />
                 <p className="text-label-secondary text-description">
-                  Wordflow adds the answer format after this prompt: a JSON list of codes, at most
-                  the maximum, then “Other”.
+                  {scale
+                    ? 'Wordflow adds the answer format after this prompt: a JSON list of levels from the lowest to the highest, at most the maximum, with no “Other”.'
+                    : 'Wordflow adds the answer format after this prompt: a JSON list of codes, at most the maximum, then “Other”.'}
                 </p>
               </div>
             ) : null}

@@ -89,6 +89,8 @@ interface RunAllReviewTableProps {
     disabled?: boolean;
   };
   rowCount: number;
+  /** The Run's codebook is an ordered scale (the classes are its levels, lowest first). */
+  scale?: boolean;
   /** Column order from dragged headers, and how to save a new one (issue 373). */
   columnOrder?: readonly string[];
   onReorderColumns?: (order: string[]) => void;
@@ -117,6 +119,7 @@ export function RunAllReviewTable({
   onComparisonColumnsChange,
   reliabilityMetric,
   onReliabilityMetricChange,
+  scale = false,
   metadataColumns,
   onMetadataColumnsChange,
   correction,
@@ -325,6 +328,7 @@ export function RunAllReviewTable({
               }}
               metric={reliabilityMetric}
               onMetricChange={onReliabilityMetricChange}
+              ordered={scale}
               disabledColumns={activeMetadataColumns}
             />
             <AnnotationCorrectionColumnControl
@@ -423,6 +427,7 @@ export function RunAllReviewTable({
                           ) : activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
                               metric={reliabilityMetric}
+                              scaleOrder={scale ? classOptions : null}
                               referenceColumn={comparisonColumn}
                               comparisonColumn={column}
                               rows={comparisonQueryByColumn.get(column)?.data}
@@ -470,6 +475,7 @@ export function RunAllReviewTable({
                           {activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
                               metric={reliabilityMetric}
+                              scaleOrder={scale ? classOptions : null}
                               referenceColumn={comparisonColumn}
                               comparisonColumn={column}
                               rows={comparisonQueryByColumn.get(column)?.data}

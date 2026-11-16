@@ -67,6 +67,8 @@ interface AnnotationAiPreviewPanelProps {
     onColumnsChange: (columns: string[]) => void;
     metric: IntercoderReliabilityMetric;
     onMetricChange: (metric: IntercoderReliabilityMetric) => void;
+    /** The Preview's codebook is an ordered scale (the classes are its levels, lowest first). */
+    scale?: boolean;
   };
   metadata: {
     columns: string[];
@@ -285,6 +287,7 @@ export function AnnotationAiPreviewPanel({
             }}
             metric={comparison.metric}
             onMetricChange={comparison.onMetricChange}
+            ordered={comparison.scale === true}
             disabled={predictions.query.isFetching || preview.comparison.query.isFetching}
             disabledColumns={activeMetadataColumns}
           />
@@ -420,6 +423,7 @@ export function AnnotationAiPreviewPanel({
                         {activeComparisonColumns.includes(column) ? (
                           <ColumnComparisonHeader
                             metric={comparison.metric}
+                            scaleOrder={comparison.scale ? classOptions : null}
                             referenceColumn={previewColumn}
                             comparisonColumn={column}
                             rows={comparisonRows.get(column)}

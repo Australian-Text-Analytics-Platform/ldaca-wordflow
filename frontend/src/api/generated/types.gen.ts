@@ -319,6 +319,10 @@ export type AnnotationAnalysisRequest = {
      */
     reasoning_enabled?: boolean;
     /**
+     * Scale
+     */
+    scale?: boolean;
+    /**
      * Task Context
      */
     task_context?: string;
@@ -426,6 +430,10 @@ export type AnnotationAnalysisSubmission = {
      * Reasoning Enabled
      */
     reasoning_enabled?: boolean;
+    /**
+     * Scale
+     */
+    scale?: boolean;
     /**
      * Task Context
      */
@@ -1550,6 +1558,10 @@ export type CodebookDraftRequest = {
      * Sample Size
      */
     sample_size?: number;
+    /**
+     * Scale
+     */
+    scale?: boolean;
     /**
      * System Prompt
      */
@@ -7658,6 +7670,10 @@ export type AnnotationAnalysisSubmissionWritable = {
      */
     reasoning_enabled?: boolean;
     /**
+     * Scale
+     */
+    scale?: boolean;
+    /**
      * Task Context
      */
     task_context?: string;
@@ -7893,6 +7909,10 @@ export type CodebookDraftRequestWritable = {
      * Sample Size
      */
     sample_size?: number;
+    /**
+     * Scale
+     */
+    scale?: boolean;
     /**
      * System Prompt
      */

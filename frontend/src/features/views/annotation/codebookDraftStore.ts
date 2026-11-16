@@ -13,6 +13,8 @@ import type { AnnotationClassDescriptionRow } from '@/api';
 interface CodebookEditorDraft {
   rows: AnnotationClassDescriptionRow[];
   taskContext: string;
+  /** The codes are levels of an ordered scale, lowest first. */
+  scale: boolean;
   /** The designer's codes, while the draft is still the AI draft. */
   designedSignature: string | null;
 }

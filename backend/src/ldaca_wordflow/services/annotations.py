@@ -181,19 +181,22 @@ class AnnotationService:
                     if request.reasoning_effort == "none"
                     else request.reasoning_effort
                 ),
-                labels_schema=codebook_schema(request.max_classes),
+                labels_schema=codebook_schema(
+                    request.max_classes, scale=request.scale
+                ),
             )
             content = await adapter.complete(
                 request.model,
                 api_key,
                 build_designer_system_prompt(
-                    request.system_prompt, request.max_classes
+                    request.system_prompt, request.max_classes, scale=request.scale
                 ),
                 build_designer_user_prompt(
                     brief=request.brief,
                     task_context=request.task_context,
                     max_classes=request.max_classes,
                     sample=sample,
+                    scale=request.scale,
                 ),
                 config,
             )
@@ -213,7 +216,9 @@ class AnnotationService:
 
         yield CodebookDraftStageEvent(stage="reading")
         try:
-            codes = parse_codebook_answer(content, request.max_classes)
+            codes = parse_codebook_answer(
+                content, request.max_classes, scale=request.scale
+            )
         except CodebookAnswerError as exc:
             yield CodebookDraftErrorEvent(
                 message=_DESIGNER_ANSWER_MESSAGE, detail=str(exc)

@@ -21,6 +21,7 @@ from pydantic import (
 
 from ...shared.json_data import JsonData
 from ..annotation import (
+    RESERVED_CODEBOOK_CODES,
     TASK_CONTEXT_CODE,
     TASK_CONTEXT_MAX_CHARS,
     AnnotationClass,
@@ -385,6 +386,10 @@ class _AnnotationInferenceFields(AnnotationProviderSnapshot):
         max_length=TASK_CONTEXT_MAX_CHARS,
         exclude_if=lambda value: value == "",
     )
+    # The codebook is an ordered scale (its __scale__ row): the classes are
+    # levels, lowest first. Left out of stored records when false, like
+    # task_context, so earlier versions still read Projects that don't use it.
+    scale: bool = Field(default=False, exclude_if=lambda value: value is False)
     temperature: float = Field(default=0.0, ge=0.0, le=2.0, allow_inf_nan=False)
     max_retries_per_batch: int = Field(default=2, ge=0, le=10)
     reasoning_enabled: bool = False
@@ -395,8 +400,9 @@ class _AnnotationInferenceFields(AnnotationProviderSnapshot):
         normalized = [item.name.casefold() for item in self.classes]
         if len(normalized) != len(set(normalized)):
             raise ValueError("Annotation class names must be unique")
-        if TASK_CONTEXT_CODE in normalized:
-            raise ValueError(f"{TASK_CONTEXT_CODE} is reserved for the Task context")
+        for reserved in RESERVED_CODEBOOK_CODES.intersection(normalized):
+            purpose = "the Task context" if reserved == TASK_CONTEXT_CODE else "the scale setting"
+            raise ValueError(f"{reserved} is reserved for {purpose}")
         if self.correction_column in {self.text_column, self.annotation_column}:
             raise ValueError(
                 "Annotation correction column must differ from text and annotation columns"

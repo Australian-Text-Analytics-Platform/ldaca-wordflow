@@ -38,6 +38,10 @@ either directly or with predictions from a configured AI provider.
    Codebook Data Block it is one row named `__task_context__`; that row is
    never a code.
 
+   Turn on **Ordered scale** when the codes are levels from low to high, such
+   as a rating, rather than separate categories. See
+   [Ordered scales](#help-annotation-scale).
+
    The Edit dialog keeps unsaved changes, whether typed or drafted by the AI
    Code Designer, until you choose **Save** or discard them. Closing the
    dialog, pressing Esc or switching to another tab or tool keeps them, and
@@ -53,7 +57,9 @@ either directly or with predictions from a configured AI provider.
 
 The AI Code Designer drafts a first Codebook for you to review and tune. It
 reads a sample of your texts and a short **Brief**, and suggests codes with
-definitions, plus a code named **Other** for texts that fit none of them. It
+definitions, plus a code named **Other** for texts that fit none of them. When
+**Ordered scale** is on, it drafts levels from the lowest to the highest
+instead, with no Other. It
 also shows how to describe a coding task to an AI model in plain language. It
 works in both Manual and AI mode, and it only drafts: the thinking and the
 checking stay with you.
@@ -63,7 +69,8 @@ checking stay with you.
    Task context, if you have one, is sent too as background. The Brief is kept
    with this tab on this computer and is never sent with annotation.
 2. Set **Maximum classes** (2 to 10, default 3). Other comes on top, so the
-   default gives at most four codes. The model may suggest fewer.
+   default gives at most four codes. The model may suggest fewer. For an
+   ordered scale this is **Maximum levels**, with nothing on top.
 3. Choose **AI Code Designer**. If the Codebook already has codes, a warning
    comes first: the draft replaces them, and starting a fresh Codebook with
    **Create new** keeps them. Choose **Continue** to go on.
@@ -76,7 +83,7 @@ checking stay with you.
    same texts. **Thinking effort** (default High; None turns thinking off)
    applies when the model supports thinking. Turn on **Advanced** at the top
    right to read or change the system prompt; **Restore default** brings back
-   Wordflow's.
+   Wordflow's. Categories and ordered scales each keep their own prompt.
 5. Choose **Design codebook**. The window stays open and shows what it is
    doing and for how long. Thinking models can take several minutes, and
    local models longer; **Stop** cancels the request. A request that runs
@@ -96,6 +103,37 @@ Once you change the codes by hand and save, the Brief turns grey and the
 designer waits: the Brief no longer describes your codes. You can still select
 and copy it, and editing it makes it the Brief for the next draft. Saving a
 draft exactly as the designer wrote it doesn't do this.
+
+<h3 id="help-annotation-scale">Ordered scales</h3>
+
+Some coding places each text on a scale, such as how urgent, how positive or
+how certain it is, rather than sorting it into categories. Turn on **Ordered
+scale** in the Edit dialog, and the codes become levels: the first is the
+lowest and the last the highest. Use the arrows beside each level to put them
+in order. In the Codebook Data Block the setting is one row named
+`__scale__`; deleting that row makes the codes categories again.
+
+With an ordered scale:
+
+- AI annotation rates each text against the level definitions on its own, not
+  against the other texts sent with it. A text the scale doesn't fit is left
+  empty. Examples whose label is not one of the levels are not sent.
+- **Compare to** counts a near miss as a smaller disagreement than a far one:
+  **Cohen's Kappa** is weighted (quadratic weights, shown as κw) and
+  **Krippendorff's Alpha** uses the ordinal distance (shown as αo). Percent
+  Agreement still counts exact matches only. The confusion matrix lists the
+  levels in scale order.
+- Write each level so it can be judged from one text alone. Wording such as
+  "more than usual" or "above average" asks the model to compare texts it
+  cannot see, and the same text can then get different levels in different
+  batches. Three to five levels are usually easier to apply consistently than
+  many fine steps.
+
+The annotation column stays text, so the levels sort alphabetically in tables
+and charts. To sort or plot them in scale order, duplicate the column in the
+Data Editor, change the copy's type to **Category**, and put the levels in
+order. Names that start with a number, such as "1 Low" and "2 Medium", already
+sort in scale order.
 
 <h2 id="help-annotation-manual">Manual workflow</h2>
 
@@ -117,7 +155,8 @@ its values and difference colours. Removing the filtered column clears the
 filter; hiding it does not. Reliability statistics summarise agreement but do
 not explain why labels differ. Choose the statistic at the top of the **Compare
 to** list: **Percent Agreement**, **Cohen's Kappa** (the default), or
-**Krippendorff's Alpha**.
+**Krippendorff's Alpha**. With an [ordered scale](#help-annotation-scale),
+Kappa is weighted and Alpha ordinal.
 
 ![Compare to list with the reliability statistic and the columns to compare](tutorials/assets/annotation/compare_to_menu.png)
 

@@ -18,6 +18,7 @@ import { AnnotationClassDescriptionsEditor } from '../AnnotationClassDescription
 const mocks = vi.hoisted(() => ({
   rows: [] as { class: string; description: string }[],
   taskContext: '',
+  scale: false,
   save: vi.fn(),
   run: vi.fn(),
 }));
@@ -29,6 +30,7 @@ vi.mock('../../hooks/useAnnotationClassDescriptions', () => ({
     canLoad: true,
     rows: mocks.rows,
     taskContext: mocks.taskContext,
+    scale: mocks.scale,
     query: { isError: false, isLoading: false },
   }),
 }));
@@ -115,6 +117,7 @@ describe('AI Code Designer in the Edit codebook window (Chao, 15 Nov 2026)', () 
   beforeEach(() => {
     mocks.rows = [];
     mocks.taskContext = '';
+    mocks.scale = false;
     mocks.save.mockReset().mockResolvedValue(undefined);
     mocks.run.mockReset();
     onSettingsChange.mockReset();
@@ -181,6 +184,47 @@ describe('AI Code Designer in the Edit codebook window (Chao, 15 Nov 2026)', () 
     expect(onSettingsChange).toHaveBeenCalledWith(
       expect.objectContaining({ briefStale: false, designedSignature: expect.any(String) }),
     );
+  });
+
+  it('designs an ordered scale when the codebook is a scale', async () => {
+    const user = userEvent.setup();
+    mocks.scale = true;
+    mocks.run.mockResolvedValue({
+      kind: 'draft',
+      codes: [
+        { name: '1 Low', definition: 'No time pressure.' },
+        { name: '2 High', definition: 'Asks for action today.' },
+      ],
+      sampled: 100,
+    } satisfies DesignerOutcome);
+    render(<Harness initial={{ brief: 'How urgent is the email?' }} />);
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const editor = screen.getByRole('dialog');
+    expect(within(editor).getByLabelText('Maximum levels')).toBeVisible();
+    expect(within(editor).queryByText('plus “Other”')).toBeNull();
+    await user.click(within(editor).getByRole('button', { name: 'AI Code Designer' }));
+
+    const designer = await screen.findByTestId('codebook-designer-dialog');
+    expect(designer).toHaveTextContent('Drafts an ordered scale of up to 3 levels');
+    await user.click(
+      within(designer).getByRole('switch', { name: "Show the designer's system prompt" }),
+    );
+    expect(
+      (within(designer).getByLabelText('System prompt') as HTMLTextAreaElement).value,
+    ).toContain('first-draft ordered scale');
+    await user.click(within(designer).getByRole('button', { name: 'Design codebook' }));
+
+    await waitFor(() => expect(screen.queryByTestId('codebook-designer-dialog')).toBeNull());
+    expect(mocks.run).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: expect.objectContaining({
+          scale: true,
+          system_prompt: expect.stringContaining('first-draft ordered scale'),
+        }),
+      }),
+    );
+    expect(within(editor).getByLabelText('Level 1')).toHaveValue('1 Low');
+    expect(within(editor).getByRole('switch', { name: 'Ordered scale' })).toBeChecked();
   });
 
   it('warns before replacing existing codes, and suggests a fresh codebook', async () => {

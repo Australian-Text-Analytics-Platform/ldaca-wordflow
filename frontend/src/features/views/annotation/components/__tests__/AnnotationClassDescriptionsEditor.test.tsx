@@ -6,6 +6,7 @@ import { AnnotationClassDescriptionsEditor } from '../AnnotationClassDescription
 const mocks = vi.hoisted(() => ({
   rows: [] as { class: string; description: string }[],
   taskContext: '',
+  scale: false,
   save: vi.fn(),
 }));
 
@@ -16,6 +17,7 @@ vi.mock('../../hooks/useAnnotationClassDescriptions', () => ({
     canLoad: true,
     rows: mocks.rows,
     taskContext: mocks.taskContext,
+    scale: mocks.scale,
     query: { isError: false, isLoading: false },
   }),
 }));
@@ -153,6 +155,76 @@ describe('AnnotationClassDescriptionsEditor Task context (issue 408)', () => {
   it('refuses a code named like the reserved row', async () => {
     const user = userEvent.setup();
     mocks.rows = [{ class: '__Task_Context__', description: '' }];
+    renderEditor();
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }));
+
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('AnnotationClassDescriptionsEditor ordered scale (Chao, 16 Nov 2026)', () => {
+  beforeEach(() => {
+    mocks.save.mockReset().mockResolvedValue(undefined);
+    mocks.rows = [
+      { class: 'High', description: 'Asks for action today' },
+      { class: 'Low', description: 'No time pressure' },
+    ];
+    mocks.taskContext = 'Support emails.';
+    mocks.scale = false;
+  });
+
+  it('turns the codes into levels, orders them and saves the scale row before the Task context', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    expect(screen.queryByTestId('codebook-scale-note')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).queryByRole('button', { name: /Move level/ })).toBeNull();
+    await user.click(within(dialog).getByRole('switch', { name: 'Ordered scale' }));
+    expect(within(dialog).getByTestId('codebook-unsaved-badge')).toBeVisible();
+    expect(
+      within(dialog).getByRole('button', { name: 'Move level 1 toward the lowest' }),
+    ).toBeDisabled();
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Move level 1 toward the highest' }),
+    );
+    expect(within(dialog).getByLabelText('Level 1')).toHaveValue('Low');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]?.[3]).toEqual([
+      { class: 'Low', description: 'No time pressure' },
+      { class: 'High', description: 'Asks for action today' },
+      { class: '__scale__', description: expect.stringContaining('Ordered scale') },
+      { class: '__task_context__', description: 'Support emails.' },
+    ]);
+  });
+
+  it('shows a saved scale on the card and drops the row when turned off', async () => {
+    const user = userEvent.setup();
+    mocks.scale = true;
+    renderEditor();
+    expect(screen.getByTestId('codebook-scale-note')).toHaveTextContent('Ordered scale:');
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('switch', { name: 'Ordered scale' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]?.[3]).toEqual([
+      { class: 'High', description: 'Asks for action today' },
+      { class: 'Low', description: 'No time pressure' },
+      { class: '__task_context__', description: 'Support emails.' },
+    ]);
+  });
+
+  it('refuses a code named like the scale row', async () => {
+    const user = userEvent.setup();
+    mocks.rows = [{ class: '__SCALE__', description: '' }];
     renderEditor();
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));

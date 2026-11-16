@@ -19,6 +19,8 @@ import {
   type IntercoderReliabilityMetric,
   calculateIntercoderReliability,
   formatIntercoderReliability,
+  intercoderReliabilityLabel,
+  intercoderReliabilitySymbol,
   isIntercoderReliabilityMetric,
 } from '@/features/views/common/columnComparisonModel';
 import { AnnotationColumnFilterMenu } from './AnnotationColumnFilterMenu';
@@ -41,6 +43,11 @@ interface ColumnComparisonHeaderProps {
   /** Row filter carried by this column; omitted by tables without server-side filtering. */
   filter?: AnnotationRowFilterValue;
   onFilterChange?: (filter: AnnotationRowFilterValue) => void;
+  /**
+   * The levels of an ordered-scale codebook, lowest first: Kappa is then
+   * weighted, Alpha ordinal, and the matrix follows the scale.
+   */
+  scaleOrder?: readonly string[] | null;
 }
 
 /**
@@ -62,15 +69,26 @@ export function ColumnComparisonHeader({
   onRevealedChange,
   filter,
   onFilterChange,
+  scaleOrder = null,
 }: ColumnComparisonHeaderProps) {
+  const ordered = Boolean(scaleOrder && scaleOrder.length > 0);
+  const scalePosition = new Map((scaleOrder ?? []).map((label, index) => [label, index] as const));
   const labels = Array.from(
     new Set((rows ?? []).flatMap((row) => [row.reference, row.comparison])),
-  ).toSorted((a, b) => a.localeCompare(b));
+  ).toSorted(
+    (a, b) =>
+      (scalePosition.get(a) ?? Infinity) - (scalePosition.get(b) ?? Infinity) || a.localeCompare(b),
+  );
   const countByPair = new Map(
     (rows ?? []).map((row) => [JSON.stringify([row.reference, row.comparison]), row.count]),
   );
-  const metricDefinition = INTERCODER_RELIABILITY_METRICS.find((option) => option.value === metric);
-  const reliability = rows ? calculateIntercoderReliability(rows, metric) : null;
+  const metricDefinition = {
+    label: intercoderReliabilityLabel(metric, ordered),
+    symbol: intercoderReliabilitySymbol(metric, ordered),
+  };
+  const reliability = rows
+    ? calculateIntercoderReliability(rows, metric, ordered ? scaleOrder : null)
+    : null;
   const accessibleScore =
     reliability == null
       ? null
@@ -78,15 +96,15 @@ export function ColumnComparisonHeader({
         ? `${(reliability * 100).toFixed(1)}%`
         : reliability.toFixed(3);
   const score = isLoading
-    ? `${metricDefinition?.symbol ?? ''} …`
+    ? `${metricDefinition.symbol} …`
     : reliability == null
-      ? `${metricDefinition?.symbol ?? ''} —`
-      : formatIntercoderReliability(reliability, metric);
+      ? `${metricDefinition.symbol} —`
+      : formatIntercoderReliability(reliability, metric, ordered);
   const scoreDescription = isLoading
-    ? `${metricDefinition?.label ?? ''} loading for ${referenceColumn} versus ${comparisonColumn}`
+    ? `${metricDefinition.label} loading for ${referenceColumn} versus ${comparisonColumn}`
     : isError || !rows || reliability == null
-      ? `${metricDefinition?.label ?? ''} unavailable for ${referenceColumn} versus ${comparisonColumn}`
-      : `${metricDefinition?.label ?? ''} ${accessibleScore ?? ''} for ${referenceColumn} versus ${comparisonColumn}`;
+      ? `${metricDefinition.label} unavailable for ${referenceColumn} versus ${comparisonColumn}`
+      : `${metricDefinition.label} ${accessibleScore ?? ''} for ${referenceColumn} versus ${comparisonColumn}`;
 
   return (
     <span className="inline-flex flex-col items-start gap-1">
@@ -218,6 +236,8 @@ interface ColumnComparisonSelectorProps {
   onMetricChange: (metric: IntercoderReliabilityMetric) => void;
   disabledColumns?: string[];
   disabled?: boolean;
+  /** An ordered-scale codebook: the menu names weighted Kappa and ordinal Alpha. */
+  ordered?: boolean;
 }
 
 /**
@@ -233,6 +253,7 @@ export function ColumnComparisonSelector({
   onMetricChange,
   disabledColumns = [],
   disabled = false,
+  ordered = false,
 }: ColumnComparisonSelectorProps) {
   const normalizedAvailableColumns = Array.from(new Set(availableColumns));
   const normalizedSelectedColumns = selectedColumns.filter((column) =>
@@ -284,7 +305,7 @@ export function ColumnComparisonSelector({
                 event.preventDefault();
               }}
             >
-              {option.label}
+              {intercoderReliabilityLabel(option.value, ordered)}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

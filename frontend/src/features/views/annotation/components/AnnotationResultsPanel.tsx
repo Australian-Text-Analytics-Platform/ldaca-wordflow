@@ -176,6 +176,8 @@ export function AnnotationResultsPanel({
   const classOptions = normalizeAnnotationClassOptions(
     classDescriptions.rows.map((row) => cellText(row.class)),
   );
+  // An ordered-scale codebook: its levels, lowest first, for the reliability statistics.
+  const scaleOrder = classDescriptions.scale ? classOptions : null;
   // Columns the annotation-column difference filter compares against; excludes role conflicts.
   const queryComparisonColumns = comparisonColumns.filter(
     (column) =>
@@ -365,6 +367,7 @@ export function AnnotationResultsPanel({
               }}
               metric={reliabilityMetric}
               onMetricChange={onReliabilityMetricChange}
+              ordered={scaleOrder !== null}
               disabledColumns={activeMetadataColumns}
             />
             <AnnotationCorrectionColumnControl
@@ -491,6 +494,7 @@ export function AnnotationResultsPanel({
                           {activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
                               metric={reliabilityMetric}
+                              scaleOrder={scaleOrder}
                               referenceColumn={annotationColumn}
                               comparisonColumn={column}
                               rows={comparisonQueryByColumn.get(column)?.data}

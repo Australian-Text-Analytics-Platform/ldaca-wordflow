@@ -65,6 +65,7 @@ const mocks = vi.hoisted(() => ({
   classSelected: false,
   classRows: [] as { class: string; description: string }[],
   taskContext: '',
+  scale: false,
   providerConfigurations: [] as {
     id: string;
     name: string;
@@ -291,6 +292,7 @@ vi.mock('../hooks/useAnnotationClassDescriptions', () => ({
   useAnnotationClassDescriptions: () => ({
     rows: mocks.classRows,
     taskContext: mocks.taskContext,
+    scale: mocks.scale,
     query: {},
   }),
 }));
@@ -377,6 +379,7 @@ describe('AnnotationFeature', () => {
     mocks.classSelected = false;
     mocks.classRows = [];
     mocks.taskContext = '';
+    mocks.scale = false;
     mocks.providerConfigurations = [];
     mocks.sourceColumnNames = ['text'];
     mocks.workspaceNodes = [];
@@ -437,6 +440,7 @@ describe('AnnotationFeature', () => {
     mocks.classSelected = true;
     mocks.classRows = [{ class: 'support', description: 'Supports the claim' }];
     mocks.taskContext = '  Posts from a workers forum.  ';
+    mocks.scale = true;
     mocks.providerConfigurations = [
       {
         id: 'provider-1',
@@ -493,6 +497,8 @@ describe('AnnotationFeature', () => {
       example_random_seed: 42,
       // The codebook's Task context goes with the request (issue 408).
       task_context: 'Posts from a workers forum.',
+      // An ordered-scale codebook rates the texts on its levels.
+      scale: true,
     });
     expect(previewRequest.classes).toEqual([
       { name: 'support', description: 'Supports the claim' },

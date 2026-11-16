@@ -106,6 +106,13 @@ AnnotationExampleSamplingMethod = Literal["random", "first_n", "last_n"]
 # `__task_context__`, text in the description column. Never a code.
 TASK_CONTEXT_CODE = "__task_context__"
 TASK_CONTEXT_MAX_CHARS = 2_000
+# The codebook row that marks an ordered scale: its codes are levels from the
+# lowest (first row) to the highest (last row). The row's presence is the
+# setting; its description only explains it to people reading the Data Block.
+# Kept in the codebook, not in Data Block metadata, so the setting travels
+# with the codes through edits, export and import (Chao, 16 Nov 2026).
+SCALE_CODE = "__scale__"
+RESERVED_CODEBOOK_CODES = frozenset({TASK_CONTEXT_CODE, SCALE_CODE})
 
 AnnotationClassName = Annotated[
     str,
@@ -164,6 +171,8 @@ class AnnotationProviderSnapshot(BaseModel):
 
 
 __all__ = [
+    "RESERVED_CODEBOOK_CODES",
+    "SCALE_CODE",
     "TASK_CONTEXT_CODE",
     "TASK_CONTEXT_MAX_CHARS",
     "AnnotationClass",

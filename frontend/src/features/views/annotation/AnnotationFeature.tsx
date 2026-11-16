@@ -760,6 +760,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
           ...(classDescriptions.taskContext.trim()
             ? { task_context: classDescriptions.taskContext.trim() }
             : {}),
+          ...(classDescriptions.scale ? { scale: true } : {}),
           temperature: sent.aiTemperature,
           max_retries_per_batch: sent.aiMaxRetriesPerBatch,
           max_examples_per_class: sent.aiMaxExamplesPerClass,
@@ -1607,6 +1608,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                 sourceColumns={reviewSourceColumns}
                 sourceColor={reviewSourceNode.color ?? GREY}
                 rowCount={reviewSourceNode.shape?.[0] ?? 0}
+                scale={annotationRunAllSource.scale === true}
                 title="Annotation"
                 guidanceTarget="annotation-ai-run-all-results"
                 requiredColumns={[
@@ -1670,6 +1672,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                 onMetricChange: (metric) => {
                   setAnnotationReliabilityMetric(serverAiRequest.node_id, metric);
                 },
+                scale: serverAiRequest.scale === true,
               }}
               metadata={{
                 columns: annotationMetadataColumns[serverAiRequest.node_id] ?? [],

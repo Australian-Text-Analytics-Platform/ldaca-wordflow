@@ -642,6 +642,11 @@
             "title": "Reasoning Enabled",
             "type": "boolean"
           },
+          "scale": {
+            "default": false,
+            "title": "Scale",
+            "type": "boolean"
+          },
           "task_context": {
             "default": "",
             "maxLength": 2000,
@@ -876,6 +881,11 @@
             "title": "Reasoning Enabled",
             "type": "boolean"
           },
+          "scale": {
+            "default": false,
+            "title": "Scale",
+            "type": "boolean"
+          },
           "task_context": {
             "default": "",
             "maxLength": 2000,
@@ -984,7 +994,7 @@
             "items": {
               "$ref": "#/components/schemas/AnnotationClassRow"
             },
-            "maxItems": 201,
+            "maxItems": 202,
             "title": "Rows",
             "type": "array"
           }
@@ -3268,6 +3278,11 @@
             "minimum": 20.0,
             "title": "Sample Size",
             "type": "integer"
+          },
+          "scale": {
+            "default": false,
+            "title": "Scale",
+            "type": "boolean"
           },
           "system_prompt": {
             "maxLength": 20000,
@@ -14468,7 +14483,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "LDaCA Wordflow API",
-    "version": "0.7.19"
+    "version": "0.7.21"
   },
   "openapi": "3.1.0",
   "paths": {
