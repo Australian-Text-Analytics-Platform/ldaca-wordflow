@@ -326,7 +326,20 @@ describe('DataPreprocessingFeature replace tab', () => {
       expect(screen.getByRole('tab', { name: 'Sample' })).toHaveAttribute('aria-selected', 'true');
     });
 
-    expect(screen.getByRole('tab', { name: 'Slice' })).toBeInTheDocument();
+    // The tool is named Sample, so Random sample is the first tab and opens by default.
+    const modeTabs = within(screen.getByRole('tabpanel', { name: 'Sample' }))
+      .getAllByRole('tab')
+      .map((tab) => tab.textContent);
+    expect(modeTabs).toEqual(['Random sample', 'Row range']);
+    expect(screen.getByRole('tab', { name: 'Random sample' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByText(/Pick rows at random from the whole Data Block/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Start row')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Row range' }));
+    expect(screen.getByText(/Take rows in their current order, by position/)).toBeInTheDocument();
     expect(screen.getByLabelText('Start row')).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Random sample' }));

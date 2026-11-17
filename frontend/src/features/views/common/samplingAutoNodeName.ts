@@ -52,15 +52,15 @@ export const buildSamplingAutoNodeName = ({
       Number.isInteger(offset) && (offset ?? 0) >= 0 ? (offset ?? 0) : DEFAULT_SLICE_OFFSET;
 
     if (!Number.isInteger(length) || length === undefined) {
-      return `${base}_sliced_from_${String(start)}`;
+      return `${base}_rows_from_${String(start)}`;
     }
 
     if (length <= 0) {
-      return `${base}_sliced_from_${String(start)}_length_${String(length)}`;
+      return `${base}_rows_from_${String(start)}_length_${String(length)}`;
     }
 
     const end = start + length - 1;
-    return `${base}_sliced_from_${String(start)}_to_${String(end)}`;
+    return `${base}_rows_${String(start)}_to_${String(end)}`;
   }
 
   const seedToken = noRandomSeed

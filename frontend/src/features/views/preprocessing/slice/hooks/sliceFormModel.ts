@@ -201,10 +201,10 @@ export const deriveSliceFormModel = ({
         return 'Start row must be 0 or a positive whole number (0 means the first row).';
       }
       if (!lengthValid) {
-        return 'Length is required – enter the number of rows to include in the slice.';
+        return 'Length is required – enter the number of rows to take.';
       }
       if (lengthValue === 0) {
-        return `Slice starting at row ${String(offsetNumber)} returning zero rows (length = 0).`;
+        return `Row range starting at row ${String(offsetNumber)} returning zero rows (length = 0).`;
       }
       const endRow = offsetNumber + (lengthValue ?? 0) - 1;
       return `Rows ${String(offsetNumber)}–${String(endRow)} inclusive (${String(lengthValue)} total).`;
@@ -244,7 +244,7 @@ export const deriveSliceFormModel = ({
   const previewReadyMessage = !hasSelection
     ? 'Select a Data Block to preview output rows.'
     : mode === 'slice'
-      ? 'Showing original data. Enter a start row and length to preview sliced rows.'
+      ? 'Showing original data. Enter a start row and length to preview the row range.'
       : 'Showing original data. Enter a fraction or row count and optional seed to preview sampled rows.';
 
   const applyDisabled = !hasSelection || !hasOperation || isSlicing || isOperationsLoading;
