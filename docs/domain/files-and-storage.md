@@ -9,13 +9,31 @@ runtimes neither create nor read it. Analysis lifecycle and Artifacts live
 inside their Workspace; User File Import history lives inside its user's import
 area. Host paths are private and never appear in public resources.
 
-The local Quotation pipeline is the exception to Data Root cache ownership. Its
-spaCy model data downloads on first use into the operating system's disposable
-per-user cache for `au.edu.ldaca.wordflow`, shared by every Data Root used by
-that OS account. On macOS the model directory is
-`~/Library/Caches/au.edu.ldaca.wordflow/spacy/en_core_web_md`. The application
-never installs the model into its Python environment at runtime or consults the
-former `~/.cache/ldaca_wordflow` path.
+Downloaded models live in the Data Root too, under `.cache/models/`: the
+Quotation spaCy model in `spacy/`, Hugging Face tokenisers and Topic Modelling
+embedders in `huggingface/`, and the CJK tokenisers' Lindera dictionaries in
+`lindera/`. Whenever a Data Root opens, the runtime names these folders in
+`WORDFLOW_SPACY_CACHE`, `HF_HOME` and `LINDERA_DICT_PATH` before any worker
+starts. A variable the deployment set keeps its folder; the server image sets
+`HF_HOME`, `LINDERA_DICT_PATH` and `XDG_CACHE_HOME`, and with `XDG_CACHE_HOME`
+set the spaCy model stays in the operating system's cache for
+`au.edu.ldaca.wordflow`, where the image prefetches it. Choosing another Data
+Root downloads the models again into it. The application never installs the
+spaCy model into its Python environment at runtime.
+
+Earlier versions downloaded models into folders of the user's account: the
+spaCy model into the operating system's cache for `au.edu.ldaca.wordflow`
+(`spacy/en_core_web_md`), Lindera dictionaries into `$HOME/.cache/ldaca`, and
+Hugging Face models into `~/.cache/huggingface/hub`. When a Data Root opens,
+those downloads come into it once. Wordflow's own folders move: the spaCy
+model, the Lindera dictionaries and the compiled Core ML models
+(`hub/coreml`). Across disks the first two are copied and the originals
+removed, and the Core ML models are removed and rebuild on use. The Hugging
+Face cache is shared with other programs, so only Wordflow's models there
+(`bert-base-uncased` and the two Topic Modelling embedders) come in, as hard
+links where the disk allows and copies otherwise, and the originals stay. A
+folder that can't be read is skipped and its model downloads again; nothing
+already in the Data Root is replaced.
 
 A User File is mutable import material. Adding one to a Workspace snapshots it
 into an immutable Workspace-owned source, so later moves or deletion in the
@@ -48,7 +66,7 @@ flowchart TB
     ROOT --> AUTH["Hosted only<br/>deployment.sqlite3"]
     ROOT --> SNAPSHOTS["Response and query snapshots"]
     ROOT --> CACHE["Runtime caches"]
-    PLATFORM_CACHE["OS application cache"] --> SPACY["Quotation spaCy model"]
+    CACHE --> MODELS["Downloaded models<br/>.cache/models"]
 
     USERS --> FILES["Mutable User Files"]
     USERS --> IMPORTS["User File Import records and staging"]

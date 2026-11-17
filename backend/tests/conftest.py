@@ -11,6 +11,22 @@ from pathlib import Path
 # Match the package bootstrap before importing Polars in the test process.
 os.environ["POLARS_UNKNOWN_EXTENSION_TYPE_BEHAVIOR"] = "load_as_extension"
 
+# Tests open Data Roots in temporary folders. Fixing the model caches before
+# Wordflow is imported keeps them where the developer's models already are:
+# no test moves real downloads into a temporary Data Root, and none
+# downloads a model again.
+from platformdirs import PlatformDirs  # noqa: E402
+
+os.environ.setdefault("HF_HOME", str(Path.home() / ".cache" / "huggingface"))
+os.environ.setdefault("LINDERA_DICT_PATH", str(Path.home() / ".cache" / "ldaca"))
+os.environ.setdefault(
+    "WORDFLOW_SPACY_CACHE",
+    str(
+        PlatformDirs("au.edu.ldaca.wordflow", appauthor=False, roaming=False).user_cache_path
+        / "spacy"
+    ),
+)
+
 import polars as pl
 import pytest
 import anyio
