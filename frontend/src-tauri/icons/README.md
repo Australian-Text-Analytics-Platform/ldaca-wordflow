@@ -39,6 +39,11 @@ Project Graph), on a tile that deepens from cyan to blue, left to right.
 `frontend/public/favicon.svg` is the source, and `favicon.ico` (16, 32, 48 and
 64 px) and `apple-touch-icon.png` (180 px, square corners) are rendered from it.
 
+`frontend/public/wordflow-logo.svg` is the same mark for 128 px and larger, with
+words in several languages inside the stroke and marks traced from the LDaCA
+logo. It is drawn by `scripts/branding/make_wordflow_logo.py`; change the words
+or marks there and run it again. Nothing in the app uses it yet.
+
 ## Packaging
 
 Tauri copies the compiled `Assets.car` into macOS packages. Keeping the catalog
