@@ -203,9 +203,8 @@ def test_designer_scale_format_asks_for_ordered_levels_then_not_applicable() -> 
 
     assert "between 2 and 5 levels of one ordered scale" in prompt
     assert "from the lowest to the highest" in prompt
-    assert f'named exactly "{NOT_APPLICABLE_CODE}" as the last code' in prompt
-    assert "It is not a level." in prompt
-    assert f'named exactly "{OTHER_CODE}"' not in prompt
+    assert f'does not fit ("{NOT_APPLICABLE_CODE}" in English). It is not a level.' in prompt
+    assert f'"{OTHER_CODE}" in English' not in prompt
     assert codebook_schema(5, scale=True)["properties"]["codes"]["maxItems"] == 6
     assert codebook_schema(5)["properties"]["codes"]["maxItems"] == 6
 
@@ -219,7 +218,7 @@ def test_designer_scale_user_prompt_counts_levels() -> None:
         scale=True,
     )
 
-    assert f'Maximum levels: 4 (not counting "{NOT_APPLICABLE_CODE}")' in prompt
+    assert "Maximum levels: 4 (not counting the last code, for texts the scale does not fit)" in prompt
     assert OTHER_CODE not in prompt
 
 

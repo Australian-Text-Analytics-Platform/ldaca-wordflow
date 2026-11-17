@@ -363,8 +363,8 @@ export function CodebookDesignerDialog({
             </div>
             <p className="text-label-secondary text-description">
               Texts are picked at random from the distinct, non-empty texts in{' '}
-              <strong>{source.textColumn}</strong>, each cut to its first 150 words. The same seed
-              picks the same texts.
+              <strong>{source.textColumn}</strong>, each cut to its first 150 words (about 300
+              characters in Chinese or Japanese). The same seed picks the same texts.
             </p>
 
             {advanced ? (
@@ -397,8 +397,8 @@ export function CodebookDesignerDialog({
                 />
                 <p className="text-label-secondary text-description">
                   {scale
-                    ? 'Wordflow adds the answer format after this prompt: a JSON list of levels from the lowest to the highest, at most the maximum, then “Not applicable”.'
-                    : 'Wordflow adds the answer format after this prompt: a JSON list of codes, at most the maximum, then “Other”.'}
+                    ? 'Wordflow adds the answer format after this prompt: a JSON list of levels from the lowest to the highest, at most the maximum, then a code for texts the scale doesn’t fit (“Not applicable” in English), all named in the language of the brief.'
+                    : 'Wordflow adds the answer format after this prompt: a JSON list of codes, at most the maximum, then a code for texts that fit none of them (“Other” in English), all named in the language of the brief.'}
                 </p>
               </div>
             ) : null}

@@ -77,7 +77,10 @@ checking stay with you.
 1. In the Edit dialog, write the **Brief** above Task context: what you want
    to find out, as a research question, hypothesis or aim, in up to 250 words.
    Task context, if you have one, is sent too as background. The Brief is kept
-   with this tab on this computer and is never sent with annotation.
+   with this tab on this computer and is never sent with annotation. Write it
+   in any language: the codes, the catch-all code too, are drafted in the
+   Brief's language. A Brief mostly in Chinese or Japanese, which put no spaces
+   between words, is counted in characters, up to 500.
 2. Set **Maximum classes** (2 to 10, default 3). Other comes on top, so the
    default gives at most four codes. The model may suggest fewer. For an
    ordered scale this is **Maximum levels**, with Not applicable on top.
@@ -89,8 +92,9 @@ checking stay with you.
    reasoning model for this one request without changing the model used for
    annotation. **Sample size** (default 100, 20 to 300) is how many texts are
    sent, picked at random from the distinct, non-empty texts in the text
-   column, each cut to its first 150 words; the same **Sample seed** picks the
-   same texts. **Thinking effort** (default High; None turns thinking off)
+   column, each cut to its first 150 words (about 300 characters in Chinese or
+   Japanese); the same **Sample seed** picks the same texts. **Thinking
+   effort** (default High; None turns thinking off)
    applies when the model supports thinking. Turn on **Advanced** at the top
    right to read or change the system prompt; **Restore default** brings back
    Wordflow's. Categories and ordered scales each keep their own prompt.

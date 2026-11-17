@@ -8,6 +8,7 @@ import polars as pl
 import pytest
 
 from ldaca_wordflow.infrastructure.providers.codebook_designer import (
+    cut_to_words,
     CodebookAnswerError,
     DesignedCode,
     SampledTexts,
@@ -62,7 +63,9 @@ def test_system_prompt_ends_with_the_answer_format_and_the_maximum() -> None:
 
     assert prompt.startswith("Design a codebook.")
     assert "at most 4 real classes" in prompt
-    assert '"Other" as the last class' in prompt
+    assert 'then one last class for texts that fit none of them ("Other" in English)' in prompt
+    assert "in the language of the brief" in prompt
+    assert '"catch_all": true' in prompt
     assert prompt.rstrip().endswith("No prose, no markdown.")
 
 
@@ -145,3 +148,71 @@ def test_missing_other_is_added() -> None:
 def test_unreadable_answers_raise(answer: str) -> None:
     with pytest.raises(CodebookAnswerError):
         parse_codebook_answer(answer, 3)
+
+
+# Any language (Chao, 17 Nov 2026) ---------------------------------------------------
+
+
+def _marked(*codes: tuple[str, bool]) -> str:
+    return json.dumps(
+        {
+            "codes": [
+                {"name": name, "definition": f"{name}的定义", "catch_all": catch_all}
+                for name, catch_all in codes
+            ]
+        }
+    )
+
+
+def test_a_catch_all_in_the_brief_language_is_recognised_by_its_mark() -> None:
+    # Chao's People's Daily test: Chinese codes, a Chinese catch-all.
+    codes = parse_codebook_answer(
+        _marked(("其他", True), ("民生", False), ("经济", False)), 7
+    )
+    assert [code.name for code in codes] == ["民生", "经济", "其他"]
+    # Nothing English is added beside it.
+    assert "Other" not in [code.name for code in codes]
+
+
+def test_on_a_scale_the_marked_catch_all_stays_outside_the_scale() -> None:
+    codes = parse_codebook_answer(
+        _marked(("低", False), ("中", False), ("高", False), ("不适用", True)), 5, scale=True
+    )
+    assert [(code.name, code.outside_scale) for code in codes] == [
+        ("低", False),
+        ("中", False),
+        ("高", False),
+        ("不适用", True),
+    ]
+
+
+def test_answers_without_the_mark_still_work_and_only_one_catch_all_is_kept() -> None:
+    unmarked = json.dumps(
+        {"codes": [{"name": "Jobs", "definition": "j"}, {"name": "other", "definition": "o"}]}
+    )
+    assert [code.name for code in parse_codebook_answer(unmarked, 3)] == ["Jobs", "Other"]
+    # A second marked code is an ordinary class, not a second catch-all.
+    two = parse_codebook_answer(_marked(("甲", True), ("乙", True), ("丙", False)), 3)
+    assert [code.name for code in two] == ["乙", "丙", "甲"]
+
+
+def test_the_schema_asks_for_the_mark() -> None:
+    item = codebook_schema(3)["properties"]["codes"]["items"]
+    assert item["required"] == ["name", "definition", "catch_all"]
+    assert item["properties"]["catch_all"] == {"type": "boolean"}
+
+
+def test_chinese_and_japanese_texts_are_cut_by_characters() -> None:
+    article = "这是人民日报2021年的新闻报道文本。" * 40
+    cut = cut_to_words(article, 150)
+    # 150 words: about 300 characters, where splitting on spaces kept the whole text.
+    assert 280 <= len(cut) <= 340
+    assert article.startswith(cut)
+    assert cut_to_words("one  two three four", 2) == "one two"
+    assert cut_to_words("東京 は Tokyo です", 2) == "東京 は"
+
+
+def test_a_sample_of_long_chinese_texts_is_cut() -> None:
+    texts: list[str | None] = [f"第{index}篇。" + "新闻报道的正文内容" * 100 for index in range(5)]
+    sample = sample_texts(_frame(texts), "text", size=5, seed=1)
+    assert all(len(text) <= 340 for text in sample.texts)

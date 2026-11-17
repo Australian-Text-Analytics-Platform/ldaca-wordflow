@@ -9,7 +9,9 @@ vi.mock('@/features/provider-credentials/providerCredentialRequests', () => ({
 }));
 
 import {
+  briefLength,
   codebookSignature,
+  DEFAULT_CODEBOOK_DESIGNER_PROMPT,
   countWords,
   DEFAULT_SCALE_DESIGNER_PROMPT,
   describeDesignerConnectionError,
@@ -186,5 +188,32 @@ describe('DEFAULT_SCALE_DESIGNER_PROMPT', () => {
       'not because the sample lacks an end of the scale',
     );
     expect(DEFAULT_SCALE_DESIGNER_PROMPT).not.toContain('Use fewer if the sample does not support');
+  });
+});
+
+describe('any language (Chao, 17 Nov 2026)', () => {
+  it('counts a Chinese or Japanese brief in characters, others in words', () => {
+    expect(briefLength('How candidates talk about jobs')).toEqual({
+      count: 5,
+      limit: 250,
+      unit: 'words',
+    });
+    // Chao's brief: one "word" when split on spaces.
+    const chinese =
+      '我想要根据报导的侧重面进行分类，大致的想法是民生，经济，科技，政策，外交方向。';
+    expect(briefLength(chinese)).toEqual({ count: chinese.length, limit: 500, unit: 'characters' });
+    expect(briefLength('東京の 新聞記事 を 分類したい').unit).toBe('characters');
+    // Korean puts spaces between words.
+    expect(briefLength('후보자들이 일자리에 대해 말하는 방식').unit).toBe('words');
+    expect(briefLength('').count).toBe(0);
+  });
+
+  it('asks for names in the language of the brief, with lengths for Chinese and Japanese', () => {
+    for (const prompt of [DEFAULT_CODEBOOK_DESIGNER_PROMPT, DEFAULT_SCALE_DESIGNER_PROMPT]) {
+      expect(prompt).toContain('named in the language of the brief');
+      expect(prompt).toContain('in Chinese or Japanese, up to about six characters');
+      expect(prompt).toContain('in Chinese or Japanese, under about 120 characters');
+      expect(prompt).not.toContain('named exactly');
+    }
   });
 });

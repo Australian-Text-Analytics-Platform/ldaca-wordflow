@@ -8,12 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import {
-  BRIEF_MAX_WORDS,
-  type CodeDesignerSettings,
-  countWords,
-  DESIGNER_MAX_CLASSES,
-} from '../codebookDesigner';
+import { briefLength, type CodeDesignerSettings, DESIGNER_MAX_CLASSES } from '../codebookDesigner';
 
 interface CodeDesignerBriefProps {
   settings: CodeDesignerSettings;
@@ -41,14 +36,14 @@ export function CodeDesignerBrief({
   onDesign,
 }: CodeDesignerBriefProps) {
   const [maxClassesDraft, setMaxClassesDraft] = useState<string | null>(null);
-  const words = countWords(settings.brief);
-  const tooLong = words > BRIEF_MAX_WORDS;
+  const length = briefLength(settings.brief);
+  const tooLong = length.count > length.limit;
   const reason = settings.briefStale
     ? 'The codes were changed by hand. Edit the brief to design again.'
     : !settings.brief.trim()
       ? 'Write a brief first.'
       : tooLong
-        ? `Shorten the brief to ${String(BRIEF_MAX_WORDS)} words or fewer.`
+        ? `Shorten the brief to ${String(length.limit)} ${length.unit} or fewer.`
         : blockedReason;
 
   return (
@@ -90,7 +85,7 @@ export function CodeDesignerBrief({
           )}
           data-testid="codebook-brief-words"
         >
-          {String(words)} / {String(BRIEF_MAX_WORDS)} words
+          {String(length.count)} / {String(length.limit)} {length.unit}
         </span>
         <div className="flex items-center gap-2">
           <Label htmlFor="codebook-designer-max-classes" className="font-normal">
