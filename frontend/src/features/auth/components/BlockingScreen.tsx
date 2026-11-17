@@ -1,5 +1,5 @@
 import React from 'react';
-import wordflowIcon from '@/wordflow-icon.svg';
+import wordflowIcon from '@/wordflow-icon.png';
 import { ErrorDetails } from '@/components/errors/ErrorDetails';
 
 interface BlockingScreenProps {

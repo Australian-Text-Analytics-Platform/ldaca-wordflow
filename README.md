@@ -1,5 +1,3 @@
-<p align="center"><img src="frontend/public/wordflow-logo.svg" width="160" alt="Wordflow logo"></p>
-
 # Wordflow (by LDaCA)
 
 Wordflow is open-source, point-and-click text analytics from the

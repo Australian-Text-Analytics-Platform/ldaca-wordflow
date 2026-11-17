@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import wordflowIcon from '@/wordflow-icon.svg';
+import wordflowIcon from '@/wordflow-icon.png';
 import CILogonLogin from '@/features/auth/components/CILogonLogin';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 

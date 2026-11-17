@@ -1,44 +1,37 @@
 # Tauri App Icons
 
-Every Wordflow icon is drawn from one file, `frontend/public/favicon.svg`: a W
-and F in one white stroke, from a source node through the W into the F's two
-derived nodes (the Project Graph), on a tile that deepens from a toned-down
-University of Sydney Ochre (`#D2522F`) to a deep ochre (`#8E2A16`), left to
-right. `scripts/branding/make_app_icons.py` renders the rest from it.
+The Icon Composer document is the native source for the Wordflow app icon.
+Rendered files provide fallbacks for older macOS versions and the other
+desktop platforms.
 
 ## Contents
 
-- `wordflow.icon` (Icon Composer source and macOS Liquid Glass icon): the white
-  mark as a glass layer (`Assets/wordflow-mark.png`) over the tile's gradient
-  (`Assets/wordflow-tile.png`). The gradient is a layer, not the icon's fill,
-  because `actool` draws a fill gradient top to bottom whatever its orientation.
+- `wordflow.icon` (Icon Composer source and macOS Liquid Glass icon)
 - `Assets.car` (compiled macOS Liquid Glass asset catalog)
-- `32x32.png`, `128x128.png`, `128x128@2x.png` (256×256) and `icon.ico` (16 to
-  256 px): the rounded tile on a transparent background, for Windows, Linux and
-  the window icon
-- `icon.png` (1024×1024 master, the same rounded tile)
-- `icon.icns` (macOS before 26), drawn on Apple's icon grid: an 824 px tile in a
-  1,024 px canvas
+- `32x32.png`
+- `128x128.png`
+- `128x128@2x.png` (256×256)
+- `icon.png` (1024×1024 flattened master)
+- `icon.icns` (macOS fallback)
+- `icon.ico` (Windows)
 
 ## Regenerating Icons
 
-After changing `favicon.svg`, render every icon file, including the browser's
-`favicon.ico` and `apple-touch-icon.png` and the app pages' copy
-`frontend/src/wordflow-icon.svg`, then compile the macOS 26 catalog:
+Export a 1024×1024 macOS image from `wordflow.icon`, save it as `icon.png`,
+then regenerate the platform fallbacks with the repository's Tauri CLI:
 
 ```bash
-uv run --no-project --with resvg-py --with pillow python scripts/branding/make_app_icons.py
+pnpm -C frontend exec tauri icon src-tauri/icons/icon.png --output src-tauri/icons
+```
+
+Regenerate the compiled macOS asset catalog after changing `wordflow.icon`:
+
+```bash
 pnpm -C frontend compile:desktop:mac-icon
 ```
 
-`icon.icns` needs `iconutil`, and the catalog needs Xcode's `actool`, so run
-both on a Mac.
-
-`frontend/public/wordflow-logo.svg` is the same mark for 128 px and larger, with
-words in several languages inside the stroke and marks traced from the LDaCA
-logo, in its Charcoal. It is drawn by `scripts/branding/make_wordflow_logo.py`;
-change the words or marks there and run it again. The READMEs (and so the PyPI
-page) show it.
+The browser favicon and startup icon are rendered from the same flattened
+master. Keep them in sync when the native composition changes.
 
 ## Packaging
 

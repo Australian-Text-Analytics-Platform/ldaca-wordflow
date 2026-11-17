@@ -25,7 +25,6 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import logo from '@/logo.png';
-import wordflowIcon from '@/wordflow-icon.svg';
 import {
   createDesktopNavigationHistory,
   type DesktopNavigationLocation,
@@ -138,10 +137,9 @@ export function DesktopNavigationHeaderView({
           title="Wordflow website (opens in a new tab)"
           data-tauri-drag-region="false"
           data-testid="desktop-header-wordflow-link"
-          className="flex min-w-0 items-center gap-1.5 rounded-sm text-[15px] leading-none font-semibold text-inherit hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="truncate rounded-sm text-[15px] leading-none font-semibold text-inherit hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <img src={wordflowIcon} alt="" className="size-[18px] shrink-0" />
-          <span className="truncate">Wordflow</span>
+          Wordflow
         </a>
         <span
           data-testid="desktop-header-about-control"

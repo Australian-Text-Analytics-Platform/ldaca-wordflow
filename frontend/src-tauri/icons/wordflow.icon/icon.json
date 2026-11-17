@@ -4,7 +4,20 @@
     "specular-location"
   ],
   "fill" : {
-    "solid" : "extended-srgb:0.69020,0.24314,0.13333,1.00000"
+    "linear-gradient" : [
+      "extended-srgb:0.00000,0.75294,0.90980,1.00000",
+      "extended-gray:1.00000,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 1
+      },
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0
+      }
+    }
   },
   "groups" : [
     {
@@ -12,11 +25,11 @@
         {
           "blend-mode" : "normal",
           "glass" : true,
-          "image-name" : "wordflow-mark.png",
-          "name" : "wordflow-mark",
+          "image-name" : "wordflow-patterned-l-tight-rounded.png",
+          "name" : "wordflow-patterned-l-tight-rounded",
           "opacity" : 1,
           "position" : {
-            "scale" : 1,
+            "scale" : 0.75,
             "translation-in-points" : [
               0,
               0
@@ -37,33 +50,6 @@
       "translucency" : {
         "enabled" : true,
         "value" : 0.2
-      }
-    },
-    {
-      "layers" : [
-        {
-          "blend-mode" : "normal",
-          "glass" : false,
-          "image-name" : "wordflow-tile.png",
-          "name" : "wordflow-tile",
-          "opacity" : 1,
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
-        }
-      ],
-      "shadow" : {
-        "kind" : "none",
-        "opacity" : 0.5
-      },
-      "specular" : "none",
-      "translucency" : {
-        "enabled" : false,
-        "value" : 0.5
       }
     }
   ],

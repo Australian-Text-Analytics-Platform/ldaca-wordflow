@@ -1,8 +1,6 @@
-<p align="center"><img src="https://raw.githubusercontent.com/Australian-Text-Analytics-Platform/ldaca-wordflow/main/frontend/public/wordflow-logo.svg" width="160" alt="Wordflow logo"></p>
-
 # Wordflow (by LDaCA)
 
-This package is Wordflow's FastAPI service. The package can run the API by itself or
+This package is Wordflow's FastAPI service. It can run the API by itself or
 serve the bundled production frontend from the same process.
 
 The authoritative source, issue tracker, CI, and package release workflow live
