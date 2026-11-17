@@ -4,9 +4,9 @@
 
 <h1 id="help-ui-overview">User Interface Overview</h1>
 
-The LDaCA app interface is organised into three columns. This page describes its nine main parts and how they work together.
+The Wordflow interface is organised into three columns. This page describes its nine main parts and how they work together.
 
-![LDaCA main app](tutorials/assets/ldaca_main.png)
+![Wordflow main window](tutorials/assets/ldaca_main.png)
 
 <h2 id="help-ui-tool-choice">1. Views</h2>
 

@@ -1116,11 +1116,11 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
             maintenance_service=maintenance_service,
         )
         logger.info(
-            "Starting LDaCA Wordflow (platform=%s, python=%s)",
+            "Starting Wordflow (by LDaCA) (platform=%s, python=%s)",
             sys.platform,
             sys.version.split()[0],
         )
 
         yield runtime
 
-    logger.info("LDaCA Wordflow runtime stopped")
+    logger.info("Wordflow (by LDaCA) runtime stopped")

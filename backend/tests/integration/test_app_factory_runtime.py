@@ -171,7 +171,7 @@ def test_runtime_factory_is_deferred_until_lifespan_and_unwinds(tmp_path: Path) 
     app.include_router(probe)
 
     assert events == []
-    assert app.openapi()["info"]["title"] == "LDaCA Wordflow API"
+    assert app.openapi()["info"]["title"] == "Wordflow API"
     assert events == []
 
     with TestClient(app, base_url="http://localhost") as client:

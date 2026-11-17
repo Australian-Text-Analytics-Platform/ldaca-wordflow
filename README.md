@@ -1,4 +1,6 @@
-# LDaCA Wordflow
+<p align="center"><img src="frontend/public/wordflow-logo.svg" width="160" alt="Wordflow logo"></p>
+
+# Wordflow (by LDaCA)
 
 Wordflow is open-source, point-and-click text analytics from the
 [Language Data Commons of Australia](https://www.ldaca.edu.au/). Load your text,
@@ -77,7 +79,7 @@ Historical release rows above `v0.4.2` keep the `ldaca-web-app` install command 
 
 ## Citation
 
-If you use LDaCA Wordflow in your research, please cite it:
+If you use Wordflow in your research, please cite it:
 
 > Guo, S., Sun, C., Bednarek, M., Haan, S., Lynch, M. & Rehman, A. (2026), _LDaCA Wordflow_ [Computer software]. https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/. DOI: [10.5281/zenodo.20408328](https://doi.org/10.5281/zenodo.20408328)
 
@@ -92,7 +94,7 @@ The DOI above is the **concept DOI**: it always resolves to the latest version o
 
 ## Developing Wordflow 0.7
 
-This repository contains the LDaCA Wordflow web and desktop application plus
+This repository contains the Wordflow web and desktop application plus
 the shared Python and Rust packages it depends on: a FastAPI backend, a React
 frontend, and a Tauri desktop shell.
 

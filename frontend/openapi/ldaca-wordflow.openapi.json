@@ -14500,8 +14500,8 @@
   },
   "info": {
     "description": "Workspace-oriented text analysis API",
-    "title": "LDaCA Wordflow API",
-    "version": "0.7.21"
+    "title": "Wordflow API",
+    "version": "0.7.22-pre"
   },
   "openapi": "3.1.0",
   "paths": {

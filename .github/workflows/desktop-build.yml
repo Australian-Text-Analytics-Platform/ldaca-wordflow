@@ -211,7 +211,7 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           set -Eeuo pipefail
-          app_path="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
+          app_path="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Wordflow (by LDaCA).app"
           runtime="$app_path/Contents/Resources/backend-runtime"
           bundle_id="$(node -p "require('./src-tauri/tauri.conf.json').identifier")"
 
@@ -246,7 +246,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -Eeuo pipefail
-          app_path="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
+          app_path="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Wordflow (by LDaCA).app"
           zip_path="$(mktemp -d)/ldaca-wordflow.zip"
           log_path="$(mktemp)"
           ditto -c -k --keepParent "$app_path" "$zip_path"
@@ -290,7 +290,7 @@ jobs:
           version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
           archive="$updater_dir/ldaca-wordflow_${version}_darwin-aarch64.app.tar.gz"
           mkdir -p "$updater_dir"
-          tar -C "$bundle_root/macos" -czf "$archive" "LDaCA Wordflow.app"
+          tar -C "$bundle_root/macos" -czf "$archive" "Wordflow (by LDaCA).app"
           pnpm tauri signer sign "$archive"
           test -s "$archive.sig"
 
@@ -304,19 +304,19 @@ jobs:
         run: |
           set -Eeuo pipefail
           bundle_root="src-tauri/target/aarch64-apple-darwin/release/bundle"
-          app_path="$bundle_root/macos/LDaCA Wordflow.app"
+          app_path="$bundle_root/macos/Wordflow (by LDaCA).app"
           dmg_dir="$bundle_root/dmg"
           version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
           dmg_path="$dmg_dir/ldaca-wordflow_${version}_darwin-aarch64.dmg"
           stage_dir="$(mktemp -d)"
           mkdir -p "$dmg_dir"
-          ditto "$app_path" "$stage_dir/LDaCA Wordflow.app"
+          ditto "$app_path" "$stage_dir/Wordflow (by LDaCA).app"
           ln -s /Applications "$stage_dir/Applications"
           # hdiutil sometimes fails with "Resource busy" on hosted runners while
           # the system is still reading the staged app; it works seconds later
           # (the 0.7.21 build failed here after signing and notarization).
           for attempt in 1 2 3 4 5; do
-            if hdiutil create -volname "LDaCA Wordflow" -srcfolder "$stage_dir" -ov -format UDZO "$dmg_path"; then
+            if hdiutil create -volname "Wordflow (by LDaCA)" -srcfolder "$stage_dir" -ov -format UDZO "$dmg_path"; then
               break
             fi
             if [ "$attempt" -eq 5 ]; then
@@ -366,7 +366,7 @@ jobs:
           EXPECTED_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -Eeuo pipefail
-          app_path="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
+          app_path="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Wordflow (by LDaCA).app"
           codesign_output="$(mktemp)"
           gatekeeper_output="$(mktemp)"
           codesign -dvv "$app_path" 2>&1 | tee "$codesign_output"
@@ -397,7 +397,7 @@ jobs:
         working-directory: frontend
         run: |
           set -Eeuo pipefail
-          app_path="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
+          app_path="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Wordflow (by LDaCA).app"
           runtime_path="$app_path/Contents/Resources/backend-runtime"
           test -f "$runtime_path/runtime-manifest.json"
           test -f "$runtime_path/python/lib/libpython3.14.dylib"
@@ -452,8 +452,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           app_dir="src-tauri/target/aarch64-apple-darwin/release/bundle/macos"
-          if [ -d "$app_dir/LDaCA Wordflow.app" ]; then
-            tar -C "$app_dir" -czf /tmp/ldaca-wordflow-app.tgz "LDaCA Wordflow.app"
+          if [ -d "$app_dir/Wordflow (by LDaCA).app" ]; then
+            tar -C "$app_dir" -czf /tmp/ldaca-wordflow-app.tgz "Wordflow (by LDaCA).app"
           fi
 
       - name: Upload macOS failure bundle

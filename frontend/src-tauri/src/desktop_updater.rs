@@ -481,7 +481,7 @@ fn open_updater_window(app: &AppHandle, manual: bool) -> Result<(), String> {
         UPDATER_WINDOW_LABEL,
         WebviewUrl::App(format!("updater.html?mode={mode}").into()),
     )
-    .title("LDaCA Wordflow Update")
+    .title("Wordflow Update")
     .inner_size(560.0, 640.0)
     .min_inner_size(480.0, 480.0)
     .resizable(true)

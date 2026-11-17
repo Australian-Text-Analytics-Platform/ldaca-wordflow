@@ -5,13 +5,14 @@ larger, with words riding inside the stroke and marks from the LDaCA logo at
 the W's bends and in the corpus dot. Every letter is placed along the stroke
 as an outline, so the SVG needs no fonts.
 
-The fonts are not in the repository. Put these four, all under the SIL Open
+The fonts are not in the repository. Put these five, all under the SIL Open
 Font License, in one folder:
 
 - JetBrainsMono-Bold.ttf  (github.com/JetBrains/JetBrainsMono, fonts/ttf)
 - NotoSansSC.ttf          (github.com/google/fonts, ofl/notosanssc, the variable font)
 - NotoSansJP.ttf          (github.com/google/fonts, ofl/notosansjp, the variable font)
 - NotoSansKR.ttf          (github.com/google/fonts, ofl/notosanskr, the variable font)
+- NotoSansTC.ttf          (github.com/google/fonts, ofl/notosanstc, the variable font)
 
 Then, from the repository root:
 
@@ -60,18 +61,21 @@ CORPUS_DOT = (8.8, 18.5)
 LATIN = "latin"  # along the stroke
 HAN = "han"  # along the stroke; used on the F's level arm, so upright
 HAN_DOWN = "han-down"  # upright, top to bottom, on a downstroke
+HANT_DOWN = "hant-down"  # the same, in Traditional Chinese
 KANA_DOWN = "kana-down"
 HANGUL_UPRIGHT = "hangul-upright"  # one syllable, upright wherever it sits
-DOWN = (HAN_DOWN, KANA_DOWN)
+DOWN = (HAN_DOWN, HANT_DOWN, KANA_DOWN)
 BLOCK = (*DOWN, HANGUL_UPRIGHT)  # glyphs that advance by their em square
 
 # (stroke, distance along it where the word starts, script, word). Words sit
 # on the straight runs; the W's bends are too tight for letters. The flow
 # opens with "words" and closes with "flow"; "koala" came into English from
 # Dharug, the language of the Sydney area; 글 is Korean for writing or text.
+# 語料 (corpus) is in Traditional Chinese and 分析 (analysis) on the branch is
+# Simplified; 分析 is written the same in both.
 WORDS = [
     ("main", 6.8, LATIN, "words"),
-    ("main", 19.6, HAN_DOWN, "语料"),
+    ("main", 19.6, HANT_DOWN, "語料"),
     ("main", 38.0, LATIN, "λόγος"),
     ("main", 58.3, KANA_DOWN, "ことば"),
     ("main", 78.6, LATIN, "text"),
@@ -84,11 +88,26 @@ FONT_FILE = {
     LATIN: "JetBrainsMono-Bold.ttf",
     HAN: "NotoSansSC.ttf",
     HAN_DOWN: "NotoSansSC.ttf",
+    HANT_DOWN: "NotoSansTC.ttf",
     KANA_DOWN: "NotoSansJP.ttf",
     HANGUL_UPRIGHT: "NotoSansKR.ttf",
 }
-SIZE = {LATIN: 3.5, HAN: 2.75, HAN_DOWN: 3.0, KANA_DOWN: 3.0, HANGUL_UPRIGHT: 3.0}  # em, in icon units
-GAP = {LATIN: 0.0, HAN: 0.15, HAN_DOWN: 0.2, KANA_DOWN: 0.2, HANGUL_UPRIGHT: 0.2}  # after each glyph
+SIZE = {
+    LATIN: 3.5,
+    HAN: 2.75,
+    HAN_DOWN: 3.0,
+    HANT_DOWN: 3.0,
+    KANA_DOWN: 3.0,
+    HANGUL_UPRIGHT: 3.0,
+}  # em, in icon units
+GAP = {
+    LATIN: 0.0,
+    HAN: 0.15,
+    HAN_DOWN: 0.2,
+    HANT_DOWN: 0.2,
+    KANA_DOWN: 0.2,
+    HANGUL_UPRIGHT: 0.2,
+}  # after each glyph
 
 # Marks from the LDaCA logo among the words: (distance along the main stroke,
 # mark, radius in icon units). They sit at the W's bends and keep the logo's
@@ -124,7 +143,10 @@ def sample(segments, steps=400):
             u = 1 - t
             points.append(
                 tuple(
-                    u**3 * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t**3 * p3[k]
+                    u**3 * p0[k]
+                    + 3 * u * u * t * p1[k]
+                    + 3 * u * t * t * p2[k]
+                    + t**3 * p3[k]
                     for k in range(2)
                 )
             )
@@ -207,7 +229,9 @@ def main() -> None:
     strokes = {"main": sample(MAIN), "branch": sample(BRANCH)}
     traced = json.loads((HERE / "ldaca-marks.json").read_text(encoding="utf-8"))
 
-    marks = [f'    <path transform="translate({CORPUS_DOT[0]} {CORPUS_DOT[1]})" d="{traced[CORPUS_MARK]}"/>']
+    marks = [
+        f'    <path transform="translate({CORPUS_DOT[0]} {CORPUS_DOT[1]})" d="{traced[CORPUS_MARK]}"/>'
+    ]
     for s, name, radius in FLOW_MARKS:
         x, y = point_at(strokes["main"], s)
         marks.append(
@@ -223,18 +247,15 @@ def main() -> None:
     the W into the F's two derived dots, as Data Blocks do in the Project Graph.
     Words ride inside the stroke ({words}).
     The ring in the corpus dot and the marks at the W's bends are traced from
-    the LDaCA logo. The letters are outlines of JetBrains Mono and Noto Sans SC,
-    JP and KR (SIL Open Font License), so no font is needed.
+    the LDaCA logo; the words and marks are in its Charcoal, #414141. The
+    letters are outlines of JetBrains Mono and Noto Sans SC, TC, JP and KR
+    (SIL Open Font License), so no font is needed.
     Drawn by scripts/branding/make_wordflow_logo.py; edit that, not this file.
   -->
   <defs>
     <linearGradient id="tile" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="0">
-      <stop offset="0" stop-color="#22C8EE"/>
-      <stop offset="1" stop-color="#0A5CA8"/>
-    </linearGradient>
-    <linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="0">
-      <stop offset="0" stop-color="#0E9AD6"/>
-      <stop offset="1" stop-color="#084E94"/>
+      <stop offset="0" stop-color="#D2522F"/>
+      <stop offset="1" stop-color="#8E2A16"/>
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="14" fill="url(#tile)"/>
@@ -247,8 +268,8 @@ def main() -> None:
     <circle cx="55.2" cy="15" r="4.8"/>
     <circle cx="54.2" cy="31" r="4.8"/>
   </g>
-  <path fill="url(#ink)" d="{word_outlines(fonts, strokes)}"/>
-  <g fill="url(#ink)" fill-rule="evenodd">
+  <path fill="#414141" d="{word_outlines(fonts, strokes)}"/>
+  <g fill="#414141" fill-rule="evenodd">
 {chr(10).join(marks)}
   </g>
 </svg>

@@ -1,4 +1,4 @@
-"""Command-line interface for LDaCA Wordflow.
+"""Command-line interface for Wordflow (by LDaCA).
 
 Usage:
     uvx ldaca-wordflow                  # Launch full app (backend + frontend)

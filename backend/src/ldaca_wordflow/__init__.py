@@ -1,4 +1,4 @@
-"""Explicit construction and launcher entrypoints for LDaCA Wordflow."""
+"""Explicit construction and launcher entrypoints for Wordflow (by LDaCA)."""
 
 from __future__ import annotations
 

@@ -37,7 +37,9 @@ def main() -> None:
     traced = {}
     for name, (cx, cy, half) in MARKS.items():
         pad = 4
-        crop = dark[cy - half - pad : cy + half + pad, cx - half - pad : cx + half + pad].astype(float)
+        crop = dark[
+            cy - half - pad : cy + half + pad, cx - half - pad : cx + half + pad
+        ].astype(float)
         yy, xx = np.mgrid[: crop.shape[0], : crop.shape[1]]
         crop[np.hypot(xx - half - pad, yy - half - pad) > half] = 0
         smooth = gaussian_filter(crop, 0.9)
@@ -49,12 +51,15 @@ def main() -> None:
             if len(polygon) < 4 or np.ptp(contour, axis=0).max() < half * 0.5:
                 continue
             points = [
-                f"{(x - half - pad) * scale:.2f} {(y - half - pad) * scale:.2f}" for y, x in polygon[:-1]
+                f"{(x - half - pad) * scale:.2f} {(y - half - pad) * scale:.2f}"
+                for y, x in polygon[:-1]
             ]
             parts.append("M" + " L".join(points) + "Z")
         traced[name] = " ".join(parts)
         print(f"{name}: {len(parts)} outlines")
-    (HERE / "ldaca-marks.json").write_text(json.dumps(traced, indent=2) + "\n", encoding="utf-8")
+    (HERE / "ldaca-marks.json").write_text(
+        json.dumps(traced, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":

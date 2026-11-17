@@ -1,7 +1,7 @@
 [project]
 name = "ldaca-wordflow-workspace"
 version = "0.7.22-pre"
-description = "LDaCA Wordflow Workspace"
+description = "Wordflow (by LDaCA) workspace"
 requires-python = ">=3.14"
 dependencies = ["ldaca-wordflow"]
 

@@ -1,6 +1,6 @@
 # System Overview
 
-LDaCA Wordflow is a text-analysis application distributed as a hosted web app,
+Wordflow (by LDaCA) is a text-analysis application distributed as a hosted web app,
 a packaged desktop app, and a Python package that can serve the bundled SPA.
 
 ## Projects

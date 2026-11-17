@@ -1,6 +1,6 @@
 # Wordflow repository operating guide
 
-LDaCA Wordflow is a text-analysis application with a FastAPI backend, a React
+Wordflow (by LDaCA) is a text-analysis application with a FastAPI backend, a React
 and Tauri client, and two supporting Rust/Python packages. This file contains
 only cross-repository rules. Read the nearest package `AGENTS.md` before
 changing that package.

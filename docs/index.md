@@ -1,6 +1,6 @@
 # Engineering Documentation
 
-This is the canonical entry point for engineering context in LDaCA Wordflow.
+This is the canonical entry point for engineering context in Wordflow (by LDaCA).
 Read only the sections relevant to the work at hand.
 
 ## Context Map

@@ -1,6 +1,6 @@
-# LDaCA Wordflow
+# Wordflow (by LDaCA)
 
-LDaCA Wordflow is a text-analysis product for assembling datasets, deriving
+Wordflow is a text-analysis product for assembling datasets, deriving
 new data, and running analyses while preserving data lineage. This file is the
 project's domain glossary; it contains no implementation instructions or
 temporary project status.

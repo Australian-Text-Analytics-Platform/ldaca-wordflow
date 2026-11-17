@@ -1,7 +1,7 @@
 [project]
 name = "ldaca-wordflow"
 version = "0.7.22-pre"
-description = "LDaCA Wordflow - FastAPI backend with bundled production frontend for the Language Data Commons of Australia"
+description = "Wordflow (by LDaCA): point-and-click text analytics from the Language Data Commons of Australia, a FastAPI backend with the web app bundled"
 readme = "README.md"
 requires-python = ">=3.14"
 license = { text = "MIT" }

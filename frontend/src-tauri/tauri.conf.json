@@ -1,5 +1,5 @@
 {
-  "productName": "LDaCA Wordflow",
+  "productName": "Wordflow (by LDaCA)",
   "version": "0.7.22-pre",
   "identifier": "au.edu.ldaca.wordflow",
   "build": {
@@ -12,7 +12,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "LDaCA Wordflow",
+        "title": "Wordflow (by LDaCA)",
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "width": 1400,
@@ -53,7 +53,12 @@
     "copyright": "Copyright © 2025 Language Data Commons of Australia (LDaCA)",
     "category": "Education",
     "shortDescription": "Text analytics and visualization platform",
-    "longDescription": "LDaCA Wordflow provides comprehensive tools for text analysis, including concordance, frequency analysis, topic modeling, and timeline visualization."
+    "longDescription": "Wordflow (by LDaCA) provides point-and-click text analysis: Frequency, Concordance, Trends, Topics, Quotation and Annotation, with every result kept as a Data Block in the Project Graph.",
+    "windows": {
+      "wix": {
+        "upgradeCode": "d5417515-c1f9-5bdc-a5ec-af37f356c25a"
+      }
+    }
   },
   "plugins": {
     "updater": {

@@ -20,7 +20,7 @@ def export_openapi(output_path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Export the LDaCA Wordflow FastAPI OpenAPI schema."
+        description="Export the Wordflow FastAPI OpenAPI schema."
     )
     parser.add_argument(
         "--output",

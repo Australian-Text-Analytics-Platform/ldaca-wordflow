@@ -1,6 +1,6 @@
 name: Server image
 
-# Builds the LDaCA Wordflow server image (deploy/docker/Dockerfile) for
+# Builds the Wordflow (by LDaCA) server image (deploy/docker/Dockerfile) for
 # linux/amd64 from the chosen ref and pushes it to GHCR (issue 411).
 # Never runs on a branch push. Start it by hand, or push a tag
 # server-image/v<version> for a release (server-image/v0.7.16 builds 0.7.16) or
@@ -172,7 +172,7 @@ jobs:
             type=raw,value=${{ steps.version.outputs.image }}
             type=sha,format=long
           labels: |
-            org.opencontainers.image.title=LDaCA Wordflow server
+            org.opencontainers.image.title=Wordflow (by LDaCA) server
             org.opencontainers.image.version=${{ steps.version.outputs.python }}
 
       - name: Build and push

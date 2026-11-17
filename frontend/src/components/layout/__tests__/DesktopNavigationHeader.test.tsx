@@ -64,7 +64,12 @@ describe('DesktopNavigationHeaderView', () => {
     expect(header).toHaveAttribute('data-tauri-drag-region', 'deep');
     expect(header).not.toHaveClass('border-b');
     expect(header).toHaveClass('pl-2');
-    expect(within(header).getByText('Wordflow')).toHaveClass('text-[15px]');
+    const wordflowLink = screen.getByTestId('desktop-header-wordflow-link');
+    expect(wordflowLink).toHaveClass('text-[15px]');
+    expect(wordflowLink).toHaveTextContent('Wordflow');
+    // The Wordflow mark sits before the name; it is decorative, so the link's
+    // name stays "Wordflow".
+    expect(within(wordflowLink).getByRole('presentation')).toHaveClass('size-[18px]');
     expect(within(header).getByText('by')).toBeVisible();
     expect(within(header).getByRole('img', { name: 'LDaCA Logo' })).toHaveClass('h-[28px]');
     expect(screen.getByTestId('desktop-header-ldaca-link')).toHaveClass('ml-1.5');
