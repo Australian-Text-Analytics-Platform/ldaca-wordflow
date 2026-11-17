@@ -81,7 +81,7 @@ Historical release rows above `v0.4.2` keep the `ldaca-web-app` install command 
 
 If you use Wordflow in your research, please cite it:
 
-> Guo, S., Sun, C., Bednarek, M., Haan, S., Lynch, M. & Rehman, A. (2026), _LDaCA Wordflow_ [Computer software]. https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/. DOI: [10.5281/zenodo.20408328](https://doi.org/10.5281/zenodo.20408328)
+> Guo, S., Sun, C., Bednarek, M., Haan, S., Lynch, M. & Rehman, A. (2026), _Wordflow (by LDaCA)_ [Computer software]. https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/. DOI: [10.5281/zenodo.20408328](https://doi.org/10.5281/zenodo.20408328)
 
 The DOI above is the **concept DOI**: it always resolves to the latest version on Zenodo. Each release also has its own version-specific DOI on its Zenodo record.
 
