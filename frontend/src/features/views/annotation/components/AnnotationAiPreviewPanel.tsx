@@ -45,12 +45,14 @@ import { toBgColor } from '@/features/views/common/vizPalette';
 import {
   annotationValuesDiffer,
   isInvalidAnnotationLabel,
-  normalizeAnnotationLabel,
   normalizeAnnotationClassOptions,
+  normalizeAnnotationLabel,
+  NOT_A_CODE_EXPLANATION,
 } from '../annotationLabelModel';
 import type { AnnotationAiPreview, AnnotationPreviewRow } from '../hooks/useAnnotationAiPreview';
 import { AnnotationCorrectionColumnControl } from './AnnotationCorrectionColumnControl';
 import { AnnotationTableFrame } from './AnnotationTableFrame';
+import { codebookFitFromValues } from '../codebookFit';
 import { CurrentAnnotationValueItem } from './CurrentAnnotationValueItem';
 import { toastError } from '@/lib/toastError';
 
@@ -181,6 +183,28 @@ export function AnnotationAiPreviewPanel({
     });
     comparisonRows.set(targetColumn, Array.from(counts.values()));
   });
+  // Page-local, like these scores: how many values on this page are not
+  // codes, so the scores can say which columns they leave out (issue 498).
+  const previewFit = codebookFitFromValues(
+    page.rows.map((_, index) => predictions.labels[index]),
+    classOptions,
+  );
+  const comparisonFit = new Map(
+    activeComparisonColumns.map((targetColumn) => [
+      targetColumn,
+      codebookFitFromValues(
+        page.rows.map((row, index) => {
+          const rowPosition = page.pagination.pageIndex * page.pagination.pageSize + index;
+          const selectionKey = `${targetColumn}:${String(rowPosition)}`;
+          return Object.hasOwn(selections, selectionKey)
+            ? selections[selectionKey]
+            : row[targetColumn];
+        }),
+        classOptions,
+      ),
+    ]),
+  );
+  const codebookFit = new Map([[previewColumn, previewFit], ...comparisonFit]);
   // With Alpha chosen and two or more comparisons, the preview column shows
   // Alpha across every coder on this page (Chao, 16 Nov 2026).
   const showMultiCoderAlpha =
@@ -255,6 +279,7 @@ export function AnnotationAiPreviewPanel({
         revealedComparisonColumns,
         // The existing annotation, before the preview's label.
         metadataColumns: [columns.annotation, ...activeMetadataColumns],
+        classOptions,
       });
     },
   });
@@ -439,6 +464,7 @@ export function AnnotationAiPreviewPanel({
                               isLoading={comparisonLoading}
                               isError={comparisonError}
                               pageOnly
+                              codebookFit={codebookFit}
                             />
                           ) : null}
                           <span>{columns.annotation} (preview)</span>
@@ -482,6 +508,11 @@ export function AnnotationAiPreviewPanel({
                                 else next.delete(column);
                                 return next;
                               });
+                            }}
+                            codebookFit={{
+                              reference: previewFit,
+                              comparison: comparisonFit.get(column),
+                              pageOnly: true,
                             }}
                           />
                         ) : (
@@ -610,6 +641,11 @@ export function AnnotationAiPreviewPanel({
                                         ? 'italic text-description'
                                         : ''
                                     }`}
+                                    title={
+                                      isInvalidAnnotationLabel(correctionValue, classOptions)
+                                        ? NOT_A_CODE_EXPLANATION
+                                        : undefined
+                                    }
                                   >
                                     <SelectValue placeholder="None" />
                                   </SelectTrigger>
@@ -661,11 +697,7 @@ export function AnnotationAiPreviewPanel({
                               ) : isComparison ? (
                                 <span
                                   className={invalid ? 'italic text-description' : undefined}
-                                  title={
-                                    invalid
-                                      ? 'Not a code in the Codebook, so treated as empty'
-                                      : undefined
-                                  }
+                                  title={invalid ? NOT_A_CODE_EXPLANATION : undefined}
                                 >
                                   {cellText(row[column]) || '—'}
                                 </span>

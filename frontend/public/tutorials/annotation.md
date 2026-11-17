@@ -202,11 +202,14 @@ sort in scale order.
 
 Choose **Start** to open the annotation table. Select a Codebook value for each
 row from its **Select code** list; each change is written directly to the annotation column as a Data Block
-Edit. Start captures the source, annotation column, Codebook mapping, and table
-inputs. You can edit the setup as the draft for the next table without changing
-the open table. Choose **Close** even if that draft is incomplete; the next
-Start captures the new setup. Switching modes hides but does not rewrite the
-open Manual snapshot.
+Edit. The open table follows the setup: choose another Codebook, create one,
+edit its codes, or pick another annotation column, and the table, its muted
+values and every score update at once, keeping the page, filters, **Compare
+to** columns and revealed columns. While you are halfway through a choice (a
+Codebook still loading, or no annotation column picked yet) the table keeps
+what it showed. If you change the Codebook while a label is still saving, a
+short note says the table will update when the save finishes. **Close** hides
+the table without discarding saved labels; switching modes hides it too.
 
 ![Manual annotation table with the code list open for one row](tutorials/assets/annotation/manual_table.png)
 
@@ -239,7 +242,16 @@ code in the Codebook (for example `P` instead of `promise`, or a date pasted by
 accident). Such values are still displayed, in muted italics, but they never
 count as differences, never contribute to reliability, and match **Empty**
 rather than **Has value**. Matching is exact after trimming spaces; `Promise`
-is not `promise`. Without a Codebook only the blank rule applies.
+is not `promise`. Without a Codebook only the blank rule applies. Hover a muted
+value, in the table, its code list or the row viewer, to see why.
+
+When values are left out, the score's tooltip says so for each column: how
+many values in a column are not codes, or, when none of a column's values are
+codes, that the column is left out of the score (for the annotation column,
+of every score). A line above the table asks whether the right Codebook is
+selected when most values in the annotation column are not codes, and a
+**Compare to** header says **No codes from this codebook** when none of its
+values are codes.
 
 The table fills the space below the parameters, so dragging the bar between
 the parameters and the results shows more or fewer rows. To set the table's own
@@ -501,6 +513,9 @@ Choose **Preview** to see predicted labels for a sample of rows without writing
 to the annotation column. Page through the predictions,
 compare them with existing labels, add corrections if useful, then revise the
 Codebook, examples, model, or settings when the errors show a pattern.
+Preview and Review keep the codes the AI was given, since its labels were
+chosen from them. If you change the Codebook afterwards, a note above the table
+says so; Preview or Run again to use the new codes.
 Pages you have seen are kept with the tab and saved with the Project, so going
 back to a page, reloading or reopening the tab doesn't ask the provider again;
 a new Preview or **Clear results** removes them. Preview waits as long as the provider

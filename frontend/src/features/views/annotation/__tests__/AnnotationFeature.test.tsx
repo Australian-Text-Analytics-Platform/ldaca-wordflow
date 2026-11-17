@@ -813,45 +813,44 @@ describe('AnnotationFeature', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
-  it('keeps the open Manual table bound to its Start-time snapshot', async () => {
+  it('lets the open Manual table follow the codebook and annotation column (issue 498)', async () => {
     const user = userEvent.setup();
     mocks.sourceColumnNames = ['text', 'annotation'];
+    const host = {
+      tabId: 'tab-1',
+      analyses: [],
+      latestPreview: null,
+      latestRunAll: null,
+      activeAnalysis: null,
+      inputSets: {},
+      settings: annotationSettings({ annotationTargets: { 'source-1': 'annotation' } }),
+      correctionColumns: {},
+      setInputSet: mocks.setInputSet,
+      setSetting: mocks.setSetting,
+      setCorrectionColumn: vi.fn(),
+      clearCorrectionColumns: vi.fn(),
+      refreshAnalyses: vi.fn(),
+    };
 
-    render(
-      <AnnotationFeature
-        host={{
-          tabId: 'tab-1',
-          analyses: [],
-          latestPreview: null,
-          latestRunAll: null,
-          activeAnalysis: null,
-          inputSets: {},
-          settings: annotationSettings({ annotationTargets: { 'source-1': 'annotation' } }),
-          correctionColumns: {},
-          setInputSet: mocks.setInputSet,
-          setSetting: mocks.setSetting,
-          setCorrectionColumn: vi.fn(),
-          clearCorrectionColumns: vi.fn(),
-          refreshAnalyses: vi.fn(),
-        }}
-      />,
-    );
+    const { rerender } = render(<AnnotationFeature host={host} />);
 
     await user.click(screen.getByRole('button', { name: 'Start' }));
     expect(screen.getByTestId('manual-review-snapshot')).toHaveTextContent(
       'source-1:text:annotation:none',
     );
+
+    // A codebook chosen (or created) after Start: no Close and Start needed.
+    mocks.classSelected = true;
+    rerender(<AnnotationFeature host={{ ...host }} />);
+    expect(screen.getByTestId('manual-review-snapshot')).toHaveTextContent(
+      'source-1:text:annotation:class-1',
+    );
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('combobox', { name: 'Annotation column' }));
     await user.click(screen.getByRole('option', { name: 'text' }));
     expect(screen.getByTestId('manual-review-snapshot')).toHaveTextContent(
-      'source-1:text:annotation:none',
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Close' }));
-    await user.click(screen.getByRole('button', { name: 'Start' }));
-    expect(screen.getByTestId('manual-review-snapshot')).toHaveTextContent(
-      'source-1:text:text:none',
+      'source-1:text:text:class-1',
     );
   });
 

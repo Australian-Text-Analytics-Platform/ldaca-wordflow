@@ -16,6 +16,12 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { AnnotationRowFilterValue } from '@/features/views/annotation/annotationRowFilter';
 import {
+  type ColumnCodebookFit,
+  codebookFitNotes,
+  hasNoCodes,
+  NO_CODES_HEADER_HINT,
+} from '@/features/views/annotation/codebookFit';
+import {
   type ConfusionCount,
   INTERCODER_RELIABILITY_METRICS,
   type IntercoderReliabilityMetric,
@@ -65,6 +71,16 @@ interface ColumnComparisonHeaderProps {
    * the matrix lists the levels in order, then the codes outside the scale.
    */
   scale?: OrderedScale | null;
+  /**
+   * How many values in each of the two columns are not codes in the codebook.
+   * The tooltip then names the columns the score leaves out, or how many of
+   * their values it leaves out; Preview counts the page on screen only.
+   */
+  codebookFit?: {
+    reference?: ColumnCodebookFit;
+    comparison?: ColumnCodebookFit;
+    pageOnly?: boolean;
+  };
 }
 
 /**
@@ -87,8 +103,23 @@ export function ColumnComparisonHeader({
   filter,
   onFilterChange,
   scale = null,
+  codebookFit,
 }: ColumnComparisonHeaderProps) {
   const ordered = scale !== null;
+  // The annotation column is compared by every score, so its note says so.
+  const fitNotes = codebookFitNotes(
+    [
+      {
+        column: referenceColumn,
+        fit: codebookFit?.reference,
+        everyScore: true,
+      },
+      { column: comparisonColumn, fit: codebookFit?.comparison },
+    ],
+    { pageOnly: codebookFit?.pageOnly },
+  );
+  const columnLeftOut = fitNotes.some((note) => note.leftOut);
+  const comparisonHasNoCodes = hasNoCodes(codebookFit?.comparison);
   const metricDefinition = {
     label: intercoderReliabilityLabel(metric, ordered),
     symbol: intercoderReliabilitySymbol(metric, ordered),
@@ -132,12 +163,24 @@ export function ColumnComparisonHeader({
             <p className="mb-2 max-w-sm whitespace-normal" data-testid="reliability-method">
               {reliabilityMethod(metric, ordered)}
             </p>
+            {fitNotes.map((note) => (
+              <p
+                key={note.column}
+                className="mb-2 max-w-sm whitespace-normal"
+                data-testid="codebook-fit-note"
+              >
+                {note.text}
+              </p>
+            ))}
             {isLoading ? (
               <p>Loading comparison…</p>
             ) : isError || !rows ? (
               <p>Couldn't load comparison.</p>
             ) : rows.length === 0 ? (
-              <p>No rows contain values in both columns.</p>
+              // A column left out already explains the missing score.
+              columnLeftOut ? null : (
+                <p>No rows contain values in both columns.</p>
+              )
             ) : (
               <AgreementMatrix
                 rows={rows}
@@ -183,6 +226,14 @@ export function ColumnComparisonHeader({
             />
           ) : null}
         </span>
+        {comparisonHasNoCodes ? (
+          <span
+            className="text-label-secondary font-normal text-warning"
+            title={fitNotes.find((note) => note.column === comparisonColumn)?.text}
+          >
+            {NO_CODES_HEADER_HINT}
+          </span>
+        ) : null}
       </TooltipProvider>
     </span>
   );

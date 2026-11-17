@@ -1,5 +1,9 @@
 import { sqlIdentifier, sqlString } from '@/api';
 
+/** What a grey italic value means, on hover in tables, dropdowns and the row viewer. */
+export const NOT_A_CODE_EXPLANATION =
+  'Not a code in the selected codebook, so it is left out of the scores.';
+
 export interface AnnotationLabelClassification {
   raw: string;
   value: string | null;
@@ -64,9 +68,14 @@ export function annotationValuesDiffer(
   return left !== null && right !== null && left !== right;
 }
 
+/** Polars SQL expression for the trimmed text of a cell, as classifyAnnotationLabel reads it. */
+export function annotationTextSql(column: string): string {
+  return `TRIM(CAST(${sqlIdentifier(column)} AS STRING))`;
+}
+
 /** Polars SQL expression equivalent to classifyAnnotationLabel(value).value. */
 export function annotationLabelSql(column: string, classOptions: readonly string[]): string {
-  const text = `TRIM(CAST(${sqlIdentifier(column)} AS STRING))`;
+  const text = annotationTextSql(column);
   const classes = normalizeAnnotationClassOptions(classOptions);
   if (classes.length === 0) return `NULLIF(${text}, '')`;
   return `(CASE WHEN ${text} IN (${classes.map(sqlString).join(', ')}) THEN ${text} END)`;

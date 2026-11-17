@@ -38,4 +38,21 @@ describe('buildAnnotationRowDetailPayload (issue 92)', () => {
       'url',
     ]);
   });
+  it('marks coded values that are not codes in the codebook (issue 498)', () => {
+    const payload = buildAnnotationRowDetailPayload(row, {
+      textColumn: 'text',
+      annotationColumn: 'annotation',
+      annotationValue: 'old',
+      correctionColumn: null,
+      comparisonColumns: ['reviewer', 'second'],
+      revealedComparisonColumns: new Set(['reviewer']),
+      metadataColumns: ['url'],
+      classOptions: ['covid'],
+    });
+
+    expect(payload.valueNotes).toEqual({
+      annotation: 'Not a code in the selected codebook, so it is left out of the scores.',
+      reviewer: 'Not a code in the selected codebook, so it is left out of the scores.',
+    });
+  });
 });

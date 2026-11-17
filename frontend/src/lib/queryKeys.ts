@@ -186,6 +186,21 @@ export const queryKeys = {
       { nodeIds: [...nodeIds], sql, columns: [...columns], classOptions: [...classOptions] },
     ] as const,
 
+  /** Filled and not-a-code counts per Annotation column; edits refresh it by the prefix. */
+  annotationCodebookFit: (
+    workspaceId: string,
+    nodeIds: string[],
+    sql: string,
+    columns: readonly string[],
+    classOptions: readonly string[],
+  ) =>
+    [
+      'workspaces',
+      workspaceId,
+      'annotation-codebook-fit',
+      { nodeIds: [...nodeIds], sql, columns: [...columns], classOptions: [...classOptions] },
+    ] as const,
+
   /** Authoritative Arrow schema for one Data Block. */
   nodeSchema: (workspaceId: string, nodeId: string) =>
     ['workspaces', workspaceId, 'nodes', nodeId, 'schema'] as const,

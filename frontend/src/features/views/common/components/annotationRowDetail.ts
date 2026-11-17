@@ -1,3 +1,7 @@
+import {
+  isInvalidAnnotationLabel,
+  NOT_A_CODE_EXPLANATION,
+} from '@/features/views/annotation/annotationLabelModel';
 import type { RowDetailPayload } from './RowDetailPanel';
 
 /** Shown in place of a comparison value the reviewer has not revealed yet. */
@@ -14,6 +18,8 @@ export interface AnnotationRowViewColumns {
   comparisonColumns: readonly string[];
   revealedComparisonColumns: ReadonlySet<string>;
   metadataColumns: readonly string[];
+  /** The codebook's codes: other values in coded columns are marked as not codes. */
+  classOptions?: readonly string[];
 }
 
 /**
@@ -39,5 +45,20 @@ export function buildAnnotationRowDetailPayload(
   for (const column of columns.metadataColumns) {
     record[column] = row[column];
   }
-  return { record, textColumn: columns.textColumn };
+  // Coded columns: the annotation, its correction, and revealed comparisons.
+  const codedColumns = [
+    columns.annotationColumn,
+    ...(columns.correctionColumn ? [columns.correctionColumn] : []),
+    ...columns.comparisonColumns.filter((column) => columns.revealedComparisonColumns.has(column)),
+  ];
+  const valueNotes = Object.fromEntries(
+    codedColumns
+      .filter((column) => isInvalidAnnotationLabel(record[column], columns.classOptions ?? []))
+      .map((column) => [column, NOT_A_CODE_EXPLANATION]),
+  );
+  return {
+    record,
+    textColumn: columns.textColumn,
+    ...(Object.keys(valueNotes).length > 0 ? { valueNotes } : {}),
+  };
 }

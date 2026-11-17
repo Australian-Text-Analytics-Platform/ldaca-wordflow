@@ -288,11 +288,15 @@ client-only and is never written into Query data.
 Displayed Results resolve source identity, columns, ordering, search semantics,
 counts, seeds, and Topic projection data only from the strict Result tree and
 immutable submitted request. They do not fall back to current Workspace state.
-Editing the next draft therefore cannot rebind an existing Result. Manual Annotation
-uses the same principle locally: **Start** captures the source, annotation
-column, Codebook mapping, and related table inputs. The setup remains editable
-while that table is open, **Close** remains available even if the next draft is
-incomplete, and the next Start captures a replacement snapshot.
+Editing the next draft therefore cannot rebind an existing Result. Manual
+Annotation is not a Result: its table edits the Data Block in place, so while
+it is open it follows each complete setup (source, annotation and text column,
+correction column, and Codebook mapping). A half-made choice keeps the last
+complete setup, so the table never closes or empties mid-edit, and **Close**
+stays available. Inside the table, a Codebook change waits for any cell save in
+progress, so that save's optimistic score update and the refreshed scores use
+the same codes. Annotation Preview and Review keep the codes of their
+submitted request and say so when the live Codebook differs.
 
 Concordance and Quotation Review query explicit document or match projections
 of immutable Analysis tables. Run All therefore creates no graph node and

@@ -34,15 +34,18 @@ import {
 import { MetadataColumnSelector } from '@/features/views/common/components/MetadataColumnSelector';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
 import {
+  useCodebookFit,
   useCodeCombinations,
   useFullColumnComparisons,
 } from '@/features/views/common/hooks/useFullColumnComparisons';
+import { annotationColumnCodebookHint } from '@/features/views/annotation/codebookFit';
 import { MultiCoderAlphaBadge } from './MultiCoderAlphaBadge';
 import { type ServerColumnDef, useServerTable } from '@/features/views/common/hooks/useServerTable';
 import {
   annotationValuesDiffer,
   isInvalidAnnotationLabel,
   normalizeAnnotationClassOptions,
+  NOT_A_CODE_EXPLANATION,
 } from '@/features/views/annotation/annotationLabelModel';
 import { useAnnotationNodePage } from '@/features/views/annotation/hooks/useAnnotationNodePage';
 import { useAnnotationRowFilter } from '@/features/views/annotation/hooks/useAnnotationRowFilter';
@@ -248,6 +251,17 @@ export function RunAllReviewTable({
   const comparisonQueryByColumn = new Map(
     activeComparisonColumns.map((column, index) => [column, comparisonQueries[index]]),
   );
+  // How many values in each scored column are not codes, so the scores can
+  // say which columns they leave out (issue 498).
+  const codebookFit = useCodebookFit({
+    workspaceId,
+    nodeIds: [nodeId],
+    sql,
+    columns: coderColumns,
+    classOptions,
+  }).data;
+  const annotationFit = codebookFit?.get(comparisonColumn);
+  const codebookHint = annotationColumnCodebookHint(comparisonColumn, annotationFit, classOptions);
   const visibleRequiredColumns = requiredColumns.filter(
     (column) => dataColumns?.includes(column) && column !== correctionColumn,
   );
@@ -324,6 +338,7 @@ export function RunAllReviewTable({
           ),
           ...activeMetadataColumns,
         ],
+        classOptions,
       });
     },
   });
@@ -397,6 +412,14 @@ export function RunAllReviewTable({
           </div>
         ) : null}
       </div>
+      {codebookHint ? (
+        <p
+          role="status"
+          className="mb-3 rounded-md border border-warning bg-warning-background px-3 py-2 text-body"
+        >
+          {codebookHint}
+        </p>
+      ) : null}
       {query.isError || countQuery.isError ? (
         <p className="text-body text-error">Couldn't load Review.</p>
       ) : query.isLoading || countQuery.isLoading || !data ? (
@@ -445,6 +468,7 @@ export function RunAllReviewTable({
                                   scale={scale}
                                   isLoading={codeCombinations.isLoading}
                                   isError={codeCombinations.isError}
+                                  {...(codebookFit ? { codebookFit } : {})}
                                 />
                               ) : null}
                               <span className="inline-flex items-center gap-1.5">
@@ -482,6 +506,10 @@ export function RunAllReviewTable({
                               filter={filterValueFor(column)}
                               onFilterChange={(value) => {
                                 setColumnFilter(column, value);
+                              }}
+                              codebookFit={{
+                                reference: annotationFit,
+                                comparison: codebookFit?.get(column),
                               }}
                             />
                           ) : (
@@ -530,6 +558,10 @@ export function RunAllReviewTable({
                               filter={filterValueFor(column)}
                               onFilterChange={(value) => {
                                 setColumnFilter(column, value);
+                              }}
+                              codebookFit={{
+                                reference: annotationFit,
+                                comparison: codebookFit?.get(column),
                               }}
                             />
                           ) : (
@@ -609,7 +641,7 @@ export function RunAllReviewTable({
                               {invalid ? (
                                 <span
                                   className="italic text-description"
-                                  title="Not a code in the Codebook, so treated as empty"
+                                  title={NOT_A_CODE_EXPLANATION}
                                 >
                                   {displayCell(row[column])}
                                 </span>
@@ -672,6 +704,11 @@ export function RunAllReviewTable({
                                     ? 'italic text-description'
                                     : ''
                                 }`}
+                                title={
+                                  isInvalidAnnotationLabel(correctionValue, classOptions)
+                                    ? NOT_A_CODE_EXPLANATION
+                                    : undefined
+                                }
                               >
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
@@ -720,11 +757,7 @@ export function RunAllReviewTable({
                               ) : isComparison ? (
                                 <span
                                   className={invalid ? 'italic text-description' : undefined}
-                                  title={
-                                    invalid
-                                      ? 'Not a code in the Codebook, so treated as empty'
-                                      : undefined
-                                  }
+                                  title={invalid ? NOT_A_CODE_EXPLANATION : undefined}
                                 >
                                   {displayCell(comparisonValue(column))}
                                 </span>

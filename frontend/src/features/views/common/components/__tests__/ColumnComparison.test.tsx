@@ -409,4 +409,81 @@ describe('ColumnComparison', () => {
       (await screen.findAllByText('There are no other columns to compare with.'))[0],
     ).toBeInTheDocument();
   });
+  describe('says which columns do not match the codebook (issue 498)', () => {
+    const renderHeader = (
+      rows: ConfusionCount[],
+      codebookFit: Parameters<typeof ColumnComparisonHeader>[0]['codebookFit'],
+    ) =>
+      render(
+        <ColumnComparisonHeader
+          metric="cohens_kappa"
+          referenceColumn="job.gemini25"
+          comparisonColumn="Job_AI"
+          rows={rows}
+          isLoading={false}
+          isError={false}
+          revealed={false}
+          onRevealedChange={vi.fn()}
+          codebookFit={codebookFit}
+        />,
+      );
+    const openTooltip = async () => {
+      const user = userEvent.setup();
+      await user.hover(screen.getByRole('button', { name: /Cohen’s Kappa/ }));
+      await screen.findAllByTestId('reliability-method');
+    };
+
+    it('names a comparison column with no codes instead of blaming empty rows', async () => {
+      renderHeader([], {
+        reference: { filled: 30, notCodes: 0, examples: [] },
+        comparison: { filled: 30, notCodes: 30, examples: ['Other'] },
+      });
+      expect(screen.getByText('No codes from this codebook')).toBeInTheDocument();
+      await openTooltip();
+
+      expect(screen.getAllByTestId('codebook-fit-note')[0]).toHaveTextContent(
+        'None of the values in Job_AI are codes in the selected codebook (for example “Other”), so Job_AI is left out of this score. Check the codebook.',
+      );
+      expect(screen.queryByText('No rows contain values in both columns.')).not.toBeInTheDocument();
+    });
+
+    it('says an annotation column with no codes affects every score', async () => {
+      renderHeader([], {
+        reference: { filled: 30, notCodes: 30, examples: ['Promise'] },
+        comparison: { filled: 30, notCodes: 0, examples: [] },
+      });
+      await openTooltip();
+
+      expect(screen.getAllByTestId('codebook-fit-note')[0]).toHaveTextContent(
+        'so job.gemini25 is left out of every score, since all of them compare against it.',
+      );
+    });
+
+    it('keeps the empty-rows wording when a column is just empty', async () => {
+      renderHeader([], {
+        reference: { filled: 30, notCodes: 0, examples: [] },
+        comparison: { filled: 0, notCodes: 0, examples: [] },
+      });
+      await openTooltip();
+
+      expect(screen.queryByTestId('codebook-fit-note')).not.toBeInTheDocument();
+      expect(
+        (await screen.findAllByText('No rows contain values in both columns.'))[0],
+      ).toBeInTheDocument();
+    });
+
+    it('shows the score and how many values were left out when some are not codes', async () => {
+      renderHeader(rows, {
+        reference: { filled: 30, notCodes: 0, examples: [] },
+        comparison: { filled: 30, notCodes: 12, examples: ['Other'] },
+      });
+      expect(screen.getByRole('button', { name: /Cohen’s Kappa/ })).toHaveTextContent('κ 0.500');
+      await openTooltip();
+
+      expect(screen.getAllByTestId('codebook-fit-note')[0]).toHaveTextContent(
+        '12 values in Job_AI are not codes in the selected codebook and were left out.',
+      );
+      expect(screen.queryByText('No codes from this codebook')).not.toBeInTheDocument();
+    });
+  });
 });

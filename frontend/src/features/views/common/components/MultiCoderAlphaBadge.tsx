@@ -5,6 +5,10 @@ import {
   multiCoderAgreement,
   type OrderedScale,
 } from '@/features/views/common/columnComparisonModel';
+import {
+  type CodebookFitByColumn,
+  codebookFitNotes,
+} from '@/features/views/annotation/codebookFit';
 import { AgreementMatrix } from './AgreementMatrix';
 
 interface MultiCoderAlphaBadgeProps {
@@ -16,6 +20,8 @@ interface MultiCoderAlphaBadgeProps {
   isError: boolean;
   /** Preview counts the page on screen only. */
   pageOnly?: boolean;
+  /** Per column, how many values are not codes, so the tooltip can name the columns left out. */
+  codebookFit?: CodebookFitByColumn;
 }
 
 /**
@@ -32,7 +38,12 @@ export function MultiCoderAlphaBadge({
   isLoading,
   isError,
   pageOnly = false,
+  codebookFit,
 }: MultiCoderAlphaBadgeProps) {
+  const fitNotes = codebookFitNotes(
+    columns.map((column) => ({ column, fit: codebookFit?.get(column) })),
+    { pageOnly },
+  );
   const agreement = combinations ? multiCoderAgreement(combinations, scale) : null;
   const symbol = scale ? 'αo' : 'α';
   const name = scale ? 'Ordinal Krippendorff’s Alpha' : 'Krippendorff’s Alpha';
@@ -73,12 +84,24 @@ export function MultiCoderAlphaBadge({
             text counts when at least two of them coded it
             {counted ? ` (${counted})` : ''}.
           </p>
+          {fitNotes.map((note) => (
+            <p
+              key={note.column}
+              className="mb-2 max-w-sm whitespace-normal"
+              data-testid="codebook-fit-note"
+            >
+              {note.text}
+            </p>
+          ))}
           {isLoading ? (
             <p>Loading agreement…</p>
           ) : isError || !agreement ? (
             <p>Couldn't load the agreement.</p>
           ) : agreement.coincidences.length === 0 ? (
-            <p>No text has codes from two coders yet.</p>
+            // A column left out already explains the missing score.
+            fitNotes.some((note) => note.leftOut) ? null : (
+              <p>No text has codes from two coders yet.</p>
+            )
           ) : (
             <>
               <p className="mb-1 max-w-sm whitespace-normal text-label-secondary text-widget-foreground/80">

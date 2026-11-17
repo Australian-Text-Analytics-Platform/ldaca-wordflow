@@ -77,6 +77,11 @@ export interface RowDetailPayload {
   fullText?: string;
   /** Columns to exclude from the metadata table (e.g. generated columns) */
   excludeMetadataColumns?: string[];
+  /**
+   * Values shown grey italic, keyed by column, with what that means on hover
+   * (Annotation: a value that is not a code in the selected codebook).
+   */
+  valueNotes?: Record<string, string>;
 }
 
 export interface RowDetailPanelProps {
@@ -173,7 +178,7 @@ export function RowDetailPanel({
 
   if (!payload) return null;
 
-  const { record, textColumn, fullText, excludeMetadataColumns } = payload;
+  const { record, textColumn, fullText, excludeMetadataColumns, valueNotes } = payload;
   const excludeSet = new Set(excludeMetadataColumns ?? []);
   if (textColumn) excludeSet.add(textColumn);
 
@@ -278,11 +283,18 @@ export function RowDetailPanel({
                   <TableBody>
                     {metadataEntries.map(([key, value]) => {
                       const displayValue = formatMetadataValue(value);
+                      const note = valueNotes?.[key];
                       return (
                         <TableRow key={key}>
                           <TableCell className="font-medium">{key}</TableCell>
                           <TableCell>
-                            <div className="max-w-md whitespace-pre-wrap wrap-break-word">
+                            <div
+                              className={cn(
+                                'max-w-md whitespace-pre-wrap wrap-break-word',
+                                note && 'italic text-description',
+                              )}
+                              title={note}
+                            >
                               {typeof value === 'object' && value !== null ? (
                                 <pre className="text-label-secondary bg-panel p-2 rounded-sm overflow-x-auto">
                                   {displayValue}

@@ -4,6 +4,7 @@ import {
   annotationLabelSql,
   normalizeAnnotationClassOptions,
 } from '@/features/views/annotation/annotationLabelModel';
+import { codebookFitSql, parseCodebookFitRows } from '@/features/views/annotation/codebookFit';
 import type {
   CodeCombination,
   ConfusionCount,
@@ -119,6 +120,55 @@ export function useFullColumnComparisons({
       staleTime: 0,
       refetchOnMount: 'always' as const,
     })),
+  });
+}
+
+/**
+ * How many values in each column are not codes in the codebook, with a few
+ * examples, so the scores can say which columns they leave out and why. One
+ * query for every column, and only when the codebook has codes.
+ */
+export function useCodebookFit({
+  workspaceId,
+  nodeIds,
+  sql,
+  columns,
+  classOptions,
+}: {
+  workspaceId: string | null;
+  nodeIds: string[];
+  sql: string;
+  columns: readonly string[];
+  classOptions: readonly string[];
+}) {
+  const canonicalClassOptions = normalizeAnnotationClassOptions(classOptions);
+  return useQuery({
+    queryKey: queryKeys.annotationCodebookFit(
+      workspaceId ?? '',
+      nodeIds,
+      sql,
+      columns,
+      canonicalClassOptions,
+    ),
+    queryFn: async ({ signal }) => {
+      if (!workspaceId) throw new Error('Missing Project ID');
+      const result = await queryWorkspaceSqlTable({
+        path: { workspace_id: workspaceId },
+        body: {
+          mode: 'query',
+          node_ids: nodeIds,
+          sql: codebookFitSql(sql, columns, canonicalClassOptions),
+          page: 1,
+          // A totals row and at most three examples per column.
+          page_size: Math.max(1, columns.length * 4),
+        },
+        signal,
+      });
+      return parseCodebookFitRows(result.rows, columns);
+    },
+    enabled: Boolean(workspaceId) && columns.length > 0 && canonicalClassOptions.length > 0,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 
