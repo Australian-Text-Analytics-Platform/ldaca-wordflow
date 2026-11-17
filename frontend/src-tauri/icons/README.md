@@ -30,8 +30,14 @@ Regenerate the compiled macOS asset catalog after changing `wordflow.icon`:
 pnpm -C frontend compile:desktop:mac-icon
 ```
 
-The browser favicon and startup icon are rendered from the same flattened
-master. Keep them in sync when the native composition changes.
+The startup icon (`frontend/src/wordflow-icon.png`) is rendered from the same
+flattened master. Keep it in sync when the native composition changes.
+
+The browser favicon is drawn separately for small sizes: a W and F in one white
+stroke, from a source node through the W into the F's two derived nodes (the
+Project Graph), on a tile that deepens from cyan to blue, left to right.
+`frontend/public/favicon.svg` is the source, and `favicon.ico` (16, 32, 48 and
+64 px) and `apple-touch-icon.png` (180 px, square corners) are rendered from it.
 
 ## Packaging
 

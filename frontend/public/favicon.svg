@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!--
+    Wordflow: a W and F in one stroke. It starts at a source node (the corpus),
+    flows through the W, and its last stroke becomes the F's stem, which branches
+    into two derived nodes, as Data Blocks do in the Project Graph. The tile
+    deepens from left to right, the way the stroke flows.
+
+    Drawn for 16 px: the stroke is 6 units (1.5 px), the top edges of the F's
+    arms (y 12 and 28) and the W's bottom edge (y 52) sit on whole pixels, and
+    the mark keeps 4 units clear of the tile's edge.
+  -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22C8EE"/>
+      <stop offset="1" stop-color="#0A5CA8"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#g)"/>
+  <g fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8.8 18.5 C10.5 26 12.8 49 17.8 49 S23.8 31.5 26.8 31.5 S31.8 49 35.8 49 S40.2 35 41 24 C41.5 17 43 15 47.5 15 L51 15"/>
+    <path d="M39.98 37.55 C40.4 33 42.2 31 46.5 31 L50 31"/>
+  </g>
+  <g fill="#fff">
+    <circle cx="8.8" cy="18.5" r="4.8"/>
+    <circle cx="55.2" cy="15" r="4.8"/>
+    <circle cx="54.2" cy="31" r="4.8"/>
+  </g>
+</svg>
