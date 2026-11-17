@@ -38,6 +38,11 @@ import {
 export interface EditorTabItem {
   id: string;
   title: string;
+  /**
+   * Hover text. Without it the tooltip repeats the title, which helps for
+   * named tabs that get cut off; fixed tool tabs say what the tool does.
+   */
+  tooltip?: string;
   icon?: ReactNode;
   tabDomId?: string;
   panelDomId?: string;
@@ -550,7 +555,7 @@ export function EditorTabs({
                     side="bottom"
                     className="max-w-xs border border-surface-border bg-widget px-3 py-2 text-body text-widget-foreground"
                   >
-                    {displayTitle}
+                    {tab.tooltip ?? displayTitle}
                   </TooltipContent>
                 </Tooltip>
               );
