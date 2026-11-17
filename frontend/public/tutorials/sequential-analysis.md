@@ -164,7 +164,7 @@ repeated in the result.
 For grouped results, **Minimum group count** hides any group whose total count
 across the complete result is below the entered value. The total is the number
 of rows in the group over all periods, the first figure beside its name in the
-legend. The default is **10**; enter **0** to show every group. A group whose
+legend. The default is **10**; enter **1** to show every group. A group whose
 count equals the threshold remains visible. The control appears in the legend
 card immediately after **Ignore capitals**, and the **?** beside it opens this
 section.

@@ -86,6 +86,14 @@ type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custo
 
 export const DEFAULT_MINIMUM_GROUP_COUNT = 10;
 
+/** Minimum group count's tooltip, naming the current number (issue 465). */
+export function minimumGroupCountTooltip(minimumGroupCount: number) {
+  const count = Number.isFinite(minimumGroupCount) ? Math.floor(minimumGroupCount) : 0;
+  return count > 1
+    ? `Groups with fewer than ${String(count)} rows are hidden from the chart. Enter 1 to show every group.`
+    : 'Every group is shown. Enter a higher number to hide groups with only a few rows.';
+}
+
 const NUMERIC_X_KEY = '__x_numeric__';
 /** Raw count kept beside a normalised value, for the tooltip (issue 219). */
 const COUNT_KEY_PREFIX = '__count__:';
