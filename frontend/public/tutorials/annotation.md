@@ -532,6 +532,21 @@ controls. A reviewed
 correction column can also be selected as the Example annotation column for a
 later run.
 
+Before Run writes anything, Wordflow checks the annotation column against the
+selected Codebook, and a line under the setup says what it found as soon as
+the column is chosen:
+
+- **Empty column**: Run starts at once.
+- **Codes from the Codebook**: the line says how many rows already hold codes,
+  and Run asks you to confirm that it will fill only the empty rows or replace
+  every code, as set in **Which rows to annotate** (Advanced settings). If every
+  row already holds a code and only empty rows are to be annotated, Run says
+  there is nothing to fill.
+- **Values that are not codes**: usually the wrong column or the wrong
+  Codebook. The line asks you to check both, and Run asks you to confirm that
+  it will overwrite the whole column; filling only the empty rows is not
+  offered, because it would keep the values that are not codes.
+
 Run sends each distinct text once: rows with the same text, such as repeated
 replies or retweets, share one answer, so the provider is asked (and paid) only
 once for them. While Run works, **Tasks** shows how many texts are classified so

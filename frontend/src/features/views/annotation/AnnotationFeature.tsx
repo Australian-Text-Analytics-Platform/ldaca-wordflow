@@ -50,6 +50,15 @@ import { getAnalysisOutputResource } from '../common/analysisApi';
 import { ANALYSIS_TASK_TYPES } from '../common/analysisIds';
 import AnalysisTaskBanner from '../common/components/AnalysisTaskBanner';
 import { AnnotationSavedLabelsNotice } from './components/AnnotationSavedLabelsNotice';
+import { AnnotationRunConfirmDialog } from './components/AnnotationRunConfirmDialog';
+import { useCodebookFit } from '../common/hooks/useFullColumnComparisons';
+import {
+  checkRunTarget,
+  runProcessingMode,
+  type RunTargetWording,
+  runTargetWording,
+} from './runTargetCheck';
+import type { AnnotationProcessingMode } from './annotationTabSettings';
 import { type AnalysisRequestOfKind, useAnalysisFeature } from '../common/hooks/useAnalysisFeature';
 import { useNodeColorControls } from '../common/hooks/useNodeColorControls';
 import { usePersistNodeDocumentColumn } from '../common/hooks/usePersistNodeDocumentColumn';
@@ -249,6 +258,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   const [newColumnName, setNewColumnName] = useState('');
   const [createColumnError, setCreateColumnError] = useState<string | null>(null);
   const [manualReview, setManualReview] = useState<ManualReview | null>(null);
+  // The confirmation before a Run writes into a column that holds values (issue 499).
+  const [runConfirm, setRunConfirm] = useState<{
+    dialog: NonNullable<RunTargetWording['dialog']>;
+    processingMode: AnnotationProcessingMode;
+  } | null>(null);
   const [isCreatingColumn, setIsCreatingColumn] = useState(false);
   const [isStartingManualReview, setIsStartingManualReview] = useState(false);
   const [isCreatingClassTable, setIsCreatingClassTable] = useState(false);
@@ -1013,11 +1027,32 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     rerunWithoutClear: true,
     isBusy: analysisActionLifecycle.parametersLocked,
   });
+  // What the annotation column already holds, against the live codes (issue
+  // 499): values that are not codes mean Run overwrites the whole column.
+  const runTargetFitQuery = useCodebookFit({
+    workspaceId: currentWorkspaceId ?? null,
+    nodeIds: sourceNode ? [sourceNode.id] : [],
+    sql: sourceNode ? `SELECT * FROM ${sqlTable(sourceNode.id)}` : '',
+    columns:
+      annotationMode === 'ai' && sourceNode && selectedAnnotationColumnExists
+        ? [resolvedAnnotationColumn]
+        : [],
+    classOptions: aiClasses.map((item) => item.name),
+  });
+  const runTargetRows = sourceNode?.node.shape?.[0] ?? 0;
+  const runTarget = checkRunTarget(
+    resolvedAnnotationColumn,
+    runTargetFitQuery.data?.get(resolvedAnnotationColumn),
+    runTargetRows,
+  );
+  const runTargetLine = runTargetWording(runTarget, sent.aiProcessingMode, {
+    advanced: toolMode.advanced,
+  });
   const currentRunAllSignature = currentAiRequest
     ? {
         source: currentAiRequest,
         batch_size: sent.aiBatchSize,
-        processing_mode: sent.aiProcessingMode,
+        processing_mode: runProcessingMode(runTarget, sent.aiProcessingMode),
         max_concurrency: aiMaxConcurrency,
       }
     : null;
@@ -1079,7 +1114,25 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     });
   };
 
-  const handleRunAll = async () => {
+  // Run checks the annotation column again first, so the confirmation
+  // describes what the column holds now (issue 499).
+  const requestRunAll = async () => {
+    if (!sourceNode || !selectedAnnotationColumnExists) return;
+    const fresh = await runTargetFitQuery.refetch();
+    const check = checkRunTarget(
+      resolvedAnnotationColumn,
+      fresh.isSuccess ? fresh.data.get(resolvedAnnotationColumn) : undefined,
+      runTargetRows,
+    );
+    const { dialog } = runTargetWording(check, sent.aiProcessingMode, {
+      advanced: toolMode.advanced,
+    });
+    const processingMode = runProcessingMode(check, sent.aiProcessingMode);
+    if (dialog) setRunConfirm({ dialog, processingMode });
+    else await handleRunAll(processingMode);
+  };
+
+  const handleRunAll = async (processingMode: AnnotationProcessingMode) => {
     if (
       !currentWorkspaceId ||
       !sourceNode ||
@@ -1100,7 +1153,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
           providerConfigurationId: selectedAiProvider.id,
           source: currentAiRequest,
           batchSize: sent.aiBatchSize,
-          processingMode: sent.aiProcessingMode,
+          processingMode,
           maxConcurrency: aiMaxConcurrency,
         });
         return data;
@@ -1223,7 +1276,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                     annotationMode === 'ai'
                       ? {
                           onPreview: runFreshAiAnalysis,
-                          onRunAll: handleRunAll,
+                          onRunAll: requestRunAll,
                           onStop: activeAnalysis ? stopAiTask : undefined,
                           help: { targetKey: 'analysis.annotation.run' },
                           onClear: async () => {
@@ -1618,6 +1671,35 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
               advanced={toolMode.advanced}
             />
           ) : null}
+          {annotationMode === 'ai' &&
+          runTargetLine.line &&
+          annotationRunAll?.state !== 'queued' &&
+          annotationRunAll?.state !== 'running' ? (
+            // What Run would find in the annotation column (issue 499).
+            <p
+              role="status"
+              data-testid="annotation-run-target"
+              className={cn(
+                'mt-2 text-body',
+                runTargetLine.warning
+                  ? 'rounded-md border border-warning bg-warning-background px-3 py-2'
+                  : 'text-description',
+              )}
+            >
+              {runTargetLine.line}
+            </p>
+          ) : null}
+          <AnnotationRunConfirmDialog
+            dialog={runConfirm?.dialog ?? null}
+            onClose={() => {
+              setRunConfirm(null);
+            }}
+            onConfirm={() => {
+              const processingMode = runConfirm?.processingMode;
+              setRunConfirm(null);
+              if (processingMode) void handleRunAll(processingMode);
+            }}
+          />
           {annotationMode === 'ai' && annotationRunAll?.state === 'failed' ? (
             <ErrorNotice
               className="mt-4"

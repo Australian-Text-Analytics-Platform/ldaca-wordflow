@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -78,6 +78,12 @@ const mocks = vi.hoisted(() => ({
   sourceColumnNames: ['text'] as string[],
   workspaceNodes: [] as { id: string; color: string; shape: [number, number] }[],
   runAllResult: null as { failed_row_count: number; failed_batch_count: number } | null,
+  // What the annotation column holds against the codebook (issue 499); empty by default.
+  columnFit: { filled: 0, notCodes: 0, examples: [] } as {
+    filled: number;
+    notCodes: number;
+    examples: string[];
+  },
 }));
 
 vi.mock('@/features/provider-credentials/providerCredentialRequests', () => ({
@@ -88,7 +94,11 @@ vi.mock('@/features/provider-credentials/providerCredentialRequests', () => ({
 vi.mock('@tanstack/react-query', async (importOriginal) => ({
   ...(await importOriginal()),
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
-  useQuery: () => ({ data: mocks.runAllResult }),
+  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => {
+    if (queryKey[2] !== 'annotation-codebook-fit') return { data: mocks.runAllResult };
+    const data = { get: () => mocks.columnFit };
+    return { data, refetch: () => Promise.resolve({ isSuccess: true, data }) };
+  },
 }));
 
 vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({
@@ -387,6 +397,7 @@ describe('AnnotationFeature', () => {
     mocks.submitRunAll.mockReset();
     mocks.exampleSelected = false;
     mocks.classSelected = false;
+    mocks.columnFit = { filled: 0, notCodes: 0, examples: [] };
     mocks.classRows = [];
     mocks.taskContext = '';
     mocks.scale = false;
@@ -524,6 +535,123 @@ describe('AnnotationFeature', () => {
     await user.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
     expect(mocks.submitRunAll.mock.calls[0]?.[0].source).toEqual(previewRequest);
+  });
+
+  describe('checks the annotation column before Run (issue 499)', () => {
+    const renderAiTab = (settings: Record<string, string>) => {
+      mocks.classSelected = true;
+      mocks.classRows = [{ class: 'support', description: 'Supports the claim' }];
+      mocks.providerConfigurations = [
+        { id: 'provider-1', name: 'OpenAI', provider: 'openai', base_url: null, has_api_key: true },
+      ];
+      mocks.sourceColumnNames = ['text', 'annotation'];
+      render(
+        <AnnotationFeature
+          host={{
+            tabId: 'tab-1',
+            analyses: [],
+            latestPreview: null,
+            latestRunAll: null,
+            activeAnalysis: null,
+            inputSets: {},
+            settings,
+            correctionColumns: {},
+            setInputSet: mocks.setInputSet,
+            setSetting: mocks.setSetting,
+            setCorrectionColumn: vi.fn(),
+            clearCorrectionColumns: vi.fn(),
+            refreshAnalyses: vi.fn(),
+          }}
+        />,
+      );
+    };
+    const aiSettings = {
+      annotationMode: 'ai' as const,
+      annotationTargets: { 'source-1': 'annotation' },
+      aiProviderConfigurationId: 'provider-1',
+      aiProviderType: 'openai' as const,
+      aiProviderModels: { 'provider-1': 'gpt-test' },
+    };
+
+    it('runs at once into an empty column, with no reminder', async () => {
+      const user = userEvent.setup();
+      renderAiTab(annotationSettings(aiSettings));
+
+      expect(screen.queryByTestId('annotation-run-target')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+
+    it('asks before filling the empty rows of a column that holds codes, and Cancel stops', async () => {
+      const user = userEvent.setup();
+      mocks.columnFit = { filled: 1240, notCodes: 0, examples: [] };
+      renderAiTab(annotationSettings(aiSettings));
+
+      expect(screen.getByTestId('annotation-run-target')).toHaveTextContent(
+        'annotation already holds codes in 1,240 of 2,380 rows. Run will fill only the 1,140 empty rows.',
+      );
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      const dialog = await screen.findByRole('alertdialog', { name: 'Fill the empty rows?' });
+      expect(dialog).toHaveTextContent('turn on Advanced and change “Which rows to annotate”');
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      expect(mocks.submitRunAll).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      await user.click(await screen.findByRole('button', { name: 'Fill the empty rows' }));
+      await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
+      expect(mocks.submitRunAll.mock.calls[0]?.[0]).toMatchObject({
+        processingMode: 'fill_missing',
+      });
+    });
+
+    it('asks before replacing existing codes when Advanced says every row', async () => {
+      const user = userEvent.setup();
+      mocks.columnFit = { filled: 1240, notCodes: 0, examples: [] };
+      renderAiTab(advancedSettings({ ...aiSettings, aiProcessingMode: 'reprocess_all' }));
+
+      expect(screen.getByTestId('annotation-run-target')).toHaveTextContent(
+        'Run will replace them all.',
+      );
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      await user.click(await screen.findByRole('button', { name: 'Replace the codes' }));
+      await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
+      expect(mocks.submitRunAll.mock.calls[0]?.[0]).toMatchObject({
+        processingMode: 'reprocess_all',
+      });
+    });
+
+    it('warns about values that are not codes and only offers to overwrite the whole column', async () => {
+      const user = userEvent.setup();
+      mocks.columnFit = { filled: 30, notCodes: 30, examples: ['Promise', 'Cuts'] };
+      renderAiTab(annotationSettings(aiSettings));
+
+      expect(screen.getByTestId('annotation-run-target')).toHaveTextContent(
+        'None of the 30 values in annotation are codes in the selected codebook (for example “Promise”, “Cuts”). Check that the right column and codebook are selected: Run would overwrite the whole column.',
+      );
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      const dialog = await screen.findByRole('alertdialog', {
+        name: 'Overwrite the whole column?',
+      });
+      expect(within(dialog).queryByRole('button', { name: 'Fill the empty rows' })).toBeNull();
+      await user.click(within(dialog).getByRole('button', { name: 'Overwrite the whole column' }));
+      await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
+      // "Which rows to annotate" says empty rows only, but the whole column is overwritten.
+      expect(mocks.submitRunAll.mock.calls[0]?.[0]).toMatchObject({
+        processingMode: 'reprocess_all',
+      });
+    });
+
+    it('says there is nothing to fill when every row holds a code', async () => {
+      const user = userEvent.setup();
+      mocks.columnFit = { filled: 2380, notCodes: 0, examples: [] };
+      renderAiTab(annotationSettings(aiSettings));
+
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      const dialog = await screen.findByRole('alertdialog', { name: 'Nothing to fill' });
+      await user.click(within(dialog).getByRole('button', { name: 'OK' }));
+      expect(mocks.submitRunAll).not.toHaveBeenCalled();
+    });
   });
 
   it('sends the defaults of the hidden advanced settings in Basic, and keeps the draft', async () => {
