@@ -184,7 +184,9 @@ describe('RowDetailPanel', () => {
         navigation={controls}
       />,
     );
-    // As when Next becomes disabled under focus at the last row.
+    // As when Next becomes disabled under focus at the last row. Whatever holds
+    // focus has no role to query by, so it is read from the document.
+    // eslint-disable-next-line testing-library/no-node-access
     (document.activeElement as HTMLElement | null)?.blur();
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     expect(controls.onPrevious).toHaveBeenCalledOnce();
