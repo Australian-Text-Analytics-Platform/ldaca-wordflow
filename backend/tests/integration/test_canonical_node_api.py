@@ -214,6 +214,11 @@ def test_source_creation_returns_invalid_input_for_parser_failures(
     json_reason = (
         "The JSON file isn't valid. Check it with a JSON validator, then upload it again."
     )
+    # A JSON Lines file names its first bad line.
+    lines_reason = (
+        "Line 2 isn't valid JSON. Check the file with a JSON validator, then "
+        "upload it again."
+    )
     reasons = {
         "invalid-utf8.csv": (
             "The file isn't saved as UTF-8 text. Save it again as UTF-8 "
@@ -221,8 +226,8 @@ def test_source_creation_returns_invalid_input_for_parser_failures(
         ),
         "malformed.csv": rows,
         "malformed.json": json_reason,
-        "malformed.jsonl": json_reason,
-        "malformed.ndjson": json_reason,
+        "malformed.jsonl": lines_reason,
+        "malformed.ndjson": lines_reason,
     }
     for filename, content in malformed.items():
         uploaded = files_test_client.post(
@@ -242,7 +247,11 @@ def test_source_creation_returns_invalid_input_for_parser_failures(
         assert created.json()["code"] == "invalid_input"
         # Why, and what to do; the parser's text is under Details (issue 205).
         assert created.json()["message"] == f"Couldn't load {filename}. {reasons[filename]}"
-        assert created.json()["details"]["diagnostic"].startswith("ComputeError: ")
+        # CSV is parsed by Polars; JSON by Python's json module (json_records).
+        diagnostic = created.json()["details"]["diagnostic"]
+        assert diagnostic.startswith(
+            "ComputeError: " if filename.endswith(".csv") else ("JSONDecodeError: ", "JsonRecordsError: ")
+        ), diagnostic
 
 
 def test_derived_nodes_share_one_creation_contract_and_preview_is_read_only(

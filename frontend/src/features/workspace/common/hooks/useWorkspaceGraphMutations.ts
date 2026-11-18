@@ -138,23 +138,37 @@ export const useWorkspaceGraphMutations = ({
       sheetName,
       zipMember,
       filePaths,
+      recordPath,
+      jsonFiles,
     }: {
       filename: string;
       sheetName?: string;
       zipMember?: string;
       /** Chosen files and folders, added as one document Data Block (issue 309). */
       filePaths?: string[];
+      /** Where a JSON file's rows are; null or absent reads its default place. */
+      recordPath?: string | null;
+      /** JSON files (members of `zipPath` when given) read as one Data Block. */
+      jsonFiles?: { paths: string[]; zipPath?: string };
     }) =>
       createNode({
         path: { workspace_id: ensureWorkspaceSelected() },
-        body: filePaths
-          ? { kind: 'files', file_paths: filePaths }
-          : {
-              kind: 'file',
-              file_path: filename,
-              sheet_name: sheetName,
-              ...(zipMember ? { zip_member: zipMember } : {}),
-            },
+        body: jsonFiles
+          ? {
+              kind: 'json_files',
+              file_paths: jsonFiles.paths,
+              ...(jsonFiles.zipPath ? { zip_path: jsonFiles.zipPath } : {}),
+              ...(recordPath == null ? {} : { record_path: recordPath }),
+            }
+          : filePaths
+            ? { kind: 'files', file_paths: filePaths }
+            : {
+                kind: 'file',
+                file_path: filename,
+                sheet_name: sheetName,
+                ...(zipMember ? { zip_member: zipMember } : {}),
+                ...(recordPath == null ? {} : { record_path: recordPath }),
+              },
         throwOnError: true,
       }).then(({ data }) => {
         return data;
@@ -297,11 +311,24 @@ export const useWorkspaceGraphMutations = ({
         setNodeColorMutation.mutateAsync({ nodeId, color }),
       deleteNode: (nodeId: string) => deleteNodeMutation.mutateAsync({ nodeId }),
       reorderNodes: (orderedIds: string[]) => reorderNodesMutation.mutateAsync({ orderedIds }),
-      createNodeFromFile: (filename: string, sheetName?: string, zipMember?: string) =>
+      createNodeFromFile: (
+        filename: string,
+        sheetName?: string,
+        zipMember?: string,
+        recordPath?: string | null,
+      ) =>
         createNodeMutation.mutateAsync({
           filename,
           sheetName,
           zipMember,
+          recordPath,
+        }),
+      /** JSON files read at one place as one Data Block, a `file_path` column first. */
+      createNodeFromJsonFiles: (paths: string[], recordPath: string | null, zipPath?: string) =>
+        createNodeMutation.mutateAsync({
+          filename: zipPath ?? paths[0] ?? '',
+          recordPath,
+          jsonFiles: { paths, zipPath },
         }),
       createNodeFromFiles: (filePaths: string[]) =>
         createNodeMutation.mutateAsync({ filename: filePaths[0] ?? '', filePaths }),

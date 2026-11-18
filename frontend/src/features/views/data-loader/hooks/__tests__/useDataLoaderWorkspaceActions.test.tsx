@@ -4,10 +4,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { useDataLoaderWorkspaceActions } from '../useDataLoaderWorkspaceActions';
 
-const mocks = vi.hoisted(() => ({ createNodeFromFile: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  createNodeFromFile: vi.fn(),
+  createNodeFromJsonFiles: vi.fn(),
+}));
 
 vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({
-  useWorkspaceActions: () => ({ createNodeFromFile: mocks.createNodeFromFile }),
+  useWorkspaceActions: () => ({
+    createNodeFromFile: mocks.createNodeFromFile,
+    createNodeFromJsonFiles: mocks.createNodeFromJsonFiles,
+  }),
 }));
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -70,7 +76,7 @@ describe('useDataLoaderWorkspaceActions add file', () => {
       ]);
     });
 
-    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('w.xlsx', 'Empty');
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('w.xlsx', 'Empty', undefined, undefined);
     expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to Project.');
     // The reason is given, such as an empty sheet (issue 323).
     expect(notify).toHaveBeenCalledWith(
@@ -104,8 +110,88 @@ describe('useDataLoaderWorkspaceActions add file', () => {
       );
     });
 
-    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('bundle.zip', undefined, 'tables/a.csv');
-    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('bundle.zip', 'Two', 'book.ods');
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith(
+      'bundle.zip',
+      undefined,
+      'tables/a.csv',
+      undefined,
+    );
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith(
+      'bundle.zip',
+      'Two',
+      'book.ods',
+      undefined,
+    );
     expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to Project.');
+  });
+
+  it('reads only the JSON tables of a batch at the chosen place', async () => {
+    mocks.createNodeFromFile.mockReset();
+    mocks.createNodeFromFile.mockResolvedValue({});
+    const { result } = renderHook(
+      () =>
+        useDataLoaderWorkspaceActions({
+          workspaceCatalogue: [],
+          hasWorkspaceSelected: true,
+          notify: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.handleAddFilesToWorkspace(
+        [
+          { id: 'a.csv', label: 'a.csv', path: 'ocr/a.csv' },
+          { id: 'p1.json', label: 'p1.json', path: 'ocr/p1.json' },
+        ],
+        undefined,
+        '/pages/parsing_res_list',
+      );
+    });
+
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith(
+      'ocr/a.csv',
+      undefined,
+      undefined,
+      undefined,
+    );
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith(
+      'ocr/p1.json',
+      undefined,
+      undefined,
+      '/pages/parsing_res_list',
+    );
+  });
+
+  it('adds JSON files as one Data Block and says so', async () => {
+    mocks.createNodeFromJsonFiles.mockResolvedValue({ name: 'ocr_records' });
+    const notify = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useDataLoaderWorkspaceActions({
+          workspaceCatalogue: [],
+          hasWorkspaceSelected: true,
+          notify,
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.handleAddJsonFilesToWorkspace(
+        ['ocr/p1.json', 'ocr/p2.json'],
+        '/pages/parsing_res_list',
+        'ocr.zip',
+      );
+    });
+
+    expect(mocks.createNodeFromJsonFiles).toHaveBeenCalledWith(
+      ['ocr/p1.json', 'ocr/p2.json'],
+      '/pages/parsing_res_list',
+      'ocr.zip',
+    );
+    expect(notify).toHaveBeenCalledWith(
+      'success',
+      'ocr_records added to Project: 2 JSON files as one Data Block.',
+    );
   });
 });

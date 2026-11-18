@@ -149,6 +149,9 @@ def test_preview_parser_failures_return_safe_invalid_input(
             "The file isn't saved as UTF-8 text."
             if filename == "invalid.csv"
             else "The JSON file isn't valid."
+            if filename == "invalid.json"
+            # A JSON Lines file names its first bad line.
+            else "Line 2 isn't valid JSON."
         )
         assert page.json()["message"].startswith(f"Couldn't preview {filename}. {expected}")
         assert "diagnostic" in page.json()["details"]

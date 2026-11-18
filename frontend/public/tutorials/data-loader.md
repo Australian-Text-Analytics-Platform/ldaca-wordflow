@@ -125,6 +125,24 @@ contain no supported files.
 Supported file types can be previewed before being added to the Project as a
 Data Block.
 
+A JSON file need not be a table, so its preview has a **Rows from** menu:
+choose which list of records becomes the rows. For example, an OCR tool's file
+may hold its text blocks under _pages › parsing_res_list_ and the detected
+boxes under _pages › layout_det_res › boxes_. Wordflow lists every place that
+holds records, with how many rows each gives, and picks the one with the most
+text first. Each record becomes a row and its fields become columns:
+
+- A field whose values are all whole numbers, decimals, true/false or text
+  keeps that type; a field that mixes them becomes text.
+- Lists and objects inside a record are kept as JSON text, such as
+  `[1, 2, 3, 4]`; empty values (`null`) stay empty.
+- Plain values of the levels above the records are copied onto every row,
+  named after their place (_pages.width_), and _pages.number_ says which page
+  a row came from.
+
+A JSON Lines file (`.jsonl`, `.ndjson`) is read as a list with one record per
+line.
+
 <span id="help-data-loader-add-folder"></span>
 A ZIP archive or a whole folder becomes a document table with one row per text
 document. The table records each document's path (relative to the ZIP or
@@ -161,6 +179,16 @@ how to load it:
   says so after adding the others.
 
   ![Add Folder dialog in Tables mode, with one of two table files ticked](tutorials/assets/data_loader/folder_add_tables.png)
+
+- **JSON records as one Data Block** appears when there are JSON or JSON
+  Lines files. Every ticked JSON file is read the same way, from the place
+  chosen under **Rows from**, and together they become one Data Block whose
+  first column, _file_path_, names the file each row came from. All JSON files
+  are ticked at first. A folder or ZIP holding JSON files and no text files
+  opens in this mode. If a file has no records at the chosen place, Wordflow
+  names it instead of adding the others without it: choose another place, or
+  untick that file. In Tables mode, too, every JSON file is read from the place
+  chosen under **Rows from**.
 
 A Parquet file can mark a category column as ordered, for example one saved by pandas. Wordflow can't read that order, so the column's values are listed A to Z and a message names the column. Click the column's type in the Data Editor and choose **Category** to set the order.
 

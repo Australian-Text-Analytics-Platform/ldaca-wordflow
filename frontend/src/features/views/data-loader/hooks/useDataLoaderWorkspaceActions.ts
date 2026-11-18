@@ -9,6 +9,7 @@ import { getInvalidWorkspaceNameMessage } from '@/features/workspace/common/work
 import { presentError } from '@/lib/errorPresentation';
 import { queryKeys } from '@/lib/queryKeys';
 import type { BatchTableFile } from '../utils/batchTables';
+import { isJsonPath } from '../utils/fileTreeHelpers';
 
 type Notify = (
   type: 'success' | 'error' | 'info',
@@ -256,8 +257,18 @@ export function useDataLoaderWorkspaceActions({
    * Adds a file-browser path to the active workspace.
    * Passed to `FileTree` as its add-file action.
    */
-  const handleAddFileToWorkspace = async (filename: string, selectedSheet?: string | null) => {
-    const node = await workspaceActions.createNodeFromFile(filename, selectedSheet ?? undefined);
+  const handleAddFileToWorkspace = async (
+    filename: string,
+    selectedSheet?: string | null,
+    /** Where a JSON file's rows are; null reads its default place. */
+    recordPath?: string | null,
+  ) => {
+    const node = await workspaceActions.createNodeFromFile(
+      filename,
+      selectedSheet ?? undefined,
+      undefined,
+      recordPath,
+    );
     // One toast, so the skip report of a folder or ZIP is never hidden behind it.
     const skipped = node.skipped_files;
     notify(
@@ -286,13 +297,27 @@ export function useDataLoaderWorkspaceActions({
    * sheets of a workbook, issue 323), reporting one summary instead of a
    * toast per table.
    */
-  const handleAddFilesToWorkspace = async (files: BatchTableFile[], zipPath?: string) => {
+  const handleAddFilesToWorkspace = async (
+    files: BatchTableFile[],
+    zipPath?: string,
+    /** One place for every JSON file's rows, so a batch is read one way. */
+    recordPath?: string | null,
+  ) => {
     const failed: string[] = [];
     for (const file of files) {
+      const jsonRecordPath = isJsonPath(file.path) ? recordPath : undefined;
       try {
         // With `zipPath`, each path is a table member inside that ZIP.
-        if (zipPath) await workspaceActions.createNodeFromFile(zipPath, file.sheet, file.path);
-        else await workspaceActions.createNodeFromFile(file.path, file.sheet);
+        if (zipPath) {
+          await workspaceActions.createNodeFromFile(zipPath, file.sheet, file.path, jsonRecordPath);
+        } else {
+          await workspaceActions.createNodeFromFile(
+            file.path,
+            file.sheet,
+            undefined,
+            jsonRecordPath,
+          );
+        }
       } catch (error) {
         // Say why, such as "The sheet is empty." (issue 323).
         failed.push(`${file.label}: ${presentError(error, "Couldn't add it.").message}`);
@@ -309,6 +334,22 @@ export function useDataLoaderWorkspaceActions({
         failed.join('\n'),
       );
     }
+  };
+
+  /**
+   * Adds JSON files as one Data Block, every file read at `recordPath` and
+   * each row naming its file; `zipPath` holds them when they are ZIP members.
+   */
+  const handleAddJsonFilesToWorkspace = async (
+    paths: string[],
+    recordPath: string | null,
+    zipPath?: string,
+  ) => {
+    const node = await workspaceActions.createNodeFromJsonFiles(paths, recordPath, zipPath);
+    notify(
+      'success',
+      `${node.name} added to Project: ${String(paths.length)} JSON file${paths.length === 1 ? '' : 's'} as one Data Block.`,
+    );
   };
 
   return {
@@ -342,6 +383,7 @@ export function useDataLoaderWorkspaceActions({
     handleUploadWorkspaceZip,
     handleAddFileToWorkspace,
     handleAddFilesToWorkspace,
+    handleAddJsonFilesToWorkspace,
     handleAddSelectionToWorkspace,
   };
 }

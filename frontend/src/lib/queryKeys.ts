@@ -284,12 +284,17 @@ export const queryKeys = {
     pageSize: number,
     selectedSheet: string | null,
     member: string | null = null,
+    recordPath: string | null = null,
   ) =>
     [
       ...queryKeys.file(filename),
       'preview',
-      { page, pageSize, sheet: selectedSheet, member },
+      { page, pageSize, sheet: selectedSheet, member, recordPath },
     ] as const,
+
+  /** Where a JSON file's rows could come from; `member` is a file inside a ZIP. */
+  jsonRecordPaths: (filename: string, member: string | null) =>
+    [...queryKeys.file(filename), 'json-record-paths', { member }] as const,
 
   /** Sheet names of the workbooks a folder or selection Add window lists. */
   workbookSheets: (paths: readonly string[]) => ['files', 'workbook-sheets', [...paths]] as const,

@@ -76,6 +76,22 @@ class FileNodeCreateRequest(_StrictRequest):
     name: NodeName | None = None
     # A table file inside the ZIP at ``file_path``, loaded as its own Data Block.
     zip_member: str | None = Field(default=None, min_length=1, max_length=4_000)
+    # Where a JSON or JSON Lines file's rows are; None takes the place holding
+    # the most text.
+    record_path: str | None = Field(default=None, max_length=4_000)
+
+    @field_validator("record_path")
+    @classmethod
+    def _record_path_is_pointer(cls, value: str | None) -> str | None:
+        return _validate_record_path(value)
+
+
+def _validate_record_path(value: str | None) -> str | None:
+    """A record path is a JSON Pointer of object keys ("" is the top level)."""
+
+    if value is not None and value != "" and not value.startswith("/"):
+        raise ValueError("record_path must be a JSON Pointer such as /pages/items")
+    return value
 
 
 class FilesNodeCreateRequest(_StrictRequest):
@@ -89,6 +105,37 @@ class FilesNodeCreateRequest(_StrictRequest):
     kind: Literal["files"] = "files"
     file_paths: list[str] = Field(min_length=1, max_length=100_000)
     name: NodeName | None = None
+
+
+class JsonFilesNodeCreateRequest(_StrictRequest):
+    """Create one Data Block from the records of several JSON files.
+
+    Every file is read at the same ``record_path``, so a batch is read one
+    way; each row starts with the file it came from. With ``zip_path``,
+    ``file_paths`` are members of that ZIP; otherwise they are user files.
+    """
+
+    kind: Literal["json_files"] = "json_files"
+    file_paths: list[str] = Field(min_length=1, max_length=100_000)
+    zip_path: str | None = Field(default=None, min_length=1)
+    record_path: str | None = Field(default=None, max_length=4_000)
+    name: NodeName | None = None
+
+    @field_validator("record_path")
+    @classmethod
+    def _record_path_is_pointer(cls, value: str | None) -> str | None:
+        return _validate_record_path(value)
+
+    @field_validator("file_paths")
+    @classmethod
+    def _json_files_only(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("file_paths must be unique")
+        if any(
+            not path.lower().endswith((".json", ".jsonl", ".ndjson")) for path in value
+        ):
+            raise ValueError("file_paths must be .json, .jsonl or .ndjson files")
+        return value
 
 
 class CloneNodeCreateRequest(CloneDerivation):
@@ -165,6 +212,7 @@ class DeduplicateNodeCreateRequest(DeduplicateDerivation):
 NodeCreateRequest = Annotated[
     FileNodeCreateRequest
     | FilesNodeCreateRequest
+    | JsonFilesNodeCreateRequest
     | CloneNodeCreateRequest
     | SliceNodeCreateRequest
     | FilterNodeCreateRequest

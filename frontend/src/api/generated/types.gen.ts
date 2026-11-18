@@ -3610,6 +3610,10 @@ export type FileNodeCreateRequest = {
      */
     name?: string | null;
     /**
+     * Record Path
+     */
+    record_path?: string | null;
+    /**
      * Sheet Name
      */
     sheet_name?: string | null;
@@ -3940,6 +3944,78 @@ export type JsonDataInput = string | number | number | boolean | Array<JsonDataI
 export type JsonDataOutput = string | number | number | boolean | Array<JsonDataOutput> | {
     [key: string]: JsonDataOutput;
 } | null;
+
+/**
+ * JsonFilesNodeCreateRequest
+ *
+ * Create one Data Block from the records of several JSON files.
+ *
+ * Every file is read at the same ``record_path``, so a batch is read one
+ * way; each row starts with the file it came from. With ``zip_path``,
+ * ``file_paths`` are members of that ZIP; otherwise they are user files.
+ */
+export type JsonFilesNodeCreateRequest = {
+    /**
+     * File Paths
+     */
+    file_paths: Array<string>;
+    /**
+     * Kind
+     */
+    kind?: 'json_files';
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Record Path
+     */
+    record_path?: string | null;
+    /**
+     * Zip Path
+     */
+    zip_path?: string | null;
+};
+
+/**
+ * JsonRecordPath
+ *
+ * One place in a JSON file that holds records, offered as the rows.
+ */
+export type JsonRecordPath = {
+    /**
+     * Field Count
+     */
+    field_count: number;
+    /**
+     * Fields
+     */
+    fields: Array<string>;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Records
+     */
+    records: number;
+};
+
+/**
+ * JsonRecordPathsResource
+ *
+ * Where a JSON or JSON Lines file's rows could come from, default first.
+ */
+export type JsonRecordPathsResource = {
+    /**
+     * Paths
+     */
+    paths: Array<JsonRecordPath>;
+};
 
 /**
  * LiteralExpression
@@ -7498,6 +7574,10 @@ export type ZipTableMembersResource = {
      * Nested Archives
      */
     nested_archives?: Array<string>;
+    /**
+     * Text Documents
+     */
+    text_documents?: number;
 };
 
 /**
@@ -10099,6 +10179,60 @@ export type CreateFolderResponses = {
 
 export type CreateFolderResponse = CreateFolderResponses[keyof CreateFolderResponses];
 
+export type ListJsonRecordPathsData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Path
+         */
+        path: string;
+        /**
+         * Member
+         */
+        member?: string | null;
+    };
+    url: '/api/user-files/json-record-paths';
+};
+
+export type ListJsonRecordPathsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request or resource exceeds the configured size limit
+     */
+    413: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type ListJsonRecordPathsError = ListJsonRecordPathsErrors[keyof ListJsonRecordPathsErrors];
+
+export type ListJsonRecordPathsResponses = {
+    /**
+     * Successful Response
+     */
+    200: JsonRecordPathsResource;
+};
+
+export type ListJsonRecordPathsResponse = ListJsonRecordPathsResponses[keyof ListJsonRecordPathsResponses];
+
 export type PreviewFileData = {
     body?: never;
     path?: never;
@@ -10123,6 +10257,10 @@ export type PreviewFileData = {
          * Member
          */
         member?: string | null;
+        /**
+         * Record Path
+         */
+        record_path?: string | null;
     };
     url: '/api/user-files/preview';
 };
@@ -10177,6 +10315,10 @@ export type PreviewFileSchemaData = {
          * Sheet Name
          */
         sheet_name?: string | null;
+        /**
+         * Record Path
+         */
+        record_path?: string | null;
     };
     url: '/api/user-files/preview/schema';
 };
@@ -12064,6 +12206,8 @@ export type CreateNodeData = {
     } & FileNodeCreateRequest) | ({
         kind: 'files';
     } & FilesNodeCreateRequest) | ({
+        kind: 'json_files';
+    } & JsonFilesNodeCreateRequest) | ({
         kind: 'clone';
     } & CloneNodeCreateRequest) | ({
         kind: 'slice';

@@ -41,11 +41,27 @@ user file area cannot rewrite an existing Source Data Block.
 
 File preview is a value-inspection contract, not a promise of the eventual
 Source Data Block schema. CSV and TSV preview pages and schemas expose every
-field as raw text, preserving lexemes such as `001`. JSON, JSONL, and NDJSON
-preview types come from full-file inference. When a Source Data Block is
-created, all five row-oriented formats use full-file inference before canonical
-dtype normalization and immutable Parquet staging; a numeric CSV lexeme such as
+field as raw text, preserving lexemes such as `001`. When a Source Data Block
+is created, CSV and TSV use full-file inference before canonical dtype
+normalization and immutable Parquet staging; a numeric CSV lexeme such as
 `001` may therefore be stored as integer `1`.
+
+JSON is not assumed to be a table. A JSON, JSONL, or NDJSON file's rows are the
+records at a **record path**: a JSON Pointer of object keys that walks every
+list it meets, so `/pages/parsing_res_list` yields each text block of each
+page. `""` is the top level (each object of a top-level list, a top-level
+object as one row, or each line of JSON Lines). The user chooses the record
+path; without one, the place whose records hold the most text is used. Preview
+and Source Data Block creation flatten the same way: only a record's
+first-level fields become columns, a field keeps its JSON type only when every
+value shares it (whole numbers, decimals, booleans, or text) and is otherwise
+text, nested values are JSON text, and scalar fields of the objects above the
+records are copied onto each row with a dotted name (`pages.width`) plus a
+1-based position for each list walked (`pages.number`). A batch of JSON files
+added as one Data Block is read at one record path, with a leading
+`file_path` column; a file without that place refuses the whole batch and is
+named. JSON files are parsed whole in memory, so very large files are better
+supplied as JSON Lines or Parquet.
 
 The User File area accepts arbitrary regular files. Loadability is a separate
 property derived from one backend-owned, case-insensitive extension allowlist.

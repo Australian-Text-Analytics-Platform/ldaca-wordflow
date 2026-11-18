@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
+import type { JsonRecordPath } from '@/api';
 
 interface FilePreviewData {
   previewData: Record<string, unknown>[];
@@ -27,6 +28,11 @@ interface FilePreviewData {
   sheetNames: string[] | null;
   selectedSheet: string | null;
   setSelectedSheet: (sheet: string | null) => void;
+  /** A JSON file's places that hold records, the default first; else null. */
+  recordPaths?: JsonRecordPath[] | null;
+  /** The place the rows come from. */
+  recordPath?: string | null;
+  setRecordPath?: (path: string) => void;
 }
 
 interface FilePreviewContentProps {
@@ -47,6 +53,83 @@ interface FilePreviewContentProps {
   previewLabel?: string;
   /** A line under the preview heading, such as how to choose what it shows. */
   previewHint?: string;
+  /** A line under Rows from, such as that the choice applies to a whole batch. */
+  recordPathNote?: string;
+}
+
+// Radix Select refuses "" as a value, and "" is the top level of a JSON file.
+const recordPathValue = (path: string) => `#${path}`;
+
+/** A JSON Pointer in words: `pages › parsing_res_list`, or the top level. */
+const describeRecordPath = (path: string) =>
+  path === ''
+    ? 'the top level'
+    : path
+        .slice(1)
+        .split('/')
+        .map((key) => key.replaceAll('~1', '/').replaceAll('~0', '~'))
+        .join(' › ');
+
+/**
+ * Rows from: which list of records in a JSON file becomes the rows. JSON need
+ * not be a table, so the user chooses; the place holding most text comes
+ * first and is preselected.
+ */
+function RecordPathPicker({
+  paths,
+  value,
+  onChange,
+  note,
+}: {
+  paths: JsonRecordPath[];
+  value: string | null;
+  onChange: (path: string) => void;
+  note?: string;
+}) {
+  // In a batch, the place chosen for all files may be missing from this one.
+  const current = value === null ? paths[0] : paths.find((item) => item.path === value);
+  const rows = (count: number) => `${count.toLocaleString()} row${count === 1 ? '' : 's'}`;
+  return (
+    <div>
+      <label
+        id="json-record-path-label"
+        className="mb-2 block text-body font-medium text-foreground"
+      >
+        Rows from
+      </label>
+      <Select
+        value={current ? recordPathValue(current.path) : ''}
+        onValueChange={(next) => {
+          onChange(next.slice(1));
+        }}
+      >
+        <SelectTrigger aria-labelledby="json-record-path-label">
+          <SelectValue
+            placeholder={value === null ? 'Choose where the rows are' : 'Not in this file'}
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {paths.map((item) => (
+            <SelectItem key={item.path} value={recordPathValue(item.path)}>
+              {item.path === '' ? 'Top level' : item.label} · {rows(item.records)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="mt-1 text-label-secondary text-description">
+        {current
+          ? `Each record becomes a row, with its fields as columns: ${current.fields.join(', ')}${
+              current.field_count > current.fields.length
+                ? ` and ${String(current.field_count - current.fields.length)} more`
+                : ''
+            }. Lists and objects inside a record are kept as JSON text.`
+          : value !== null
+            ? `This file has no records at ${describeRecordPath(value)}.`
+            : ''}
+        {note ? ` ${note}` : ''}
+      </p>
+    </div>
+  );
 }
 
 /** Whether the preview window was last left maximised on this device (issue 460). */
@@ -175,6 +258,7 @@ export function FilePreviewContent({
   hidePreview = false,
   previewLabel,
   previewHint,
+  recordPathNote,
 }: FilePreviewContentProps) {
   const isOpen = open && Boolean(filename);
   const {
@@ -186,6 +270,9 @@ export function FilePreviewContent({
     sheetNames,
     selectedSheet,
     setSelectedSheet,
+    recordPaths,
+    recordPath,
+    setRecordPath,
   } = data;
   // Widths set by dragging a column's edge; unset columns keep the 12rem cap.
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
@@ -281,6 +368,14 @@ export function FilePreviewContent({
                 </p>
               </div>
             )}
+            {recordPaths && recordPaths.length > 0 && setRecordPath && !hidePreview ? (
+              <RecordPathPicker
+                paths={recordPaths}
+                value={recordPath ?? null}
+                onChange={setRecordPath}
+                note={recordPathNote}
+              />
+            ) : null}
             <div
               hidden={hidePreview}
               className={maximised && !hidePreview ? 'flex min-h-40 flex-1 flex-col' : undefined}

@@ -141,6 +141,8 @@ def test_zip_tables_load_as_separate_data_blocks_and_folders_skip_zips(
             "tables/metadata.csv",
             "tables/people.parquet",
         ]
+        # The one text file is what Texts mode would add; metadata is not counted.
+        assert listed.json()["text_documents"] == 1
 
         preview = client.get(
             "/api/user-files/preview",
@@ -425,6 +427,7 @@ def test_workbook_sheets_are_listed_and_added_one_by_one(tmp_path: Path) -> None
                 },
             ],
             "nested_archives": ["inner/nested.zip"],
+            "text_documents": 0,
         }
 
         preview = client.get(
