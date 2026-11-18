@@ -24,7 +24,11 @@ def _ocr(source: str, texts: list[str]) -> bytes:
                 {
                     "width": 2423,
                     "parsing_res_list": [
-                        {"block_label": "text", "block_content": text, "block_id": index}
+                        {
+                            "block_label": "text",
+                            "block_content": text,
+                            "block_id": index,
+                        }
                         for index, text in enumerate(texts)
                     ],
                     "layout_det_res": {
@@ -64,6 +68,7 @@ def test_json_rows_are_chosen_previewed_and_added(tmp_path: Path) -> None:
             "ocr/p1.json": _ocr("p1.jpg", ["SAN FRANCISCO, March 28.", "Rain."]),
             "ocr/p2.json": _ocr("p2.jpg", ["STOCKTON, March 27."]),
             "ocr/flat.json": b'[{"text": "no pages here"}]',
+            "ocr/broken.json": b'[{"text": "cut off"',
             "ocr/meta.csv": b"a,b\n1,2\n",
             "ocr.zip": bundle.getvalue(),
         }
@@ -76,7 +81,9 @@ def test_json_rows_are_chosen_previewed_and_added(tmp_path: Path) -> None:
             )
             assert response.status_code == 201, response.text
 
-        listed = client.get("/api/user-files/json-record-paths", params={"path": "ocr/p1.json"})
+        listed = client.get(
+            "/api/user-files/json-record-paths", params={"path": "ocr/p1.json"}
+        )
         assert listed.status_code == 200, listed.text
         paths = listed.json()["paths"]
         assert [item["path"] for item in paths][:2] == [
@@ -93,12 +100,17 @@ def test_json_rows_are_chosen_previewed_and_added(tmp_path: Path) -> None:
         )
         assert member_paths.status_code == 200, member_paths.text
         assert member_paths.json()["paths"][0]["records"] == 2
-        not_json = client.get("/api/user-files/json-record-paths", params={"path": "ocr/meta.csv"})
+        not_json = client.get(
+            "/api/user-files/json-record-paths", params={"path": "ocr/meta.csv"}
+        )
         assert not_json.status_code == 400, not_json.text
 
         boxes = client.get(
             "/api/user-files/preview",
-            params={"path": "ocr/p1.json", "record_path": "/pages/layout_det_res/boxes"},
+            params={
+                "path": "ocr/p1.json",
+                "record_path": "/pages/layout_det_res/boxes",
+            },
         )
         assert boxes.status_code == 200, boxes.text
         frame = pl.read_ipc_stream(BytesIO(boxes.content))
@@ -118,11 +130,18 @@ def test_json_rows_are_chosen_previewed_and_added(tmp_path: Path) -> None:
         workspace_id = client.post(
             "/api/workspaces", json={"name": "OCR"}, headers=unsafe
         ).json()["id"]
-        assert client.put(f"/api/workspaces/{workspace_id}/open", headers=unsafe).status_code == 200
+        assert (
+            client.put(
+                f"/api/workspaces/{workspace_id}/open", headers=unsafe
+            ).status_code
+            == 200
+        )
         nodes = f"/api/workspaces/{workspace_id}/nodes"
 
         # One file, rows from the default place: the text blocks.
-        single = client.post(nodes, json={"kind": "file", "file_path": "ocr/p1.json"}, headers=unsafe)
+        single = client.post(
+            nodes, json={"kind": "file", "file_path": "ocr/p1.json"}, headers=unsafe
+        )
         assert single.status_code in {200, 201}, single.text
         assert single.json()["name"] == "p1"
         assert single.json()["shape"][0] == 2
@@ -185,17 +204,31 @@ def test_json_rows_are_chosen_previewed_and_added(tmp_path: Path) -> None:
             "STOCKTON, March 27.",
         ]
 
-        mismatch = client.post(
+        # A batch leaves out files it can't read and names them with why.
+        mixed = client.post(
             nodes,
             json={
                 "kind": "json_files",
-                "file_paths": ["ocr/p1.json", "ocr/flat.json"],
+                "file_paths": ["ocr/p1.json", "ocr/flat.json", "ocr/broken.json"],
                 "record_path": "/pages/parsing_res_list",
             },
             headers=unsafe,
         )
-        assert mismatch.status_code == 400, mismatch.text
-        assert "flat.json has no records at pages › parsing_res_list" in mismatch.text
+        assert mixed.status_code in {200, 201}, mixed.text
+        assert mixed.json()["shape"][0] == 2
+        assert mixed.json()["skipped_json_files"] == [
+            {"path": "flat.json", "reason": "No records at pages › parsing_res_list"},
+            {"path": "broken.json", "reason": "Not valid JSON (line 1)"},
+        ]
+        assert batch_node.get("skipped_json_files") is None
+
+        nothing = client.post(
+            nodes,
+            json={"kind": "json_files", "file_paths": ["ocr/broken.json"]},
+            headers=unsafe,
+        )
+        assert nothing.status_code == 400, nothing.text
+        assert "None of the files could be read (broken.json" in nothing.text
 
         zipped = client.post(
             nodes,

@@ -43,6 +43,17 @@ class JsonRecordsError(ValueError):
     """A JSON file has no records at the chosen place; the text is for users."""
 
 
+class InvalidJsonLine(JsonRecordsError):
+    """One line of a JSON Lines file is not valid JSON."""
+
+    def __init__(self, line: int) -> None:
+        super().__init__(
+            f"Line {line} isn't valid JSON. Check the file with a JSON "
+            "validator, then upload it again."
+        )
+        self.line = line
+
+
 @dataclass(frozen=True, slots=True)
 class RecordPathCandidate:
     """One place in a JSON file that holds records."""
@@ -80,10 +91,7 @@ def read_json_document(file_path: Path) -> Any:
         try:
             lines.append(json.loads(line))
         except json.JSONDecodeError as exc:
-            raise JsonRecordsError(
-                f"Line {number} isn't valid JSON. Check the file with a JSON "
-                "validator, then upload it again."
-            ) from exc
+            raise InvalidJsonLine(number) from exc
     return lines
 
 
@@ -225,16 +233,53 @@ def flatten_json_sources(
     """One table of the records at ``record_path`` in every source.
 
     ``None`` picks the default place of the first source and applies it to
-    all, so a batch is always read one way. With ``file_column``, each row
-    starts with the label of the file it came from. A source without that
-    place is refused, naming it, rather than silently adding nothing.
+    all. With ``file_column``, each row starts with the label of the file it
+    came from. A source without that place is refused, naming it.
     """
 
+    frame, missing, path = _flatten(sources, record_path, file_column)
+    if missing:
+        named = ", ".join(missing[:3]) + (" and others" if len(missing) > 3 else "")
+        raise JsonRecordsError(
+            f"{named} {'has' if len(missing) == 1 else 'have'} no records at "
+            f"{describe_record_path(path)}. Choose another place for the rows, "
+            "or add those files on their own."
+        )
+    return frame
+
+
+def flatten_json_batch(
+    sources: list[JsonSource],
+    record_path: str | None,
+    *,
+    file_column: str,
+) -> tuple[pl.DataFrame, list[str], str]:
+    """A batch read one way: the table, the labels without that place, the place.
+
+    Files without records at ``record_path`` are left out and named so the
+    user can be told; the batch is refused only when no file gives a row.
+    """
+
+    return _flatten(sources, record_path, file_column)
+
+
+def _default_for_batch(sources: list[JsonSource]) -> str:
+    """The first file's default place; a file without records is passed over."""
+
+    for source in sources:
+        if record_path_candidates(source.document):
+            return default_record_path(source.document)
+    return default_record_path(sources[0].document)
+
+
+def _flatten(
+    sources: list[JsonSource],
+    record_path: str | None,
+    file_column: str | None,
+) -> tuple[pl.DataFrame, list[str], str]:
     if not sources:
         raise JsonRecordsError("There are no JSON files to read.")
-    path = (
-        default_record_path(sources[0].document) if record_path is None else record_path
-    )
+    path = _default_for_batch(sources) if record_path is None else record_path
     keys = parse_record_path(path)
     record_rows: list[dict[str, Any]] = []
     context_rows: list[dict[str, Any]] = []
@@ -248,13 +293,6 @@ def flatten_json_sources(
             context_rows.append(
                 {**({file_column: source.label} if file_column else {}), **dict(context)}
             )
-    if missing:
-        named = ", ".join(missing[:3]) + (" and others" if len(missing) > 3 else "")
-        raise JsonRecordsError(
-            f"{named} {'has' if len(missing) == 1 else 'have'} no records at "
-            f"{describe_record_path(path)}. Choose another place for the rows, "
-            "or add those files on their own."
-        )
     if not record_rows:
         raise JsonRecordsError(
             f"Wordflow found no records at {describe_record_path(path)}."
@@ -283,7 +321,7 @@ def flatten_json_sources(
         columns[renamed[field]] = _series(
             renamed[field], [row.get(field) for row in context_rows]
         )
-    return pl.DataFrame(columns)
+    return pl.DataFrame(columns), missing, path
 
 
 def describe_record_path(path: str) -> str:
@@ -348,11 +386,13 @@ def _as_text(value: Any) -> str | None:
 
 
 __all__ = [
+    "InvalidJsonLine",
     "JsonRecordsError",
     "JsonSource",
     "RecordPathCandidate",
     "default_record_path",
     "describe_record_path",
+    "flatten_json_batch",
     "flatten_json_sources",
     "format_record_path",
     "is_json_lines_path",

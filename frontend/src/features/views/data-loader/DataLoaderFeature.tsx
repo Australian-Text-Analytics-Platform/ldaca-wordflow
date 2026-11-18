@@ -217,6 +217,8 @@ function DataLoaderFeature() {
     handleAddFilesToWorkspace,
     handleAddJsonFilesToWorkspace,
     handleAddSelectionToWorkspace,
+    batchAddReport,
+    closeBatchAddReport,
     workspaceLoadFailures,
     workspaceSelectionOperation,
   } = useDataLoaderWorkspaceActions({
@@ -828,6 +830,7 @@ function DataLoaderFeature() {
           paths: uploadConflicts,
           onClose: closeConflictDialog,
         }}
+        batchAddReport={{ report: batchAddReport, onClose: closeBatchAddReport }}
         largeUpload={{
           reminder: largeUploadReminder,
           onAccept: acceptLargeUpload,

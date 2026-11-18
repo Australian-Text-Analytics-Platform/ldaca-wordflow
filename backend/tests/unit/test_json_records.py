@@ -84,7 +84,9 @@ def test_candidates_rank_the_records_with_most_text_first() -> None:
 
 def test_flattening_keeps_first_level_fields_and_copies_parent_values() -> None:
     frame = flatten_json_sources(
-        [JsonSource("call.json", OCR)], "/pages/parsing_res_list", file_column="file_path"
+        [JsonSource("call.json", OCR)],
+        "/pages/parsing_res_list",
+        file_column="file_path",
     )
 
     # The file, the record's own fields, then the values copied from above.
@@ -154,7 +156,9 @@ def test_a_batch_is_read_one_way_and_names_files_without_that_place() -> None:
     )
     assert frame["file_path"].to_list() == ["a.json", "a.json", "b.json"]
 
-    with pytest.raises(JsonRecordsError, match="c.json has no records at pages › parsing_res_list"):
+    with pytest.raises(
+        JsonRecordsError, match="c.json has no records at pages › parsing_res_list"
+    ):
         flatten_json_sources(
             [JsonSource("a.json", OCR), JsonSource("c.json", [{"text": "x"}])],
             "/pages/parsing_res_list",
@@ -226,7 +230,46 @@ def test_loader_failures_say_what_to_do(tmp_path: Path) -> None:
     good = tmp_path / "good.json"
     good.write_text('[{"a": 1}]', encoding="utf-8")
     broken = tmp_path / "broken.json"
-    broken.write_text('[{"a": 1}', encoding="utf-8")
+    broken.write_text('[{"a": 1},\n', encoding="utf-8")
+    bad_line = tmp_path / "bad.jsonl"
+    bad_line.write_text('{"a": 2}\n{"a":\n', encoding="utf-8")
+    latin = tmp_path / "latin.json"
+    latin.write_bytes(b'[{"a": "caf\xe9"}]')
+    other = tmp_path / "other.json"
+    other.write_text('[{"b": 1}]', encoding="utf-8")
+    wrapped = tmp_path / "wrapped.json"
+    wrapped.write_text('{"items": [{"a": 3}]}', encoding="utf-8")
+
+    # A batch leaves out what it can't read and names each file with why.
+    frame, skipped = materialize_json_files(
+        [
+            (good, "good.json"),
+            (broken, "broken.json"),
+            (bad_line, "bad.jsonl"),
+            (latin, "latin.json"),
+        ],
+        "",
+    )
+    assert frame.to_dicts() == [{"file_path": "good.json", "a": 1}]
+    assert [(item.path, item.reason) for item in skipped] == [
+        ("broken.json", "Not valid JSON (line 2)"),
+        ("bad.jsonl", "Line 2 isn't valid JSON"),
+        ("latin.json", "Not saved as UTF-8 text"),
+    ]
+
+    # A readable file without records at the chosen place is left out too.
+    frame, skipped = materialize_json_files(
+        [(other, "other.json"), (wrapped, "wrapped.json")], "/items"
+    )
+    assert frame.to_dicts() == [{"file_path": "wrapped.json", "a": 3}]
+    assert [(item.path, item.reason) for item in skipped] == [
+        ("other.json", "No records at items")
+    ]
+
+    # Nothing readable: the batch is refused, naming the files.
     with pytest.raises(DataFileLoadError) as raised:
-        materialize_json_files([(good, "good.json"), (broken, "broken.json")], "")
-    assert describe_load_failure(raised.value).startswith("broken.json isn't valid JSON.")
+        materialize_json_files([(broken, "broken.json"), (latin, "latin.json")], None)
+    assert describe_load_failure(raised.value) == (
+        "None of the files could be read (broken.json: Not valid JSON (line 2); "
+        "latin.json: Not saved as UTF-8 text)."
+    )

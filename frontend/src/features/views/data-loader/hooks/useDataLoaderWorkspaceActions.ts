@@ -11,6 +11,16 @@ import { queryKeys } from '@/lib/queryKeys';
 import type { BatchTableFile } from '../utils/batchTables';
 import { isJsonPath } from '../utils/fileTreeHelpers';
 
+/**
+ * What a batch Add left out, shown in a window the user closes (not a
+ * toast), so the files that were skipped can't be missed.
+ */
+export interface BatchAddReport {
+  title: string;
+  summary: string;
+  items: { path: string; reason: string }[];
+}
+
 type Notify = (
   type: 'success' | 'error' | 'info',
   message: string,
@@ -297,13 +307,15 @@ export function useDataLoaderWorkspaceActions({
    * sheets of a workbook, issue 323), reporting one summary instead of a
    * toast per table.
    */
+  const [batchAddReport, setBatchAddReport] = useState<BatchAddReport | null>(null);
+
   const handleAddFilesToWorkspace = async (
     files: BatchTableFile[],
     zipPath?: string,
     /** One place for every JSON file's rows, so a batch is read one way. */
     recordPath?: string | null,
   ) => {
-    const failed: string[] = [];
+    const failed: BatchAddReport['items'] = [];
     for (const file of files) {
       const jsonRecordPath = isJsonPath(file.path) ? recordPath : undefined;
       try {
@@ -320,20 +332,23 @@ export function useDataLoaderWorkspaceActions({
         }
       } catch (error) {
         // Say why, such as "The sheet is empty." (issue 323).
-        failed.push(`${file.label}: ${presentError(error, "Couldn't add it.").message}`);
+        failed.push({ path: file.label, reason: presentError(error, "Couldn't add it.").message });
       }
     }
     const added = files.length - failed.length;
-    if (added > 0) {
-      notify('success', `${String(added)} Data Block${added === 1 ? '' : 's'} added to Project.`);
+    const addedText = `${String(added)} Data Block${added === 1 ? '' : 's'} added to Project.`;
+    if (failed.length === 0) {
+      notify('success', addedText);
+      return;
     }
-    if (failed.length > 0) {
-      notify(
-        'error',
-        `${String(failed.length)} table${failed.length === 1 ? '' : 's'} could not be added.`,
-        failed.join('\n'),
-      );
-    }
+    setBatchAddReport({
+      title: `${String(failed.length)} table${failed.length === 1 ? '' : 's'} could not be added`,
+      summary:
+        added > 0
+          ? `${addedText} These tables were left out:`
+          : 'No table was added. These tables could not be read:',
+      items: failed,
+    });
   };
 
   /**
@@ -346,10 +361,20 @@ export function useDataLoaderWorkspaceActions({
     zipPath?: string,
   ) => {
     const node = await workspaceActions.createNodeFromJsonFiles(paths, recordPath, zipPath);
-    notify(
-      'success',
-      `${node.name} added to Project: ${String(paths.length)} JSON file${paths.length === 1 ? '' : 's'} as one Data Block.`,
-    );
+    const skipped = node.skipped_json_files ?? [];
+    if (skipped.length === 0) {
+      notify(
+        'success',
+        `${node.name} added to Project: ${String(paths.length)} JSON file${paths.length === 1 ? '' : 's'} as one Data Block.`,
+      );
+      return;
+    }
+    const read = paths.length - skipped.length;
+    setBatchAddReport({
+      title: `${String(skipped.length)} JSON file${skipped.length === 1 ? ' was' : 's were'} left out`,
+      summary: `${node.name} was added to Project with the rows of ${String(read)} of ${String(paths.length)} files. These files were left out:`,
+      items: skipped,
+    });
   };
 
   return {
@@ -385,5 +410,10 @@ export function useDataLoaderWorkspaceActions({
     handleAddFilesToWorkspace,
     handleAddJsonFilesToWorkspace,
     handleAddSelectionToWorkspace,
+    batchAddReport,
+    // Passed to DataLoaderDialogs; the window closes only through its button.
+    closeBatchAddReport: () => {
+      setBatchAddReport(null);
+    },
   };
 }

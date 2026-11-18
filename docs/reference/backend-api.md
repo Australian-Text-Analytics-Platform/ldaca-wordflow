@@ -158,7 +158,9 @@ failures encountered while producing either a preview page or schema return
 mode would read. A `json_files` Data Block creation request reads its
 `file_paths` (user files, or members of `zip_path`) at one `record_path` into
 one Data Block with a leading `file_path` column, bounded together by the Data
-Block storage limit.
+Block storage limit. Files it cannot read, or without records there, are left
+out and listed in the created Data Block's `skipped_json_files` as `path` and
+`reason`; it returns `400 invalid_input` only when no file gives a row.
 
 Loadable filename extensions are:
 

@@ -77,13 +77,18 @@ describe('useDataLoaderWorkspaceActions add file', () => {
     });
 
     expect(mocks.createNodeFromFile).toHaveBeenCalledWith('w.xlsx', 'Empty', undefined, undefined);
-    expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to Project.');
-    // The reason is given, such as an empty sheet (issue 323).
-    expect(notify).toHaveBeenCalledWith(
-      'error',
-      '1 table could not be added.',
-      'w.xlsx › Empty: bad file',
-    );
+    // The failures go to a window the user closes, not a toast; the reason is
+    // given, such as an empty sheet (issue 323).
+    expect(notify).not.toHaveBeenCalled();
+    expect(result.current.batchAddReport).toEqual({
+      title: '1 table could not be added',
+      summary: '2 Data Blocks added to Project. These tables were left out:',
+      items: [{ path: 'w.xlsx › Empty', reason: 'bad file' }],
+    });
+    act(() => {
+      result.current.closeBatchAddReport();
+    });
+    expect(result.current.batchAddReport).toBeNull();
   });
 
   it('adds ZIP table members through their archive', async () => {
@@ -193,5 +198,34 @@ describe('useDataLoaderWorkspaceActions add file', () => {
       'success',
       'ocr_records added to Project: 2 JSON files as one Data Block.',
     );
+  });
+
+  it('names the JSON files a batch left out in a window, not a toast', async () => {
+    mocks.createNodeFromJsonFiles.mockResolvedValue({
+      name: 'ocr_records',
+      skipped_json_files: [{ path: 'p2.json', reason: 'Not valid JSON (line 1)' }],
+    });
+    const notify = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useDataLoaderWorkspaceActions({
+          workspaceCatalogue: [],
+          hasWorkspaceSelected: true,
+          notify,
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.handleAddJsonFilesToWorkspace(['ocr/p1.json', 'ocr/p2.json'], null);
+    });
+
+    expect(notify).not.toHaveBeenCalled();
+    expect(result.current.batchAddReport).toEqual({
+      title: '1 JSON file was left out',
+      summary:
+        'ocr_records was added to Project with the rows of 1 of 2 files. These files were left out:',
+      items: [{ path: 'p2.json', reason: 'Not valid JSON (line 1)' }],
+    });
   });
 });

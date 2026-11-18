@@ -5484,6 +5484,22 @@ export type SkippedFileCount = {
 };
 
 /**
+ * SkippedJsonFile
+ *
+ * A file left out of JSON files added as one Data Block, and why.
+ */
+export type SkippedJsonFile = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Reason
+     */
+    reason: string;
+};
+
+/**
  * SliceDerivation
  */
 export type SliceDerivation = {
@@ -7410,6 +7426,10 @@ export type WorkspaceNodeInfo = {
      * Skipped Files
      */
     skipped_files?: Array<SkippedFileCount> | null;
+    /**
+     * Skipped Json Files
+     */
+    skipped_json_files?: Array<SkippedJsonFile> | null;
     /**
      * Tokenizer Model
      */

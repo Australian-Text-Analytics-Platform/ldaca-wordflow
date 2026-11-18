@@ -27,6 +27,7 @@ from ..infrastructure.storage.data_loading import (
     detect_file_type,
     extract_zip_table_member,
     materialize_data_file,
+    SkippedJsonFile,
     materialize_json_files,
     read_documents,
     read_selected_documents,
@@ -326,7 +327,7 @@ class NodeService:
                 async with self._files.read_path(user_id, request.zip_path) as zip_path:
                     if detect_file_type(zip_path.name) != "zip":
                         raise InvalidInputError("zip_path is not a ZIP archive")
-                    dataframe, dtype_changes = await self._run_io(
+                    dataframe, dtype_changes, skipped_json = await self._run_io(
                         _load_zip_json_members,
                         zip_path,
                         request.file_paths,
@@ -344,7 +345,7 @@ class NodeService:
                         (target, (path.relative_to(base) if base.parts else path).as_posix())
                         for target, path in zip(targets, public, strict=True)
                     ]
-                    dataframe, dtype_changes = await self._run_io(
+                    dataframe, dtype_changes, skipped_json = await self._run_io(
                         _load_json_files,
                         files,
                         request.record_path,
@@ -367,6 +368,7 @@ class NodeService:
             (request.name or default_name).strip(),
             dtype_changes,
             [],
+            [{"path": item.path, "reason": item.reason} for item in skipped_json],
         )
 
     async def _add_source_node(
@@ -377,6 +379,7 @@ class NodeService:
         node_name: str,
         dtype_changes: list[dict[str, str]],
         skipped: list[dict[str, str | int]],
+        skipped_json: list[dict[str, str]] | None = None,
     ) -> tuple[WorkspaceNodeInfo, int]:
         """Stage a loaded source as parquet, add its node, and commit once."""
 
@@ -409,6 +412,8 @@ class NodeService:
                     info["dtype_normalization"] = dtype_changes
                 if skipped:
                     info["skipped_files"] = skipped
+                if skipped_json:
+                    info["skipped_json_files"] = skipped_json
             return WorkspaceNodeInfo.model_validate(info), lease.revision
         except BaseException:
             if staged_path is not None:
@@ -1066,7 +1071,7 @@ def _load_zip_member_dataframe(
 
 def _load_json_files(
     files: list[tuple[Path, str]], record_path: str | None, max_total_bytes: int
-) -> tuple[pl.DataFrame, list[dict[str, str]]]:
+) -> tuple[pl.DataFrame, list[dict[str, str]], list[SkippedJsonFile]]:
     """Read chosen JSON files as one table; folders are not admitted here."""
 
     total = 0
@@ -1078,12 +1083,13 @@ def _load_json_files(
             raise DataFileLoadError("JSON files are too large") from DirectoryTooLargeError(
                 "JSON files are too large to load"
             )
-    return normalize_dtypes(materialize_json_files(files, record_path))
+    frame, skipped = materialize_json_files(files, record_path)
+    return (*normalize_dtypes(frame), skipped)
 
 
 def _load_zip_json_members(
     zip_path: Path, members: list[str], record_path: str | None, max_total_bytes: int
-) -> tuple[pl.DataFrame, list[dict[str, str]]]:
+) -> tuple[pl.DataFrame, list[dict[str, str]], list[SkippedJsonFile]]:
     """Extract JSON members of a ZIP within one size budget, then read them."""
 
     with tempfile.TemporaryDirectory(prefix="wordflow-zip-json-") as scratch:
@@ -1102,7 +1108,8 @@ def _load_zip_json_members(
                 raise DataFileLoadError("ZIP member could not be loaded") from exc
             remaining -= extracted.stat().st_size
             files.append((extracted, member))
-        return normalize_dtypes(materialize_json_files(files, record_path))
+        frame, skipped = materialize_json_files(files, record_path)
+        return (*normalize_dtypes(frame), skipped)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)

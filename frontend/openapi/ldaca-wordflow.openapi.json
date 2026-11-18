@@ -10555,6 +10555,26 @@
         "title": "SkippedFileCount",
         "type": "object"
       },
+      "SkippedJsonFile": {
+        "additionalProperties": false,
+        "description": "A file left out of JSON files added as one Data Block, and why.",
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "reason"
+        ],
+        "title": "SkippedJsonFile",
+        "type": "object"
+      },
       "SliceDerivation": {
         "additionalProperties": false,
         "properties": {
@@ -14271,6 +14291,20 @@
               }
             ],
             "title": "Skipped Files"
+          },
+          "skipped_json_files": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SkippedJsonFile"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped Json Files"
           },
           "tokenizer_model": {
             "anyOf": [

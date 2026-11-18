@@ -175,8 +175,9 @@ how to load it:
   a name to preview it; the preview's heading says which table it shows. Each
   ticked table becomes its own Data Block named after the file (and the sheet,
   for a spreadsheet). No table is ticked at first, and the button shows how
-  many Data Blocks will be added. An empty sheet can't be added: Wordflow
-  says so after adding the others.
+  many Data Blocks will be added. A table that can't be added, such as an
+  empty sheet, is left out: after adding the others, a window lists each one
+  and why, and stays open until you click **OK**.
 
   ![Add Folder dialog in Tables mode, with one of two table files ticked](tutorials/assets/data_loader/folder_add_tables.png)
 
@@ -185,10 +186,11 @@ how to load it:
   chosen under **Rows from**, and together they become one Data Block whose
   first column, _file_path_, names the file each row came from. All JSON files
   are ticked at first. A folder or ZIP holding JSON files and no text files
-  opens in this mode. If a file has no records at the chosen place, Wordflow
-  names it instead of adding the others without it: choose another place, or
-  untick that file. In Tables mode, too, every JSON file is read from the place
-  chosen under **Rows from**.
+  opens in this mode. A file that isn't valid JSON, isn't saved as UTF-8, or
+  has no records at the chosen place is left out, and the others are added.
+  A window then lists each file left out and why, such as _p2.json — Not
+  valid JSON (line 3)_; click **OK** to close it. In Tables mode, too, every
+  JSON file is read from the place chosen under **Rows from**.
 
 A Parquet file can mark a category column as ordered, for example one saved by pandas. Wordflow can't read that order, so the column's values are listed A to Z and a message names the column. Click the column's type in the Data Editor and choose **Category** to set the order.
 
