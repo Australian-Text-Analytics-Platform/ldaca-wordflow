@@ -197,7 +197,9 @@ function ColumnResizeHandle({
       aria-valuemax={MAX_COLUMN_WIDTH}
       tabIndex={0}
       title="Drag to resize; double-click to reset"
-      className="absolute inset-y-0 right-0 w-1.5 cursor-col-resize touch-none select-none hover:bg-focus/40 focus-visible:bg-focus/60 focus-visible:outline-none"
+      // A wide grab area with an always-visible divider line, which turns the
+      // focus colour on hover, drag or keyboard focus.
+      className="group/resize absolute inset-y-0 right-0 flex w-2 cursor-col-resize touch-none select-none justify-end focus-visible:outline-none"
       onPointerDown={(event) => {
         event.preventDefault();
         const th = event.currentTarget.parentElement;
@@ -224,7 +226,12 @@ function ColumnResizeHandle({
         const current = width ?? DEFAULT_COLUMN_WIDTH;
         onResize(clampWidth(current + (event.key === 'ArrowRight' ? KEY_STEP : -KEY_STEP)));
       }}
-    />
+    >
+      <span
+        aria-hidden="true"
+        className="my-1 w-0.5 rounded-full bg-description/45 group-hover/resize:bg-focus group-focus-visible/resize:bg-focus"
+      />
+    </div>
   );
 }
 
@@ -405,9 +412,11 @@ export function FilePreviewContent({
                     <thead>
                       <tr className="bg-panel">
                         {columns.map((column) => (
+                          // Pinned while the rows scroll; the inset shadow is
+                          // its bottom rule, which a sticky cell's border loses.
                           <th
                             key={column}
-                            className="relative truncate px-2 py-1 text-left font-medium"
+                            className="sticky top-0 z-10 truncate bg-panel px-2 py-1 pr-3 text-left font-medium shadow-[inset_0_-1px_0_var(--color-surface-border)]"
                             style={widthStyle(column)}
                           >
                             {column}

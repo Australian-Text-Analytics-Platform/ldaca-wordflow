@@ -233,6 +233,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   - **Document**: shows the full text of the Data Block's designated document column (the column marked as the primary text when the data was loaded, e.g. the column named `text`, `document`, or `doc`). The section heading displays the column name, e.g. *Document: text*. If no document column has been configured for the Data Block, this section is omitted.
   - **Metadata**: shows all remaining columns as a two-column key/value table, making it easy to inspect metadata columns such as speaker, date, or source alongside the document text.
 - Use **Previous row** and **Next row** at the bottom of the Row Details panel to review adjacent displayed rows. The Data Editor changes table pages automatically when you move past the first or last row on a page.
+- The Left and Right arrow keys do the same, in every window with these buttons (Row Details, the Topic Modelling document view's **Previous passage** and **Next passage**, and the Concordance, Quotation and Annotation row views). While you are typing in a field or using a menu, the arrow keys stay with that control.
 
 ![Row Details panel](tutorials/assets/ui/row_details.png)
 
