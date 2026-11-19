@@ -24,6 +24,12 @@ either directly or with predictions from a configured AI provider.
    [AI Code Designer](#help-annotation-code-designer) can draft a first set of
    codes for you.
 
+   The window has two parts, each scrolling on its own: the brief for the AI
+   Code Designer at the top, and the codebook (Task context and the codes)
+   below. Drag the bar between them to give the codes more room; double-click
+   it to reset. The codes always keep some room, and the window remembers the
+   height on this computer.
+
    ![Edit codebook dialog: the Ordered scale switch at the top right, the Brief for the AI Code Designer with Maximum classes and the AI Code Designer button, and Task context above the codes](tutorials/assets/annotation/edit_codebook.png)
 
    Each code should appear once, with its own description. If a code is

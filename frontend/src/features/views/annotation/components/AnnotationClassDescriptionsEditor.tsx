@@ -69,6 +69,7 @@ import type { AnnotationProviderConfigurationView } from '@/features/provider-cr
 import { type CodeDesignerSettings, codebookSignature } from '../codebookDesigner';
 import { codebookDraftKey, useCodebookDraftStore } from '../codebookDraftStore';
 import { CodeDesignerBrief } from './CodeDesignerBrief';
+import { CodebookEditorSplit } from './CodebookEditorSplit';
 import { OrderedScaleSwitch } from './OrderedScaleSwitch';
 import { SortableCodeRow } from './SortableCodeRow';
 import { CodebookDesignerDialog } from './CodebookDesignerDialog';
@@ -396,10 +397,10 @@ export function AnnotationClassDescriptionsEditor({
           <DialogContent
             // Never taller than the window (Chao, 19 Nov 2026: on a 14-inch
             // laptop its top and bottom were off screen and couldn't be
-            // scrolled to). The title and Save stay in place; the codes
-            // scroll in the room left, and the whole middle scrolls when even
-            // that is too little.
-            className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col"
+            // scrolled to). The title and Save stay in place; between them
+            // the brief and the codebook are two panes with a divider. Wide, as
+            // nothing else can be used while it is open (Chao, 19 Nov 2026).
+            className="flex max-h-[calc(100dvh-2rem)] max-w-[min(1024px,calc(100vw-2rem))] flex-col"
             onOpenAutoFocus={(event) => {
               // Don't drop a cursor into the first class input on open: that
               // would persist a redundant no-op save the moment the user clicks
@@ -438,24 +439,24 @@ export function AnnotationClassDescriptionsEditor({
                 Add, rename, or remove annotation codes and their descriptions.
               </DialogDescription>
             </DialogHeader>
-            <div
-              data-testid="codebook-editor-body"
-              className="-mr-1 flex min-h-0 flex-col gap-3 overflow-y-auto pr-1"
+            <CodebookEditorSplit
+              top={
+                designer ? (
+                  <CodeDesignerBrief
+                    settings={designer.settings}
+                    onSettingsChange={designer.onSettingsChange}
+                    scale={editorScale}
+                    disabled={isSaving}
+                    blockedReason={
+                      designer.source
+                        ? undefined
+                        : 'Choose an Annotation Data Block and its text column first.'
+                    }
+                    onDesign={startDesigner}
+                  />
+                ) : null
+              }
             >
-              {designer ? (
-                <CodeDesignerBrief
-                  settings={designer.settings}
-                  onSettingsChange={designer.onSettingsChange}
-                  scale={editorScale}
-                  disabled={isSaving}
-                  blockedReason={
-                    designer.source
-                      ? undefined
-                      : 'Choose an Annotation Data Block and its text column first.'
-                  }
-                  onDesign={startDesigner}
-                />
-              ) : null}
               <div className="space-y-1.5">
                 <Label htmlFor="codebook-task-context">
                   Task context <span className="font-normal text-description">(optional)</span>
@@ -477,7 +478,7 @@ export function AnnotationClassDescriptionsEditor({
               </div>
               <div
                 className={cn(
-                  'min-h-40 space-y-2 overflow-y-auto pr-1',
+                  'space-y-2',
                   // Dragging over the fields must not select their text.
                   isDragging && 'select-none',
                 )}
@@ -528,7 +529,8 @@ export function AnnotationClassDescriptionsEditor({
                               placeholder={editorScale && !row.outsideScale ? 'Level' : 'Code'}
                               data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
                               className={cn(
-                                'w-1/3',
+                                // The description gets the room a wide window gives.
+                                'w-1/4 min-w-36',
                                 draftCheck.rowsToMark.has(index) && 'border-warning',
                               )}
                               disabled={false}
@@ -605,75 +607,75 @@ export function AnnotationClassDescriptionsEditor({
                   </DndContext>
                 )}
               </div>
-              {hasCodebookProblems(draftCheck) ? (
-                <div className="max-h-[30vh] shrink-0 space-y-2 overflow-y-auto pr-1">
-                  <CodebookSuggestions suggestions={codebookSuggestions(editorRows, draftCheck)} />
-                  {draftCheck.repeatedRows.length > 0 ? (
+            </CodebookEditorSplit>
+            {hasCodebookProblems(draftCheck) ? (
+              <div className="max-h-[30vh] shrink-0 space-y-2 overflow-y-auto pr-1">
+                <CodebookSuggestions suggestions={codebookSuggestions(editorRows, draftCheck)} />
+                {draftCheck.repeatedRows.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={() => {
+                      writeDraft({ rows: withoutRepeatedRows(editorRows) });
+                    }}
+                  >
+                    Remove repeated rows
+                  </Button>
+                ) : null}
+                {draftCheck.codesWithSeveralDescriptions.map((code) => (
+                  <fieldset
+                    key={code.key}
+                    className="space-y-1.5 rounded-md border border-surface-border px-3 pb-2"
+                  >
+                    <legend className="px-1 text-label-secondary font-medium">
+                      Description for “{code.name}”
+                    </legend>
+                    {code.descriptions.map((description, index) => (
+                      <div key={description} className="flex items-start justify-between gap-2">
+                        <p className="text-body break-words">
+                          {description || (
+                            <span className="text-description">(no description)</span>
+                          )}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          aria-label={`Use description ${String(index + 1)} for ${code.name}`}
+                          disabled={isSaving}
+                          onClick={() => {
+                            writeDraft({ rows: resolveCode(editorRows, code.key, description) });
+                          }}
+                        >
+                          Use this
+                        </Button>
+                      </div>
+                    ))}
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      aria-label={`Merge the descriptions for ${code.name}`}
                       disabled={isSaving}
                       onClick={() => {
-                        writeDraft({ rows: withoutRepeatedRows(editorRows) });
+                        writeDraft({
+                          rows: resolveCode(
+                            editorRows,
+                            code.key,
+                            mergedDescription(code.descriptions),
+                          ),
+                        });
                       }}
                     >
-                      Remove repeated rows
+                      Merge descriptions
                     </Button>
-                  ) : null}
-                  {draftCheck.codesWithSeveralDescriptions.map((code) => (
-                    <fieldset
-                      key={code.key}
-                      className="space-y-1.5 rounded-md border border-surface-border px-3 pb-2"
-                    >
-                      <legend className="px-1 text-label-secondary font-medium">
-                        Description for “{code.name}”
-                      </legend>
-                      {code.descriptions.map((description, index) => (
-                        <div key={description} className="flex items-start justify-between gap-2">
-                          <p className="text-body break-words">
-                            {description || (
-                              <span className="text-description">(no description)</span>
-                            )}
-                          </p>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="shrink-0"
-                            aria-label={`Use description ${String(index + 1)} for ${code.name}`}
-                            disabled={isSaving}
-                            onClick={() => {
-                              writeDraft({ rows: resolveCode(editorRows, code.key, description) });
-                            }}
-                          >
-                            Use this
-                          </Button>
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Merge the descriptions for ${code.name}`}
-                        disabled={isSaving}
-                        onClick={() => {
-                          writeDraft({
-                            rows: resolveCode(
-                              editorRows,
-                              code.key,
-                              mergedDescription(code.descriptions),
-                            ),
-                          });
-                        }}
-                      >
-                        Merge descriptions
-                      </Button>
-                    </fieldset>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+                  </fieldset>
+                ))}
+              </div>
+            ) : null}
             <DialogFooter className="sm:justify-between">
               <Button
                 type="button"

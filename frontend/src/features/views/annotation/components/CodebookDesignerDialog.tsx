@@ -205,8 +205,9 @@ export function CodebookDesignerDialog({
       <DialogContent
         // Never taller than the window (Chao, 19 Nov 2026: with Advanced on,
         // the prompt pushed its top and bottom off screen). The title and the
-        // buttons stay in place and the settings between them scroll.
-        className="flex max-h-[calc(100dvh-2rem)] max-w-xl flex-col"
+        // buttons stay in place and the settings between them scroll. Wider
+        // than before, as nothing else can be used while it is open.
+        className="flex max-h-[calc(100dvh-2rem)] max-w-[min(768px,calc(100vw-2rem))] flex-col"
         hideCloseButton={running}
         onEscapeKeyDown={(event) => {
           if (running) event.preventDefault();
