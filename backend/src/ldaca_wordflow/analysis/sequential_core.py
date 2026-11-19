@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import ROUND_HALF_EVEN, Decimal, localcontext
+from functools import partial
 
 import polars as pl
 
@@ -183,23 +185,123 @@ def _assign_time_period(
                 "Couldn't work out a start value from the data. Enter a Start value."
             )
 
-        df = df.with_columns(
-            (
-                (pl.col("__numeric_value__") - pl.lit(numeric_origin_value))
-                / pl.lit(numeric_interval_value)
-            )
-            .floor()
-            .cast(pl.Int64)
-            .alias("__numeric_bin__"),
-        )
-        df = df.with_columns(
-            (
-                pl.lit(numeric_origin_value)
-                + pl.col("__numeric_bin__").cast(pl.Float64)
-                * pl.lit(numeric_interval_value)
-            ).alias("time_period"),
-        )
+        df = _assign_numeric_bins(df, numeric_origin_value, numeric_interval_value)
     return df, time_format, numeric_origin_value, numeric_interval_value
+
+
+# Numeric bins are worked out on the numbers as they are written. A computer
+# stores 1.4 and 0.1 as the nearest binary fractions, and with those
+# (1.4 - 1.2) / 0.1 is a hair under 2, which put 1.4 in the bin [1.3, 1.4).
+# Enough digits to subtract and divide any two stored numbers exactly.
+_EXACT_DIGITS = 1_000
+# How near a whole number the quick division must be before a value is
+# rechecked exactly; far more than the division can be out by.
+_EDGE_SLACK = 1e-9
+_MAX_BIN_NUMBER = 2**62
+
+
+def _written(value: float) -> Decimal:
+    """A number as it is written: 0.1 is one tenth, not the nearest binary fraction."""
+
+    return Decimal(repr(float(value)))
+
+
+def _assign_numeric_bins(df: pl.DataFrame, origin: float, interval: float) -> pl.DataFrame:
+    """Add each row's bin number and, as ``time_period``, where its bin starts.
+
+    A bin holds its start value and everything up to, but not including, the
+    next start. Most values sit well inside a bin and the quick division
+    places them; a value on or beside an edge is placed exactly. The start is
+    the number nearest ``origin + bin * interval`` as written, at full
+    precision: labels round nothing, so no two bins share a start.
+    """
+
+    value = pl.col("__numeric_value__")
+    quotient = "__numeric_quotient__"
+    exact = "__numeric_exact_bin__"
+    reach = (value.abs() + abs(origin)) / interval
+    df = df.with_columns(((value - origin) / interval).alias(quotient))
+    furthest = df.select(reach.max()).item()
+    if furthest is not None and furthest >= _MAX_BIN_NUMBER:
+        raise ValueError(
+            "The step is too small for these values. Enter a larger step."
+        )
+    on_edge = (pl.col(quotient) - pl.col(quotient).round()).abs() <= _EDGE_SLACK * (
+        reach + 1
+    )
+    edge_values = df.filter(on_edge).get_column("__numeric_value__").unique()
+    origin_written, interval_written = _written(origin), _written(interval)
+    with localcontext() as context:
+        context.prec = _EXACT_DIGITS
+        exact_bins = []
+        for edge_value in edge_values.to_list():
+            whole, remainder = divmod(
+                _written(edge_value) - origin_written, interval_written
+            )
+            # divmod rounds towards zero; below the start, the bin is one lower.
+            exact_bins.append(int(whole) - (1 if remainder < 0 else 0))
+        df = (
+            df.join(
+                pl.DataFrame(
+                    {
+                        "__numeric_value__": edge_values,
+                        exact: pl.Series(exact_bins, dtype=pl.Int64),
+                    }
+                ),
+                on="__numeric_value__",
+                how="left",
+                maintain_order="left",
+            )
+            .with_columns(
+                pl.coalesce(
+                    pl.col(exact), pl.col(quotient).floor().cast(pl.Int64)
+                ).alias("__numeric_bin__")
+            )
+            .drop(quotient, exact)
+        )
+        bins = df.get_column("__numeric_bin__").unique()
+        starts = [
+            float(origin_written + index * interval_written)
+            for index in bins.to_list()
+        ]
+    return df.join(
+        pl.DataFrame(
+            {"__numeric_bin__": bins, "time_period": pl.Series(starts, dtype=pl.Float64)}
+        ),
+        on="__numeric_bin__",
+        how="left",
+        maintain_order="left",
+    )
+
+
+def _numeric_bin_label(origin: float, interval: float, start: float | None) -> str | None:
+    """A bin's label, such as ``[1.4, 1.5)``, from its start value.
+
+    Both ends are worked out from the start value and step as written, so
+    one bin's end reads the same as the next bin's start, in full.
+    """
+
+    if start is None:
+        return None
+    origin_written, interval_written = _written(origin), _written(interval)
+    with localcontext() as context:
+        context.prec = _EXACT_DIGITS
+        index = ((_written(start) - origin_written) / interval_written).to_integral_value(
+            rounding=ROUND_HALF_EVEN
+        )
+        low = origin_written + index * interval_written
+        high = low + interval_written
+        return f"[{_plain_number(low)}, {_plain_number(high)})"
+
+
+def _plain_number(value: Decimal) -> str:
+    """Every digit of a number, without trailing zeros: 1.50 reads 1.5."""
+
+    if value == 0:
+        return "0"
+    value = value.normalize()
+    # Very large and very small numbers keep an exponent, such as 1e+300.
+    return format(value, "f") if -7 <= value.adjusted() < 16 else f"{value:e}"
 
 
 def _cast_like(
@@ -568,43 +670,15 @@ def _build_sequential_result_frames(
                 .alias("time_period_formatted")
             )
     else:
-        interval_lit = pl.lit(numeric_interval_value)
+        if numeric_origin_value is None or numeric_interval_value is None:
+            raise ValueError("Numeric bins need a start value and a step")
         result_df = result_df.with_columns(
-            [
-                pl.col("time_period").round(6).alias("time_period"),
-                (pl.col("time_period") + interval_lit).alias("__numeric_period_end__"),
-            ]
-        )
-
-        def _format_numeric(value: float | None) -> str | None:
-            """Format one numeric interval boundary for the result label."""
-
-            if value is None:
-                return None
-            return format(value, ".6g")
-
-        result_df = result_df.with_columns(
-            [
-                pl.col("time_period")
-                .map_elements(_format_numeric, return_dtype=pl.String)
-                .alias("__numeric_period_label_start__"),
-                pl.col("__numeric_period_end__")
-                .map_elements(_format_numeric, return_dtype=pl.String)
-                .alias("__numeric_period_label_end__"),
-            ]
-        )
-        result_df = result_df.with_columns(
-            pl.format(
-                "[{}, {})",
-                pl.col("__numeric_period_label_start__"),
-                pl.col("__numeric_period_label_end__"),
-            ).alias("time_period_formatted")
-        ).drop(
-            [
-                "__numeric_period_end__",
-                "__numeric_period_label_start__",
-                "__numeric_period_label_end__",
-            ]
+            pl.col("time_period")
+            .map_elements(
+                partial(_numeric_bin_label, numeric_origin_value, numeric_interval_value),
+                return_dtype=pl.String,
+            )
+            .alias("time_period_formatted")
         )
 
     # Sort by time if requested
