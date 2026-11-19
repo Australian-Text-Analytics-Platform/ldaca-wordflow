@@ -1225,26 +1225,29 @@ def _deduplicate(
     require_supported_columns(data.collect_schema(), [near], use="as text")
     keys = [name for name in compared if name != near]
     prepared = data
+    # Working columns take names the Data Block doesn't use, so they never
+    # replace one of its own columns and take it away with them.
+    near_key, row, first, size = _unused_names(
+        names, "__dedupe_text", "__dedupe_row", "__dedupe_first", "__dedupe_size"
+    )
     if near:
         prepared = prepared.with_columns(
-            _near_text_key(pl.col(near), request.ignore_links_mentions).alias("__dedupe_text")
+            _near_text_key(pl.col(near), request.ignore_links_mentions).alias(near_key)
         )
-        keys.append("__dedupe_text")
+        keys.append(near_key)
     if request.output == "kept":
         kept = prepared.unique(subset=keys, keep="first", maintain_order=True)
-        return kept.drop("__dedupe_text") if near else kept
+        return kept.drop(near_key) if near else kept
     for name in ("duplicate_group", "kept"):
         if name in names:
             raise InvalidInputError(f'The Data Block already has a "{name}" column')
-    row = "__dedupe_row"
-    first = "__dedupe_first"
     groups = (
         prepared.with_row_index(row)
         .with_columns(
-            pl.len().over(keys).alias("__dedupe_size"),
+            pl.len().over(keys).alias(size),
             pl.col(row).min().over(keys).alias(first),
         )
-        .filter(pl.col("__dedupe_size") > 1)
+        .filter(pl.col(size) > 1)
         .with_columns(
             pl.col(first).rank("dense").cast(pl.UInt32).alias("duplicate_group"),
             (pl.col(row) == pl.col(first)).alias("kept"),
@@ -1252,6 +1255,19 @@ def _deduplicate(
         .sort(["duplicate_group", row])
     )
     return groups.select(["duplicate_group", "kept", *names])
+
+
+def _unused_names(existing: list[str], *wanted: str) -> list[str]:
+    """Each wanted name, with underscores added until no column has it."""
+
+    taken = set(existing)
+    free: list[str] = []
+    for name in wanted:
+        while name in taken:
+            name += "_"
+        taken.add(name)
+        free.append(name)
+    return free
 
 
 def _title_case(text: pl.Expr) -> pl.Expr:

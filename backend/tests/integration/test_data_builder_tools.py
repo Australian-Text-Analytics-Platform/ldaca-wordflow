@@ -173,6 +173,81 @@ def test_group_summary_uses_per_column_summaries(tmp_path: Path) -> None:
         client.__exit__(None, None, None)
 
 
+def test_deduplicate_keeps_columns_named_like_its_working_columns(
+    tmp_path: Path,
+) -> None:
+    """Near matching once replaced a ``__dedupe_text`` column, then dropped it."""
+
+    client, unsafe, workspace_id, _node_id = _setup(tmp_path)
+    try:
+        client.post(
+            "/api/user-files/uploads",
+            params={"path": "scratch.csv"},
+            content=(
+                b"text,__dedupe_text,__dedupe_row,__dedupe_first,__dedupe_size\n"
+                b"Red Fox,first,r1,f1,s1\n"
+                b"RED FOX,second,r2,f2,s2\n"
+                b"Blue bird,third,r3,f3,s3\n"
+            ),
+            headers={**unsafe, "Content-Type": "application/octet-stream"},
+        )
+        node_id = client.post(
+            f"/api/workspaces/{workspace_id}/nodes",
+            json={"kind": "file", "file_path": "scratch.csv"},
+            headers=unsafe,
+        ).json()["id"]
+        body = {
+            "kind": "deduplicate",
+            "source_node_id": node_id,
+            "columns": ["text"],
+            "near_text_column": "text",
+        }
+
+        kept = _preview(client, unsafe, workspace_id, body)
+        assert kept.to_dicts() == [
+            {
+                "text": "Red Fox",
+                "__dedupe_text": "first",
+                "__dedupe_row": "r1",
+                "__dedupe_first": "f1",
+                "__dedupe_size": "s1",
+            },
+            {
+                "text": "Blue bird",
+                "__dedupe_text": "third",
+                "__dedupe_row": "r3",
+                "__dedupe_first": "f3",
+                "__dedupe_size": "s3",
+            },
+        ]
+
+        groups = _preview(
+            client, unsafe, workspace_id, {**body, "output": "duplicates"}
+        )
+        assert groups.to_dicts() == [
+            {
+                "duplicate_group": 1,
+                "kept": True,
+                "text": "Red Fox",
+                "__dedupe_text": "first",
+                "__dedupe_row": "r1",
+                "__dedupe_first": "f1",
+                "__dedupe_size": "s1",
+            },
+            {
+                "duplicate_group": 1,
+                "kept": False,
+                "text": "RED FOX",
+                "__dedupe_text": "second",
+                "__dedupe_row": "r2",
+                "__dedupe_first": "f2",
+                "__dedupe_size": "s2",
+            },
+        ]
+    finally:
+        client.__exit__(None, None, None)
+
+
 def test_deduplicate_keeps_first_and_exposes_duplicate_groups(tmp_path: Path) -> None:
     client, unsafe, workspace_id, node_id = _setup(tmp_path)
     try:
