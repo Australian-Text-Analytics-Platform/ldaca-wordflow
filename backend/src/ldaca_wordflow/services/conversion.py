@@ -58,8 +58,8 @@ class ConversionOptions:
 # --- numbers ---------------------------------------------------------------
 
 
-def number_from_text(column: pl.Expr, options: ConversionOptions) -> pl.Expr:
-    """Text such as "1,234.5", "3,5" or "$12" as a decimal number.
+def _number_text(column: pl.Expr, options: ConversionOptions) -> pl.Expr:
+    """The text of a number with the chosen marks made plain: "1,234.5" is "1234.5".
 
     Thousands separators are removed and a decimal comma becomes a point; with
     ``ignore_symbols`` everything but digits, signs, the marks and an exponent
@@ -87,13 +87,61 @@ def number_from_text(column: pl.Expr, options: ConversionOptions) -> pl.Expr:
         )
     if options.decimal_mark == ",":
         text = text.str.replace_all(",", ".", literal=True)
-    return text.cast(pl.Float64, strict=False)
+    return text
+
+
+def number_from_text(column: pl.Expr, options: ConversionOptions) -> pl.Expr:
+    """Text such as "1,234.5", "3,5" or "$12" as a decimal number."""
+
+    return _number_text(column, options).cast(pl.Float64, strict=False)
 
 
 def round_to_whole(values: pl.Expr) -> pl.Expr:
     """Nearest whole number, halves away from zero (2.5 is 3, -2.5 is -3)."""
 
     return values.round(0, mode="half_away_from_zero").cast(pl.Int64, strict=False)
+
+
+_INT64_MIN, _INT64_MAX = -(2**63), 2**63 - 1
+# Digits with an optional sign and decimal part, and no exponent.
+_PLAIN_NUMBER = r"^[+-]?(?:\d+\.?\d*|\.\d+)$"
+
+
+def whole_number_from_text(column: pl.Expr, options: ConversionOptions) -> pl.Expr:
+    """Text as a whole number, read digit by digit; decimals round as above.
+
+    A decimal number holds whole numbers exactly only up to 2**53, so going
+    through one turned the identifiers "9007199254740992" and
+    "9007199254740993" into the same number. Plain digits are therefore read
+    as they are written, and a decimal part rounds from its first digit. Only
+    text with an exponent, such as "1e3", is read as a decimal number first.
+    A number too large for a whole-number column becomes empty.
+    """
+
+    text = _number_text(column, options)
+    negative = text.str.starts_with("-")
+    digits = text.str.extract(r"^([+-]?\d+)", 1)
+    whole = (
+        pl.when(digits.is_null())  # ".5" has no digits before the mark
+        .then(pl.lit(0, dtype=pl.Int64))
+        .otherwise(digits.cast(pl.Int64, strict=False))
+    )
+    rounds_away = text.str.contains(r"\.[5-9]")
+    # One more would wrap round to the other end of the range.
+    at_limit = pl.when(negative).then(whole == _INT64_MIN).otherwise(whole == _INT64_MAX)
+    step = pl.when(negative).then(pl.lit(-1, dtype=pl.Int64)).otherwise(pl.lit(1, dtype=pl.Int64))
+    rounded = (
+        pl.when(rounds_away & at_limit)
+        .then(pl.lit(None, dtype=pl.Int64))
+        .when(rounds_away)
+        .then(whole + step)
+        .otherwise(whole)
+    )
+    return (
+        pl.when(text.str.contains(_PLAIN_NUMBER))
+        .then(rounded)
+        .otherwise(round_to_whole(text.cast(pl.Float64, strict=False)))
+    )
 
 
 # --- dates -----------------------------------------------------------------
