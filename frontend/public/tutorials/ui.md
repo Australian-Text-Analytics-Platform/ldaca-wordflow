@@ -286,6 +286,12 @@ What to expect:
   matches.
 - **Settings are locked while a task runs.** Use **Stop** to cancel it. The
   running task also appears in **Tasks**.
+- **Preview Results say so.** In Concordance and Quotation, **Add to Project**
+  and the download icon for the Result table stay greyed out until Run
+  finishes; hover over one to see why. Concordance also adds **(Preview)** to
+  each Data Block's title and to the dispersion chart's title, including the
+  title of a downloaded chart, because a Preview chart covers only the
+  documents on the current page.
 - **After a failure or a stop**, you can edit the settings again, but Preview
   and Run stay off until you choose **Clear results**. Annotation is the exception: its
   Preview and Run replace the tab's earlier results, so they turn on again

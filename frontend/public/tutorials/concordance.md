@@ -128,6 +128,12 @@ when you open it, from the data as it was when you chose Preview. Choose
 [Clear results](#help-concordance-clear-results). See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
+While Preview Results are showing, each Data Block's title ends in
+**(Preview)**, for example **ACE-Text (Preview)**, in both Table view and
+Dispersion view. The download icon and **Add to Project** stay in the
+**Concordance Results** header but are greyed out: hover over one to see why.
+They turn on when Run finishes, and **(Preview)** disappears from the titles.
+
 <h2 id="help-concordance-results">Result panel</h2>
 
 In separated Preview tables, selected source metadata headers are sortable.
@@ -259,6 +265,16 @@ terms while preserving selected bins.
 Download the current chart as PNG, SVG, JPEG or **Interactive HTML**. An image
 download includes the visible term series, complete legend with hidden-state
 indication, and active bin and term-filter summary.
+
+You can download the chart of a Preview too, but it shows only the matches in
+the documents on the current page, not the whole Data Block. Its title says so:
+on screen the chart is **Where matches occur in the documents (Preview)**, and
+the downloaded title reads, for example, **ACE-Text (Preview): matches in the
+documents on this page**. The file name says it too, for example
+`ACE-Text_concordance_dispersion_preview.png`. Do not use a
+Preview chart to describe the whole Data Block: choose **Run** first, then
+download the chart again. After Run, the title reads **all matches in the
+Result**.
 
 **Interactive HTML** saves the chart as one web page that opens in any browser, offline: it shows the chart exactly as it is on screen (the same groups, selected bins, zoom and theme colours), and keeps its tooltips, a legend whose entries hide or show groups, and the zoom slider (hold Command on a Mac or Control on Windows while scrolling to zoom; plain scrolling moves the page). Its last line links to the Wordflow home page. It is a picture you can explore, not a copy of Wordflow: it cannot change the search or the terms, or add anything to a Project.
 

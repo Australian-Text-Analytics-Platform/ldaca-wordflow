@@ -68,6 +68,7 @@ import {
   filterQuotationRowsWithQuotes,
 } from './quotationResultsModel';
 import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWorkspaceDialog';
+import { PreviewResultActions } from '../common/components/PreviewResultActions';
 import { downloadResultSelection } from '../common/resultDownload';
 import { useExcelCellLimitNotice } from '../common/useExcelCellLimitNotice';
 import { Download } from 'lucide-react';
@@ -847,7 +848,12 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
                     Add to Project
                   </Button>
                 </div>
-              ) : null
+              ) : (
+                <PreviewResultActions
+                  resultsLabel="Quotation Results"
+                  running={analysisActionLifecycle.isRunningAll}
+                />
+              )
             }
             displayedNodes={
               !runAllSource && progressNode

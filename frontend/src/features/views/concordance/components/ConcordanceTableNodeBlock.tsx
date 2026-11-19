@@ -232,6 +232,7 @@ function CombinedConcordanceTable({
       {(openDetailAt) => (
         <Card data-testid="concordance-table-combined-card" className="mb-6 overflow-hidden">
           <ConcordanceCombinedResultHeader
+            preview={reviewRowUnit === null}
             nodes={panelSelectedNodes}
             sourceColorMap={sourceColorMap}
             defaultPalette={defaultPalette}
@@ -432,6 +433,7 @@ function PerNodeConcordanceTable({
       {(openDetailAt) => (
         <Card data-testid="concordance-table-source-card" className="mb-6 overflow-hidden">
           <ConcordanceSourceResultHeader
+            preview={reviewRowUnit === null}
             name={dataBlockLabel}
             color={sourceColor}
             testId="concordance-table-source-header"

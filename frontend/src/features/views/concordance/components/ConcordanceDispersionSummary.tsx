@@ -89,6 +89,11 @@ interface Props {
   onToggleMatchedTexts?: (matchedTexts: readonly string[]) => void;
   /** Keeps the shared match controls mounted when the optional density chart is hidden. */
   showChart?: boolean;
+  /**
+   * Preview Results: the chart title, the downloaded title and the file name
+   * say so, so a Preview chart is not read later as the full Result (Chao).
+   */
+  preview?: boolean;
 }
 
 interface DispersionChartSeries {
@@ -188,6 +193,7 @@ export function ConcordanceDispersionSummary({
   onUncasedMatchedTextsChange,
   onToggleMatchedTexts,
   showChart = true,
+  preview = false,
 }: Props) {
   const controlId = useId();
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
@@ -210,8 +216,10 @@ export function ConcordanceDispersionSummary({
   const scopeText = densitySeries
     ? 'all matches in the Result'
     : 'matches in the documents on this page';
-  const titleText = `${dataBlockLabel}: ${scopeText}`;
-  const chartTitle = 'Where matches occur in the documents';
+  const previewSuffix = preview ? ' (Preview)' : '';
+  const titleText = `${dataBlockLabel}${previewSuffix}: ${scopeText}`;
+  const chartTitle = `Where matches occur in the documents${previewSuffix}`;
+  const exportSuffix = preview ? 'concordance_dispersion_preview' : 'concordance_dispersion';
   // Combined view pools the Data Blocks on purpose (one line per term keeps
   // the chart readable and works for area and bar charts); say so, so the
   // chart is not read as one Data Block (issue 282).
@@ -490,7 +498,7 @@ export function ConcordanceDispersionSummary({
     try {
       await downloadChartAsHtml(chartContainerRef.current, {
         nodeName: dataBlockLabel,
-        toolSuffix: 'concordance_dispersion',
+        toolSuffix: exportSuffix,
         title: titleText,
         header: exportHeader(),
       });
@@ -525,7 +533,7 @@ export function ConcordanceDispersionSummary({
     try {
       await downloadChartAs(svg, {
         nodeName: dataBlockLabel,
-        toolSuffix: 'concordance_dispersion',
+        toolSuffix: exportSuffix,
         format,
         header,
         legend,

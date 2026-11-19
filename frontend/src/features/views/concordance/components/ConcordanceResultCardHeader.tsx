@@ -11,10 +11,18 @@ interface SourceHeaderProps {
   testId: string;
   /** Optional controls at the right of the header, such as Original order. */
   actions?: ReactNode;
+  /** Preview Results: the title says so, so a Preview is not read as the full Result. */
+  preview?: boolean;
 }
 
 /** Shared quiet Data Block identity header for separated Concordance results. */
-export function ConcordanceSourceResultHeader({ name, color, testId, actions }: SourceHeaderProps) {
+export function ConcordanceSourceResultHeader({
+  name,
+  color,
+  testId,
+  actions,
+  preview = false,
+}: SourceHeaderProps) {
   const sourceColor = normalizeNodeColor(color) ?? GREY;
   const sourceSurfaceColor = toNodeSurfaceColor(sourceColor);
 
@@ -24,15 +32,16 @@ export function ConcordanceSourceResultHeader({ name, color, testId, actions }: 
       className="flex flex-row items-center justify-between gap-3 space-y-0 px-4 py-3 text-foreground"
       style={{ backgroundColor: sourceSurfaceColor }}
     >
-      <CardTitle className="min-w-0 text-body">
+      <CardTitle className="flex min-w-0 items-baseline gap-1.5 text-body">
         <DataBlockName
           name={name}
           backgroundColor={sourceSurfaceColor}
           maxLines={2}
           fadeEdge="head"
-          className="font-semibold leading-snug"
+          className="min-w-0 font-semibold leading-snug"
           title={name}
         />
+        {preview ? <span className="shrink-0 font-semibold leading-snug">(Preview)</span> : null}
       </CardTitle>
       {actions ? <div className="shrink-0">{actions}</div> : null}
     </CardHeader>
@@ -44,6 +53,8 @@ interface CombinedHeaderProps {
   sourceColorMap: Record<string, string>;
   defaultPalette: readonly string[];
   testId: string;
+  /** Preview Results: the title says so, so a Preview is not read as the full Result. */
+  preview?: boolean;
 }
 
 /** Shared neutral header and source-color legend for combined Concordance results. */
@@ -52,13 +63,16 @@ export function ConcordanceCombinedResultHeader({
   sourceColorMap,
   defaultPalette,
   testId,
+  preview = false,
 }: CombinedHeaderProps) {
   return (
     <CardHeader
       data-testid={testId}
       className="gap-2 space-y-0 border-b border-surface-border bg-panel"
     >
-      <CardTitle className="text-heading-3 text-foreground">Combined Results</CardTitle>
+      <CardTitle className="text-heading-3 text-foreground">
+        {preview ? 'Combined Results (Preview)' : 'Combined Results'}
+      </CardTitle>
       <div
         role="list"
         aria-label="Source Data Blocks"

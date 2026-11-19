@@ -8,6 +8,7 @@ interface CapturedChart {
   option: Record<string, unknown>;
   onSelect?: (index: number, shiftHeld: boolean) => void;
   selectionHint?: string;
+  ariaLabel?: string;
 }
 
 const { charts } = vi.hoisted(() => ({ charts: [] as CapturedChart[] }));
@@ -70,6 +71,27 @@ describe('ConcordanceDispersionSummary', () => {
     expect(screen.getByRole('combobox', { name: 'Chart' })).toHaveTextContent('Line');
     expect(screen.getByText('Where matches occur in the documents')).toBeInTheDocument();
     expect(screen.getByTestId('concordance-echarts')).toBeInTheDocument();
+  });
+
+  it('marks a Preview chart in its title and in the title it downloads with', () => {
+    render(
+      <ConcordanceDispersionSummary
+        rows={baseRows}
+        textColumn="text"
+        binCount={20}
+        splitBySource={false}
+        dataBlockLabel="Corpus"
+        searchWord="alpha"
+        chartMode="density-line"
+        preview
+      />,
+    );
+
+    expect(screen.getByText('Where matches occur in the documents (Preview)')).toBeInTheDocument();
+    // The chart's label repeats the title used by the image and HTML downloads.
+    expect(charts.at(-1)?.ariaLabel).toBe(
+      'Where matches occur in the documents (Preview). Corpus (Preview): matches in the documents on this page',
+    );
   });
 
   it('lists every chart type, including Running total, and forwards the choice (issue 205)', () => {

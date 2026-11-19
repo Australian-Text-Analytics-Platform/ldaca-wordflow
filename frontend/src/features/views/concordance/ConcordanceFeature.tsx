@@ -63,6 +63,7 @@ import { usePersistNodeTokenizerModel } from '../common/hooks/usePersistNodeToke
 import type { ConcordanceRunAllReviewSource } from './concordanceRunAllReview';
 import { queryKeys } from '@/lib/queryKeys';
 import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWorkspaceDialog';
+import { PreviewResultActions } from '../common/components/PreviewResultActions';
 import { downloadResultSelection } from '../common/resultDownload';
 import { useExcelCellLimitNotice } from '../common/useExcelCellLimitNotice';
 import { Download } from 'lucide-react';
@@ -999,6 +1000,11 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
                     Add to Project
                   </Button>
                 </div>
+              ) : !isReview ? (
+                <PreviewResultActions
+                  resultsLabel="Concordance Results"
+                  running={analysisActionLifecycle.isRunningAll}
+                />
               ) : null
             }
             shell={{

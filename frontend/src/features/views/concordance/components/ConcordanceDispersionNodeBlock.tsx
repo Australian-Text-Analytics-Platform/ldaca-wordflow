@@ -270,6 +270,7 @@ export function ConcordanceDispersionNodeBlock({
             className="mb-6 overflow-hidden"
           >
             <ConcordanceCombinedResultHeader
+              preview={reviewRowUnit === null}
               nodes={panelSelectedNodes}
               sourceColorMap={sourceColorMap}
               defaultPalette={defaultPalette}
@@ -310,6 +311,7 @@ export function ConcordanceDispersionNodeBlock({
                 />
               </AnalysisTableFrame>
               <ConcordanceDispersionSummary
+                preview={reviewRowUnit === null}
                 rows={rows}
                 textColumn={column}
                 binCount={binCount}
@@ -429,6 +431,7 @@ export function ConcordanceDispersionNodeBlock({
           className="mb-6 overflow-hidden"
         >
           <ConcordanceSourceResultHeader
+            preview={reviewRowUnit === null}
             name={dataBlockLabel}
             color={context.nodeColor}
             testId="concordance-dispersion-source-header"
@@ -461,6 +464,7 @@ export function ConcordanceDispersionNodeBlock({
               />
             </AnalysisTableFrame>
             <ConcordanceDispersionSummary
+              preview={reviewRowUnit === null}
               rows={rows}
               textColumn={column}
               binCount={binCount}
