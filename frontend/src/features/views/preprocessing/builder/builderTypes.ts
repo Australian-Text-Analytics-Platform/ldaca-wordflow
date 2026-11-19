@@ -33,6 +33,9 @@ export interface BuilderInput {
   name: string;
   /** The column picked in the inputs panel, usually the text to analyse. */
   column: string;
-  /** `typeLabel` is the plain type name the Data Editor shows (issue 205). */
-  columns: { name: string; kind: ColumnKind; typeLabel?: string }[];
+  /**
+   * `typeLabel` is the plain type name the Data Editor shows (issue 205), and
+   * `field` the column's Arrow field, for the Data Editor's type symbol.
+   */
+  columns: { name: string; kind: ColumnKind; typeLabel?: string; field?: ArrowField }[];
 }

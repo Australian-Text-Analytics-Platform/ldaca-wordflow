@@ -197,6 +197,7 @@ function DataPreprocessingFeature() {
           name: option.name,
           kind: columnKind(option.field),
           typeLabel: arrowTypeDisplayName(option.field),
+          field: option.field,
         })),
       }
     : null;

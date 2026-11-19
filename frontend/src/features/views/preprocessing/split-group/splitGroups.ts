@@ -33,9 +33,9 @@ export const SPLIT_BY_HELP = `Text and category columns are listed only when the
  *   only with at most MAX_GROUPS different values, and shows that number:
  *   `party (4 values)`. `valueCounts` maps those columns to their number of
  *   values.
- * - A number column shows `(number)`, and a date, date and time or elapsed
- *   time column `(time)`. They are always offered, because they are grouped
- *   into ranges or periods.
+ * - A number, date, date and time or elapsed time column is always offered
+ *   under its own name, because it is grouped into ranges or periods. The
+ *   picker marks each column's type with the Data Editor's symbol.
  *
  * With `valueCounts` undefined (the numbers could not be read), every column
  * is offered, and the count of groups below the picker still stops a column
@@ -48,12 +48,7 @@ export function groupColumnOptions(
   const options: { value: string; label?: string }[] = [];
   for (const column of columns) {
     if (column.kind === 'other') continue;
-    if (!groupsByValues(column.kind)) {
-      const what = column.kind === 'number' ? 'number' : 'time';
-      options.push({ value: column.name, label: `${column.name} (${what})` });
-      continue;
-    }
-    if (!valueCounts) {
+    if (!groupsByValues(column.kind) || !valueCounts) {
       options.push({ value: column.name });
       continue;
     }

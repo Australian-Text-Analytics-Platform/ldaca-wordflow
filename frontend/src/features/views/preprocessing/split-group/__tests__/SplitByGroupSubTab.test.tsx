@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { DateDay, Field, Int64, Utf8 } from 'apache-arrow';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDistinctValueColumns } from '@/api';
@@ -32,11 +33,16 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 const columns: BuilderInput['columns'] = [
   { name: 'text', kind: 'text' },
-  { name: 'party', kind: 'text', typeLabel: 'category' },
+  { name: 'party', kind: 'text', typeLabel: 'text', field: new Field('party', new Utf8()) },
   { name: 'speaker', kind: 'text' },
   { name: 'sitting', kind: 'boolean' },
-  { name: 'year', kind: 'number' },
-  { name: 'date', kind: 'date' },
+  {
+    name: 'year',
+    kind: 'number',
+    typeLabel: 'whole number',
+    field: new Field('year', new Int64()),
+  },
+  { name: 'date', kind: 'date', typeLabel: 'date', field: new Field('date', new DateDay()) },
   { name: 'start', kind: 'elapsed' },
   { name: 'tokens', kind: 'other' },
 ];
@@ -86,10 +92,11 @@ describe('Group: columns offered under Split by', () => {
     expect(groupColumnOptions(columns, { party: 4, sitting: 1, year: 30 })).toEqual([
       { value: 'party', label: 'party (4 values)' },
       { value: 'sitting', label: 'sitting (1 value)' },
-      // Grouped into ranges or periods, whatever the number of values.
-      { value: 'year', label: 'year (number)' },
-      { value: 'date', label: 'date (time)' },
-      { value: 'start', label: 'start (time)' },
+      // Grouped into ranges or periods, whatever the number of values: the
+      // picker's type symbol tells them apart, so they keep their plain names.
+      { value: 'year' },
+      { value: 'date' },
+      { value: 'start' },
     ]);
     // Counted, and nothing fits: only the range and period columns are left.
     expect(groupColumnOptions(columns, {}).map((option) => option.value)).toEqual([
@@ -127,11 +134,21 @@ describe('Group: columns offered under Split by', () => {
     });
     await user.click(picker);
 
-    expect(await screen.findByRole('option', { name: 'party (4 values)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'year (number)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'date (time)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'start (time)' })).toBeInTheDocument();
+    // Each column starts with the Data Editor's symbol for its type, whose
+    // name is read out after the column's and shows on hover.
+    const party = await screen.findByRole('option', { name: 'party (4 values), text' });
+    expect(within(party).getByTitle('text')).toHaveTextContent('Aa');
+    const year = screen.getByRole('option', { name: 'year, whole number' });
+    expect(within(year).getByTitle('whole number')).toHaveTextContent('123');
+    expect(screen.getByRole('option', { name: 'date, date' })).toBeInTheDocument();
+    // No symbol is known for this column in the test, so it shows its name only.
+    expect(screen.getByRole('option', { name: 'start' })).toBeInTheDocument();
     expect(screen.getAllByRole('option')).toHaveLength(4);
+
+    // The chosen column keeps its symbol in the closed picker.
+    await user.click(year);
+    expect(within(picker).getByTitle('whole number')).toHaveTextContent('123');
+    expect(picker).toHaveTextContent('year');
     expect(screen.queryByRole('option', { name: /^speaker/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /^text/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('note')).not.toBeInTheDocument();
@@ -145,9 +162,9 @@ describe('Group: columns offered under Split by', () => {
     await user.click(screen.getByRole('combobox', { name: 'Split by column' }));
 
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
-      'year (number)',
-      'date (time)',
-      'start (time)',
+      '123year, whole number',
+      'date, date',
+      'start',
     ]);
     expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });

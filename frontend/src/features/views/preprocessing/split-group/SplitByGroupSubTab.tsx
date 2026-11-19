@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { distinctValueColumnsQuery } from '@/features/views/common/distinctValueColumns';
+import { ColumnTypeSymbol } from '@/features/workspace/data-view/components/ColumnTypeSymbol';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { BuilderToolCard } from '../builder/BuilderToolCard';
 import type { BuilderInput } from '../builder/builderTypes';
@@ -66,10 +67,17 @@ export function SplitByGroupSubTab({
   );
   // While the values are being counted, text columns wait rather than show
   // unchecked; if the count fails, every column is offered so the tool works.
+  // Each column carries the Data Editor's symbol for its type, which tells
+  // number and time columns (grouped into ranges or periods) from the rest.
   const columnOptions = groupColumnOptions(
     input?.columns ?? [],
     valueCounts.data ?? (valueCounts.isError ? undefined : {}),
-  );
+  ).map((option) => {
+    const info = input?.columns.find((item) => item.name === option.value);
+    return info?.field
+      ? { ...option, icon: <ColumnTypeSymbol field={info.field} />, iconLabel: info.typeLabel }
+      : option;
+  });
   const noGroupColumn = input !== null && valueCounts.isSuccess && columnOptions.length === 0;
 
   const columnInfo = input?.columns.find((item) => item.name === column);
@@ -183,7 +191,10 @@ export function SplitByGroupSubTab({
             placeholder="Choose a column"
             emptyMessage={valueCounts.isPending && input ? 'Counting values…' : undefined}
             ariaLabel="Split by column"
-            triggerClassName="w-64"
+            // The picker takes the rest of the row, so long column names and
+            // their numbers of values are not cut short; its list is as wide
+            // as it is.
+            triggerClassName="min-w-64 max-w-xl flex-1"
             disabled={noGroupColumn}
           />
         </div>
