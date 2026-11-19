@@ -65,9 +65,18 @@ const ocrRecordPaths = [
   },
 ];
 
+// A file built differently: its rows are under "entries".
+const notesRecordPaths = [
+  { path: '/entries', label: 'entries', records: 12, fields: ['text'], field_count: 1 },
+];
+
 vi.mock('../../hooks/useJsonRecordPaths', () => ({
-  useJsonRecordPaths: (_path: string | null, _member: string | null, enabled: boolean) => ({
-    paths: enabled ? ocrRecordPaths : null,
+  useJsonRecordPaths: (path: string | null, member: string | null, enabled: boolean) => ({
+    paths: !enabled
+      ? null
+      : (member ?? path ?? '').endsWith('notes.json')
+        ? notesRecordPaths
+        : ocrRecordPaths,
     loading: false,
   }),
 }));
@@ -293,6 +302,60 @@ describe('AddBatchPanel', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Add p2.json' }));
     await user.click(screen.getByRole('button', { name: 'Add to Project' }));
     expect(onConfirmJsonRecords).toHaveBeenCalledWith([ocrFiles[0]], '/pages/layout_det_res/boxes');
+  });
+
+  it('takes the default place from the first ticked JSON file, not the first listed', async () => {
+    const user = userEvent.setup();
+    const onConfirmJsonRecords = vi.fn();
+    const notes = { id: 'ocr/notes.json', label: 'notes.json', path: 'ocr/notes.json' };
+    render(
+      <AddBatchPanel
+        source={{ path: 'ocr', kind: 'folder' }}
+        tableFiles={[notes, ...ocrFiles]}
+        textCount={0}
+        onClose={vi.fn()}
+        onConfirmTexts={vi.fn()}
+        onConfirmTables={vi.fn()}
+        onConfirmJsonRecords={onConfirmJsonRecords}
+      />,
+    );
+
+    expect(previews.at(-1)).toMatchObject({ path: 'ocr/notes.json', recordPath: '/entries' });
+
+    // Without notes.json, its place would give the two OCR files no rows.
+    await user.click(screen.getByRole('checkbox', { name: 'Add notes.json' }));
+    expect(previews.at(-1)).toMatchObject({
+      path: 'ocr/p1.json',
+      recordPath: '/pages/parsing_res_list',
+    });
+    await user.click(screen.getByRole('button', { name: 'Add to Project' }));
+    expect(onConfirmJsonRecords).toHaveBeenCalledWith(ocrFiles, '/pages/parsing_res_list');
+  });
+
+  it('keeps a place the user chose when the ticks change', async () => {
+    const user = userEvent.setup();
+    const onConfirmJsonRecords = vi.fn();
+    const notes = { id: 'ocr/notes.json', label: 'notes.json', path: 'ocr/notes.json' };
+    render(
+      <AddBatchPanel
+        source={{ path: 'ocr', kind: 'folder' }}
+        tableFiles={[...ocrFiles, notes]}
+        textCount={0}
+        onClose={vi.fn()}
+        onConfirmTexts={vi.fn()}
+        onConfirmTables={vi.fn()}
+        onConfirmJsonRecords={onConfirmJsonRecords}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Rows from' }));
+    await user.click(
+      screen.getByRole('option', { name: 'pages › layout_det_res › boxes · 170 rows' }),
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'Add p1.json' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Add p2.json' }));
+    await user.click(screen.getByRole('button', { name: 'Add to Project' }));
+    expect(onConfirmJsonRecords).toHaveBeenCalledWith([notes], '/pages/layout_det_res/boxes');
   });
 
   it('keeps Texts first when the folder has texts, and offers JSON records', () => {

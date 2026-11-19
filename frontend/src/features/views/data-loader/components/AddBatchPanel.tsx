@@ -128,8 +128,13 @@ function AddBatchPanelBody({
   const tablesMode = mode === 'tables';
   const recordsMode = mode === 'records';
   const listedFiles = recordsMode ? jsonFiles : tableFiles;
+  const tickedJson = jsonFiles.filter((file) => !unticked.has(file.id));
+  // Until a file is clicked, JSON records previews the first file being added.
   const previewTable =
-    listedFiles.find((file) => file.id === chosenPreview) ?? listedFiles[0] ?? null;
+    listedFiles.find((file) => file.id === chosenPreview) ??
+    (recordsMode ? tickedJson[0] : undefined) ??
+    listedFiles[0] ??
+    null;
   const previewId = previewTable?.id ?? null;
   const filesMode = tablesMode || recordsMode;
   // A ZIP member previews through its archive; a folder file previews itself,
@@ -143,9 +148,12 @@ function AddBatchPanelBody({
       ? source.path
       : (previewTable?.path ?? null);
   const previewMember = filesMode && isZip ? (previewTable?.path ?? null) : null;
-  // One place for every JSON file's rows: the user's choice, else the first
-  // JSON file's default, so the whole batch is read one way.
-  const firstJson = jsonFiles[0] ?? null;
+  // One place for every JSON file's rows: the user's choice, else the default
+  // of the first JSON file being added, so the whole batch is read one way.
+  // It follows the ticks: the first file listed may be unticked and built
+  // differently, and its place would give the files being added no rows.
+  const addedJson = recordsMode ? tickedJson : jsonFiles.filter((file) => selected.has(file.id));
+  const firstJson = addedJson[0] ?? jsonFiles[0] ?? null;
   const firstRecordPaths = useJsonRecordPaths(
     isZip ? source.path : (firstJson?.path ?? null),
     isZip ? (firstJson?.path ?? null) : null,
@@ -165,8 +173,6 @@ function AddBatchPanelBody({
     filesMode ? (previewTable?.sheet ?? null) : undefined,
     previewIsJson ? batchRecordPath : undefined,
   );
-  const tickedJson = jsonFiles.filter((file) => !unticked.has(file.id));
-
   const toggle = (id: string, checked: boolean) => {
     setSelected((current) => {
       const next = new Set(current);
