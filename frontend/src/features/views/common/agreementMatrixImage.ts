@@ -94,20 +94,43 @@ const KEY_SWATCH_W = 16;
 const KEY_GRADIENT_W = 32;
 const KEY_SWATCH_H = 10;
 const KEY_TEXT_GAP = 6;
-const MIN_TEXT_W = 480;
+/** The title wraps past this width only when the matrix is wider. */
+const TITLE_WRAP_W = 560;
+/** Like the popup's text (24rem), the description wraps here unless the matrix is wider. */
+const BODY_WRAP_W = 400;
 /** Bold glyphs run a little wider than the estimate for regular ones. */
 const BOLD = 1.08;
+/** Room for a viewer that draws the SVG in a slightly wider font than the browser measured. */
+const FONT_SLACK = 1.04;
 
 const esc = (text: string): string =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+let measureContext: OffscreenCanvasRenderingContext2D | null | undefined;
+
+/**
+ * A text's width in the image's font. The browser measures it where it can,
+ * so the image is as wide as its text (Chao, 19 Nov 2026: the estimate ran
+ * about a fifth too wide and left white space on the right); without a
+ * canvas, as in tests, the estimate stands in.
+ */
+const measure = (text: string, font: number, weight = 400): number => {
+  if (measureContext === undefined) {
+    measureContext =
+      typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
+  }
+  if (!measureContext) return estimateTextWidth(text, font) * (weight >= 600 ? BOLD : 1);
+  measureContext.font = `${String(weight)} ${String(font)}px ${FONT}`;
+  return measureContext.measureText(text).width * FONT_SLACK;
+};
+
 /** Breaks a text into lines no wider than `width`, word by word; a long word keeps its own line. */
-const wrap = (text: string, font: number, width: number): string[] => {
+const wrap = (text: string, font: number, width: number, weight = 400): string[] => {
   const lines: string[] = [];
   let line = '';
   for (const word of text.split(/\s+/).filter(Boolean)) {
     const next = line ? `${line} ${word}` : word;
-    if (line && estimateTextWidth(next, font) > width) {
+    if (line && measure(next, font, weight) > width) {
       lines.push(line);
       line = word;
     } else {
@@ -128,58 +151,122 @@ const textLine = (
 ): string =>
   `<text x="${String(x)}" y="${String(y)}" font-family="${FONT}" font-size="${String(font)}" fill="${fill}"${extra}>${esc(text)}</text>`;
 
+interface TextBlock {
+  lines: string[];
+  font: number;
+  weight: number;
+  lineHeight: number;
+  fill: string;
+  /** Space above the block. */
+  gap: number;
+}
+
 /**
  * Draws the popup of an intercoder reliability score as an SVG: the score,
  * its description, the matrix with its axes and shading, and the key
  * (Chao, 19 Nov 2026). Drawn from the data rather than copied from the
- * screen, so it reads the same in any theme and at any window size.
+ * screen, so it reads the same in any theme and at any window size. The
+ * image is as wide as its widest line or the matrix, whichever is wider.
  */
 /** Called by: `downloadAgreementMatrixImage`, and its tests. */
 export const buildAgreementMatrixSvg = (image: AgreementMatrixImage): string => {
   const codes = matrixCodes(image.rows, image.scale);
   const count = matrixCount(image.rows);
   const rowLabelW =
-    Math.max(0, ...codes.map((code) => estimateTextWidth(displayLabel(code), CELL_FONT) * BOLD)) +
-    CELL_PAD;
+    Math.max(0, ...codes.map((code) => measure(displayLabel(code), CELL_FONT, 600))) + CELL_PAD;
   const columnW = codes.map((columnCode) =>
     Math.max(
       MIN_CELL_W,
-      estimateTextWidth(displayLabel(columnCode), CELL_FONT) * BOLD + CELL_PAD,
+      measure(displayLabel(columnCode), CELL_FONT, 600) + CELL_PAD,
       ...codes.map(
-        (rowCode) =>
-          estimateTextWidth(formatCount(count(rowCode, columnCode)), CELL_FONT) + CELL_PAD,
+        (rowCode) => measure(formatCount(count(rowCode, columnCode)), CELL_FONT, 500) + CELL_PAD,
       ),
     ),
   );
-  const tableW = rowLabelW + columnW.reduce((total, width) => total + width + CELL_GAP, 0);
-  const textW = Math.max(MIN_TEXT_W, AXIS_W + tableW);
-  const width = Math.ceil(textW + 2 * PAD);
+  const cellsW = rowLabelW + columnW.reduce((total, width) => total + width + CELL_GAP, 0);
+  const columnAxisText = `${image.columnAxis} →`;
+  const columnAxisW = measure(columnAxisText, CELL_FONT, 500);
+  // A column name wider than the cells widens the table, so it stays over them.
+  const tableW = Math.max(cellsW, columnAxisW);
+  const tableSpan = AXIS_W + tableW;
+
+  // Text first, wrapped, so the image can be as wide as what it holds.
+  const bodyWrapW = Math.max(tableSpan, BODY_WRAP_W);
+  const blocks: TextBlock[] = [
+    {
+      lines: wrap(image.title, TITLE_FONT, Math.max(tableSpan, TITLE_WRAP_W), 600),
+      font: TITLE_FONT,
+      weight: 600,
+      lineHeight: TITLE_LINE,
+      fill: '#111827',
+      gap: 0,
+    },
+  ];
+  const bodyBlock = (text: string, fill: string, gap: number): TextBlock => ({
+    lines: wrap(text, BODY_FONT, bodyWrapW),
+    font: BODY_FONT,
+    weight: 400,
+    lineHeight: BODY_LINE,
+    fill,
+    gap,
+  });
+  if (image.subtitle) blocks.push(bodyBlock(image.subtitle, '#6b7280', 0));
+  for (const paragraph of image.paragraphs) blocks.push(bodyBlock(paragraph, '#374151', BLOCK_GAP));
+  if (image.caption) blocks.push(bodyBlock(image.caption, '#6b7280', BLOCK_GAP));
+
+  const keyRows: { swatch: string; swatchW: number; lines: string[] }[] = [];
+  const keyRow = (swatch: string, swatchW: number, text: string) => {
+    keyRows.push({
+      swatch,
+      swatchW,
+      lines: wrap(text, BODY_FONT, bodyWrapW - AXIS_W - swatchW - KEY_TEXT_GAP),
+    });
+  };
+  keyRow(
+    `<rect width="${String(KEY_SWATCH_W)}" height="${String(KEY_SWATCH_H)}" rx="2" fill="${AGREEMENT_SHADE}"/>`,
+    KEY_SWATCH_W,
+    image.agreementKey,
+  );
+  const defs: string[] = [];
+  if (image.scale) {
+    // Fading from transparent orange, not from "transparent" (black), keeps the fade free of grey.
+    defs.push(
+      `<linearGradient id="far-apart"><stop offset="0" stop-color="${FAR_APART_SHADE}" stop-opacity="0"/><stop offset="1" stop-color="${FAR_APART_SHADE}"/></linearGradient>`,
+    );
+    keyRow(
+      `<rect width="${String(KEY_GRADIENT_W)}" height="${String(KEY_SWATCH_H)}" rx="2" fill="url(#far-apart)"/>`,
+      KEY_GRADIENT_W,
+      SCALE_KEY_TEXT,
+    );
+  }
+
+  const contentW = Math.max(
+    tableSpan,
+    ...blocks.flatMap((block) =>
+      block.lines.map((line) => measure(line, block.font, block.weight)),
+    ),
+    ...keyRows.flatMap((row) =>
+      row.lines.map((line) => AXIS_W + row.swatchW + KEY_TEXT_GAP + measure(line, BODY_FONT)),
+    ),
+  );
+  const width = Math.ceil(contentW + 2 * PAD);
 
   const parts: string[] = [];
   let y = PAD;
-
-  for (const line of wrap(image.title, TITLE_FONT * BOLD, textW)) {
-    y += TITLE_LINE;
-    parts.push(textLine(line, PAD, y - 5, TITLE_FONT, '#111827', ' font-weight="600"'));
-  }
-  if (image.subtitle) {
-    for (const line of wrap(image.subtitle, BODY_FONT, textW)) {
-      y += BODY_LINE;
-      parts.push(textLine(line, PAD, y - 4, BODY_FONT, '#6b7280'));
-    }
-  }
-  for (const paragraph of image.paragraphs) {
-    y += BLOCK_GAP;
-    for (const line of wrap(paragraph, BODY_FONT, textW)) {
-      y += BODY_LINE;
-      parts.push(textLine(line, PAD, y - 4, BODY_FONT, '#374151'));
-    }
-  }
-  if (image.caption) {
-    y += BLOCK_GAP;
-    for (const line of wrap(image.caption, BODY_FONT, textW)) {
-      y += BODY_LINE;
-      parts.push(textLine(line, PAD, y - 4, BODY_FONT, '#6b7280'));
+  for (const block of blocks) {
+    y += block.gap;
+    for (const line of block.lines) {
+      y += block.lineHeight;
+      parts.push(
+        textLine(
+          line,
+          PAD,
+          y - (block.lineHeight - block.font) / 2 - 2,
+          block.font,
+          block.fill,
+          block.weight === 400 ? '' : ` font-weight="${String(block.weight)}"`,
+        ),
+      );
     }
   }
 
@@ -188,7 +275,7 @@ export const buildAgreementMatrixSvg = (image: AgreementMatrixImage): string => 
   const tableX = PAD + AXIS_W;
   parts.push(
     textLine(
-      `${image.columnAxis} →`,
+      columnAxisText,
       tableX + tableW / 2,
       y + AXIS_H - 7,
       CELL_FONT,
@@ -201,6 +288,13 @@ export const buildAgreementMatrixSvg = (image: AgreementMatrixImage): string => 
     `<line x1="${String(tableX)}" y1="${String(y)}" x2="${String(tableX + tableW)}" y2="${String(y)}" stroke="#d1d5db" stroke-width="1"/>`,
   );
   y += CELL_GAP;
+
+  // A row name longer than the rows are tall gets room above and below them.
+  const rowAxisText = `← ${image.rowAxis}`;
+  const gridH = (codes.length + 1) * (CELL_H + CELL_GAP) - CELL_GAP;
+  const rowAxisRoom = Math.max(0, measure(rowAxisText, CELL_FONT, 500) + 8 - gridH);
+  const gridTop = y;
+  y += rowAxisRoom / 2;
 
   // The header row of codes.
   const columnX: number[] = [];
@@ -223,7 +317,6 @@ export const buildAgreementMatrixSvg = (image: AgreementMatrixImage): string => 
   y += CELL_H + CELL_GAP;
 
   // One row per code: its label, then a shaded cell per column.
-  const tableTop = y;
   for (const rowCode of codes) {
     parts.push(
       textLine(
@@ -257,44 +350,25 @@ export const buildAgreementMatrixSvg = (image: AgreementMatrixImage): string => 
     }
     y += CELL_H + CELL_GAP;
   }
+  y += rowAxisRoom / 2;
 
-  // The row axis: its name and an arrow, read upward beside the rows, ruled on its right.
-  const tableBottom = y - CELL_GAP;
+  // The row axis: its name and an arrow, read upward beside the grid, ruled on its right.
+  const gridBottom = y - CELL_GAP;
   const axisX = PAD + AXIS_W / 2;
-  const axisY = (tableTop + tableBottom) / 2;
+  const axisY = (gridTop + gridBottom) / 2;
   parts.push(
-    `<text x="${String(axisX)}" y="${String(axisY)}" transform="rotate(-90 ${String(axisX)} ${String(axisY)})" dominant-baseline="central" font-family="${FONT}" font-size="${String(CELL_FONT)}" font-weight="500" text-anchor="middle" fill="#111827">${esc(`← ${image.rowAxis}`)}</text>`,
-    `<line x1="${String(PAD + AXIS_W - 2)}" y1="${String(tableTop - CELL_H - CELL_GAP)}" x2="${String(PAD + AXIS_W - 2)}" y2="${String(tableBottom)}" stroke="#d1d5db" stroke-width="1"/>`,
+    `<text x="${String(axisX)}" y="${String(axisY)}" transform="rotate(-90 ${String(axisX)} ${String(axisY)})" dominant-baseline="central" font-family="${FONT}" font-size="${String(CELL_FONT)}" font-weight="500" text-anchor="middle" fill="#111827">${esc(rowAxisText)}</text>`,
+    `<line x1="${String(PAD + AXIS_W - 2)}" y1="${String(gridTop)}" x2="${String(PAD + AXIS_W - 2)}" y2="${String(gridBottom)}" stroke="#d1d5db" stroke-width="1"/>`,
   );
 
   // The key below the table.
-  const keyRows: { swatch: string; swatchW: number; text: string }[] = [
-    {
-      swatch: `<rect width="${String(KEY_SWATCH_W)}" height="${String(KEY_SWATCH_H)}" rx="2" fill="${AGREEMENT_SHADE}"/>`,
-      swatchW: KEY_SWATCH_W,
-      text: image.agreementKey,
-    },
-  ];
-  const defs: string[] = [];
-  if (image.scale) {
-    // Fading from transparent orange, not from "transparent" (black), keeps the fade free of grey.
-    defs.push(
-      `<linearGradient id="far-apart"><stop offset="0" stop-color="${FAR_APART_SHADE}" stop-opacity="0"/><stop offset="1" stop-color="${FAR_APART_SHADE}"/></linearGradient>`,
-    );
-    keyRows.push({
-      swatch: `<rect width="${String(KEY_GRADIENT_W)}" height="${String(KEY_SWATCH_H)}" rx="2" fill="url(#far-apart)"/>`,
-      swatchW: KEY_GRADIENT_W,
-      text: SCALE_KEY_TEXT,
-    });
-  }
   y += BLOCK_GAP;
   for (const row of keyRows) {
     const keyTextX = tableX + row.swatchW + KEY_TEXT_GAP;
-    const lines = wrap(row.text, BODY_FONT, PAD + textW - keyTextX);
     parts.push(
       `<g transform="translate(${String(tableX)},${String(y + (BODY_LINE - KEY_SWATCH_H) / 2)})">${row.swatch}</g>`,
     );
-    for (const line of lines) {
+    for (const line of row.lines) {
       y += BODY_LINE;
       parts.push(textLine(line, keyTextX, y - 4, BODY_FONT, '#374151'));
     }

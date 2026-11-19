@@ -15,7 +15,8 @@ interface AgreementMatrixDownloadButtonProps {
 }
 
 /**
- * The Download button at the top of a reliability popup (Chao, 19 Nov 2026).
+ * The Download icon button at the top of a reliability popup (Chao, 19 Nov 2026;
+ * an icon like the charts' Download, since a labelled button took too much room).
  * Used by: `ColumnComparisonHeader` and `MultiCoderAlphaBadge`. It only opens
  * the format dialog, which lives outside the popup so it stays open after the
  * popup closes.
@@ -29,7 +30,7 @@ export function AgreementMatrixDownloadButton({
       type="button"
       variant="outline"
       size="sm"
-      className="h-7 shrink-0 gap-1.5 px-2"
+      className="size-7 shrink-0 p-0"
       aria-label={label}
       title={label}
       onClick={(event) => {
@@ -39,7 +40,6 @@ export function AgreementMatrixDownloadButton({
       }}
     >
       <Download aria-hidden="true" className="size-3.5" />
-      Download
     </Button>
   );
 }

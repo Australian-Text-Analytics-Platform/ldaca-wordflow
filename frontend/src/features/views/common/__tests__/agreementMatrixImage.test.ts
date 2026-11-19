@@ -72,4 +72,26 @@ describe('buildAgreementMatrixSvg', () => {
     expect(svg).toContain('url(#far-apart)');
     expect(drawn.join(' ')).toContain('Orange: how far apart the two codes are on the scale.');
   });
+
+  it('is as wide as its widest line, not a fixed width', () => {
+    const svgWidth = (title: string) =>
+      Number(
+        parse(
+          buildAgreementMatrixSvg({
+            title,
+            paragraphs: ['Only exact matches agree.'],
+            rows: [{ reference: 'a', comparison: 'a', count: 1 }],
+            scale: null,
+            rowAxis: 'x',
+            columnAxis: 'y',
+            agreementKey: 'Green: agree.',
+          }),
+        ).documentElement.getAttribute('width'),
+      );
+    const short = svgWidth('κ 1.000');
+    expect(short).toBeLessThan(260);
+    expect(
+      svgWidth('Cohen’s Kappa, a much longer column name versus another: κ 1.000'),
+    ).toBeGreaterThan(short);
+  });
 });

@@ -377,7 +377,7 @@ apart, the darker.
 ![Confusion matrix of an ordered scale: agreement in green down the diagonal, and disagreements shaded orange by distance on the scale](tutorials/assets/annotation/scale_confusion_matrix.png)
 
 **Download the matrix.** To save a score for a report, point at it, move the
-pointer into the tooltip and choose **Download** at its top right, then SVG,
+pointer into the tooltip and choose the **Download** icon at its top right, then SVG,
 PNG or JPEG. The image holds what the tooltip shows: the score, its method and
 coders, any note about columns or values left out, the confusion or
 coincidence matrix, and its key. Outside Preview it also names the Data Block. A score from
