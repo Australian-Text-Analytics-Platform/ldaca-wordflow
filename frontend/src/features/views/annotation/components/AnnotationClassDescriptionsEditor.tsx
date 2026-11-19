@@ -394,7 +394,12 @@ export function AnnotationClassDescriptionsEditor({
             </Button>
           </DialogTrigger>
           <DialogContent
-            className="max-w-2xl"
+            // Never taller than the window (Chao, 19 Nov 2026: on a 14-inch
+            // laptop its top and bottom were off screen and couldn't be
+            // scrolled to). The title and Save stay in place; the codes
+            // scroll in the room left, and the whole middle scrolls when even
+            // that is too little.
+            className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col"
             onOpenAutoFocus={(event) => {
               // Don't drop a cursor into the first class input on open: that
               // would persist a redundant no-op save the moment the user clicks
@@ -433,237 +438,242 @@ export function AnnotationClassDescriptionsEditor({
                 Add, rename, or remove annotation codes and their descriptions.
               </DialogDescription>
             </DialogHeader>
-            {designer ? (
-              <CodeDesignerBrief
-                settings={designer.settings}
-                onSettingsChange={designer.onSettingsChange}
-                scale={editorScale}
-                disabled={isSaving}
-                blockedReason={
-                  designer.source
-                    ? undefined
-                    : 'Choose an Annotation Data Block and its text column first.'
-                }
-                onDesign={startDesigner}
-              />
-            ) : null}
-            <div className="space-y-1.5">
-              <Label htmlFor="codebook-task-context">
-                Task context <span className="font-normal text-description">(optional)</span>
-              </Label>
-              <Textarea
-                id="codebook-task-context"
-                value={editorTaskContext}
-                rows={3}
-                maxLength={TASK_CONTEXT_MAX_CHARS}
-                placeholder="What the texts are and what the codes are for, for example: Tweets by Australian politicians during the 2025 election campaign."
-                className="min-h-16 resize-y"
-                onChange={(event) => {
-                  writeDraft({ taskContext: event.target.value });
-                }}
-              />
-              <p className="text-label-secondary text-description">
-                Saved with this codebook and sent to the AI with every request, after the prompt.
-              </p>
-            </div>
             <div
-              className={cn(
-                'max-h-[60vh] space-y-2 overflow-y-auto pr-1',
-                // Dragging over the fields must not select their text.
-                isDragging && 'select-none',
-              )}
+              data-testid="codebook-editor-body"
+              className="-mr-1 flex min-h-0 flex-col gap-3 overflow-y-auto pr-1"
             >
-              {editorRows.length === 0 ? (
-                <p className="rounded-md border border-dashed border-surface-border px-4 py-6 text-center text-body text-description">
-                  No codes yet. Use “Add code” to create one.
+              {designer ? (
+                <CodeDesignerBrief
+                  settings={designer.settings}
+                  onSettingsChange={designer.onSettingsChange}
+                  scale={editorScale}
+                  disabled={isSaving}
+                  blockedReason={
+                    designer.source
+                      ? undefined
+                      : 'Choose an Annotation Data Block and its text column first.'
+                  }
+                  onDesign={startDesigner}
+                />
+              ) : null}
+              <div className="space-y-1.5">
+                <Label htmlFor="codebook-task-context">
+                  Task context <span className="font-normal text-description">(optional)</span>
+                </Label>
+                <Textarea
+                  id="codebook-task-context"
+                  value={editorTaskContext}
+                  rows={3}
+                  maxLength={TASK_CONTEXT_MAX_CHARS}
+                  placeholder="What the texts are and what the codes are for, for example: Tweets by Australian politicians during the 2025 election campaign."
+                  className="min-h-16 resize-y"
+                  onChange={(event) => {
+                    writeDraft({ taskContext: event.target.value });
+                  }}
+                />
+                <p className="text-label-secondary text-description">
+                  Saved with this codebook and sent to the AI with every request, after the prompt.
                 </p>
-              ) : (
-                <DndContext
-                  sensors={dragSensors}
-                  collisionDetection={closestCenter}
-                  modifiers={[verticalOnly]}
-                  onDragStart={() => {
-                    setIsDragging(true);
-                  }}
-                  onDragCancel={() => {
-                    setIsDragging(false);
-                  }}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
-                    {editorRows.map((row, index) => (
-                      <Fragment key={rowIds[index]}>
-                        {/* On a scale, two labelled groups: the levels, then a divider
-                            with the codes outside the scale below it (Chao, 16 Nov 2026). */}
-                        {editorScale && index === 0 && !row.outsideScale ? (
-                          <p className="text-label-secondary font-medium text-description">
-                            Levels, from the lowest (top) to the highest
-                          </p>
-                        ) : null}
-                        {editorScale && index === firstOutside ? (
-                          <p
-                            className="flex items-center gap-1.5 border-t border-surface-border pt-2 text-label-secondary font-medium text-description"
-                            data-testid="codebook-outside-scale-heading"
-                          >
-                            <Ban aria-hidden="true" className="size-3.5 shrink-0 text-chart-4" />
-                            Outside the scale: the codes below are not levels
-                          </p>
-                        ) : null}
-                        <SortableCodeRow
-                          id={rowIds[index] ?? ''}
-                          handleLabel={`Drag code ${String(index + 1)} to reorder`}
-                        >
-                          <Input
-                            aria-label={`${editorScale && !row.outsideScale ? 'Level' : 'Code'} ${String(index + 1)}`}
-                            value={row.class}
-                            placeholder={editorScale && !row.outsideScale ? 'Level' : 'Code'}
-                            data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
-                            className={cn(
-                              'w-1/3',
-                              draftCheck.rowsToMark.has(index) && 'border-warning',
-                            )}
-                            disabled={false}
-                            onChange={(event) => {
-                              updateDraftCell(index, 'class', event.target.value);
-                            }}
-                          />
-                          <Textarea
-                            aria-label={`Description ${String(index + 1)}`}
-                            value={row.description}
-                            rows={2}
-                            placeholder="Description"
-                            disabled={false}
-                            data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
-                            className={cn(
-                              'min-h-9 flex-1 resize-y',
-                              draftCheck.rowsToMark.has(index) && 'border-warning',
-                            )}
-                            onChange={(event) => {
-                              updateDraftCell(index, 'description', event.target.value);
-                            }}
-                          />
-                          {editorScale ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  // Orange, the theme colour of the unsaved badge, marks
-                                  // a code outside the scale (Chao, 16 Nov 2026).
-                                  className={cn(
-                                    'shrink-0',
-                                    row.outsideScale
-                                      ? 'text-chart-4 hover:text-chart-4'
-                                      : 'text-description',
-                                  )}
-                                  aria-pressed={Boolean(row.outsideScale)}
-                                  aria-label={
-                                    row.outsideScale
-                                      ? `Make code ${String(index + 1)} a level`
-                                      : `Move code ${String(index + 1)} outside the scale`
-                                  }
-                                  onClick={() => {
-                                    handleToggleOutside(index);
-                                  }}
-                                >
-                                  <Ban className="h-4 w-4" aria-hidden="true" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs whitespace-normal">
-                                {row.outsideScale
-                                  ? 'Outside the scale: not a level. Click to make it a level again.'
-                                  : 'Move outside the scale, for a code that is not a level, such as Not applicable.'}
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : null}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Delete code ${String(index + 1)}`}
-                            className="shrink-0 text-description hover:text-error"
-                            onClick={() => {
-                              handleDeleteClass(index);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden="true" />
-                          </Button>
-                        </SortableCodeRow>
-                      </Fragment>
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              )}
-            </div>
-            {hasCodebookProblems(draftCheck) ? (
-              <div className="max-h-[30vh] space-y-2 overflow-y-auto pr-1">
-                <CodebookSuggestions suggestions={codebookSuggestions(editorRows, draftCheck)} />
-                {draftCheck.repeatedRows.length > 0 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isSaving}
-                    onClick={() => {
-                      writeDraft({ rows: withoutRepeatedRows(editorRows) });
+              </div>
+              <div
+                className={cn(
+                  'min-h-40 space-y-2 overflow-y-auto pr-1',
+                  // Dragging over the fields must not select their text.
+                  isDragging && 'select-none',
+                )}
+              >
+                {editorRows.length === 0 ? (
+                  <p className="rounded-md border border-dashed border-surface-border px-4 py-6 text-center text-body text-description">
+                    No codes yet. Use “Add code” to create one.
+                  </p>
+                ) : (
+                  <DndContext
+                    sensors={dragSensors}
+                    collisionDetection={closestCenter}
+                    modifiers={[verticalOnly]}
+                    onDragStart={() => {
+                      setIsDragging(true);
                     }}
+                    onDragCancel={() => {
+                      setIsDragging(false);
+                    }}
+                    onDragEnd={handleDragEnd}
                   >
-                    Remove repeated rows
-                  </Button>
-                ) : null}
-                {draftCheck.codesWithSeveralDescriptions.map((code) => (
-                  <fieldset
-                    key={code.key}
-                    className="space-y-1.5 rounded-md border border-surface-border px-3 pb-2"
-                  >
-                    <legend className="px-1 text-label-secondary font-medium">
-                      Description for “{code.name}”
-                    </legend>
-                    {code.descriptions.map((description, index) => (
-                      <div key={description} className="flex items-start justify-between gap-2">
-                        <p className="text-body break-words">
-                          {description || (
-                            <span className="text-description">(no description)</span>
-                          )}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          aria-label={`Use description ${String(index + 1)} for ${code.name}`}
-                          disabled={isSaving}
-                          onClick={() => {
-                            writeDraft({ rows: resolveCode(editorRows, code.key, description) });
-                          }}
-                        >
-                          Use this
-                        </Button>
-                      </div>
-                    ))}
+                    <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+                      {editorRows.map((row, index) => (
+                        <Fragment key={rowIds[index]}>
+                          {/* On a scale, two labelled groups: the levels, then a divider
+                            with the codes outside the scale below it (Chao, 16 Nov 2026). */}
+                          {editorScale && index === 0 && !row.outsideScale ? (
+                            <p className="text-label-secondary font-medium text-description">
+                              Levels, from the lowest (top) to the highest
+                            </p>
+                          ) : null}
+                          {editorScale && index === firstOutside ? (
+                            <p
+                              className="flex items-center gap-1.5 border-t border-surface-border pt-2 text-label-secondary font-medium text-description"
+                              data-testid="codebook-outside-scale-heading"
+                            >
+                              <Ban aria-hidden="true" className="size-3.5 shrink-0 text-chart-4" />
+                              Outside the scale: the codes below are not levels
+                            </p>
+                          ) : null}
+                          <SortableCodeRow
+                            id={rowIds[index] ?? ''}
+                            handleLabel={`Drag code ${String(index + 1)} to reorder`}
+                          >
+                            <Input
+                              aria-label={`${editorScale && !row.outsideScale ? 'Level' : 'Code'} ${String(index + 1)}`}
+                              value={row.class}
+                              placeholder={editorScale && !row.outsideScale ? 'Level' : 'Code'}
+                              data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                              className={cn(
+                                'w-1/3',
+                                draftCheck.rowsToMark.has(index) && 'border-warning',
+                              )}
+                              disabled={false}
+                              onChange={(event) => {
+                                updateDraftCell(index, 'class', event.target.value);
+                              }}
+                            />
+                            <Textarea
+                              aria-label={`Description ${String(index + 1)}`}
+                              value={row.description}
+                              rows={2}
+                              placeholder="Description"
+                              disabled={false}
+                              data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                              className={cn(
+                                'min-h-9 flex-1 resize-y',
+                                draftCheck.rowsToMark.has(index) && 'border-warning',
+                              )}
+                              onChange={(event) => {
+                                updateDraftCell(index, 'description', event.target.value);
+                              }}
+                            />
+                            {editorScale ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    // Orange, the theme colour of the unsaved badge, marks
+                                    // a code outside the scale (Chao, 16 Nov 2026).
+                                    className={cn(
+                                      'shrink-0',
+                                      row.outsideScale
+                                        ? 'text-chart-4 hover:text-chart-4'
+                                        : 'text-description',
+                                    )}
+                                    aria-pressed={Boolean(row.outsideScale)}
+                                    aria-label={
+                                      row.outsideScale
+                                        ? `Make code ${String(index + 1)} a level`
+                                        : `Move code ${String(index + 1)} outside the scale`
+                                    }
+                                    onClick={() => {
+                                      handleToggleOutside(index);
+                                    }}
+                                  >
+                                    <Ban className="h-4 w-4" aria-hidden="true" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs whitespace-normal">
+                                  {row.outsideScale
+                                    ? 'Outside the scale: not a level. Click to make it a level again.'
+                                    : 'Move outside the scale, for a code that is not a level, such as Not applicable.'}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : null}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Delete code ${String(index + 1)}`}
+                              className="shrink-0 text-description hover:text-error"
+                              onClick={() => {
+                                handleDeleteClass(index);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                          </SortableCodeRow>
+                        </Fragment>
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </div>
+              {hasCodebookProblems(draftCheck) ? (
+                <div className="max-h-[30vh] shrink-0 space-y-2 overflow-y-auto pr-1">
+                  <CodebookSuggestions suggestions={codebookSuggestions(editorRows, draftCheck)} />
+                  {draftCheck.repeatedRows.length > 0 ? (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      aria-label={`Merge the descriptions for ${code.name}`}
                       disabled={isSaving}
                       onClick={() => {
-                        writeDraft({
-                          rows: resolveCode(
-                            editorRows,
-                            code.key,
-                            mergedDescription(code.descriptions),
-                          ),
-                        });
+                        writeDraft({ rows: withoutRepeatedRows(editorRows) });
                       }}
                     >
-                      Merge descriptions
+                      Remove repeated rows
                     </Button>
-                  </fieldset>
-                ))}
-              </div>
-            ) : null}
+                  ) : null}
+                  {draftCheck.codesWithSeveralDescriptions.map((code) => (
+                    <fieldset
+                      key={code.key}
+                      className="space-y-1.5 rounded-md border border-surface-border px-3 pb-2"
+                    >
+                      <legend className="px-1 text-label-secondary font-medium">
+                        Description for “{code.name}”
+                      </legend>
+                      {code.descriptions.map((description, index) => (
+                        <div key={description} className="flex items-start justify-between gap-2">
+                          <p className="text-body break-words">
+                            {description || (
+                              <span className="text-description">(no description)</span>
+                            )}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0"
+                            aria-label={`Use description ${String(index + 1)} for ${code.name}`}
+                            disabled={isSaving}
+                            onClick={() => {
+                              writeDraft({ rows: resolveCode(editorRows, code.key, description) });
+                            }}
+                          >
+                            Use this
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Merge the descriptions for ${code.name}`}
+                        disabled={isSaving}
+                        onClick={() => {
+                          writeDraft({
+                            rows: resolveCode(
+                              editorRows,
+                              code.key,
+                              mergedDescription(code.descriptions),
+                            ),
+                          });
+                        }}
+                      >
+                        Merge descriptions
+                      </Button>
+                    </fieldset>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <DialogFooter className="sm:justify-between">
               <Button
                 type="button"

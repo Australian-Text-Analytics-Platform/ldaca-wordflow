@@ -203,7 +203,10 @@ export function CodebookDesignerDialog({
       }}
     >
       <DialogContent
-        className="max-w-xl"
+        // Never taller than the window (Chao, 19 Nov 2026: with Advanced on,
+        // the prompt pushed its top and bottom off screen). The title and the
+        // buttons stay in place and the settings between them scroll.
+        className="flex max-h-[calc(100dvh-2rem)] max-w-xl flex-col"
         hideCloseButton={running}
         onEscapeKeyDown={(event) => {
           if (running) event.preventDefault();
@@ -256,7 +259,10 @@ export function CodebookDesignerDialog({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div
+            data-testid="codebook-designer-body"
+            className="-mr-1 min-h-0 space-y-4 overflow-y-auto pr-1"
+          >
             <div
               className="rounded-md border border-warning bg-warning-background px-3 py-2 text-label-secondary text-warning"
               data-testid="codebook-designer-disclaimer"
