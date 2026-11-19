@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded
 ---
 
 # Use native Liquid Glass for the macOS window backplane
@@ -59,3 +59,15 @@ Windows, Linux, and the updater entry never load or invoke the JavaScript API.
   and private AppKit integration are part of the accepted release risk.
 - macOS release acceptance must cover transparent gutters and titlebar behavior
   as well as opaque content surfaces, fallback behavior, and failure opacity.
+
+## Superseded (20 November 2026, V07-448, issue 524)
+
+After macOS 27 updates the clear gutters showed as thick grey bars between the
+panels; Chao found them the first thing he noticed on opening the upgraded
+0.7.22 Mac app, and much less clean than the browser version. Wordflow had not
+changed the effect since September, so the change came from macOS, the risk
+recorded above. The plugin, the transparent macOS window, the private macOS API
+and the glass styles were removed; the Mac app now uses the solid backgrounds
+that were already its fallback, the same as the browser and Windows versions.
+
+![Mac desktop app on macOS 27.2.1 with the Liquid Glass gutters](assets/0030-macos-27-thick-gutters.png)

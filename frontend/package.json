@@ -59,7 +59,6 @@
     "sonner": "^2.0.8",
     "stopword": "^3.1.5",
     "tailwind-merge": "^3.6.0",
-    "tauri-plugin-liquid-glass-api": "0.1.6",
     "zustand": "^5.0.15"
   },
   "scripts": {

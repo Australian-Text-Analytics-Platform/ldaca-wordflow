@@ -124,13 +124,6 @@
     color: var(--vscode-foreground);
   }
 
-  html[data-native-glass="active"],
-  html[data-native-glass="active"] body,
-  html[data-native-glass="active"] #root {
-    background: transparent !important;
-    background-color: transparent !important;
-  }
-
   ::selection {
     background: var(--vscode-editor-selectionBackground);
   }
@@ -154,24 +147,6 @@
 
   .app-titlebar-backplane {
     background: var(--vscode-titleBar-activeBackground);
-  }
-
-  html[data-native-glass="active"] .app-window-backplane,
-  html[data-native-glass="active"] .app-titlebar-backplane {
-    background: transparent !important;
-    background-color: transparent !important;
-  }
-
-  /* Clear glass shows whatever is behind the window, so white text vanished
-     over a light desktop (issue 214). The title bar strip keeps a light glass
-     tint in the theme's title-bar colour, and its items keep the theme's own
-     title-bar foreground, which reads over any backdrop. */
-  html[data-native-glass="active"] .app-glass-titlebar {
-    background: color-mix(
-      in srgb,
-      var(--vscode-titleBar-activeBackground) 88%,
-      transparent
-    ) !important;
   }
 
   section[aria-label="Annotation Review"] tbody > tr:nth-child(odd) {

@@ -9,7 +9,6 @@
     "frontendDist": "../build"
   },
   "app": {
-    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Wordflow (by LDaCA)",
