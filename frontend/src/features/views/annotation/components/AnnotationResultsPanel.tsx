@@ -533,6 +533,7 @@ export function AnnotationResultsPanel({
                           <span className="inline-flex flex-col items-start gap-1">
                             {showMultiCoderAlpha ? (
                               <MultiCoderAlphaBadge
+                                {...(nodeName ? { nodeName } : {})}
                                 columns={coderColumns}
                                 combinations={codeCombinations.data}
                                 scale={codebookScale}
@@ -579,6 +580,7 @@ export function AnnotationResultsPanel({
                         >
                           {activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
+                              {...(nodeName ? { nodeName } : {})}
                               metric={reliabilityMetric}
                               scale={codebookScale}
                               referenceColumn={annotationColumn}

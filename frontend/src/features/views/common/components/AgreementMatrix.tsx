@@ -1,31 +1,25 @@
 import type { CSSProperties } from 'react';
 import { ArrowDown, ArrowRight } from 'lucide-react';
 import {
-  type ConfusionCount,
-  type OrderedScale,
-  scaleDistance,
-} from '@/features/views/common/columnComparisonModel';
+  AGREEMENT_SHADE,
+  cellShade,
+  displayLabel,
+  FAR_APART_SHADE,
+  formatCount,
+  matrixCodes,
+  matrixCount,
+  SCALE_KEY_TEXT,
+} from '@/features/views/common/agreementMatrixImage';
+import type { ConfusionCount, OrderedScale } from '@/features/views/common/columnComparisonModel';
 
-const displayLabel = (value: string): string => (value === '' ? '(blank)' : value);
-
-/** Agreement on the diagonal, in light green, for every matrix (Chao, 16 Nov 2026). */
-const AGREEMENT_SHADE = 'color-mix(in srgb, var(--color-chart-3) 28%, transparent)';
-
-/**
- * A cell's shade: light green where the two codes agree; on a scale, a
- * disagreement in orange by how far apart its two codes are.
- */
-const cellShading = (
+/** A cell's background: green where the codes agree, orange by distance on a scale. */
+const cellStyle = (
   scale: OrderedScale | null,
   reference: string,
   comparison: string,
 ): CSSProperties | undefined => {
-  if (reference === comparison) return { backgroundColor: AGREEMENT_SHADE };
-  const distance = scale ? scaleDistance(scale, reference, comparison) : null;
-  if (!distance) return undefined;
-  return {
-    backgroundColor: `color-mix(in srgb, var(--color-chart-4) ${String(Math.round(12 + 48 * distance))}%, transparent)`,
-  };
+  const shade = cellShade(scale, reference, comparison);
+  return shade ? { backgroundColor: shade } : undefined;
 };
 
 const ShadeSwatch = ({ background }: { background: string }) => (
@@ -35,10 +29,6 @@ const ShadeSwatch = ({ background }: { background: string }) => (
     style={{ background }}
   />
 );
-
-/** Whole counts as they are; the shares of a multi-coder coincidence matrix to one decimal. */
-const formatCount = (count: number): string =>
-  Number.isInteger(count) ? String(count) : count.toFixed(1);
 
 interface AgreementMatrixProps {
   rows: ConfusionCount[];
@@ -65,20 +55,8 @@ export function AgreementMatrix({
   tableLabel,
   agreementKey,
 }: AgreementMatrixProps) {
-  const scalePosition = new Map(
-    [...(scale?.levels ?? []), ...(scale?.outside ?? [])].map(
-      (label, index) => [label, index] as const,
-    ),
-  );
-  const labels = Array.from(
-    new Set(rows.flatMap((row) => [row.reference, row.comparison])),
-  ).toSorted(
-    (a, b) =>
-      (scalePosition.get(a) ?? Infinity) - (scalePosition.get(b) ?? Infinity) || a.localeCompare(b),
-  );
-  const countByPair = new Map(
-    rows.map((row) => [JSON.stringify([row.reference, row.comparison]), row.count]),
-  );
+  const labels = matrixCodes(rows, scale);
+  const count = matrixCount(rows);
   return (
     <div className="grid grid-cols-[auto_auto] grid-rows-[auto_auto] gap-x-2 gap-y-1">
       <div
@@ -128,11 +106,9 @@ export function AgreementMatrix({
                 <td
                   key={comparisonLabel}
                   className="min-w-8 rounded-sm px-1 text-center font-medium"
-                  style={cellShading(scale, referenceLabel, comparisonLabel)}
+                  style={cellStyle(scale, referenceLabel, comparisonLabel)}
                 >
-                  {formatCount(
-                    countByPair.get(JSON.stringify([referenceLabel, comparisonLabel])) ?? 0,
-                  )}
+                  {formatCount(count(referenceLabel, comparisonLabel))}
                 </td>
               ))}
             </tr>
@@ -153,12 +129,10 @@ export function AgreementMatrix({
               aria-hidden="true"
               className="inline-block h-3 w-8 shrink-0 rounded-sm"
               style={{
-                background:
-                  'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-chart-4) 60%, transparent))',
+                background: `linear-gradient(to right, transparent, ${FAR_APART_SHADE})`,
               }}
             />
-            Orange: how far apart the two codes are on the scale. Darkest: the two ends, or a code
-            outside the scale.
+            {SCALE_KEY_TEXT}
           </p>
         ) : null}
       </div>

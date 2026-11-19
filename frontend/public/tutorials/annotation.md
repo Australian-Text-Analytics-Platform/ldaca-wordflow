@@ -376,6 +376,16 @@ apart, the darker.
 
 ![Confusion matrix of an ordered scale: agreement in green down the diagonal, and disagreements shaded orange by distance on the scale](tutorials/assets/annotation/scale_confusion_matrix.png)
 
+**Download the matrix.** To save a score for a report, point at it, move the
+pointer into the tooltip and choose **Download** at its top right, then SVG,
+PNG or JPEG. The image holds what the tooltip shows: the score, its method and
+coders, any note about columns or values left out, the confusion or
+coincidence matrix, and its key. Outside Preview it also names the Data Block. A score from
+Preview covers only the page on screen, so its image title ends "(Preview)"
+and its file name ends `_preview`, for example
+`annotation_vs_model_confusion_matrix_preview.png`. Choose **Run** first to
+report the score for every text.
+
 **Which to report.** Kappa and Alpha share one idea: the disagreement you see,
 set against the disagreement chance alone would give. They read chance
 differently. Kappa lets each coder keep their own habits, such as one coder

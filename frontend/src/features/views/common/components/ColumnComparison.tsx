@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,10 @@ import {
   type OrderedScale,
 } from '@/features/views/common/columnComparisonModel';
 import { AgreementMatrix } from './AgreementMatrix';
+import {
+  AgreementMatrixDownloadButton,
+  AgreementMatrixDownloadDialog,
+} from './AgreementMatrixDownload';
 import { AnnotationColumnFilterMenu } from './AnnotationColumnFilterMenu';
 import { COLUMN_MENU_CLASS, COLUMN_MENU_ITEM_CLASS } from './columnMenuStyles';
 
@@ -81,6 +86,8 @@ interface ColumnComparisonHeaderProps {
     comparison?: ColumnCodebookFit;
     pageOnly?: boolean;
   };
+  /** The Data Block's name, for the downloaded matrix's subtitle and file name. */
+  nodeName?: string;
 }
 
 /**
@@ -104,7 +111,9 @@ export function ColumnComparisonHeader({
   onFilterChange,
   scale = null,
   codebookFit,
+  nodeName,
 }: ColumnComparisonHeaderProps) {
+  const [downloadOpen, setDownloadOpen] = useState(false);
   const ordered = scale !== null;
   // The annotation column is compared by every score, so its note says so.
   const fitNotes = codebookFitNotes(
@@ -141,6 +150,11 @@ export function ColumnComparisonHeader({
     : isError || !rows || reliability == null
       ? `${metricDefinition.label} unavailable for ${referenceColumn} versus ${comparisonColumn}`
       : `${metricDefinition.label} ${accessibleScore ?? ''} for ${referenceColumn} versus ${comparisonColumn}`;
+  const method = reliabilityMethod(metric, ordered);
+  // Preview scores only the page on screen, so its image says Preview.
+  const preview = codebookFit?.pageOnly === true;
+  const showMatrix = !isLoading && !isError && rows !== undefined && rows.length > 0;
+  const downloadLabel = 'Download confusion matrix';
 
   return (
     <span className="inline-flex flex-col items-start gap-1">
@@ -160,9 +174,19 @@ export function ColumnComparisonHeader({
           <TooltipContent side="top" className="max-w-none p-3">
             {/* Says which method the score uses, since the scale setting is a
                 hidden codebook row (Chao, 16 Nov 2026). */}
-            <p className="mb-2 max-w-sm whitespace-normal" data-testid="reliability-method">
-              {reliabilityMethod(metric, ordered)}
-            </p>
+            <div className="mb-2 flex items-start gap-3">
+              <p className="max-w-sm whitespace-normal" data-testid="reliability-method">
+                {method}
+              </p>
+              {showMatrix ? (
+                <AgreementMatrixDownloadButton
+                  label={downloadLabel}
+                  onClick={() => {
+                    setDownloadOpen(true);
+                  }}
+                />
+              ) : null}
+            </div>
             {fitNotes.map((note) => (
               <p
                 key={note.column}
@@ -235,6 +259,23 @@ export function ColumnComparisonHeader({
           </span>
         ) : null}
       </TooltipProvider>
+      <AgreementMatrixDownloadDialog
+        open={downloadOpen}
+        onOpenChange={setDownloadOpen}
+        title={downloadLabel}
+        image={() => ({
+          title: `${metricDefinition.label}, ${referenceColumn} versus ${comparisonColumn}: ${score}${preview ? ' (Preview)' : ''}`,
+          ...(nodeName ? { subtitle: `Data Block: ${nodeName}` } : {}),
+          paragraphs: [method, ...fitNotes.map((note) => note.text)],
+          rows: rows ?? [],
+          scale,
+          rowAxis: referenceColumn,
+          columnAxis: comparisonColumn,
+          agreementKey: 'Green: both columns agree.',
+        })}
+        fileStem={`${nodeName ? `${nodeName} ` : ''}${referenceColumn} vs ${comparisonColumn}`}
+        fileSuffix={preview ? 'confusion_matrix_preview' : 'confusion_matrix'}
+      />
     </span>
   );
 }

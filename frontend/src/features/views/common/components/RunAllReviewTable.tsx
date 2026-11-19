@@ -463,6 +463,7 @@ export function RunAllReviewTable({
                             <span className="inline-flex flex-col items-start gap-1">
                               {showMultiCoderAlpha ? (
                                 <MultiCoderAlphaBadge
+                                  {...(nodeName ? { nodeName } : {})}
                                   columns={coderColumns}
                                   combinations={codeCombinations.data}
                                   scale={scale}
@@ -487,6 +488,7 @@ export function RunAllReviewTable({
                             </span>
                           ) : activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
+                              {...(nodeName ? { nodeName } : {})}
                               metric={reliabilityMetric}
                               scale={scale}
                               referenceColumn={comparisonColumn}
@@ -539,6 +541,7 @@ export function RunAllReviewTable({
                         >
                           {activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
+                              {...(nodeName ? { nodeName } : {})}
                               metric={reliabilityMetric}
                               scale={scale}
                               referenceColumn={comparisonColumn}
