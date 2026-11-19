@@ -1,3 +1,4 @@
+import { ColumnTypeMark } from '@/features/workspace/common/ColumnTypeLabel';
 import { columnOption } from '@/features/workspace/common/columnTypeOptions';
 import { type ReactNode, useState } from 'react';
 import { Sigma, X } from 'lucide-react';
@@ -116,6 +117,7 @@ export function GroupSummarySubTab({
               key={column}
               className="inline-flex items-center gap-1 rounded-sm border border-surface-border px-1.5 py-0.5 text-body"
             >
+              <ColumnTypeMark field={columns.find((item) => item.name === column)?.field} />
               {column}
               <button
                 type="button"
@@ -164,10 +166,10 @@ export function GroupSummarySubTab({
               const value = choices[column.name] ?? defaultSummary(column, input?.column ?? '');
               return (
                 <li key={column.name} className="flex items-center gap-3 px-2 py-1">
-                  <span className="min-w-0 flex-1 truncate text-body" title={column.name}>
-                    {column.name}
-                    <span className="ml-2 text-label-secondary text-description">
-                      {column.typeLabel ?? column.kind}
+                  <span className="flex min-w-0 flex-1 items-center text-body">
+                    <ColumnTypeMark field={column.field} className="mr-1.5" />
+                    <span className="truncate" title={column.name}>
+                      {column.name}
                     </span>
                   </span>
                   <Select

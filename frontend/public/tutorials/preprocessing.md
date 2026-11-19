@@ -261,7 +261,7 @@ Aggregate makes a new Data Block with one row per group, for example one documen
 - Numbers: **Sum**, **Mean**, **Minimum**, **Maximum**, **Count distinct**, **First**, **Last**
 - Dates: **Earliest & latest**, **Earliest**, **Latest**, **Count distinct**, **First**, **Last**
 
-The defaults are cautious. The text column chosen in the inputs panel is joined, with a blank line between texts (change this under **Put between joined texts**). Dates keep their earliest and latest values. An elapsed time column can be summed or averaged, for example each speaker's total speaking time from a duration column. Every other column starts as **Leave out**, so ids are never joined or summed by surprise. A **rows** column always counts the rows in each group. Groups appear in the order they first occur. Use **Find a column** to find a column in a long list.
+The defaults are cautious. The text column chosen in the inputs panel is joined, with a blank line between texts (change this under **Put between joined texts**). Dates keep their earliest and latest values. An elapsed time column can be summed or averaged, for example each speaker's total speaking time from a duration column. Every other column starts as **Leave out**, so ids are never joined or summed by surprise. A **rows** column always counts the rows in each group. Groups appear in the order they first occur. Each column in the list starts with the symbol of its type, the one the Data Editor shows in its column headers; the type decides which summaries its menu offers. Use **Find a column** to find a column in a long list.
 
 ![Aggregate grouped by username, with a summary chosen for each column](tutorials/assets/preprocessing/aggregate.png)
 
