@@ -35,6 +35,22 @@ test('each runner finds its own wheel only', () => {
   assert.equal(wheelFitsRunner(WHEELS[1], { platform: 'linux', arch: 'arm64', python: '3.14' }), false);
 });
 
+test('a stable-ABI wheel fits its own Python and later ones, never earlier ones', () => {
+  const abi3 = (python) => `polars_text-0.7.3-${python}-abi3-win_amd64.whl`;
+  assert.equal(wheelFitsRunner(abi3('cp39'), WINDOWS), true);
+  assert.equal(wheelFitsRunner(abi3('cp314'), WINDOWS), true);
+  assert.equal(wheelFitsRunner(abi3('cp315'), WINDOWS), false);
+  // A build number and a wheel listing two Pythons are read by position.
+  assert.equal(wheelFitsRunner('polars_text-0.7.3-1-cp312-abi3-win_amd64.whl', WINDOWS), true);
+  assert.equal(wheelFitsRunner('polars_text-0.7.3-cp314.cp315-abi3-win_amd64.whl', WINDOWS), true);
+  // Not a stable-ABI wheel: only its own Python, and not the free-threaded build.
+  assert.equal(wheelFitsRunner('polars_text-0.7.3-cp315-cp315-win_amd64.whl', WINDOWS), false);
+  assert.equal(wheelFitsRunner('polars_text-0.7.3-cp314-cp314t-win_amd64.whl', WINDOWS), false);
+  // A package named like a tag is not mistaken for one.
+  assert.equal(wheelFitsRunner('my-abi3-pkg-1.0-cp315-cp315-win_amd64.whl', WINDOWS), false);
+  assert.equal(chooseSource(released({ wheels: [abi3('cp315')] }), WINDOWS).mode, 'source');
+});
+
 test('a submodule at its release tag uses the published wheel on every runner', () => {
   for (const runner of [LINUX, MAC, WINDOWS]) {
     assert.equal(chooseSource(released(), runner).mode, 'wheel');

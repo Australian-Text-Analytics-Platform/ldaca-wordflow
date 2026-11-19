@@ -33,13 +33,35 @@ const PLATFORM_WHEELS = {
 /** `3.14` -> `cp314`. */
 export const pythonTag = (version) => `cp${String(version).split('.').slice(0, 2).join('')}`;
 
-/** Whether a published wheel installs on this runner and Python. */
+/** `cp312` -> 12; null for a tag that is not a CPython 3 version. */
+const cpythonMinor = (tag) => {
+  const match = /^cp3(\d+)$/.exec(tag);
+  return match ? Number(match[1]) : null;
+};
+
+/**
+ * Whether a published wheel installs on this runner and Python.
+ *
+ * A wheel is named `name-version[-build]-python-abi-platform.whl`. One built
+ * for exactly this Python fits. A stable-ABI (abi3) wheel fits every Python
+ * from the one it was built for onwards, never an earlier one: `cp315-abi3`
+ * does not install on Python 3.14, and saying it does would make CI ask for
+ * a wheel that pip then refuses, instead of building from source.
+ */
 export function wheelFitsRunner(filename, { platform, arch, python }) {
   const pattern = PLATFORM_WHEELS[`${platform}-${arch}`];
   if (!pattern || !pattern.test(filename)) return false;
+  const parts = filename.replace(/\.whl$/, '').split('-');
+  if (parts.length < 5) return false;
+  const [pythonTags, abiTags] = parts.slice(-3).map((tags) => tags.split('.'));
   const tag = pythonTag(python);
-  // A stable-ABI (abi3) wheel serves every later Python too.
-  return filename.includes(`-${tag}-${tag}-`) || /-abi3-/.test(filename);
+  const runnerMinor = cpythonMinor(tag);
+  if (abiTags.includes(tag) && pythonTags.includes(tag)) return true;
+  if (!abiTags.includes('abi3') || runnerMinor === null) return false;
+  return pythonTags.some((builtFor) => {
+    const minor = cpythonMinor(builtFor);
+    return minor !== null && minor <= runnerMinor;
+  });
 }
 
 /**
