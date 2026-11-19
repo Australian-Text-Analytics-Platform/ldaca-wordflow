@@ -581,7 +581,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   };
 
   return (
-    <ToolModeContext value={{ advanced: toolMode.advanced, setAdvanced }}>
+    <ToolModeContext value={{ advanced: toolMode.advanced, setAdvanced, viewId: toolMode.viewId }}>
       <AnalysisSplitLayout
         viewId="sequential-analysis"
         parameters={

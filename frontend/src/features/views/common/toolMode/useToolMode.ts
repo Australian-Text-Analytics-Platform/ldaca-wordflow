@@ -28,6 +28,7 @@ export function useToolMode({ host, viewId, lastRunUsedAdvanced }: UseToolModeAr
     deviceDefault: readToolModeDeviceDefault(viewId),
   });
   return {
+    viewId,
     advanced,
     setAdvanced: (next) => {
       host.setSetting(TOOL_ADVANCED_SETTING, next ? 'true' : 'false');

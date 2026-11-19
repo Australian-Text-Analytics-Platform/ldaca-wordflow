@@ -4,9 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AdvancedSection } from '../AdvancedSection';
-import { AdvancedSwitch } from '../AdvancedSwitch';
+import { useNudgeStore } from '@/features/nudges/nudgeStore';
+import { ADVANCED_HINT_TEXT, AdvancedSwitch } from '../AdvancedSwitch';
 import { ToolModeContext } from '../ToolModeContext';
 import {
+  dismissAdvancedHint,
+  readAdvancedHintDismissed,
   readToolModeDeviceDefault,
   resolveToolAdvanced,
   TOOL_ADVANCED_SETTING,
@@ -133,5 +136,56 @@ describe('a tool with advanced settings', () => {
     );
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     expect(screen.queryByText('Reference')).not.toBeInTheDocument();
+  });
+});
+
+describe('the Advanced hint', () => {
+  const hint = () => screen.queryByRole('note');
+
+  /** A tool whose mode the test sets directly. */
+  const ModeTool = ({ viewId, advanced }: { viewId?: string; advanced: boolean }) => (
+    <TooltipProvider>
+      <ToolModeContext value={{ advanced, setAdvanced: vi.fn(), ...(viewId ? { viewId } : {}) }}>
+        <AdvancedSwitch />
+      </ToolModeContext>
+    </TooltipProvider>
+  );
+
+  beforeEach(() => {
+    useNudgeStore.setState({ enabled: true });
+  });
+
+  it('shows in Basic, beside the switch, and not in Advanced', () => {
+    const { rerender } = render(<Tool settings={{}} setSetting={vi.fn()} />);
+    expect(hint()).toHaveTextContent(ADVANCED_HINT_TEXT);
+    rerender(<Tool settings={{ [TOOL_ADVANCED_SETTING]: 'true' }} setSetting={vi.fn()} />);
+    expect(hint()).toBeNull();
+  });
+
+  it('stays hidden for that tool on this device after Got it, and still shows for others', async () => {
+    const { unmount } = render(<ModeTool viewId="concordance" advanced={false} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Got it' }));
+    expect(hint()).toBeNull();
+    expect(readAdvancedHintDismissed('concordance')).toBe(true);
+    unmount();
+
+    render(<ModeTool viewId="concordance" advanced={false} />);
+    expect(hint()).toBeNull();
+    render(<ModeTool viewId="topic-modeling" advanced={false} />);
+    expect(hint()).toHaveTextContent(ADVANCED_HINT_TEXT);
+  });
+
+  it('comes back after an update', () => {
+    dismissAdvancedHint('concordance', '0.7.22');
+    expect(readAdvancedHintDismissed('concordance', '0.7.22')).toBe(true);
+    expect(readAdvancedHintDismissed('concordance', '0.7.23')).toBe(false);
+    expect(readAdvancedHintDismissed('topic-modeling', '0.7.22')).toBe(false);
+  });
+
+  it('is hidden while Suggestions are off', () => {
+    useNudgeStore.setState({ enabled: false });
+    render(<ModeTool viewId="concordance" advanced={false} />);
+    expect(hint()).toBeNull();
+    expect(screen.getByRole('switch', { name: 'Advanced settings' })).toBeInTheDocument();
   });
 });

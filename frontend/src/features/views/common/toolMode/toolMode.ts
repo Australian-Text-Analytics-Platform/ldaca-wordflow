@@ -12,6 +12,8 @@
  * setting, and otherwise in the mode last chosen for that tool on this device.
  */
 
+import { APP_VERSION } from '@/config/env';
+
 /** Tab setting that holds a tab's mode: `'true'` for Advanced. */
 export const TOOL_ADVANCED_SETTING = 'tool.advanced';
 
@@ -32,6 +34,31 @@ export const writeToolModeDeviceDefault = (viewId: string, advanced: boolean) =>
     window.localStorage.setItem(deviceDefaultKey(viewId), advanced ? 'advanced' : 'basic');
   } catch {
     // Private windows can refuse storage; the tab setting still holds the mode.
+  }
+};
+
+const advancedHintKey = (viewId: string) => `ldaca.toolMode.${viewId}.advancedHintDismissed`;
+
+/**
+ * Whether Got it was chosen on this tool's Advanced hint on this device, in
+ * this version of Wordflow. The dismissal holds the version it was made in,
+ * so the hint shows again after each update (Chao, 19 Nov 2026): an update
+ * can add settings under Advanced.
+ */
+export const readAdvancedHintDismissed = (viewId: string, version = APP_VERSION): boolean => {
+  try {
+    return window.localStorage.getItem(advancedHintKey(viewId)) === (version || 'dev');
+  } catch {
+    return false;
+  }
+};
+
+/** Hides this tool's Advanced hint on this device until the next update; storage failures are ignored. */
+export const dismissAdvancedHint = (viewId: string, version = APP_VERSION) => {
+  try {
+    window.localStorage.setItem(advancedHintKey(viewId), version || 'dev');
+  } catch {
+    // Private windows can refuse storage; the hint then stays hidden until the page reloads.
   }
 };
 

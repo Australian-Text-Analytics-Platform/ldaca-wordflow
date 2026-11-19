@@ -1246,7 +1246,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   ]);
 
   return (
-    <ToolModeContext value={{ advanced: toolMode.advanced, setAdvanced }}>
+    <ToolModeContext value={{ advanced: toolMode.advanced, setAdvanced, viewId: toolMode.viewId }}>
       <section aria-label="Annotation Setup" className="flex min-h-0 flex-1 flex-col">
         <AnalysisSplitLayout
           viewId="annotation"
