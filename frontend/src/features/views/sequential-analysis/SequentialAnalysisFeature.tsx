@@ -63,8 +63,14 @@ import type { SequentialAnalysisResponse } from '@/api';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 import { downloadChartAsHtml } from '@/lib/chartHtml/chartHtmlExport';
-import { useQueries } from '@tanstack/react-query';
-import { countResultGroups, MAX_TRENDS_GROUPS, uniqueValueCountQuery } from './trendsGroups';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import {
+  countResultGroups,
+  groupColumnsQuery,
+  MAX_TRENDS_GROUP_VALUES,
+  MAX_TRENDS_GROUPS,
+  uniqueValueCountQuery,
+} from './trendsGroups';
 
 /**
  * Renders the sequential-analysis workflow for live trends and result exploration.
@@ -456,10 +462,14 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   });
   const tooManyGroupsColumn = groupByColumns
     .filter((name) => name.trim() !== '')
-    .find((_, index) => (groupCounts[index]?.data?.unique_count ?? 0) > MAX_TRENDS_GROUPS);
+    .find((_, index) => (groupCounts[index]?.data?.unique_count ?? 0) > MAX_TRENDS_GROUP_VALUES);
   const tooManyGroupsReason = tooManyGroupsColumn
-    ? `'${tooManyGroupsColumn}' has more than ${MAX_TRENDS_GROUPS.toLocaleString()} different values, too many groups to draw. Choose another group column.`
+    ? `'${tooManyGroupsColumn}' has more than ${MAX_TRENDS_GROUP_VALUES.toLocaleString()} different values, too many groups to tell apart. Choose another group column.`
     : undefined;
+  // Add group offers the columns with few enough different values. Until the
+  // list arrives, or if it fails, every column is offered and the check above
+  // still stops a column with too many.
+  const groupColumnValues = useQuery(groupColumnsQuery(currentWorkspaceId ?? '', activeNodeId));
 
   const chartModel = buildSequentialChartModel({
     results: drawableResults,
@@ -659,6 +669,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
               numericIntervalInput={numericIntervalInput}
               onNumericIntervalChange={setNumericIntervalInput}
               availableColumns={groupableColumns}
+              groupColumnValueCounts={groupColumnValues.data}
               groupByColumns={groupByColumns}
               onAddGroupByColumn={sequentialParameters.addGroupByColumn}
               onRemoveGroupByColumn={sequentialParameters.removeGroupByColumn}

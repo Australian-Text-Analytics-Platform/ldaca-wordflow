@@ -3167,6 +3167,42 @@ export type DerivationProvenance = {
 };
 
 /**
+ * DistinctValueColumn
+ *
+ * A column and how many different values it holds, not counting missing ones.
+ */
+export type DistinctValueColumn = {
+    /**
+     * Distinct Values
+     */
+    distinct_values: number;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * DistinctValueColumnsResource
+ *
+ * A Data Block's columns with at most ``max_distinct`` different values.
+ *
+ * The columns a tool can group by, in the Data Block's column order: numbers,
+ * text, true/false, categories, dates and times with 1 to ``max_distinct``
+ * values. An empty list means no column qualifies.
+ */
+export type DistinctValueColumnsResource = {
+    /**
+     * Columns
+     */
+    columns: Array<DistinctValueColumn>;
+    /**
+     * Max Distinct
+     */
+    max_distinct: number;
+};
+
+/**
  * DtypeNormalizationChange
  *
  * One source-file dtype normalization applied during node creation.
@@ -12996,6 +13032,53 @@ export type GetDatetimeFormatsResponses = {
 };
 
 export type GetDatetimeFormatsResponse = GetDatetimeFormatsResponses[keyof GetDatetimeFormatsResponses];
+
+export type GetDistinctValueColumnsData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query: {
+        /**
+         * Max Distinct
+         */
+        max_distinct: number;
+    };
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/distinct-value-columns';
+};
+
+export type GetDistinctValueColumnsErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type GetDistinctValueColumnsError = GetDistinctValueColumnsErrors[keyof GetDistinctValueColumnsErrors];
+
+export type GetDistinctValueColumnsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DistinctValueColumnsResource;
+};
+
+export type GetDistinctValueColumnsResponse = GetDistinctValueColumnsResponses[keyof GetDistinctValueColumnsResponses];
 
 export type EditNodeData = {
     /**

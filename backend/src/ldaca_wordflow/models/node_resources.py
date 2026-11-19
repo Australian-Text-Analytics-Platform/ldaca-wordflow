@@ -609,6 +609,29 @@ class ColumnValueCountsResource(BaseModel):
     limit: int
 
 
+class DistinctValueColumn(BaseModel):
+    """A column and how many different values it holds, not counting missing ones."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    distinct_values: int
+
+
+class DistinctValueColumnsResource(BaseModel):
+    """A Data Block's columns with at most ``max_distinct`` different values.
+
+    The columns a tool can group by, in the Data Block's column order: numbers,
+    text, true/false, categories, dates and times with 1 to ``max_distinct``
+    values. An empty list means no column qualifies.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_distinct: int
+    columns: list[DistinctValueColumn]
+
+
 class ColumnExamplesResource(BaseModel):
     """Each column's first non-empty value as short text (issue 354).
 

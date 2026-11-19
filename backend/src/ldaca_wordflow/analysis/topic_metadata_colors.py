@@ -8,6 +8,7 @@ from typing import Any
 
 import polars as pl
 
+from .distinct_value_columns import columns_by_distinct_values
 from .topic_inclusion import topic_activation_thresholds
 
 # More values than this cannot be told apart as blended bubble colours.
@@ -17,35 +18,16 @@ MIN_TOPIC_COLOR_GROUPS = 2
 MISSING_GROUP_LABEL = "(missing)"
 
 
-def _is_groupable_dtype(dtype: pl.DataType) -> bool:
-    return (
-        dtype.is_numeric()
-        or dtype == pl.String
-        or dtype == pl.Boolean
-        or dtype == pl.Categorical
-        or isinstance(dtype, pl.Enum)
-    )
-
-
 def eligible_color_columns(frame: pl.DataFrame, text_column: str) -> dict[str, int]:
     """Map each column whose model rows hold 2 to 8 distinct non-missing values
     to that number, in column order."""
 
-    candidates = [
-        name
-        for name, dtype in frame.schema.items()
-        if name != text_column and _is_groupable_dtype(dtype)
-    ]
-    if not candidates or frame.height == 0:
-        return {}
-    distinct = frame.select(
-        pl.col(name).drop_nulls().n_unique().alias(name) for name in candidates
-    ).row(0, named=True)
-    return {
-        name: int(distinct[name])
-        for name in candidates
-        if MIN_TOPIC_COLOR_GROUPS <= int(distinct[name]) <= MAX_TOPIC_COLOR_GROUPS
-    }
+    return columns_by_distinct_values(
+        frame,
+        minimum=MIN_TOPIC_COLOR_GROUPS,
+        maximum=MAX_TOPIC_COLOR_GROUPS,
+        exclude=[text_column],
+    )
 
 
 def _group_label(value: Any) -> str:

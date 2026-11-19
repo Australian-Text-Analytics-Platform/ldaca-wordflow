@@ -21,6 +21,7 @@ from ...models.node_resources import (
     CastNodeEditRequest,
     CategoryValuesResource,
     ColumnExamplesResource,
+    DistinctValueColumnsResource,
     AnnotationLabelsAppliedResource,
     ColumnValueCountsResource,
     ConversionCheckResource,
@@ -481,6 +482,29 @@ async def get_column_value_counts(
         workspace_id,
         node_id,
         column,
+    )
+
+
+@router.get(
+    "/{node_id}/distinct-value-columns",
+    response_model=DistinctValueColumnsResource,
+    responses=api_errors(404, 422),
+)
+async def get_distinct_value_columns(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    max_distinct: int = Query(ge=1, le=1000),
+) -> DistinctValueColumnsResource:
+    """List the columns with at most ``max_distinct`` different values, with
+    that number: the columns a tool such as Trends can group by."""
+
+    return await runtime.node_service.distinct_value_columns(
+        principal.user.id,
+        workspace_id,
+        node_id,
+        max_distinct,
     )
 
 

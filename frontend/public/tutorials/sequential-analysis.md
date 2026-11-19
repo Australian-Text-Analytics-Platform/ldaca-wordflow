@@ -69,11 +69,11 @@ Each group includes its start value and stops just short of the next group's sta
 
 <h3 id="help-sequential-group-by">Step 4: Group By Columns (optional)</h3>
 
-To split the trend into multiple lines (one per category), add up to three columns as grouping conditions. Each added column should have a small number of distinct values; these become the separate series in the chart.
+To split the trend into multiple lines (one per category), add up to three columns as grouping conditions. The values of each column become the separate series in the chart.
 
-Click **Add group** to add a column selector row. A badge next to each selector shows the number of unique values in that column, which helps you judge how many series will be produced. **Remove** takes that column out again.
+Click **Add group** to add a column selector row. The list offers only the columns with 16 or fewer different values, because more lines than that cannot be told apart in the chart; each column shows its type and its number of different values, such as *speaker (text, 12 values)*. Empty values are not counted. If no column has 16 or fewer different values, a line under the heading says so and **Add group** is unavailable: make a column with fewer values first, for example with **Map values** in the Data Editor. A badge next to each selector repeats the number of unique values and says when some rows are empty. **Remove** takes that column out again.
 
-Trends draws at most 1,000 groups. A column with more different values, such as the text of each line, turns its badge red and **Run** stays unavailable until you choose another column. Several group columns together can also give more than 1,000 groups; then the run stops straight away and says so. A result saved with more groups (from an earlier version) is not drawn: the tab says so, and **Clear results** removes it.
+A setup saved in an earlier version may hold a group column with more than 16 different values. Its badge turns red and **Run** stays unavailable until you choose another column. Several group columns together multiply their values, and Trends draws at most 1,000 groups; with more, the run stops straight away and says so. A result saved with more groups (from an earlier version) is not drawn: the tab says so, and **Clear results** removes it.
 
 ![Group By Columns with gender, which has 2 unique values](tutorials/assets/sequential_analysis/group_by.png)
 
@@ -171,9 +171,9 @@ count equals the threshold remains visible. The control appears in the legend
 card immediately after **Ignore capitals**, and the **?** beside it opens this
 section.
 
-Use it when a Group By column has many values, such as account names. Most of
-them appear in only a few rows, and each would add its own line and legend
-entry. A higher number leaves the larger groups; a lower number brings the
+Use it when there are many groups, for example when two or three Group By
+columns are combined. Many of them appear in only a few rows, and each would
+add its own line and legend entry. A higher number leaves the larger groups; a lower number brings the
 smaller ones back.
 
 The filter removes small groups from the chart, legend, chart export, displayed

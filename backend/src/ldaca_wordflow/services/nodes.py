@@ -53,6 +53,10 @@ from ..shared.unsupported_columns import require_supported_columns
 from .conversion import detect_datetime_formats, format_tokens
 from .node_casting import check_cast
 from .node_operations import conversion_options
+from ..analysis.distinct_value_columns import (
+    columns_by_distinct_values,
+    is_groupable_or_temporal_dtype,
+)
 from .column_examples import column_examples
 from .corpus_overview import corpus_overview
 from ..analysis.topic_segment_lengths import topic_segment_lengths
@@ -67,6 +71,8 @@ from .category_order import (
 from ..models.node_resources import (
     CategoryValuesResource,
     ColumnExamplesResource,
+    DistinctValueColumn,
+    DistinctValueColumnsResource,
     AnnotationLabelsAppliedResource,
     ColumnValueCountsResource,
     MAP_VALUES_LIMIT,
@@ -841,6 +847,32 @@ class NodeService:
             max_values=MAX_CATEGORY_VALUES,
         )
 
+    async def distinct_value_columns(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        max_distinct: int,
+    ) -> DistinctValueColumnsResource:
+        """The columns a tool can group by: at most ``max_distinct`` values each.
+
+        The rule Topic Modelling's Colour by uses, for a whole Data Block; dates
+        and times qualify too, because Trends can group by them.
+        """
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = lease.workspace.nodes.get(node_id)
+            if node is None:
+                raise NodeNotFoundError("Data Block not found")
+            counts = await self._run_io(_group_columns, node.data, max_distinct)
+        return DistinctValueColumnsResource(
+            max_distinct=max_distinct,
+            columns=[
+                DistinctValueColumn(name=name, distinct_values=count)
+                for name, count in counts.items()
+            ],
+        )
+
     async def column_examples(
         self,
         user_id: str,
@@ -1163,6 +1195,17 @@ def _emptied_values_report(
         rows=int(stats["rows"]),
         first_row=int(first_row) if first_row is not None else None,
         first_value=stats["first_value"],
+    )
+
+
+def _group_columns(data: pl.LazyFrame, max_distinct: int) -> dict[str, int]:
+    """Columns with 1 to ``max_distinct`` values, of a type Trends can group by."""
+
+    return columns_by_distinct_values(
+        data,
+        minimum=1,
+        maximum=max_distinct,
+        accepts=is_groupable_or_temporal_dtype,
     )
 
 

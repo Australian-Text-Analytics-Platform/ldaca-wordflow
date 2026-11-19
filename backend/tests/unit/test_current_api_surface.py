@@ -253,6 +253,11 @@ EXPECTED_OPERATIONS = {
     ),
     (
         "GET",
+        "/api/workspaces/{workspace_id}/nodes/{node_id}/distinct-value-columns",
+        "get_distinct_value_columns",
+    ),
+    (
+        "GET",
         "/api/workspaces/{workspace_id}/nodes/{node_id}/column-examples",
         "get_column_examples",
     ),

@@ -333,6 +333,10 @@ export const queryKeys = {
       { credentialRevision, provider, baseUrl },
     ] as const,
 
+  /** A Data Block's columns with at most `maxDistinct` different values (Trends group columns). */
+  distinctValueColumns: (workspaceId: string, nodeId: string, maxDistinct: number) =>
+    [...queryKeys.nodeColumns(workspaceId, nodeId), 'distinct-values', maxDistinct] as const,
+
   /** Per-column unique-value counts (used by sequential-analysis). */
   columnUniqueValues: (workspaceId: string, nodeId: string, columnName: string) =>
     [...queryKeys.nodeColumns(workspaceId, nodeId), columnName, 'unique-values'] as const,

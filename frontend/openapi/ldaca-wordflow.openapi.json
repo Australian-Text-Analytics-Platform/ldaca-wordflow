@@ -6139,6 +6139,49 @@
         "title": "DerivationProvenance",
         "type": "object"
       },
+      "DistinctValueColumn": {
+        "additionalProperties": false,
+        "description": "A column and how many different values it holds, not counting missing ones.",
+        "properties": {
+          "distinct_values": {
+            "title": "Distinct Values",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "distinct_values"
+        ],
+        "title": "DistinctValueColumn",
+        "type": "object"
+      },
+      "DistinctValueColumnsResource": {
+        "additionalProperties": false,
+        "description": "A Data Block's columns with at most ``max_distinct`` different values.\n\nThe columns a tool can group by, in the Data Block's column order: numbers,\ntext, true/false, categories, dates and times with 1 to ``max_distinct``\nvalues. An empty list means no column qualifies.",
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/DistinctValueColumn"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "max_distinct": {
+            "title": "Max Distinct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_distinct",
+          "columns"
+        ],
+        "title": "DistinctValueColumnsResource",
+        "type": "object"
+      },
       "DtypeNormalizationChange": {
         "additionalProperties": false,
         "description": "One source-file dtype normalization applied during node creation.",
@@ -24567,6 +24610,96 @@
           }
         ],
         "summary": "Get Datetime Formats",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/distinct-value-columns": {
+      "get": {
+        "description": "List the columns with at most ``max_distinct`` different values, with\nthat number: the columns a tool such as Trends can group by.",
+        "operationId": "get_distinct_value_columns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_distinct",
+            "required": true,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Max Distinct",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistinctValueColumnsResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Distinct Value Columns",
         "tags": [
           "nodes"
         ]
