@@ -38,7 +38,7 @@ describe('GroupedResultsPageSizeSummary', () => {
 
     expect(
       screen.getByText(
-        `(Found 0 matches in 0 documents after checking 20 of ${(26163).toLocaleString()} documents). Run searches them all.`,
+        `(Found 0 matches in 0 documents after checking 20 of ${(26163).toLocaleString()} documents). Choose Run to check all ${(26163).toLocaleString()} documents.`,
       ),
     ).toBeInTheDocument();
   });

@@ -34,6 +34,11 @@ export function GroupedResultsPageSizeSummary<Row extends Record<string, unknown
   // is not read as "none in the Data Block".
   const partial =
     totalProcessed != null && totalDocuments != null && totalDocuments > totalProcessed;
+  // "Choose Run", not "Run searches": a bare "Run" read as a verb sent people
+  // looking for a button called Searches (Chao).
+  const runHint = partial
+    ? ` Choose Run to check all ${totalDocuments.toLocaleString()} documents.`
+    : '';
   const checked =
     totalProcessed == null
       ? ''
@@ -45,7 +50,7 @@ export function GroupedResultsPageSizeSummary<Row extends Record<string, unknown
     <>
       (Found {matchCount} match{matchCount === 1 ? '' : 'es'} in {documentCount} document
       {plural(documentCount)}
-      {checked}).{partial ? ' Run searches them all.' : ''}
+      {checked}).{runHint}
     </>
   );
 }

@@ -114,8 +114,9 @@ are omitted, while a document with several matches contributes several rows.
 
 The footer reports the matches and matching documents found in the current
 page of documents, and how many of the Data Block's documents that page checked,
-for example "after checking 20 of 26,163 documents". No matches in a Preview
-does not mean the word is absent: choose **Run** to search every document.
+for example "after checking 20 of 26,163 documents. Choose Run to check all
+26,163 documents." No matches in a Preview does not mean the word is absent:
+choose **Run** to search every document.
 
 ![Preview footer: matches found so far and Documents per page](tutorials/assets/concordance/documents_per_page.png)
 

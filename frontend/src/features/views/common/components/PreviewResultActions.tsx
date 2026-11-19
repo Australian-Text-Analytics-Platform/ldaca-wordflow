@@ -5,11 +5,11 @@ import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 
 /** Why Add to Project waits while only Preview Results are showing. */
 export const PREVIEW_ADD_TO_PROJECT_REASON =
-  'These are Preview Results. Only the Results of a full Run can be added to the Project: press Run first.';
+  'These are Preview Results. Only the Results of a full Run can be added to the Project: choose Run first.';
 
 /** Why Download waits while only Preview Results are showing. */
 export const PREVIEW_DOWNLOAD_REASON =
-  'These are Preview Results. Only the Results of a full Run can be downloaded: press Run first.';
+  'These are Preview Results. Only the Results of a full Run can be downloaded: choose Run first.';
 
 /** Why both actions wait while a Run is still going. */
 const RUNNING_RESULT_ACTION_REASON = 'Available when the Run finishes';
