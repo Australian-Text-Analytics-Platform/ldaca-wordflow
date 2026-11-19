@@ -114,4 +114,81 @@ describe('RowDetailPanel', () => {
     expect(screen.getByTestId('row-detail-scroll').scrollTop).toBe(0);
     vi.restoreAllMocks();
   });
+
+  it('steps with the left and right arrow keys, like the buttons', async () => {
+    const user = userEvent.setup();
+    const controls = navigation({ previousLabel: 'Previous passage', nextLabel: 'Next passage' });
+    render(
+      <RowDetailPanel
+        open
+        onOpenChange={vi.fn()}
+        payload={{ record: { label: 'First row', note: 'kept' } }}
+        customization={{
+          summaryFields: [{ label: 'Code', value: <input aria-label="Code" /> }],
+        }}
+        navigation={controls}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Next passage' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'ArrowRight',
+    );
+    // The window opens with focus in its first field; move it to a button.
+    screen.getByRole('button', { name: 'Previous passage' }).focus();
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowLeft}');
+    expect(controls.onNext).toHaveBeenCalledTimes(2);
+    expect(controls.onPrevious).toHaveBeenCalledOnce();
+
+    // A modifier, or a field that uses the arrow keys, keeps them.
+    await user.keyboard('{Shift>}{ArrowRight}{/Shift}');
+    await user.click(screen.getByRole('textbox', { name: 'Code' }));
+    await user.keyboard('{ArrowRight}');
+    expect(controls.onNext).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores an arrow key with nowhere to go or while a step is loading', async () => {
+    const user = userEvent.setup();
+    const atEnd = navigation({ canNext: false });
+    const { rerender } = render(
+      <RowDetailPanel
+        open
+        onOpenChange={vi.fn()}
+        payload={{ record: { label: 'Last row' } }}
+        navigation={atEnd}
+      />,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(atEnd.onNext).not.toHaveBeenCalled();
+
+    const loading = navigation({ pendingDirection: 'next' });
+    rerender(
+      <RowDetailPanel
+        open
+        onOpenChange={vi.fn()}
+        payload={{ record: { label: 'Last row' } }}
+        navigation={loading}
+      />,
+    );
+    await user.keyboard('{ArrowLeft}');
+    expect(loading.onPrevious).not.toHaveBeenCalled();
+  });
+
+  it('still steps after focus falls out to the page', () => {
+    const controls = navigation();
+    render(
+      <RowDetailPanel
+        open
+        onOpenChange={vi.fn()}
+        payload={{ record: { label: 'Row' } }}
+        navigation={controls}
+      />,
+    );
+    // As when Next becomes disabled under focus at the last row. Whatever holds
+    // focus has no role to query by, so it is read from the document.
+    // eslint-disable-next-line testing-library/no-node-access
+    (document.activeElement as HTMLElement | null)?.blur();
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(controls.onPrevious).toHaveBeenCalledOnce();
+  });
 });

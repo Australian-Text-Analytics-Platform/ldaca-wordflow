@@ -1,6 +1,6 @@
-# LDaCA Wordflow
+# Wordflow (by LDaCA)
 
-LDaCA Wordflow is a text-analysis product for assembling datasets, deriving
+Wordflow is a text-analysis product for assembling datasets, deriving
 new data, and running analyses while preserving data lineage. This file is the
 project's domain glossary; it contains no implementation instructions or
 temporary project status.
@@ -274,7 +274,18 @@ _Avoid_: training data, cached prompt
 **Codebook**:
 An Annotation Data Block containing a code column and a description column.
 Each row defines one candidate code and its meaning for Manual Annotation, AI
-Preview, and Run All.
+Preview, and Run All. Two reserved rows are settings, never codes:
+`__task_context__` holds the Task context and `__scale__` marks an Ordered
+Scale.
+
+**Ordered Scale**:
+A Codebook whose codes above its `__scale__` row are levels in row order, from
+the lowest to the highest, rather than unordered categories. Codes below the
+row, such as Not applicable, are outside the scale: not levels, and as far
+from every level as the two most distant levels are from each other. AI
+annotation rates each text against the level definitions alone, and Compare to
+uses weighted Kappa and ordinal Alpha. Annotation labels stay text.
+_Avoid_: ordinal codebook, rating codebook
 _Avoid_: class descriptions, class-description node
 
 **User Correction Column**:

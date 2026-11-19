@@ -8,12 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import {
-  BRIEF_MAX_WORDS,
-  type CodeDesignerSettings,
-  countWords,
-  DESIGNER_MAX_CLASSES,
-} from '../codebookDesigner';
+import { briefLength, type CodeDesignerSettings, DESIGNER_MAX_CLASSES } from '../codebookDesigner';
 
 interface CodeDesignerBriefProps {
   settings: CodeDesignerSettings;
@@ -21,6 +16,8 @@ interface CodeDesignerBriefProps {
   /** Why the designer can't start yet, apart from the brief itself. */
   blockedReason?: string;
   disabled?: boolean;
+  /** The codebook is an ordered scale: the maximum counts levels, plus “Not applicable”. */
+  scale?: boolean;
   onDesign: () => void;
 }
 
@@ -35,17 +32,18 @@ export function CodeDesignerBrief({
   onSettingsChange,
   blockedReason,
   disabled = false,
+  scale = false,
   onDesign,
 }: CodeDesignerBriefProps) {
   const [maxClassesDraft, setMaxClassesDraft] = useState<string | null>(null);
-  const words = countWords(settings.brief);
-  const tooLong = words > BRIEF_MAX_WORDS;
+  const length = briefLength(settings.brief);
+  const tooLong = length.count > length.limit;
   const reason = settings.briefStale
     ? 'The codes were changed by hand. Edit the brief to design again.'
     : !settings.brief.trim()
       ? 'Write a brief first.'
       : tooLong
-        ? `Shorten the brief to ${String(BRIEF_MAX_WORDS)} words or fewer.`
+        ? `Shorten the brief to ${String(length.limit)} ${length.unit} or fewer.`
         : blockedReason;
 
   return (
@@ -87,11 +85,11 @@ export function CodeDesignerBrief({
           )}
           data-testid="codebook-brief-words"
         >
-          {String(words)} / {String(BRIEF_MAX_WORDS)} words
+          {String(length.count)} / {String(length.limit)} {length.unit}
         </span>
         <div className="flex items-center gap-2">
           <Label htmlFor="codebook-designer-max-classes" className="font-normal">
-            Maximum classes
+            {scale ? 'Maximum levels' : 'Maximum classes'}
           </Label>
           <Input
             id="codebook-designer-max-classes"
@@ -117,20 +115,20 @@ export function CodeDesignerBrief({
               setMaxClassesDraft(null);
             }}
           />
-          <span className="text-label-secondary text-description">plus “Other”</span>
+          <span className="text-label-secondary text-description">
+            {scale ? 'plus “Not applicable”' : 'plus “Other”'}
+          </span>
         </div>
-        <DisabledReasonTooltip reason={reason}>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled || reason !== undefined}
-            onClick={onDesign}
-          >
-            <Sparkles className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-            AI Code Designer
-          </Button>
-        </DisabledReasonTooltip>
+        {/* At the right edge of the window, away from the settings beside it. */}
+        <div className="ml-auto">
+          <DisabledReasonTooltip reason={reason}>
+            {/* A primary button at the size of the controls beside it, so it stands out when it can run. */}
+            <Button type="button" disabled={disabled || reason !== undefined} onClick={onDesign}>
+              <Sparkles aria-hidden="true" />
+              AI Code Designer
+            </Button>
+          </DisabledReasonTooltip>
+        </div>
       </div>
     </div>
   );

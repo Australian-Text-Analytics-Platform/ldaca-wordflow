@@ -11,6 +11,8 @@ import {
 import TokenizerModelSelector from '@/features/views/common/components/TokenizerModelSelector';
 import type { WorkspaceNodeInfo } from '@/api';
 import { isArrowStringField } from '@/lib/arrow/arrowTable';
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
+import { columnFieldsOf } from '@/features/workspace/common/columnTypeOptions';
 import { nodeSchemaQueryOptions } from '@/lib/nodeSchema';
 import { referenceOptions } from '../../trendsReference';
 
@@ -72,6 +74,7 @@ export function SequentialReferencePanel({
   const textColumns = (schemaQuery.data ?? [])
     .filter((column) => isArrowStringField(column.field))
     .map((column) => column.name);
+  const columnFields = columnFieldsOf(schemaQuery.data ?? []);
   const columnIsText = referenceTextColumn !== '' && textColumns.includes(referenceTextColumn);
 
   return (
@@ -148,8 +151,8 @@ export function SequentialReferencePanel({
               <SelectContent>
                 <SelectItem value={ROWS_ONLY_VALUE}>Rows only (no word counts)</SelectItem>
                 {textColumns.map((column) => (
-                  <SelectItem key={column} value={column}>
-                    {column}
+                  <SelectItem key={column} value={column} textValue={column}>
+                    <ColumnTypeLabel field={columnFields.get(column)}>{column}</ColumnTypeLabel>
                   </SelectItem>
                 ))}
               </SelectContent>

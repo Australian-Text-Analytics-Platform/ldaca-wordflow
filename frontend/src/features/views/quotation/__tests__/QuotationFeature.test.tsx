@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -323,5 +323,9 @@ describe('QuotationFeature Preview lifecycle', () => {
     expect(quotationHydrationMocks.latestResultsPanelProps).toMatchObject({
       isPageLoading: true,
     });
+    // Preview Results keep Download and Add to Project in view, disabled until a full Run.
+    render(<>{quotationHydrationMocks.latestResultsPanelProps?.headerAction as React.ReactNode}</>);
+    expect(screen.getByRole('button', { name: 'Add to Project' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Download Quotation Results' })).toBeDisabled();
   });
 });

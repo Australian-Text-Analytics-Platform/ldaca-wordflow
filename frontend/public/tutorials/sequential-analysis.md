@@ -65,13 +65,15 @@ When a whole number or decimal column is selected, two fields appear:
 
 **Step**: the width of each group (required). For example, a step of 10 gives 0–9, 10–19, 20–29, and so on.
 
+Each group includes its start value and stops just short of the next group's start. With a start of 1.2 and a step of 0.1, the value 1.4 belongs to the group labelled `[1.4, 1.5)`, not to `[1.3, 1.4)`. Labels show both ends in full, so a very small step such as 0.0000001 still gives each group its own label.
+
 <h3 id="help-sequential-group-by">Step 4: Group By Columns (optional)</h3>
 
-To split the trend into multiple lines (one per category), add up to three columns as grouping conditions. Each added column should have a small number of distinct values; these become the separate series in the chart.
+To split the trend into multiple lines (one per category), add up to three columns as grouping conditions. The values of each column become the separate series in the chart.
 
-Click **Add group** to add a column selector row. A badge next to each selector shows the number of unique values in that column, which helps you judge how many series will be produced. **Remove** takes that column out again.
+Click **Add group** to add a column selector row. The list offers only the columns with 16 or fewer different values, because more lines than that cannot be told apart in the chart; each column starts with the symbol of its type, as in the Data Editor's column headers, and shows its number of different values, such as *speaker (12 values)*. Empty values are not counted. If no column has 16 or fewer different values, a line under the heading says so and **Add group** is unavailable: make a column with fewer values first, for example with **Map values** in the Data Editor. A badge next to each selector repeats the number of unique values and says when some rows are empty. **Remove** takes that column out again.
 
-Trends draws at most 1,000 groups. A column with more different values, such as the text of each line, turns its badge red and **Run** stays unavailable until you choose another column. Several group columns together can also give more than 1,000 groups; then the run stops straight away and says so. A result saved with more groups (from an earlier version) is not drawn: the tab says so, and **Clear results** removes it.
+A setup saved in an earlier version may hold a group column with more than 16 different values. Its badge turns red and **Run** stays unavailable until you choose another column. Several group columns together multiply their values, and Trends draws at most 1,000 groups; with more, the run stops straight away and says so. A result saved with more groups (from an earlier version) is not drawn: the tab says so, and **Clear results** removes it.
 
 ![Group By Columns with gender, which has 2 unique values](tutorials/assets/sequential_analysis/group_by.png)
 
@@ -164,14 +166,14 @@ repeated in the result.
 For grouped results, **Minimum group count** hides any group whose total count
 across the complete result is below the entered value. The total is the number
 of rows in the group over all periods, the first figure beside its name in the
-legend. The default is **10**; enter **0** to show every group. A group whose
+legend. The default is **10**; enter **1** to show every group. A group whose
 count equals the threshold remains visible. The control appears in the legend
 card immediately after **Ignore capitals**, and the **?** beside it opens this
 section.
 
-Use it when a Group By column has many values, such as account names. Most of
-them appear in only a few rows, and each would add its own line and legend
-entry. A higher number leaves the larger groups; a lower number brings the
+Use it when there are many groups, for example when two or three Group By
+columns are combined. Many of them appear in only a few rows, and each would
+add its own line and legend entry. A higher number leaves the larger groups; a lower number brings the
 smaller ones back.
 
 The filter removes small groups from the chart, legend, chart export, displayed

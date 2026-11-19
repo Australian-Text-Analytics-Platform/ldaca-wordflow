@@ -36,6 +36,7 @@ from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from fastapi import Request
 
 from ._logging import setup_logging
+from .runtime_caches import adopt_earlier_model_downloads, use_data_root_model_caches
 from .services.user_files import UserFileStore
 from .services.workspace_archives import WorkspaceArchiveLimits, WorkspaceArchiveService
 from .infrastructure.database import Database
@@ -333,6 +334,13 @@ class _RuntimeSlot:
             )
         except Exception as exc:
             raise _DataRootUnusableError(str(exc)) from exc
+        # Models download beside the projects, before any worker starts.
+        model_folders = use_data_root_model_caches(canonical)
+        await run_sync_in_worker_thread(
+            adopt_earlier_model_downloads,
+            model_folders,
+            abandon_on_cancel=False,
+        )
         effective_settings = Settings.model_validate(
             {**self._base_settings.model_dump(), "data_root": canonical}
         )
@@ -1116,11 +1124,11 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
             maintenance_service=maintenance_service,
         )
         logger.info(
-            "Starting LDaCA Wordflow (platform=%s, python=%s)",
+            "Starting Wordflow (by LDaCA) (platform=%s, python=%s)",
             sys.platform,
             sys.version.split()[0],
         )
 
         yield runtime
 
-    logger.info("LDaCA Wordflow runtime stopped")
+    logger.info("Wordflow (by LDaCA) runtime stopped")

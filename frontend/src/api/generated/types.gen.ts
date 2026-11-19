@@ -299,6 +299,10 @@ export type AnnotationAnalysisRequest = {
      */
     node_id: string;
     /**
+     * Outside Scale
+     */
+    outside_scale?: Array<string>;
+    /**
      * Provider
      */
     provider: 'openai' | 'openrouter' | 'anthropic' | 'google' | 'custom';
@@ -318,6 +322,10 @@ export type AnnotationAnalysisRequest = {
      * Reasoning Enabled
      */
     reasoning_enabled?: boolean;
+    /**
+     * Scale
+     */
+    scale?: boolean;
     /**
      * Task Context
      */
@@ -407,6 +415,10 @@ export type AnnotationAnalysisSubmission = {
      */
     node_id: string;
     /**
+     * Outside Scale
+     */
+    outside_scale?: Array<string>;
+    /**
      * Provider
      */
     provider: 'openai' | 'openrouter' | 'anthropic' | 'google' | 'custom';
@@ -426,6 +438,10 @@ export type AnnotationAnalysisSubmission = {
      * Reasoning Enabled
      */
     reasoning_enabled?: boolean;
+    /**
+     * Scale
+     */
+    scale?: boolean;
     /**
      * Task Context
      */
@@ -815,6 +831,10 @@ export type AnnotationRunAllResult = {
      */
     committed_workspace_revision: number;
     /**
+     * Context Window Tokens
+     */
+    context_window_tokens?: number | null;
+    /**
      * Failed Batch Count
      */
     failed_batch_count: number;
@@ -830,6 +850,10 @@ export type AnnotationRunAllResult = {
      * Record Count
      */
     record_count: number;
+    /**
+     * Too Long Row Count
+     */
+    too_long_row_count?: number | null;
 };
 
 /**
@@ -1542,6 +1566,10 @@ export type CodebookDraftRequest = {
      * Sample Size
      */
     sample_size?: number;
+    /**
+     * Scale
+     */
+    scale?: boolean;
     /**
      * System Prompt
      */
@@ -3139,6 +3167,42 @@ export type DerivationProvenance = {
 };
 
 /**
+ * DistinctValueColumn
+ *
+ * A column and how many different values it holds, not counting missing ones.
+ */
+export type DistinctValueColumn = {
+    /**
+     * Distinct Values
+     */
+    distinct_values: number;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * DistinctValueColumnsResource
+ *
+ * A Data Block's columns with at most ``max_distinct`` different values.
+ *
+ * The columns a tool can group by, in the Data Block's column order: numbers,
+ * text, true/false, categories, dates and times with 1 to ``max_distinct``
+ * values. An empty list means no column qualifies.
+ */
+export type DistinctValueColumnsResource = {
+    /**
+     * Columns
+     */
+    columns: Array<DistinctValueColumn>;
+    /**
+     * Max Distinct
+     */
+    max_distinct: number;
+};
+
+/**
  * DtypeNormalizationChange
  *
  * One source-file dtype normalization applied during node creation.
@@ -3582,6 +3646,10 @@ export type FileNodeCreateRequest = {
      */
     name?: string | null;
     /**
+     * Record Path
+     */
+    record_path?: string | null;
+    /**
      * Sheet Name
      */
     sheet_name?: string | null;
@@ -3912,6 +3980,78 @@ export type JsonDataInput = string | number | number | boolean | Array<JsonDataI
 export type JsonDataOutput = string | number | number | boolean | Array<JsonDataOutput> | {
     [key: string]: JsonDataOutput;
 } | null;
+
+/**
+ * JsonFilesNodeCreateRequest
+ *
+ * Create one Data Block from the records of several JSON files.
+ *
+ * Every file is read at the same ``record_path``, so a batch is read one
+ * way; each row starts with the file it came from. With ``zip_path``,
+ * ``file_paths`` are members of that ZIP; otherwise they are user files.
+ */
+export type JsonFilesNodeCreateRequest = {
+    /**
+     * File Paths
+     */
+    file_paths: Array<string>;
+    /**
+     * Kind
+     */
+    kind?: 'json_files';
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Record Path
+     */
+    record_path?: string | null;
+    /**
+     * Zip Path
+     */
+    zip_path?: string | null;
+};
+
+/**
+ * JsonRecordPath
+ *
+ * One place in a JSON file that holds records, offered as the rows.
+ */
+export type JsonRecordPath = {
+    /**
+     * Field Count
+     */
+    field_count: number;
+    /**
+     * Fields
+     */
+    fields: Array<string>;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Records
+     */
+    records: number;
+};
+
+/**
+ * JsonRecordPathsResource
+ *
+ * Where a JSON or JSON Lines file's rows could come from, default first.
+ */
+export type JsonRecordPathsResource = {
+    /**
+     * Paths
+     */
+    paths: Array<JsonRecordPath>;
+};
 
 /**
  * LiteralExpression
@@ -5377,6 +5517,22 @@ export type SkippedFileCount = {
      * Reason
      */
     reason: 'unsupported_type' | 'not_utf8';
+};
+
+/**
+ * SkippedJsonFile
+ *
+ * A file left out of JSON files added as one Data Block, and why.
+ */
+export type SkippedJsonFile = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Reason
+     */
+    reason: string;
 };
 
 /**
@@ -7307,6 +7463,10 @@ export type WorkspaceNodeInfo = {
      */
     skipped_files?: Array<SkippedFileCount> | null;
     /**
+     * Skipped Json Files
+     */
+    skipped_json_files?: Array<SkippedJsonFile> | null;
+    /**
      * Tokenizer Model
      */
     tokenizer_model?: string | null;
@@ -7470,6 +7630,10 @@ export type ZipTableMembersResource = {
      * Nested Archives
      */
     nested_archives?: Array<string>;
+    /**
+     * Text Documents
+     */
+    text_documents?: number;
 };
 
 /**
@@ -7630,6 +7794,10 @@ export type AnnotationAnalysisSubmissionWritable = {
      */
     node_id: string;
     /**
+     * Outside Scale
+     */
+    outside_scale?: Array<string>;
+    /**
      * Provider
      */
     provider: 'openai' | 'openrouter' | 'anthropic' | 'google' | 'custom';
@@ -7649,6 +7817,10 @@ export type AnnotationAnalysisSubmissionWritable = {
      * Reasoning Enabled
      */
     reasoning_enabled?: boolean;
+    /**
+     * Scale
+     */
+    scale?: boolean;
     /**
      * Task Context
      */
@@ -7885,6 +8057,10 @@ export type CodebookDraftRequestWritable = {
      * Sample Size
      */
     sample_size?: number;
+    /**
+     * Scale
+     */
+    scale?: boolean;
     /**
      * System Prompt
      */
@@ -10059,6 +10235,60 @@ export type CreateFolderResponses = {
 
 export type CreateFolderResponse = CreateFolderResponses[keyof CreateFolderResponses];
 
+export type ListJsonRecordPathsData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Path
+         */
+        path: string;
+        /**
+         * Member
+         */
+        member?: string | null;
+    };
+    url: '/api/user-files/json-record-paths';
+};
+
+export type ListJsonRecordPathsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request or resource exceeds the configured size limit
+     */
+    413: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type ListJsonRecordPathsError = ListJsonRecordPathsErrors[keyof ListJsonRecordPathsErrors];
+
+export type ListJsonRecordPathsResponses = {
+    /**
+     * Successful Response
+     */
+    200: JsonRecordPathsResource;
+};
+
+export type ListJsonRecordPathsResponse = ListJsonRecordPathsResponses[keyof ListJsonRecordPathsResponses];
+
 export type PreviewFileData = {
     body?: never;
     path?: never;
@@ -10083,6 +10313,10 @@ export type PreviewFileData = {
          * Member
          */
         member?: string | null;
+        /**
+         * Record Path
+         */
+        record_path?: string | null;
     };
     url: '/api/user-files/preview';
 };
@@ -10137,6 +10371,10 @@ export type PreviewFileSchemaData = {
          * Sheet Name
          */
         sheet_name?: string | null;
+        /**
+         * Record Path
+         */
+        record_path?: string | null;
     };
     url: '/api/user-files/preview/schema';
 };
@@ -12024,6 +12262,8 @@ export type CreateNodeData = {
     } & FileNodeCreateRequest) | ({
         kind: 'files';
     } & FilesNodeCreateRequest) | ({
+        kind: 'json_files';
+    } & JsonFilesNodeCreateRequest) | ({
         kind: 'clone';
     } & CloneNodeCreateRequest) | ({
         kind: 'slice';
@@ -12792,6 +13032,53 @@ export type GetDatetimeFormatsResponses = {
 };
 
 export type GetDatetimeFormatsResponse = GetDatetimeFormatsResponses[keyof GetDatetimeFormatsResponses];
+
+export type GetDistinctValueColumnsData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query: {
+        /**
+         * Max Distinct
+         */
+        max_distinct: number;
+    };
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/distinct-value-columns';
+};
+
+export type GetDistinctValueColumnsErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type GetDistinctValueColumnsError = GetDistinctValueColumnsErrors[keyof GetDistinctValueColumnsErrors];
+
+export type GetDistinctValueColumnsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DistinctValueColumnsResource;
+};
+
+export type GetDistinctValueColumnsResponse = GetDistinctValueColumnsResponses[keyof GetDistinctValueColumnsResponses];
 
 export type EditNodeData = {
     /**

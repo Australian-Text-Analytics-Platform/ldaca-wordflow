@@ -1,3 +1,4 @@
+import { columnFieldsOf } from '@/features/workspace/common/columnTypeOptions';
 import { DataBlockDownloadButton } from './DataBlockDownloadButton';
 import HelpIcon from '@/components/help/HelpIcon';
 import { ArrowRight } from 'lucide-react';
@@ -27,15 +28,25 @@ import {
   ColumnComparisonHeader,
   ColumnComparisonSelector,
 } from '@/features/views/common/components/ColumnComparison';
-import { type IntercoderReliabilityMetric } from '@/features/views/common/columnComparisonModel';
+import {
+  type IntercoderReliabilityMetric,
+  type OrderedScale,
+} from '@/features/views/common/columnComparisonModel';
 import { MetadataColumnSelector } from '@/features/views/common/components/MetadataColumnSelector';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
-import { useFullColumnComparisons } from '@/features/views/common/hooks/useFullColumnComparisons';
+import {
+  useCodebookFit,
+  useCodeCombinations,
+  useFullColumnComparisons,
+} from '@/features/views/common/hooks/useFullColumnComparisons';
+import { annotationColumnCodebookHint } from '@/features/views/annotation/codebookFit';
+import { MultiCoderAlphaBadge } from './MultiCoderAlphaBadge';
 import { type ServerColumnDef, useServerTable } from '@/features/views/common/hooks/useServerTable';
 import {
   annotationValuesDiffer,
   isInvalidAnnotationLabel,
   normalizeAnnotationClassOptions,
+  NOT_A_CODE_EXPLANATION,
 } from '@/features/views/annotation/annotationLabelModel';
 import { useAnnotationNodePage } from '@/features/views/annotation/hooks/useAnnotationNodePage';
 import { useAnnotationRowFilter } from '@/features/views/annotation/hooks/useAnnotationRowFilter';
@@ -89,6 +100,8 @@ interface RunAllReviewTableProps {
     disabled?: boolean;
   };
   rowCount: number;
+  /** The Run's codebook as an ordered scale; null for categories. */
+  scale?: OrderedScale | null;
   /** Column order from dragged headers, and how to save a new one (issue 373). */
   columnOrder?: readonly string[];
   onReorderColumns?: (order: string[]) => void;
@@ -117,6 +130,7 @@ export function RunAllReviewTable({
   onComparisonColumnsChange,
   reliabilityMetric,
   onReliabilityMetricChange,
+  scale = null,
   metadataColumns,
   onMetadataColumnsChange,
   correction,
@@ -163,6 +177,8 @@ export function RunAllReviewTable({
   const { pagination, setPagination, query, countQuery, sourceRowIndexColumn } = page;
   const data = query.data;
   const dataColumns = data?.columns.filter((column) => column !== sourceRowIndexColumn);
+  // The result columns' types, for the type symbols in the column menus.
+  const resultColumnFields = columnFieldsOf(data?.schema ?? []);
   const requiredColumnSet = new Set(requiredColumns);
   // Topic coverage is not offered as metadata (issue 200).
   const unsupportedColumnSet = new Set(
@@ -222,9 +238,33 @@ export function RunAllReviewTable({
     comparisonColumns: activeComparisonColumns,
     classOptions,
   });
+  // With Alpha chosen and two or more comparisons, the annotation column shows
+  // Alpha across every coder (Chao, 16 Nov 2026).
+  const coderColumns = [comparisonColumn, ...activeComparisonColumns];
+  const showMultiCoderAlpha =
+    reliabilityMetric === 'krippendorffs_alpha' && activeComparisonColumns.length >= 2;
+  const codeCombinations = useCodeCombinations({
+    workspaceId,
+    nodeIds: [nodeId],
+    sql,
+    columns: coderColumns,
+    classOptions,
+    enabled: showMultiCoderAlpha,
+  });
   const comparisonQueryByColumn = new Map(
     activeComparisonColumns.map((column, index) => [column, comparisonQueries[index]]),
   );
+  // How many values in each scored column are not codes, so the scores can
+  // say which columns they leave out (issue 498).
+  const codebookFit = useCodebookFit({
+    workspaceId,
+    nodeIds: [nodeId],
+    sql,
+    columns: coderColumns,
+    classOptions,
+  }).data;
+  const annotationFit = codebookFit?.get(comparisonColumn);
+  const codebookHint = annotationColumnCodebookHint(comparisonColumn, annotationFit, classOptions);
   const visibleRequiredColumns = requiredColumns.filter(
     (column) => dataColumns?.includes(column) && column !== correctionColumn,
   );
@@ -301,6 +341,7 @@ export function RunAllReviewTable({
           ),
           ...activeMetadataColumns,
         ],
+        classOptions,
       });
     },
   });
@@ -315,6 +356,7 @@ export function RunAllReviewTable({
           <div className="flex flex-wrap items-center gap-2">
             <ColumnComparisonSelector
               availableColumns={availableComparisonColumns}
+              columnFields={resultColumnFields}
               selectedColumns={activeComparisonColumns}
               onSelectedColumnsChange={(columns) => {
                 const selected = columns.filter((column) => column !== correctionColumn);
@@ -325,11 +367,13 @@ export function RunAllReviewTable({
               }}
               metric={reliabilityMetric}
               onMetricChange={onReliabilityMetricChange}
+              ordered={scale !== null}
               disabledColumns={activeMetadataColumns}
             />
             <AnnotationCorrectionColumnControl
               value={correctionColumn}
               availableColumns={availableCorrectionColumns}
+              columnFields={resultColumnFields}
               onValueChange={(column) => {
                 if (column) {
                   onComparisonColumnsChange(
@@ -352,6 +396,7 @@ export function RunAllReviewTable({
             />
             <MetadataColumnSelector
               availableColumns={availableMetadataColumns}
+              columnFields={resultColumnFields}
               selectedColumns={activeMetadataColumns}
               onSelectedColumnsChange={onMetadataColumnsChange}
               disabledColumns={activeComparisonColumns}
@@ -364,9 +409,23 @@ export function RunAllReviewTable({
                 label="Annotation table"
               />
             ) : null}
+            {/* One help icon for the whole toolbar (Chao's one-per-row rule). */}
+            <HelpIcon
+              targetKey="analysis.annotation.table-toolbar"
+              label="About the table toolbar"
+              tooltip="What Compare to, Correction, Use as example, Show metadata and download do."
+            />
           </div>
         ) : null}
       </div>
+      {codebookHint ? (
+        <p
+          role="status"
+          className="mb-3 rounded-md border border-warning bg-warning-background px-3 py-2 text-body"
+        >
+          {codebookHint}
+        </p>
+      ) : null}
       {query.isError || countQuery.isError ? (
         <p className="text-body text-error">Couldn't load Review.</p>
       ) : query.isLoading || countQuery.isLoading || !data ? (
@@ -407,22 +466,37 @@ export function RunAllReviewTable({
                           className={column === textColumn ? undefined : 'w-px whitespace-nowrap'}
                         >
                           {column === comparisonColumn ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <span>{column}</span>
-                              <AnnotationColumnFilterMenu
-                                column={column}
-                                value={filterValueFor(column)}
-                                onChange={(value) => {
-                                  setColumnFilter(column, value);
-                                }}
-                                differsLabel="Differs from any comparison column"
-                                differsDisabled={activeComparisonColumns.length === 0}
-                                differsDisabledReason="Select a Compare to column first"
-                              />
+                            <span className="inline-flex flex-col items-start gap-1">
+                              {showMultiCoderAlpha ? (
+                                <MultiCoderAlphaBadge
+                                  {...(nodeName ? { nodeName } : {})}
+                                  columns={coderColumns}
+                                  combinations={codeCombinations.data}
+                                  scale={scale}
+                                  isLoading={codeCombinations.isLoading}
+                                  isError={codeCombinations.isError}
+                                  {...(codebookFit ? { codebookFit } : {})}
+                                />
+                              ) : null}
+                              <span className="inline-flex items-center gap-1.5">
+                                <span>{column}</span>
+                                <AnnotationColumnFilterMenu
+                                  column={column}
+                                  value={filterValueFor(column)}
+                                  onChange={(value) => {
+                                    setColumnFilter(column, value);
+                                  }}
+                                  differsLabel="Differs from any comparison column"
+                                  differsDisabled={activeComparisonColumns.length === 0}
+                                  differsDisabledReason="Select a Compare to column first"
+                                />
+                              </span>
                             </span>
                           ) : activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
+                              {...(nodeName ? { nodeName } : {})}
                               metric={reliabilityMetric}
+                              scale={scale}
                               referenceColumn={comparisonColumn}
                               comparisonColumn={column}
                               rows={comparisonQueryByColumn.get(column)?.data}
@@ -440,6 +514,10 @@ export function RunAllReviewTable({
                               filter={filterValueFor(column)}
                               onFilterChange={(value) => {
                                 setColumnFilter(column, value);
+                              }}
+                              codebookFit={{
+                                reference: annotationFit,
+                                comparison: codebookFit?.get(column),
                               }}
                             />
                           ) : (
@@ -469,7 +547,9 @@ export function RunAllReviewTable({
                         >
                           {activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
+                              {...(nodeName ? { nodeName } : {})}
                               metric={reliabilityMetric}
+                              scale={scale}
                               referenceColumn={comparisonColumn}
                               comparisonColumn={column}
                               rows={comparisonQueryByColumn.get(column)?.data}
@@ -487,6 +567,10 @@ export function RunAllReviewTable({
                               filter={filterValueFor(column)}
                               onFilterChange={(value) => {
                                 setColumnFilter(column, value);
+                              }}
+                              codebookFit={{
+                                reference: annotationFit,
+                                comparison: codebookFit?.get(column),
                               }}
                             />
                           ) : (
@@ -566,7 +650,7 @@ export function RunAllReviewTable({
                               {invalid ? (
                                 <span
                                   className="italic text-description"
-                                  title="Not a code in the Codebook, so treated as empty"
+                                  title={NOT_A_CODE_EXPLANATION}
                                 >
                                   {displayCell(row[column])}
                                 </span>
@@ -629,6 +713,11 @@ export function RunAllReviewTable({
                                     ? 'italic text-description'
                                     : ''
                                 }`}
+                                title={
+                                  isInvalidAnnotationLabel(correctionValue, classOptions)
+                                    ? NOT_A_CODE_EXPLANATION
+                                    : undefined
+                                }
                               >
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
@@ -677,11 +766,7 @@ export function RunAllReviewTable({
                               ) : isComparison ? (
                                 <span
                                   className={invalid ? 'italic text-description' : undefined}
-                                  title={
-                                    invalid
-                                      ? 'Not a code in the Codebook, so treated as empty'
-                                      : undefined
-                                  }
+                                  title={invalid ? NOT_A_CODE_EXPLANATION : undefined}
                                 >
                                   {displayCell(comparisonValue(column))}
                                 </span>

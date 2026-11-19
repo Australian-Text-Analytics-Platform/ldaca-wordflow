@@ -1,3 +1,4 @@
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
 import { type ReactNode, useState } from 'react';
 import { CopyMinus } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -150,7 +151,7 @@ export function DedupeSubTab({
                     );
                   }}
                 />
-                <span className="truncate">{column.name}</span>
+                <ColumnTypeLabel field={column.field}>{column.name}</ColumnTypeLabel>
               </label>
             </li>
           ))}

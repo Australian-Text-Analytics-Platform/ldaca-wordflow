@@ -110,6 +110,11 @@ const WORKBOOK_EXTENSIONS = new Set(['.xlsx', '.xls', '.xlsm', '.xlsb', '.ods'])
 /** Whether a path is a spreadsheet workbook, whose sheets can be listed (issue 323). */
 export const isWorkbookPath = (path: string) => WORKBOOK_EXTENSIONS.has(extensionOf(path));
 
+const JSON_EXTENSIONS = new Set(['.json', '.jsonl', '.ndjson']);
+
+/** Whether a path is a JSON or JSON Lines file, whose rows' place can be chosen. */
+export const isJsonPath = (path: string) => JSON_EXTENSIONS.has(extensionOf(path));
+
 const isArchive = (file: FileTreeFile) =>
   extensionOf(file.name) === '.zip' && !isHiddenPath(file.path);
 
@@ -140,6 +145,21 @@ export function tableFilesInDirectory(directory: FileTreeDirectory): FileTreeFil
   };
   visit(directory.children);
   return files.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+/** How many text documents below a folder Texts mode would make rows of. */
+export function textFileCountInDirectory(directory: FileTreeDirectory): number {
+  let count = 0;
+  const visit = (nodes: FileTreeNode[]) => {
+    for (const node of nodes) {
+      if (node.type === 'directory') visit(node.children);
+      else if (TEXT_DOCUMENT_EXTENSIONS.has(extensionOf(node.name)) && !isHiddenPath(node.path)) {
+        count += 1;
+      }
+    }
+  };
+  visit(directory.children);
+  return count;
 }
 
 /**

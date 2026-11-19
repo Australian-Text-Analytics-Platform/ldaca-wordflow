@@ -31,8 +31,8 @@ export function SliceSubTab(props: SliceSubTabComponentProps) {
 }
 
 /**
- * Renders the Sample Rows tab UI around `useSliceSubTab` state for slice and
- * random-sample modes.
+ * Renders the Sample Rows tab UI around `useSliceSubTab` state for random-sample
+ * and row-range (`slice`) modes. Random sample comes first: the tool is named Sample.
  * Rendered by `SliceSubTab` to keep form markup separate from hook wiring.
  * Flow: render slice/random-sample controls from hook state, show mode-specific fields and
  * preview table, then expose apply actions.
@@ -59,11 +59,11 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Shuffle className="h-5 w-5" />
-                Sample or slice a Data Block
+                Sample a Data Block
                 <HelpIcon
                   targetKey="preprocessing.slice.tab"
                   label="About Sample"
-                  tooltip="Create either a contiguous slice or a random sample from the selected Data Block."
+                  tooltip="Take a random sample or a range of rows from the selected Data Block."
                 />
               </CardTitle>
             </div>
@@ -80,58 +80,20 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
             }}
           >
             <TabsList>
-              <TabsTrigger value="slice" disabled={!hasSelection}>
-                Slice
-              </TabsTrigger>
               <TabsTrigger value="random_sample" disabled={!hasSelection}>
                 Random sample
               </TabsTrigger>
+              <TabsTrigger value="slice" disabled={!hasSelection}>
+                Row range
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="slice" className="mt-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="slice-offset">Start row</Label>
-                    <HelpIcon targetKey="preprocessing.slice.offset" label="Slice start row" />
-                  </div>
-                  <Input
-                    id="slice-offset"
-                    type="number"
-                    min={0}
-                    value={form.offsetInput}
-                    onChange={(event) => {
-                      form.setOffsetInput(event.target.value);
-                    }}
-                    disabled={!hasSelection}
-                  />
-                  <p className="text-label-secondary text-description">0 means the first row.</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="slice-length">Length</Label>
-                    <HelpIcon targetKey="preprocessing.slice.length" label="Slice length" />
-                  </div>
-                  <Input
-                    id="slice-length"
-                    type="number"
-                    min={1}
-                    value={form.lengthInput}
-                    onChange={(event) => {
-                      form.setLengthInput(event.target.value);
-                    }}
-                    onBlur={form.onLengthBlur}
-                    disabled={!hasSelection}
-                    placeholder="Number of rows to include"
-                  />
-                  <p className="text-label-secondary text-description">
-                    Number of rows to be sliced from the start row.
-                  </p>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="random_sample" className="mt-4">
+            <TabsContent value="random_sample" className="mt-4 space-y-4">
+              <p className="text-body text-description">
+                Pick rows at random from the whole Data Block, for a smaller set that still reflects
+                all of it. Enter a share of the rows (0.2 for 20%) or a number of rows. The same
+                seed picks the same rows again.
+              </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="sample-fraction">Fraction / Count</Label>
@@ -190,6 +152,54 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                   <p className="text-label-secondary text-description">
                     Use a seed to reproduce the same sampled rows. With No random seed, Wordflow
                     picks one for you and records it in the new Data Block.
+                  </p>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="slice" className="mt-4 space-y-4">
+              <p className="text-body text-description">
+                Take rows in their current order, by position: for example the first 500 rows, or
+                rows 101 to 200. Nothing is picked at random, so the rows you get depend on how the
+                Data Block is sorted.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="slice-offset">Start row</Label>
+                    <HelpIcon targetKey="preprocessing.slice.offset" label="Row range start row" />
+                  </div>
+                  <Input
+                    id="slice-offset"
+                    type="number"
+                    min={0}
+                    value={form.offsetInput}
+                    onChange={(event) => {
+                      form.setOffsetInput(event.target.value);
+                    }}
+                    disabled={!hasSelection}
+                  />
+                  <p className="text-label-secondary text-description">0 means the first row.</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="slice-length">Length</Label>
+                    <HelpIcon targetKey="preprocessing.slice.length" label="Row range length" />
+                  </div>
+                  <Input
+                    id="slice-length"
+                    type="number"
+                    min={1}
+                    value={form.lengthInput}
+                    onChange={(event) => {
+                      form.setLengthInput(event.target.value);
+                    }}
+                    onBlur={form.onLengthBlur}
+                    disabled={!hasSelection}
+                    placeholder="Number of rows to include"
+                  />
+                  <p className="text-label-secondary text-description">
+                    How many rows to take, counting from the start row.
                   </p>
                 </div>
               </div>
@@ -260,7 +270,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
             <HelpIcon targetKey="preprocessing.common.preview" label="Preview table" />
           </span>
         }
-        description="Review rows returned by the current slice or random sample configuration before adding to the Project."
+        description="Review the rows the current random sample or row range returns before adding them to the Project."
         columns={preview.columns}
         data={preview.data}
         pagination={preview.pagination}

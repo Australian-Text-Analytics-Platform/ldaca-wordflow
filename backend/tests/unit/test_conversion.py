@@ -186,3 +186,135 @@ def test_dates_inside_longer_text_are_found_and_converted() -> None:
         options=options,
     ).lazyframe.collect()["x"]
     assert dates.to_list() == [dt.date(2021, 1, 17), dt.date(2021, 2, 3), None]
+
+
+def test_whole_numbers_in_text_are_read_digit_by_digit() -> None:
+    """Long identifiers stay distinct: a decimal number can't tell them apart."""
+
+    values = [
+        "9007199254740992",  # 2**53
+        "9007199254740993",  # 2**53 + 1: the nearest decimal number is 2**53
+        "-9007199254740993",
+        "9223372036854775807",  # the largest whole number a column holds
+        "-9223372036854775808",  # the smallest
+        "+7",
+        "007",
+        " 12 ",
+    ]
+
+    result = cast_lazyframe_column(
+        pl.LazyFrame({"id": values}), column_name="id", target_type="integer"
+    )
+
+    converted = result.lazyframe.collect()["id"]
+    assert converted.dtype == pl.Int64
+    assert converted.to_list() == [int(value) for value in values]
+
+
+def test_whole_numbers_too_large_for_a_column_become_empty() -> None:
+    values = [
+        "9223372036854775808",
+        "-9223372036854775809",
+        # Rounding away from zero would pass the limit.
+        "9223372036854775807.5",
+        "-9223372036854775808.5",
+        "9223372036854775807.4",
+        "-9223372036854775808.4",
+        "99999999999999999999999999999999999999999",
+    ]
+
+    result = cast_lazyframe_column(
+        pl.LazyFrame({"x": values}), column_name="x", target_type="integer"
+    )
+
+    assert result.lazyframe.collect()["x"].to_list() == [
+        None,
+        None,
+        None,
+        None,
+        9223372036854775807,
+        -9223372036854775808,
+        None,
+    ]
+
+
+def test_decimal_text_rounds_from_its_digits_halves_away_from_zero() -> None:
+    values: list[str | None] = [
+        "2.5",
+        "-2.5",
+        "2.4",
+        "-2.4",
+        ".5",
+        "-.5",
+        "-0.4",
+        "5.",
+        # Just under a half: as a decimal number this is exactly 0.5.
+        "0.49999999999999999",
+        "9007199254740993.0",
+        "9007199254740992.5",
+        # Text with an exponent is read as a decimal number first.
+        "1e3",
+        "1.5e0",
+        "abc",
+        "1.2.3",
+        "",
+        None,
+    ]
+
+    result = cast_lazyframe_column(
+        pl.LazyFrame({"x": values}), column_name="x", target_type="integer"
+    )
+
+    assert result.lazyframe.collect()["x"].to_list() == [
+        3,
+        -3,
+        2,
+        -2,
+        1,
+        -1,
+        0,
+        5,
+        0,
+        9007199254740993,
+        9007199254740993,
+        1000,
+        2,
+        None,
+        None,
+        None,
+        None,
+    ]
+
+
+def test_long_whole_numbers_keep_their_digits_with_separators_and_symbols() -> None:
+    frame = pl.LazyFrame({"x": ["9.007.199.254.740.993", "€ 9.007.199.254.740.993,5", "3.5"]})
+    options = ConversionOptions(
+        decimal_mark=",", thousands_separator=".", ignore_symbols=True
+    )
+
+    result = cast_lazyframe_column(
+        frame, column_name="x", target_type="integer", options=options
+    )
+
+    # "3.5" is not a group of three, so it still fails rather than reading 35.
+    assert result.lazyframe.collect()["x"].to_list() == [
+        9007199254740993,
+        9007199254740994,
+        None,
+    ]
+
+
+def test_the_check_previews_whole_numbers_as_they_will_convert() -> None:
+    checked = check_cast(
+        pl.LazyFrame({"id": ["9007199254740992", "9007199254740993", "x"]}),
+        column_name="id",
+        target_type="integer",
+        options=ConversionOptions(),
+    )
+
+    assert (checked["converted"], checked["failed"]) == (2, 1)
+    assert checked["samples"] == [
+        {"row": 1, "value": "9007199254740992", "result": "9007199254740992"},
+        {"row": 2, "value": "9007199254740993", "result": "9007199254740993"},
+        {"row": 3, "value": "x", "result": None},
+    ]

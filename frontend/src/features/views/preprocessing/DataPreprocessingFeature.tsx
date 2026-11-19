@@ -45,11 +45,12 @@ type DataPrepSubtab =
 /** Data Builder tools that read the inputs panel's text column (issues 148, 150, 151). */
 const TEXT_COLUMN_TABS: ReadonlySet<DataPrepSubtab> = new Set(['segment', 'summarise', 'dedupe']);
 
-// Tool order agreed in issue 159.
+// Tool order agreed in issue 159. Each tooltip says in a few plain words what the tool does.
 const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'filter',
     title: 'Filter',
+    tooltip: 'Keep only the rows that match your conditions',
     icon: <Filter className="size-4" />,
     tabDomId: 'preprocessing-tab-filter',
     panelDomId: 'preprocessing-panel-filter',
@@ -58,6 +59,7 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'split_group',
     title: 'Group',
+    tooltip: 'Split rows into one Data Block per group',
     // Rotated so it reads as rows dividing, not as the mirror of Join's icon.
     icon: <Split className="size-4 rotate-90" />,
     tabDomId: 'preprocessing-tab-split-group',
@@ -66,6 +68,7 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'join',
     title: 'Join',
+    tooltip: 'Combine two Data Blocks by matching a shared column',
     icon: <Merge className="size-4" />,
     tabDomId: 'preprocessing-tab-join',
     panelDomId: 'preprocessing-panel-join',
@@ -74,6 +77,7 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'segment',
     title: 'Segment',
+    tooltip: 'Split texts into sentences, paragraphs, lines or other parts',
     icon: <Scissors className="size-4" />,
     tabDomId: 'preprocessing-tab-segment',
     panelDomId: 'preprocessing-panel-segment',
@@ -81,6 +85,7 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'summarise',
     title: 'Aggregate',
+    tooltip: 'Combine rows into one row per group, such as speaker',
     icon: <Sigma className="size-4" />,
     tabDomId: 'preprocessing-tab-summarise',
     panelDomId: 'preprocessing-panel-summarise',
@@ -88,6 +93,7 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'slice',
     title: 'Sample',
+    tooltip: 'Pick rows at random, or take a range of rows',
     icon: <Shuffle className="size-4" />,
     tabDomId: 'preprocessing-tab-slice',
     panelDomId: 'preprocessing-panel-slice',
@@ -96,6 +102,7 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'dedupe',
     title: 'Deduplicate',
+    tooltip: 'Find repeated rows and keep the first of each',
     icon: <CopyMinus className="size-4" />,
     tabDomId: 'preprocessing-tab-dedupe',
     panelDomId: 'preprocessing-panel-dedupe',
@@ -103,6 +110,7 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'concat',
     title: 'Stack',
+    tooltip: 'Put Data Blocks with the same columns one below another',
     icon: <Layers className="size-4" />,
     tabDomId: 'preprocessing-tab-concat',
     panelDomId: 'preprocessing-panel-concat',
@@ -189,6 +197,7 @@ function DataPreprocessingFeature() {
           name: option.name,
           kind: columnKind(option.field),
           typeLabel: arrowTypeDisplayName(option.field),
+          field: option.field,
         })),
       }
     : null;

@@ -20,8 +20,15 @@ from ..infrastructure.storage.data_loading import (
     load_data_file_preview,
     workbook_sheet_names,
 )
+from ..infrastructure.storage.json_records import (
+    describe_record_path,
+    read_json_document,
+    record_path_candidates,
+)
 from ..models.files import (
     FileWorksheetsResource,
+    JsonRecordPath,
+    JsonRecordPathsResource,
     WorkbookSheets,
     WorkbookSheetsResource,
     ZipTableMember,
@@ -70,6 +77,7 @@ class FileReadService:
         page_size: int,
         sheet_name: str | None,
         member: str | None = None,
+        record_path: str | None = None,
     ) -> IpcTablePage:
         async with self._file_store.read_path(
             user_id, relative_path, allow_directory=True
@@ -85,6 +93,7 @@ class FileReadService:
                     page_size,
                     self._max_expanded_bytes,
                     sheet_name,
+                    record_path,
                 )
             return await self._run_sync(
                 _materialize_file_page,
@@ -93,6 +102,20 @@ class FileReadService:
                 page_size,
                 sheet_name,
                 self._max_expanded_bytes,
+                record_path,
+            )
+
+    async def json_record_paths(
+        self, user_id: str, relative_path: str, *, member: str | None = None
+    ) -> JsonRecordPathsResource:
+        """Where a JSON file's rows could come from, the default first.
+
+        With ``member``, the JSON file inside the ZIP at ``relative_path``.
+        """
+
+        async with self._file_store.read_path(user_id, relative_path) as path:
+            return await self._run_sync(
+                _json_record_paths, path, member, self._max_expanded_bytes
             )
 
     async def zip_tables(self, user_id: str, relative_path: str) -> ZipTableMembersResource:
@@ -115,6 +138,7 @@ class FileReadService:
                 for name, size, sheets in listing.members
             ],
             nested_archives=listing.nested_archives,
+            text_documents=listing.text_documents,
         )
 
     async def workbook_sheets(
@@ -141,12 +165,13 @@ class FileReadService:
         relative_path: str,
         *,
         sheet_name: str | None,
+        record_path: str | None = None,
     ) -> bytes:
         async with self._file_store.read_path(
             user_id, relative_path, allow_directory=True
         ) as path:
             return await self._run_sync(
-                _file_schema, path, sheet_name, self._max_expanded_bytes
+                _file_schema, path, sheet_name, self._max_expanded_bytes, record_path
             )
 
     async def worksheets(
@@ -195,7 +220,10 @@ def _preview_failure(path: Path, exc: BaseException) -> InvalidInputError:
     )
 
 def _file_lazyframe(
-    path: Path, sheet_name: str | None, max_directory_bytes: int | None = None
+    path: Path,
+    sheet_name: str | None,
+    max_directory_bytes: int | None = None,
+    record_path: str | None = None,
 ) -> pl.LazyFrame:
     """Build the preview-specific lazy frame consumed by page and schema reads.
 
@@ -204,6 +232,10 @@ def _file_lazyframe(
     caller because constructing a lazy scanner does not necessarily parse data.
     """
     file_type = detect_file_type(path.name)
+    if record_path is not None and file_type not in {"json", "jsonl"}:
+        raise InvalidInputError(
+            "A place for the rows can be chosen only for JSON and JSON Lines files."
+        )
     try:
         if file_type == "excel":
             sheets = _excel_worksheets(path)
@@ -212,7 +244,10 @@ def _file_lazyframe(
                 raise InvalidInputError("Excel sheet not found")
             sheet_name = selected
         loaded = load_data_file_preview(
-            path, sheet_name, max_directory_bytes=max_directory_bytes
+            path,
+            sheet_name,
+            max_directory_bytes=max_directory_bytes,
+            record_path=record_path,
         )
         return loaded if isinstance(loaded, pl.LazyFrame) else loaded.lazy()
     except InvalidInputError:
@@ -229,11 +264,12 @@ def _materialize_file_page(
     page_size: int,
     sheet_name: str | None,
     max_directory_bytes: int | None = None,
+    record_path: str | None = None,
 ) -> IpcTablePage:
     """Materialize one raw-value preview page and classify parser failures."""
     try:
         return materialize_page(
-            _file_lazyframe(path, sheet_name, max_directory_bytes),
+            _file_lazyframe(path, sheet_name, max_directory_bytes, record_path),
             page=page,
             page_size=page_size,
         )
@@ -250,6 +286,7 @@ def _materialize_zip_member_page(
     page_size: int,
     max_bytes: int,
     sheet_name: str | None = None,
+    record_path: str | None = None,
 ) -> IpcTablePage:
     with tempfile.TemporaryDirectory(prefix="wordflow-zip-member-") as scratch:
         try:
@@ -260,16 +297,59 @@ def _materialize_zip_member_page(
             raise ResourceTooLargeError("ZIP member is too large to preview") from exc
         except ValueError as exc:
             raise InvalidInputError("ZIP member could not be read") from exc
-        return _materialize_file_page(extracted, page, page_size, sheet_name)
+        return _materialize_file_page(
+            extracted, page, page_size, sheet_name, record_path=record_path
+        )
+
+
+def _json_record_paths(
+    path: Path, member: str | None, max_member_bytes: int
+) -> JsonRecordPathsResource:
+    """List a JSON file's record places, extracting a ZIP member first."""
+
+    name = member or path.name
+    if detect_file_type(name) not in {"json", "jsonl"}:
+        raise InvalidInputError("File is not a JSON or JSON Lines file")
+    with tempfile.TemporaryDirectory(prefix="wordflow-zip-member-") as scratch:
+        if member is not None:
+            try:
+                path = extract_zip_table_member(
+                    path, member, Path(scratch), max_bytes=max_member_bytes
+                )
+            except DirectoryTooLargeError as exc:
+                raise ResourceTooLargeError("ZIP member is too large to preview") from exc
+            except ValueError as exc:
+                raise InvalidInputError("ZIP member could not be read") from exc
+        try:
+            candidates = record_path_candidates(read_json_document(path))
+        except (OSError, ValueError) as exc:
+            raise _preview_failure(Path(name), exc) from exc
+    return JsonRecordPathsResource(
+        paths=[
+            JsonRecordPath(
+                path=candidate.path,
+                label=describe_record_path(candidate.path),
+                records=candidate.records,
+                fields=candidate.fields,
+                field_count=candidate.field_count,
+            )
+            for candidate in candidates
+        ]
+    )
 
 
 def _file_schema(
-    path: Path, sheet_name: str | None, max_directory_bytes: int | None = None
+    path: Path,
+    sheet_name: str | None,
+    max_directory_bytes: int | None = None,
+    record_path: str | None = None,
 ) -> bytes:
     """Materialize the preview policy's schema and classify parser failures."""
     try:
         return encode_schema_stream(
-            _file_lazyframe(path, sheet_name, max_directory_bytes).collect_schema()
+            _file_lazyframe(
+                path, sheet_name, max_directory_bytes, record_path
+            ).collect_schema()
         )
     except (InvalidInputError, ResourceTooLargeError):
         raise

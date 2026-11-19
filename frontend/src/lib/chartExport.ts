@@ -166,8 +166,9 @@ const HEADER_ITEM_GAP = 22;
 /**
  * Width of a text in a system font without measuring: Latin glyphs average
  * 0.58 em, CJK and other wide glyphs a full em (issue 299).
+ * Also used by: the agreement matrix image (`agreementMatrixImage.ts`) to wrap its text.
  */
-const estimateTextWidth = (text: string, font: number): number => {
+export const estimateTextWidth = (text: string, font: number): number => {
   let width = 0;
   for (const char of text) {
     const code = char.codePointAt(0) ?? 0;

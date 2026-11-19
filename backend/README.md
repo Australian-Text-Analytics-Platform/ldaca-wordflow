@@ -1,10 +1,10 @@
-# LDaCA Wordflow Backend
+# Wordflow (by LDaCA)
 
-FastAPI service for LDaCA Wordflow. The package can run the API by itself or
+This package is Wordflow's FastAPI service. It can run the API by itself or
 serve the bundled production frontend from the same process.
 
 The authoritative source, issue tracker, CI, and package release workflow live
-in the [LDaCA Wordflow monorepo](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow).
+in the [Wordflow monorepo](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow).
 
 ## Quick start
 

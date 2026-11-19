@@ -94,7 +94,15 @@ describe('queryKeys file hierarchy', () => {
       'items',
       'sample/book.xlsx',
       'preview',
-      { page: 3, pageSize: 20, sheet: 'Sheet 2', member: null },
+      { page: 3, pageSize: 20, sheet: 'Sheet 2', member: null, recordPath: null },
+    ]);
+    // A JSON file's rows' place keys its preview pages and lives below the file.
+    expect(queryKeys.jsonRecordPaths('ocr.zip', 'ocr/p1.json')).toEqual([
+      'files',
+      'items',
+      'ocr.zip',
+      'json-record-paths',
+      { member: 'ocr/p1.json' },
     ]);
   });
 });

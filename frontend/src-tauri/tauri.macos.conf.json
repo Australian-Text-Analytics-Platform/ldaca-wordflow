@@ -2,7 +2,7 @@
   "app": {
     "windows": [
       {
-        "title": "LDaCA Wordflow",
+        "title": "Wordflow (by LDaCA)",
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "width": 1400,

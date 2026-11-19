@@ -1,3 +1,4 @@
+import type { ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import type {
   ConcordanceAnalysisResponse,
   ConcordanceNodeResult as ConcordanceResultEntry,
@@ -16,6 +17,8 @@ interface Section {
 
 export interface ConcordanceMetadataColumnSet {
   availableMetadataColumns: string[];
+  /** The metadata columns' types, for the type symbol in Show metadata. */
+  metadataColumnFields: ColumnFields;
   metadataColumnSections: Section[];
   metadataDisabledReason: string | undefined;
 }
@@ -105,8 +108,18 @@ export function useConcordanceMetadataColumns({
       });
     }
   }
+  // A column shared by several Data Blocks takes the first one's type.
+  const metadataColumnFields = new Map<string, ArrowField>();
+  for (const node of panelSelectedNodes) {
+    for (const info of getColumnInfos(node)) {
+      if (info.name && info.field && !metadataColumnFields.has(info.name)) {
+        metadataColumnFields.set(info.name, info.field);
+      }
+    }
+  }
   return {
     availableMetadataColumns: allColumns,
+    metadataColumnFields,
     metadataColumnSections: sections,
     metadataDisabledReason: disabledReason,
   };

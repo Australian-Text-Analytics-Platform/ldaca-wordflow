@@ -369,6 +369,10 @@ vi.mock('../../common/hooks/useNodeColorControls', () => ({
 }));
 
 import ConcordanceFeature from '../ConcordanceFeature';
+import {
+  PREVIEW_ADD_TO_PROJECT_REASON,
+  PREVIEW_DOWNLOAD_REASON,
+} from '../../common/components/PreviewResultActions';
 
 const renderConcordanceFeature = (taskId: string | null = null) => {
   const setInputSet = vi.fn();
@@ -1291,6 +1295,60 @@ describe('ConcordanceFeature', () => {
     expect(
       screen.getByText('(Found 2 matches in 1 document after checking 1 document).'),
     ).toBeInTheDocument();
+  });
+
+  it('shows Download and Add to Project disabled on Preview Results, saying a full Run is needed', async () => {
+    mockInitialResult = {
+      state: 'successful',
+      message: 'ok',
+      data: {
+        'node-1': {
+          data: [
+            [
+              {
+                text: 'alpha beta',
+                CONC_LEFT_CONTEXT: '',
+                CONC_MATCHED_TEXT: 'alpha',
+                CONC_RIGHT_CONTEXT: 'beta',
+                CONC_START_IDX: 0,
+                CONC_END_IDX: 5,
+              },
+            ],
+          ],
+          columns: ['text', 'CONC_LEFT_CONTEXT', 'CONC_MATCHED_TEXT', 'CONC_RIGHT_CONTEXT'],
+          metadata: {
+            metadata_columns: ['text'],
+            concordance_columns: ['CONC_LEFT_CONTEXT', 'CONC_MATCHED_TEXT', 'CONC_RIGHT_CONTEXT'],
+            all_columns: ['text', 'CONC_LEFT_CONTEXT', 'CONC_MATCHED_TEXT', 'CONC_RIGHT_CONTEXT'],
+          },
+          pagination: {
+            page: 1,
+            page_size: 20,
+            total_source_rows: 1,
+            total_source_pages: 1,
+            result_count: 1,
+            has_prev: false,
+            has_next: false,
+          },
+          sorting: { descending: false },
+        },
+      },
+    };
+
+    renderConcordanceFeature('analysis-1');
+
+    // The Data Block's title says these are Preview Results.
+    expect(screen.getByText('(Preview)')).toBeInTheDocument();
+    const addToProject = screen.getByRole('button', { name: 'Add to Project' });
+    expect(addToProject).toBeDisabled();
+    // The disabled button passes hover to its tooltip wrapper.
+    await userEvent.hover(addToProject);
+    expect((await screen.findAllByText(PREVIEW_ADD_TO_PROJECT_REASON)).length).toBeGreaterThan(0);
+
+    const download = screen.getByRole('button', { name: 'Download Concordance Results' });
+    expect(download).toBeDisabled();
+    await userEvent.hover(download);
+    expect((await screen.findAllByText(PREVIEW_DOWNLOAD_REASON)).length).toBeGreaterThan(0);
   });
 
   it('hides the proportional-width control until Dispersion View is enabled', () => {

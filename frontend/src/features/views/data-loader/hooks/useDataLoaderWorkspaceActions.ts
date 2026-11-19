@@ -9,6 +9,17 @@ import { getInvalidWorkspaceNameMessage } from '@/features/workspace/common/work
 import { presentError } from '@/lib/errorPresentation';
 import { queryKeys } from '@/lib/queryKeys';
 import type { BatchTableFile } from '../utils/batchTables';
+import { isJsonPath } from '../utils/fileTreeHelpers';
+
+/**
+ * What a batch Add left out, shown in a window the user closes (not a
+ * toast), so the files that were skipped can't be missed.
+ */
+export interface BatchAddReport {
+  title: string;
+  summary: string;
+  items: { path: string; reason: string }[];
+}
 
 type Notify = (
   type: 'success' | 'error' | 'info',
@@ -256,8 +267,18 @@ export function useDataLoaderWorkspaceActions({
    * Adds a file-browser path to the active workspace.
    * Passed to `FileTree` as its add-file action.
    */
-  const handleAddFileToWorkspace = async (filename: string, selectedSheet?: string | null) => {
-    const node = await workspaceActions.createNodeFromFile(filename, selectedSheet ?? undefined);
+  const handleAddFileToWorkspace = async (
+    filename: string,
+    selectedSheet?: string | null,
+    /** Where a JSON file's rows are; null reads its default place. */
+    recordPath?: string | null,
+  ) => {
+    const node = await workspaceActions.createNodeFromFile(
+      filename,
+      selectedSheet ?? undefined,
+      undefined,
+      recordPath,
+    );
     // One toast, so the skip report of a folder or ZIP is never hidden behind it.
     const skipped = node.skipped_files;
     notify(
@@ -286,29 +307,74 @@ export function useDataLoaderWorkspaceActions({
    * sheets of a workbook, issue 323), reporting one summary instead of a
    * toast per table.
    */
-  const handleAddFilesToWorkspace = async (files: BatchTableFile[], zipPath?: string) => {
-    const failed: string[] = [];
+  const [batchAddReport, setBatchAddReport] = useState<BatchAddReport | null>(null);
+
+  const handleAddFilesToWorkspace = async (
+    files: BatchTableFile[],
+    zipPath?: string,
+    /** One place for every JSON file's rows, so a batch is read one way. */
+    recordPath?: string | null,
+  ) => {
+    const failed: BatchAddReport['items'] = [];
     for (const file of files) {
+      const jsonRecordPath = isJsonPath(file.path) ? recordPath : undefined;
       try {
         // With `zipPath`, each path is a table member inside that ZIP.
-        if (zipPath) await workspaceActions.createNodeFromFile(zipPath, file.sheet, file.path);
-        else await workspaceActions.createNodeFromFile(file.path, file.sheet);
+        if (zipPath) {
+          await workspaceActions.createNodeFromFile(zipPath, file.sheet, file.path, jsonRecordPath);
+        } else {
+          await workspaceActions.createNodeFromFile(
+            file.path,
+            file.sheet,
+            undefined,
+            jsonRecordPath,
+          );
+        }
       } catch (error) {
         // Say why, such as "The sheet is empty." (issue 323).
-        failed.push(`${file.label}: ${presentError(error, "Couldn't add it.").message}`);
+        failed.push({ path: file.label, reason: presentError(error, "Couldn't add it.").message });
       }
     }
     const added = files.length - failed.length;
-    if (added > 0) {
-      notify('success', `${String(added)} Data Block${added === 1 ? '' : 's'} added to Project.`);
+    const addedText = `${String(added)} Data Block${added === 1 ? '' : 's'} added to Project.`;
+    if (failed.length === 0) {
+      notify('success', addedText);
+      return;
     }
-    if (failed.length > 0) {
+    setBatchAddReport({
+      title: `${String(failed.length)} table${failed.length === 1 ? '' : 's'} could not be added`,
+      summary:
+        added > 0
+          ? `${addedText} These tables were left out:`
+          : 'No table was added. These tables could not be read:',
+      items: failed,
+    });
+  };
+
+  /**
+   * Adds JSON files as one Data Block, every file read at `recordPath` and
+   * each row naming its file; `zipPath` holds them when they are ZIP members.
+   */
+  const handleAddJsonFilesToWorkspace = async (
+    paths: string[],
+    recordPath: string | null,
+    zipPath?: string,
+  ) => {
+    const node = await workspaceActions.createNodeFromJsonFiles(paths, recordPath, zipPath);
+    const skipped = node.skipped_json_files ?? [];
+    if (skipped.length === 0) {
       notify(
-        'error',
-        `${String(failed.length)} table${failed.length === 1 ? '' : 's'} could not be added.`,
-        failed.join('\n'),
+        'success',
+        `${node.name} added to Project: ${String(paths.length)} JSON file${paths.length === 1 ? '' : 's'} as one Data Block.`,
       );
+      return;
     }
+    const read = paths.length - skipped.length;
+    setBatchAddReport({
+      title: `${String(skipped.length)} JSON file${skipped.length === 1 ? ' was' : 's were'} left out`,
+      summary: `${node.name} was added to Project with the rows of ${String(read)} of ${String(paths.length)} files. These files were left out:`,
+      items: skipped,
+    });
   };
 
   return {
@@ -342,6 +408,12 @@ export function useDataLoaderWorkspaceActions({
     handleUploadWorkspaceZip,
     handleAddFileToWorkspace,
     handleAddFilesToWorkspace,
+    handleAddJsonFilesToWorkspace,
     handleAddSelectionToWorkspace,
+    batchAddReport,
+    // Passed to DataLoaderDialogs; the window closes only through its button.
+    closeBatchAddReport: () => {
+      setBatchAddReport(null);
+    },
   };
 }

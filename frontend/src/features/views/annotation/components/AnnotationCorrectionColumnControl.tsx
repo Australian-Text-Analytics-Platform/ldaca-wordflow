@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { columnOptions, type ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 
 const CREATE_CORRECTION_COLUMN = '__create_correction_column__';
 const NO_CORRECTION_COLUMN = '__no_correction_column__';
@@ -9,6 +12,8 @@ interface AnnotationCorrectionColumnControlProps {
   value: string | null;
   /** Null while the source schema is still loading. */
   availableColumns: string[] | null;
+  /** The columns' types, for the type symbol before each name. */
+  columnFields?: ColumnFields;
   onValueChange: (column: string | null) => void;
   onCreate: () => void;
   onUseAsExample?: () => void;
@@ -19,6 +24,7 @@ interface AnnotationCorrectionColumnControlProps {
 export function AnnotationCorrectionColumnControl({
   value,
   availableColumns,
+  columnFields,
   onValueChange,
   onCreate,
   onUseAsExample,
@@ -40,37 +46,52 @@ export function AnnotationCorrectionColumnControl({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <SearchableSelect
-        value={invalidValue ? NO_CORRECTION_COLUMN : (value ?? NO_CORRECTION_COLUMN)}
-        options={columns.map((column) => ({ value: column }))}
-        pinnedOptions={[
-          { value: NO_CORRECTION_COLUMN, label: 'None' },
-          { value: CREATE_CORRECTION_COLUMN, label: 'Create new…' },
-        ]}
-        disabled={disabled || availableColumns === null}
-        ariaLabel="Correction column"
-        triggerPrefix={<span className="mr-1 shrink-0 text-description">Correction:</span>}
-        searchPlaceholder="Filter columns… (* and ? wildcards)"
-        emptyMessage="No matching columns"
-        triggerClassName="h-8 w-auto min-w-36 text-body"
-        onChange={(next) => {
-          if (next === CREATE_CORRECTION_COLUMN) {
-            onCreate();
-            return;
-          }
-          onValueChange(next === NO_CORRECTION_COLUMN ? null : next);
-        }}
-      />
+      <HintTooltip text="A column for your corrections, kept apart from the annotation column. Choose one, or Create new.">
+        {/* A span carries the tooltip: the select's trigger lives inside it. */}
+        <span className="inline-flex">
+          <SearchableSelect
+            value={invalidValue ? NO_CORRECTION_COLUMN : (value ?? NO_CORRECTION_COLUMN)}
+            options={columnOptions(columns, columnFields)}
+            pinnedOptions={[
+              { value: NO_CORRECTION_COLUMN, label: 'None' },
+              { value: CREATE_CORRECTION_COLUMN, label: 'Create new…' },
+            ]}
+            disabled={disabled || availableColumns === null}
+            ariaLabel="Correction column"
+            triggerPrefix={<span className="mr-1 shrink-0 text-description">Correction:</span>}
+            searchPlaceholder="Filter columns… (* and ? wildcards)"
+            emptyMessage="No matching columns"
+            triggerClassName="h-8 w-auto min-w-36 text-body"
+            onChange={(next) => {
+              if (next === CREATE_CORRECTION_COLUMN) {
+                onCreate();
+                return;
+              }
+              onValueChange(next === NO_CORRECTION_COLUMN ? null : next);
+            }}
+          />
+        </span>
+      </HintTooltip>
       {onUseAsExample ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={disabled || invalidValue || value === null}
-          onClick={onUseAsExample}
+        <DisabledReasonTooltip
+          reason={
+            !disabled && (invalidValue || value === null)
+              ? 'Choose a correction column first.'
+              : undefined
+          }
         >
-          Use as example
-        </Button>
+          <HintTooltip text="Use the corrected rows as examples for AI annotation: this Data Block becomes the Example Data Block, with the correction column as its codes. Turns on Advanced.">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled || invalidValue || value === null}
+              onClick={onUseAsExample}
+            >
+              Use as example
+            </Button>
+          </HintTooltip>
+        </DisabledReasonTooltip>
       ) : null}
     </div>
   );

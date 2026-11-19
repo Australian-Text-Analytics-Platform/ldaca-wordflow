@@ -1,3 +1,4 @@
+import { columnFieldsOf } from '@/features/workspace/common/columnTypeOptions';
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import {
   readStopWordsEnabled,
@@ -878,6 +879,9 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
         {addToWorkspaceDialogOpen ? (
           <TopicModelingAddToWorkspaceDialog
             open
+            columnFields={columnFieldsOf(
+              nodeInputs.resolvedNodes.flatMap((resolved) => resolved.columnOptions),
+            )}
             onOpenChange={setAddToWorkspaceDialogOpen}
             sources={addToWorkspaceSources}
             selectedTopicIds={selectedTopicIds.size > 0 ? [...selectedTopicIds] : null}

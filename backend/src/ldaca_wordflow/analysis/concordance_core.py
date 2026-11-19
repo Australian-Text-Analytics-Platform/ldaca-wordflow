@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import math
 import re
+import unicodedata
 from functools import partial
 from typing import Any, cast
 
@@ -135,13 +136,48 @@ def build_concordance_search_pattern(
 
     if regex:
         return rf"\b(?:{search_word})\b", True
-    # Japanese, Chinese, Thai and similar scripts put no spaces between words,
-    # so a word boundary next to them almost never exists and Whole word found
-    # nothing (issue 220). Keep the boundary only at an edge that is not in
-    # such a script; spaced languages behave as before.
-    start = "" if _is_unspaced_script(search_word[:1]) else r"\b"
-    end = "" if _is_unspaced_script(search_word[-1:]) else r"\b"
-    return rf"{start}(?:{re.escape(search_word)}){end}", True
+    return (
+        f"{_whole_term_edge(search_word[:1])}(?:{re.escape(search_word)})"
+        f"{_whole_term_edge(search_word[-1:])}",
+        True,
+    )
+
+
+def _whole_term_edge(character: str) -> str:
+    """What must hold just outside a whole-word term whose edge is ``character``.
+
+    The term must not run on into a longer word, so the character outside it
+    is never a letter, digit or underscore:
+
+    - An edge that is itself such a character takes ``\\b``, as before.
+    - An edge that is punctuation, as in ``C++`` or ``#tag``, takes ``\\B``.
+      ``\\b`` there asked for the opposite, a letter or digit straight after
+      the punctuation, so ``C++`` was found in "C++17" and not in "C++ today".
+      (The search runs in Rust, whose patterns have no look-around; ``\\B``
+      next to punctuation says the same thing.)
+    - Japanese, Chinese, Thai and similar scripts put no spaces between
+      words, so a word boundary next to them almost never exists and Whole
+      word found nothing (issue 220). An edge in such a script is left open.
+    """
+
+    if not character or _is_unspaced_script(character):
+        return ""
+    return r"\b" if _is_word_character(character) else r"\B"
+
+
+def _is_word_character(character: str) -> bool:
+    """Whether Rust's ``\\b`` counts ``character`` as part of a word.
+
+    Letters, marks, decimal digits, letter numbers, connectors such as the
+    underscore, and the two zero-width joiners (Unicode TR18's ``\\w``).
+    """
+
+    category = unicodedata.category(character)
+    return (
+        category[0] in "LM"
+        or category in {"Nd", "Nl", "Pc"}
+        or character in "\u200c\u200d"
+    )
 
 
 # Scripts written without spaces between words: Thai, Lao, Myanmar, Khmer,

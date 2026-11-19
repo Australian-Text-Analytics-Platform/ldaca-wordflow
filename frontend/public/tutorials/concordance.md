@@ -78,6 +78,11 @@ test it before relying on the results. Whole word relies on spaces between words
 Japanese, Chinese, Thai, or other text written without them: there it matches
 anywhere, as if it were off.
 
+Whole word also works for a term that starts or ends with punctuation, such as
+*C++*, *#reef* or *.NET*: it is found only where no letter or digit touches
+it. *C++* is found in *I write C++ today.* but not in *C++17*, and *#reef* is
+found in *Save the #reef!* but not in *#reefs*.
+
 <h5 id="help-concordance-unspaced-text">Japanese, Chinese, and other text without spaces</h5>
 
 In Tokens mode, a tokeniser such as UniDic for Japanese splits an expression
@@ -114,8 +119,9 @@ are omitted, while a document with several matches contributes several rows.
 
 The footer reports the matches and matching documents found in the current
 page of documents, and how many of the Data Block's documents that page checked,
-for example "after checking 20 of 26,163 documents". No matches in a Preview
-does not mean the word is absent: choose **Run** to search every document.
+for example "after checking 20 of 26,163 documents. Choose Run to check all
+26,163 documents." No matches in a Preview does not mean the word is absent:
+choose **Run** to search every document.
 
 ![Preview footer: matches found so far and Documents per page](tutorials/assets/concordance/documents_per_page.png)
 
@@ -127,6 +133,12 @@ when you open it, from the data as it was when you chose Preview. Choose
 **Clear results**, at the end of the same row, removes this tab's results; see
 [Clear results](#help-concordance-clear-results). See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+
+While Preview Results are showing, each Data Block's title ends in
+**(Preview)**, for example **ACE-Text (Preview)**, in both Table view and
+Dispersion view. The download icon and **Add to Project** stay in the
+**Concordance Results** header but are greyed out: hover over one to see why.
+They turn on when Run finishes, and **(Preview)** disappears from the titles.
 
 <h2 id="help-concordance-results">Result panel</h2>
 
@@ -259,6 +271,16 @@ terms while preserving selected bins.
 Download the current chart as PNG, SVG, JPEG or **Interactive HTML**. An image
 download includes the visible term series, complete legend with hidden-state
 indication, and active bin and term-filter summary.
+
+You can download the chart of a Preview too, but it shows only the matches in
+the documents on the current page, not the whole Data Block. Its title says so:
+on screen the chart is **Where matches occur in the documents (Preview)**, and
+the downloaded title reads, for example, **ACE-Text (Preview): matches in the
+documents on this page**. The file name says it too, for example
+`ACE-Text_concordance_dispersion_preview.png`. Do not use a
+Preview chart to describe the whole Data Block: choose **Run** first, then
+download the chart again. After Run, the title reads **all matches in the
+Result**.
 
 **Interactive HTML** saves the chart as one web page that opens in any browser, offline: it shows the chart exactly as it is on screen (the same groups, selected bins, zoom and theme colours), and keeps its tooltips, a legend whose entries hide or show groups, and the zoom slider (hold Command on a Mac or Control on Windows while scrolling to zoom; plain scrolling moves the page). Its last line links to the Wordflow home page. It is a picture you can explore, not a copy of Wordflow: it cannot change the search or the terms, or add anything to a Project.
 
@@ -409,6 +431,7 @@ Preview and Run stay off until you choose **Clear results**. See [How Preview, R
 | No results on one page | The current source-document batch has no match | Continue to the next page |
 | Tokens mode is unavailable | At least one selected Data Block has no source column | Select a source text column for every input |
 | Too many partial matches | Whole word is off in Text mode | Tick **Whole word** (not for Japanese or Chinese, which have no spaces between words) |
+| A term such as *C++* is also found inside *C++17* | Whole word is off | Tick **Whole word**: a term that ends or starts with punctuation is then found only where no letter or digit touches it |
 | Tokens mode finds nothing for a phrase, or finds unrelated hits | Tokens mode matches one token at a time, and a space means *any of* | Use Text mode with a regular expression; see [text without spaces](#help-concordance-unspaced-text) |
 | A regular expression fails | Invalid pattern syntax | Test the pattern on regex101.com with the Rust flavour |
 | A generated Preview header does not sort | Sorting generated columns needs every match, which only Run processes | Run, then sort the separated table |

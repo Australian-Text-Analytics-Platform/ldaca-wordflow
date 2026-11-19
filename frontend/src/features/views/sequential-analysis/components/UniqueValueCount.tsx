@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { MAX_TRENDS_GROUPS, uniqueValueCountQuery } from '../trendsGroups';
+import { MAX_TRENDS_GROUP_VALUES, uniqueValueCountQuery } from '../trendsGroups';
 
 interface UniqueValueCountProps {
   workspaceId: string;
@@ -29,12 +29,13 @@ export function UniqueValueCount({ workspaceId, nodeId, columnName }: UniqueValu
     return null;
   }
 
-  // Too many groups to draw (issue 326): Run is blocked and this says why.
-  if (data.unique_count > MAX_TRENDS_GROUPS) {
+  // More values than a group column may have, as in a setup saved before the
+  // limit: Run is blocked and this says why (issue 326).
+  if (data.unique_count > MAX_TRENDS_GROUP_VALUES) {
     return (
       <span className="rounded-sm bg-panel px-2 py-1 text-label-secondary text-error">
         {data.unique_count.toLocaleString()} unique: too many groups (at most{' '}
-        {MAX_TRENDS_GROUPS.toLocaleString()})
+        {MAX_TRENDS_GROUP_VALUES.toLocaleString()})
       </span>
     );
   }

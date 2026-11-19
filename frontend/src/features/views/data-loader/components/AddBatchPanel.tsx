@@ -6,10 +6,13 @@ import { CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFilePreview } from '../hooks/useFilePreview';
+import { useJsonRecordPaths } from '../hooks/useJsonRecordPaths';
 import type { BatchTableFile } from '../utils/batchTables';
+import { isJsonPath } from '../utils/fileTreeHelpers';
 import { FilePreviewContent } from './FilePreviewContent';
 
-type BatchMode = 'texts' | 'tables';
+/** Texts: one Data Block. Tables: one each. Records: JSON files as one. */
+type BatchMode = 'texts' | 'tables' | 'records';
 
 /**
  * A folder, or a ZIP archive, whose files load together (issue 136), a
@@ -36,14 +39,27 @@ interface AddBatchPanelProps {
   tableFiles: BatchTableFile[];
   /** A selection's text files, listed in Texts mode (issue 309). */
   textFiles?: BatchTextFile[];
+  /**
+   * Text documents in a folder or ZIP, when known; with none, a window of
+   * JSON files opens on JSON records rather than Texts.
+   */
+  textCount?: number | null;
   /** ZIPs inside, which are not opened (issue 323). */
   skippedArchives?: string[];
   tablesLoading?: boolean;
   onClose: () => void;
   /** Texts mode: all text files become one document Data Block. */
   onConfirmTexts: () => Promise<void> | void;
-  /** Tables mode: each selected table becomes its own Data Block. */
-  onConfirmTables: (files: BatchTableFile[]) => Promise<void> | void;
+  /**
+   * Tables mode: each selected table becomes its own Data Block; every JSON
+   * file among them is read at `recordPath` (null: the first file's default).
+   */
+  onConfirmTables: (files: BatchTableFile[], recordPath: string | null) => Promise<void> | void;
+  /** JSON records mode: the ticked JSON files become one Data Block. */
+  onConfirmJsonRecords?: (
+    files: BatchTableFile[],
+    recordPath: string | null,
+  ) => Promise<void> | void;
 }
 
 const TEXTS_DESCRIPTION = {
@@ -58,7 +74,11 @@ const TABLES_DESCRIPTION =
   'Each ticked table becomes its own Data Block, named after the file, and after the sheet for a workbook with several sheets.';
 const WORKBOOK_DESCRIPTION =
   'Each ticked sheet becomes its own Data Block, named after the file and the sheet.';
+const RECORDS_DESCRIPTION =
+  'The ticked JSON files become one Data Block: every file is read the same way, and each row starts with the file it came from.';
 const PREVIEW_HINT = 'Click a table in the list to preview it.';
+const JSON_PREVIEW_HINT = 'Click a file in the list to preview it.';
+const RECORD_PATH_NOTE = 'Every JSON file in this window is read this way.';
 
 /**
  * Add dialog for a folder or a ZIP archive, with two modes (issue 136): all
@@ -74,44 +94,85 @@ function AddBatchPanelBody({
   source,
   tableFiles,
   textFiles,
+  textCount: knownTextCount,
   skippedArchives = [],
   tablesLoading = false,
   onClose,
   onConfirmTexts,
   onConfirmTables,
+  onConfirmJsonRecords,
 }: AddBatchPanelProps & { source: BatchSource }) {
   const isSelection = source.kind === 'selection';
   const isWorkbook = source.kind === 'workbook';
-  const textCount = isWorkbook ? 0 : (textFiles?.length ?? null);
-  const [mode, setMode] = useState<BatchMode>(() =>
-    isWorkbook || (isSelection && textCount === 0 && tableFiles.length > 0) ? 'tables' : 'texts',
-  );
+  const textCount = isWorkbook ? 0 : (textFiles?.length ?? knownTextCount ?? null);
+  const jsonFiles = isWorkbook ? [] : tableFiles.filter((file) => isJsonPath(file.path));
+  const canAddRecords = Boolean(onConfirmJsonRecords) && jsonFiles.length > 0;
+  // Until the user picks a mode, it follows the files: a ZIP's tables arrive
+  // after the window opens. Only JSON files and no texts open on JSON records.
+  const [chosenMode, setChosenMode] = useState<BatchMode | null>(null);
+  const automaticMode: BatchMode = isWorkbook
+    ? 'tables'
+    : canAddRecords && jsonFiles.length === tableFiles.length && textCount === 0
+      ? 'records'
+      : isSelection && textCount === 0 && tableFiles.length > 0
+        ? 'tables'
+        : 'texts';
+  const mode = chosenMode ?? automaticMode;
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  // JSON records mode starts with every JSON file ticked.
+  const [unticked, setUnticked] = useState<Set<string>>(() => new Set());
   const [chosenPreview, setChosenPreview] = useState<string | null>(null);
+  const [chosenRecordPath, setChosenRecordPath] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const isZip = source.kind === 'zip';
+  const tablesMode = mode === 'tables';
+  const recordsMode = mode === 'records';
+  const listedFiles = recordsMode ? jsonFiles : tableFiles;
+  const tickedJson = jsonFiles.filter((file) => !unticked.has(file.id));
+  // Until a file is clicked, JSON records previews the first file being added.
   const previewTable =
-    tableFiles.find((file) => file.id === chosenPreview) ?? tableFiles[0] ?? null;
+    listedFiles.find((file) => file.id === chosenPreview) ??
+    (recordsMode ? tickedJson[0] : undefined) ??
+    listedFiles[0] ??
+    null;
   const previewId = previewTable?.id ?? null;
+  const filesMode = tablesMode || recordsMode;
   // A ZIP member previews through its archive; a folder file previews itself,
   // at the row's sheet for a workbook (issue 323). A selection lists its text
   // files instead of a preview.
-  const tablesMode = mode === 'tables';
-  const previewPath = !tablesMode
+  const previewPath = !filesMode
     ? isSelection
       ? null
       : source.path
     : isZip
       ? source.path
       : (previewTable?.path ?? null);
-  const previewMember = tablesMode && isZip ? (previewTable?.path ?? null) : null;
+  const previewMember = filesMode && isZip ? (previewTable?.path ?? null) : null;
+  // One place for every JSON file's rows: the user's choice, else the default
+  // of the first JSON file being added, so the whole batch is read one way.
+  // It follows the ticks: the first file listed may be unticked and built
+  // differently, and its place would give the files being added no rows.
+  const addedJson = recordsMode ? tickedJson : jsonFiles.filter((file) => selected.has(file.id));
+  const firstJson = addedJson[0] ?? jsonFiles[0] ?? null;
+  const firstRecordPaths = useJsonRecordPaths(
+    isZip ? source.path : (firstJson?.path ?? null),
+    isZip ? (firstJson?.path ?? null) : null,
+    filesMode && Boolean(firstJson),
+  );
+  const batchRecordPath = chosenRecordPath ?? firstRecordPaths.paths?.[0]?.path ?? null;
+  const previewIsJson = filesMode && previewTable !== null && isJsonPath(previewTable.path);
+  const shownRecordPaths = useJsonRecordPaths(
+    isZip ? source.path : (previewTable?.path ?? null),
+    isZip ? (previewTable?.path ?? null) : null,
+    previewIsJson,
+  );
   const preview = useFilePreview(
     previewPath,
     true,
     previewMember,
-    tablesMode ? (previewTable?.sheet ?? null) : undefined,
+    filesMode ? (previewTable?.sheet ?? null) : undefined,
+    previewIsJson ? batchRecordPath : undefined,
   );
-
   const toggle = (id: string, checked: boolean) => {
     setSelected((current) => {
       const next = new Set(current);
@@ -126,8 +187,13 @@ function AddBatchPanelBody({
     try {
       if (mode === 'texts') {
         await onConfirmTexts();
+      } else if (recordsMode) {
+        await onConfirmJsonRecords?.(tickedJson, batchRecordPath);
       } else {
-        await onConfirmTables(tableFiles.filter((file) => selected.has(file.id)));
+        await onConfirmTables(
+          tableFiles.filter((file) => selected.has(file.id)),
+          batchRecordPath,
+        );
       }
       onClose();
     } finally {
@@ -150,7 +216,8 @@ function AddBatchPanelBody({
       <Tabs
         value={mode}
         onValueChange={(value) => {
-          setMode(value as BatchMode);
+          setChosenMode(value as BatchMode);
+          setChosenPreview(null);
         }}
       >
         <TabsList
@@ -162,12 +229,17 @@ function AddBatchPanelBody({
           <TabsTrigger value="tables" disabled={tablesLoading || tableFiles.length === 0}>
             Tables as separate Data Blocks ({tablesLoading ? '…' : tableFiles.length})
           </TabsTrigger>
+          {canAddRecords ? (
+            <TabsTrigger value="records">
+              JSON records as one Data Block ({jsonFiles.length})
+            </TabsTrigger>
+          ) : null}
         </TabsList>
       </Tabs>
       <HelpIcon
         targetKey="data-loader.add-folder"
         label="About adding a folder or ZIP"
-        tooltip="Texts: one Data Block with a row per UTF-8 text file. Tables: one Data Block per ticked table file."
+        tooltip="Texts: one Data Block with a row per UTF-8 text file. Tables: one Data Block per ticked table file. JSON records: the ticked JSON files as one Data Block, read the same way."
         className="h-5 w-5 text-description"
       />
     </div>
@@ -231,6 +303,68 @@ function AddBatchPanelBody({
       </section>
     ) : null;
 
+  const jsonPicker = recordsMode ? (
+    <section aria-label="JSON files" className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-body text-description">
+          {tickedJson.length} of {jsonFiles.length} selected
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setUnticked(new Set());
+          }}
+        >
+          Select all
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setUnticked(new Set(jsonFiles.map((file) => file.id)));
+          }}
+        >
+          Select none
+        </Button>
+      </div>
+      <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
+        {jsonFiles.map((file) => (
+          <li
+            key={file.id}
+            className={`flex items-center gap-2 rounded px-1 ${previewId === file.id ? 'bg-list-hover/60' : ''}`}
+          >
+            <Checkbox
+              id={`json-file-${file.id}`}
+              aria-label={`Add ${file.label}`}
+              checked={!unticked.has(file.id)}
+              onCheckedChange={(checked) => {
+                setUnticked((current) => {
+                  const next = new Set(current);
+                  if (checked === true) next.delete(file.id);
+                  else next.add(file.id);
+                  return next;
+                });
+              }}
+            />
+            <button
+              type="button"
+              className="min-w-0 truncate text-left text-body hover:underline"
+              aria-label={`Preview ${file.label}`}
+              onClick={() => {
+                setChosenPreview(file.id);
+              }}
+            >
+              {file.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ) : null;
+
   const textList =
     mode === 'texts' && textFiles ? (
       <section aria-label="Text files" className="space-y-2">
@@ -249,7 +383,16 @@ function AddBatchPanelBody({
       </section>
     ) : null;
 
-  const addCount = mode === 'texts' ? (textCount === 0 ? 0 : 1) : selected.size;
+  const addCount =
+    mode === 'texts'
+      ? textCount === 0
+        ? 0
+        : 1
+      : recordsMode
+        ? tickedJson.length > 0
+          ? 1
+          : 0
+        : selected.size;
   const footer = (
     <CardFooter className="border-t px-6 py-4">
       <div className="flex w-full items-center justify-end gap-2">
@@ -271,7 +414,7 @@ function AddBatchPanelBody({
           ) : (
             <>
               <Plus className="mr-2 h-4 w-4" />
-              {mode === 'texts'
+              {mode === 'texts' || recordsMode
                 ? 'Add to Project'
                 : `Add ${String(addCount)} Data Block${addCount === 1 ? '' : 's'}`}
             </>
@@ -297,7 +440,14 @@ function AddBatchPanelBody({
         sheetNames: preview.sheetNames,
         selectedSheet: preview.selectedSheet,
         setSelectedSheet: preview.setSelectedSheet,
+        // The place chosen here applies to every JSON file in the window.
+        recordPaths: previewIsJson ? shownRecordPaths.paths : null,
+        recordPath: batchRecordPath,
+        setRecordPath: (path: string) => {
+          setChosenRecordPath(path);
+        },
       }}
+      recordPathNote={RECORD_PATH_NOTE}
       title={
         isZip
           ? `Add ZIP: ${source.path}`
@@ -312,16 +462,25 @@ function AddBatchPanelBody({
           ? WORKBOOK_DESCRIPTION
           : mode === 'texts'
             ? TEXTS_DESCRIPTION[source.kind]
-            : TABLES_DESCRIPTION
+            : recordsMode
+              ? RECORDS_DESCRIPTION
+              : TABLES_DESCRIPTION
       }
-      previewLabel={tablesMode ? previewTable?.label : undefined}
-      previewHint={tablesMode && tableFiles.length > 1 ? PREVIEW_HINT : undefined}
+      previewLabel={filesMode ? previewTable?.label : undefined}
+      previewHint={
+        tablesMode && tableFiles.length > 1
+          ? PREVIEW_HINT
+          : recordsMode && jsonFiles.length > 1
+            ? JSON_PREVIEW_HINT
+            : undefined
+      }
       headerSlot={
         <div className="space-y-3">
           {modeSwitch}
           {archivesNote}
           {textList}
           {tablePicker}
+          {jsonPicker}
         </div>
       }
       footer={footer}

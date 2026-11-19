@@ -3,10 +3,11 @@
 ``NodeService`` uses this module to turn a validated user-file path into a
 fully inferred Polars frame before staging an immutable source Data Block.
 File preview instead preserves raw CSV/TSV lexemes as strings; JSON-family
-previews use the same full-file inference as source creation.
+previews use the same record flattening as source creation (``json_records``).
 """
 
 import io
+import json
 import os
 import stat
 import unicodedata
@@ -24,6 +25,15 @@ from ...shared.elapsed_time import (
     ELAPSED_DTYPE,
     elapsed_from_datetime,
     is_excel_day_zero,
+)
+from .json_records import (
+    InvalidJsonLine,
+    JsonRecordsError,
+    JsonSource,
+    describe_record_path,
+    flatten_json_batch,
+    flatten_json_sources,
+    read_json_document,
 )
 from .safe_paths import is_link_or_reparse
 
@@ -84,16 +94,18 @@ def load_data_file(
     sheet_name: str | None = None,
     *,
     max_directory_bytes: int | None = None,
+    record_path: str | None = None,
 ) -> pl.LazyFrame | pl.DataFrame:
     """Build the authoritative loader for one supported user file.
 
     Used by ``materialize_data_file`` and direct loader tests. Row-oriented
     formats inspect the complete bounded source when establishing their schema,
     so values after Polars' default inference window cannot invalidate a type
-    selected from only the first 100 rows.
+    selected from only the first 100 rows. ``record_path`` chooses where a
+    JSON or JSON Lines file's rows are; ``None`` takes the place with most text.
     """
     try:
-        return _load_data_file(file_path, sheet_name, max_directory_bytes)
+        return _load_data_file(file_path, sheet_name, max_directory_bytes, record_path)
     except _DATA_FILE_LOAD_EXCEPTIONS as exc:
         raise DataFileLoadError("Data file could not be loaded") from exc
 
@@ -103,6 +115,7 @@ def materialize_data_file(
     sheet_name: str | None = None,
     *,
     max_directory_bytes: int | None = None,
+    record_path: str | None = None,
 ) -> pl.DataFrame:
     """Materialize an authoritative source frame under one error boundary.
 
@@ -113,7 +126,10 @@ def materialize_data_file(
     """
     try:
         loaded = load_data_file(
-            file_path, sheet_name, max_directory_bytes=max_directory_bytes
+            file_path,
+            sheet_name,
+            max_directory_bytes=max_directory_bytes,
+            record_path=record_path,
         )
         return loaded.collect() if isinstance(loaded, pl.LazyFrame) else loaded
     except DataFileLoadError:
@@ -127,13 +143,14 @@ def load_data_file_preview(
     sheet_name: str | None = None,
     *,
     max_directory_bytes: int | None = None,
+    record_path: str | None = None,
 ) -> pl.LazyFrame | pl.DataFrame:
     """Build the value-inspection loader used by ``FileReadService``.
 
     CSV and TSV previews disable inference so every field, including lexemes
     such as ``001``, is exposed as a string. JSON-family previews retain full
-    inference because those formats encode value types directly; all remaining
-    formats keep their authoritative loader behavior.
+    record flattening because those formats encode value types directly; all
+    remaining formats keep their authoritative loader behavior.
     """
     file_type = detect_file_type(file_path.name)
     try:
@@ -141,9 +158,77 @@ def load_data_file_preview(
             return pl.scan_csv(file_path, infer_schema=False)
         if file_type == "tsv":
             return pl.scan_csv(file_path, separator="\t", infer_schema=False)
-        return _load_data_file(file_path, sheet_name, max_directory_bytes)
+        return _load_data_file(file_path, sheet_name, max_directory_bytes, record_path)
     except _DATA_FILE_LOAD_EXCEPTIONS as exc:
         raise DataFileLoadError("Data file could not be loaded") from exc
+
+
+@dataclass(frozen=True, slots=True)
+class SkippedJsonFile:
+    """A file of a JSON batch that was left out, and why, in plain words."""
+
+    path: str
+    reason: str
+
+
+def materialize_json_files(
+    files: list[tuple[Path, str]], record_path: str | None
+) -> tuple[pl.DataFrame, list[SkippedJsonFile]]:
+    """Read several JSON and JSON Lines files as one table, one way.
+
+    Each pair is a file and the name its rows carry in the leading
+    ``file_path`` column. Every file is read at ``record_path`` (``None``:
+    the first readable file's default), so a batch never mixes structures.
+    A file that isn't valid JSON or UTF-8, or has no records there, is left
+    out and returned with its reason; the batch fails only when no file
+    gives a row.
+    """
+
+    try:
+        sources: list[JsonSource] = []
+        skipped: list[SkippedJsonFile] = []
+        for path, label in files:
+            reason, document = _read_batch_json(path)
+            if reason is None:
+                sources.append(JsonSource(label, document))
+            else:
+                skipped.append(SkippedJsonFile(label, reason))
+        if not sources:
+            raise JsonRecordsError(_none_readable(skipped))
+        try:
+            frame, missing, path = flatten_json_batch(
+                sources, record_path, file_column="file_path"
+            )
+        except JsonRecordsError as exc:
+            if not skipped:
+                raise
+            raise JsonRecordsError(f"{exc} {_none_readable(skipped)}") from exc
+        place = describe_record_path(path)
+        skipped.extend(SkippedJsonFile(label, f"No records at {place}") for label in missing)
+        order = {label: index for index, (_path, label) in enumerate(files)}
+        skipped.sort(key=lambda item: order[item.path])
+        return frame, skipped
+    except _DATA_FILE_LOAD_EXCEPTIONS as exc:
+        raise DataFileLoadError("Data file could not be loaded") from exc
+
+
+def _read_batch_json(path: Path) -> tuple[str | None, object]:
+    """Parse one file of a batch: (None, document), or (why it can't be read, None)."""
+
+    try:
+        return None, read_json_document(path)
+    except InvalidJsonLine as exc:
+        return f"Line {exc.line} isn't valid JSON", None
+    except UnicodeError:
+        return "Not saved as UTF-8 text", None
+    except json.JSONDecodeError as exc:
+        return f"Not valid JSON (line {exc.lineno})", None
+
+
+def _none_readable(skipped: list[SkippedJsonFile]) -> str:
+    named = "; ".join(f"{item.path}: {item.reason}" for item in skipped[:3])
+    more = f" and {len(skipped) - 3} more" if len(skipped) > 3 else ""
+    return f"None of the files could be read ({named}{more})."
 
 
 _DATA_FILE_LOAD_EXCEPTIONS = (
@@ -174,6 +259,11 @@ def describe_load_failure(exc: BaseException, filename: str = "") -> str:
     text = " ".join(str(item).lower() for item in chain)
     kinds = tuple(type(item) for item in chain)
     file_type = detect_file_type(filename) if filename else "unknown"
+    records_error = next(
+        (item for item in chain if isinstance(item, JsonRecordsError)), None
+    )
+    if records_error is not None:
+        return str(records_error)
     if any(issubclass(kind, UnicodeError) for kind in kinds) or "utf-8" in text or "utf8" in text:
         return (
             "The file isn't saved as UTF-8 text. Save it again as UTF-8 "
@@ -213,6 +303,7 @@ def _load_data_file(
     file_path: Path,
     sheet_name: str | None,
     max_directory_bytes: int | None = None,
+    record_path: str | None = None,
 ) -> pl.LazyFrame | pl.DataFrame:
     # Callers admit only real (no-follow) directories through the user-file gate.
     if file_path.is_dir():
@@ -227,10 +318,13 @@ def _load_data_file(
         return pl.read_avro(file_path)
     if file_type == "ipc":
         return pl.scan_ipc(file_path)
-    if file_type == "json":
-        return pl.read_json(file_path, infer_schema_length=None)
-    if file_type == "jsonl":
-        return pl.scan_ndjson(file_path, infer_schema_length=None)
+    if file_type in {"json", "jsonl"}:
+        # JSON need not be a table: the rows are the records at
+        # ``record_path``, first-level fields only (json_records).
+        document = read_json_document(file_path)
+        return flatten_json_sources(
+            [JsonSource(file_path.name, document)], record_path
+        )
     if file_type == "tsv":
         return pl.scan_csv(file_path, separator="\t", infer_schema_length=None)
     if file_type == "excel":
@@ -505,6 +599,8 @@ class ZipTableListing:
     # (member path, size, sheet names for a workbook, else None)
     members: list[tuple[str, int, list[str] | None]]
     nested_archives: list[str]
+    # Text documents that Texts mode would make rows of.
+    text_documents: int = 0
 
 
 def zip_table_members(file_path: Path, *, max_workbook_bytes: int) -> ZipTableListing:
@@ -538,9 +634,13 @@ def zip_table_members(file_path: Path, *, max_workbook_bytes: int) -> ZipTableLi
                 for member in visible
                 if detect_file_type(member.filename) == "zip"
             )
+            texts = sum(
+                PurePosixPath(member.filename).suffix.lower() in DOCUMENT_EXTENSIONS
+                for member in visible
+            )
     except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
         raise ValueError("ZIP archive is invalid") from exc
-    return ZipTableListing(members=tables, nested_archives=nested)
+    return ZipTableListing(members=tables, nested_archives=nested, text_documents=texts)
 
 
 def _member_sheet_names(

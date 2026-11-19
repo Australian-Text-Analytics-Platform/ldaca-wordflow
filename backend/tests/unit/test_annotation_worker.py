@@ -79,6 +79,53 @@ def test_row_failure_mask_preserves_failed_rows_but_successful_null_clears(
     assert frame["annotation"].to_list() == [None, "old-two", "positive"]
 
 
+def test_rows_too_long_for_the_model_are_counted_and_named_in_the_message(
+    tmp_path,
+    worker_snapshot,
+    monkeypatch,
+) -> None:
+    node_id = uuid.uuid4()
+    snapshot = worker_snapshot(
+        node_id=str(node_id),
+        # The long text is in two rows: both stay unannotated (issue 493).
+        columns={
+            "text": ["one", "long", "long", "three"],
+            "annotation": ["old", "old", "old", "old"],
+        },
+    )
+    output = tmp_path / "output"
+    output.mkdir()
+
+    async def fake_annotate_all(*_args, **_kwargs):
+        return AnnotationAllResult(
+            labels=["positive", None, "positive"],
+            failed_rows=[False, True, False],
+            failed_batch_count=1,
+            failed_row_count=1,
+            too_long_rows=[False, True, False],
+            context_window=262_144,
+        )
+
+    monkeypatch.setattr(
+        "ldaca_wordflow.workers.annotation.annotate_all",
+        fake_annotate_all,
+    )
+
+    result = run_annotation_analysis(
+        input_snapshot_dir=str(snapshot),
+        output_dir=str(output),
+        request_payload=_request(node_id),
+        api_key="captured-key",
+    )
+
+    assert result["state"] == "successful"
+    assert result["result"]["failed_row_count"] == 2
+    assert result["result"]["too_long_row_count"] == 2
+    assert result["result"]["context_window_tokens"] == 262_144
+    assert "too long for some-model" in result["message"]
+    assert "262,144 tokens" in result["message"]
+
+
 def test_fatal_provider_failure_returns_diagnostic_envelope_without_artifact(
     tmp_path,
     worker_snapshot,

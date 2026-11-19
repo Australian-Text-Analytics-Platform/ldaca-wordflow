@@ -10,6 +10,30 @@ export interface SearchableSelectOption {
   value: string;
   /** Display text; falls back to `value`. Both are matched when filtering. */
   label?: string;
+  /**
+   * A small symbol shown before the label, in the list and in the trigger once
+   * chosen, such as a column's data type. Decorative: say what it stands for
+   * in `iconLabel`.
+   */
+  icon?: React.ReactNode;
+  /**
+   * What the icon stands for: its hover text, and the option's description
+   * for screen readers. The option's name stays its label alone.
+   */
+  iconLabel?: string;
+}
+
+/** An option's icon in a fixed-width slot, so the labels beside it line up. */
+function OptionIcon({ option }: { option: SearchableSelectOption }) {
+  if (!option.icon) return null;
+  return (
+    <span
+      title={option.iconLabel}
+      className="mr-1.5 flex w-6 shrink-0 items-center justify-center text-description"
+    >
+      {option.icon}
+    </span>
+  );
 }
 
 export interface SearchableSelectProps {
@@ -162,6 +186,7 @@ export function SearchableSelect({
         >
           <span className="flex min-w-0 items-center">
             {triggerPrefix}
+            {selectedOption ? <OptionIcon option={selectedOption} /> : null}
             <span className="truncate text-left">{triggerContent}</span>
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
@@ -240,6 +265,7 @@ export function SearchableSelect({
                   role="option"
                   id={`${listboxId}-${String(index)}`}
                   aria-selected={isSelected}
+                  aria-description={row.icon ? row.iconLabel : undefined}
                   data-active={isActive ? 'true' : undefined}
                   className={cn(
                     'relative flex h-control-sm w-full items-center rounded-sm py-0.5 pl-2 pr-8 text-left text-body',
@@ -252,6 +278,7 @@ export function SearchableSelect({
                     commit(row.value);
                   }}
                 >
+                  <OptionIcon option={row} />
                   <span className="truncate">{row.label ?? row.value}</span>
                   {isSelected && <Check className="absolute right-2 h-4 w-4" aria-hidden="true" />}
                 </button>

@@ -68,7 +68,10 @@ shortcut always exports that one Data Block directly.
 With two or more selections, the action becomes **Export N Data Blocks**. The
 backend writes every Data Block in the selected format and returns one ZIP in
 the same order. Files inside the ZIP are named after their Data Blocks, with a
-numeric suffix when names collide. A note below the button says whether the
+numeric suffix when names collide, so no two files share a name: two Data
+Blocks called _notes_ and one called _notes_2_ give `notes`, `notes_3` and
+`notes_2`. Names that differ only in capitals also count as the same. A note
+below the button says whether the
 download will be one file or one ZIP.
 
 <h3 id="help-export-bundle">Complete Project archive</h3>

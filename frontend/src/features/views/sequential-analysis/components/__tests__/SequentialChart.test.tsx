@@ -3,6 +3,7 @@ import { createRef, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SequentialChart } from '../SequentialChart';
+import { minimumGroupCountTooltip } from '../../hooks/sequentialChartModel';
 import { buildSequentialChartModel } from '../../hooks/sequentialChartModel';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useUIStore } from '@/stores/uiStore';
@@ -58,6 +59,17 @@ const model = buildSequentialChartModel({
 });
 
 describe('SequentialChart', () => {
+  it('names the current number in the Minimum group count tooltip (issue 465)', () => {
+    expect(minimumGroupCountTooltip(10)).toBe(
+      'Groups with fewer than 10 rows are hidden from the chart. Enter 1 to show every group.',
+    );
+    expect(minimumGroupCountTooltip(1)).toBe(
+      'Every group is shown. Enter a higher number to hide groups with only a few rows.',
+    );
+    expect(minimumGroupCountTooltip(0)).toBe(minimumGroupCountTooltip(1));
+    expect(minimumGroupCountTooltip(Number.NaN)).toBe(minimumGroupCountTooltip(1));
+  });
+
   it('renders canonical chart model metadata', () => {
     const containerRef = createRef<HTMLDivElement>();
 

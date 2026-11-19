@@ -234,3 +234,48 @@ def test_category_groups_follow_the_category_order(  # issue 318
         "Labor",
         "(missing)",
     ]
+
+
+def test_columns_by_distinct_values_follows_the_limits_and_column_types() -> None:
+    import datetime as dt
+
+    from ldaca_wordflow.analysis.distinct_value_columns import (
+        SAMPLE_ROWS,
+        columns_by_distinct_values,
+        is_groupable_or_temporal_dtype,
+    )
+
+    rows = 40
+    frame = pl.LazyFrame(
+        {
+            "text": [f"document {index}" for index in range(rows)],
+            "speaker": [f"s{index % 16}" for index in range(rows)],
+            "role": [f"r{index % 17}" for index in range(rows)],
+            "party": ["Labor", None] * (rows // 2),
+            "empty": pl.Series([None] * rows, dtype=pl.String),
+            "day": [dt.date(2020, 1, 1 + index % 3) for index in range(rows)],
+            "tags": [["x"]] * rows,
+        }
+    )
+
+    # Up to 16 values qualify, 17 do not; a single value counts from 1.
+    assert columns_by_distinct_values(frame, minimum=1, maximum=16) == {
+        "speaker": 16,
+        "party": 1,
+    }
+    # Dates and times qualify only where the tool can group by them.
+    assert columns_by_distinct_values(
+        frame, minimum=1, maximum=16, accepts=is_groupable_or_temporal_dtype
+    ) == {"speaker": 16, "party": 1, "day": 3}
+    assert columns_by_distinct_values(
+        frame, minimum=2, maximum=40, exclude=["text"]
+    ) == {"speaker": 16, "role": 17}
+    assert columns_by_distinct_values(frame.head(0), minimum=1, maximum=16) == {}
+
+    # A column that stays within the limit in the first rows is still counted
+    # over every row.
+    late = pl.LazyFrame(
+        {"late": ["a"] * SAMPLE_ROWS + [str(index) for index in range(20)]}
+    )
+    assert columns_by_distinct_values(late, minimum=1, maximum=16) == {}
+    assert columns_by_distinct_values(late, minimum=1, maximum=21) == {"late": 21}

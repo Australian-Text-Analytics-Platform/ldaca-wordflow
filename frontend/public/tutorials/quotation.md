@@ -51,6 +51,10 @@ end of the same row, removes this tab's results; see
 [Clear results](#help-quotation-clear-results). See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
+While Preview Results are showing, the download icon and **Add to Project**
+stay in the **Quotation Results** header but are greyed out: hover over one to
+see why. They turn on when Run finishes.
+
 <h2 id="help-quotation-results">Result panel</h2>
 
 The table pages through source documents and omits documents with no extracted

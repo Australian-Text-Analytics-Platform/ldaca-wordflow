@@ -127,6 +127,7 @@ built-in credential remains HTTP 409 `provider_credential_missing`.
 | `GET /api/user-files/preview` | `preview_file` | 200 Arrow | One bounded file row page |
 | `GET /api/user-files/preview/schema` | `preview_file_schema` | 200 Arrow | Zero-row file schema stream |
 | `GET /api/user-files/worksheets` | `list_file_worksheets` | 200 | Excel worksheet names |
+| `GET /api/user-files/json-record-paths` | `list_json_record_paths` | 200 | Places in a JSON file (or a ZIP `member`) that hold records, default first |
 | `GET /api/sample-collections` | `list_sample_collections` | 200 | Validated remote sample catalogue |
 | `POST /api/sample-collections/{collection_id}/imports` | `submit_sample_import` | 202 | Create and queue a retained sample User File Import |
 | `POST /api/data-portal/search` | `search_data_portal` | 200 | Search Oni with an optional write-only request token |
@@ -140,12 +141,26 @@ not a storage or upload filter. `file_type` remains `unknown` for unsupported
 files.
 
 File preview reports the preview loader's own schema. Delimited previews
-(`.csv` and `.tsv`) expose raw String fields and preserve source lexemes;
-JSON-family previews use full-file type inference. Creating a Source Data Block
-performs full-file inference for every row-oriented format before Parquet
-staging, so its authoritative schema may intentionally differ from a delimited
-preview. Parser failures encountered while producing either a preview page or
-schema return `400 invalid_input`.
+(`.csv` and `.tsv`) expose raw String fields and preserve source lexemes.
+JSON-family previews and Source Data Blocks flatten the records at an optional
+`record_path` query or request field, a JSON Pointer (`""` is the top level;
+omitted, the place holding the most text), as described in
+[Files and storage](../domain/files-and-storage.md). `record_path` on any other
+file type returns `400 invalid_input`. Creating a Source Data Block performs
+full-file inference for delimited files before Parquet staging, so its
+authoritative schema may intentionally differ from a delimited preview. Parser
+failures encountered while producing either a preview page or schema return
+`400 invalid_input`.
+
+`json-record-paths` lists each place as its pointer `path`, a `label` in words
+(`pages › parsing_res_list`), the `records` count, the first `fields`, and
+`field_count`. `zip-tables` also reports `text_documents`, the members Texts
+mode would read. A `json_files` Data Block creation request reads its
+`file_paths` (user files, or members of `zip_path`) at one `record_path` into
+one Data Block with a leading `file_path` column, bounded together by the Data
+Block storage limit. Files it cannot read, or without records there, are left
+out and listed in the created Data Block's `skipped_json_files` as `path` and
+`reason`; it returns `400 invalid_input` only when no file gives a row.
 
 Loadable filename extensions are:
 

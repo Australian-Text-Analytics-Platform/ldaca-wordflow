@@ -1,3 +1,4 @@
+import type { ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import { useState } from 'react';
 
 import { Label } from '@/components/ui/label';
@@ -34,6 +35,8 @@ interface Props {
     sources: TopicModelingAddToWorkspaceSelection[],
     rowUnit: TopicModelingDetachRowUnit,
   ) => void;
+  /** The source Data Blocks' column types, for the type symbol before each column. */
+  columnFields?: ColumnFields;
 }
 
 const PER_TOPIC_COLUMNS = ['TOPIC_topic', 'TOPIC_share', 'TOPIC_segment_count'];
@@ -153,6 +156,7 @@ export function TopicModelingAddToWorkspaceDialog({
   topicNames = {},
   isSubmitting,
   onSubmit,
+  columnFields,
 }: Props) {
   const selectedTopicCount =
     selectedTopicIds && selectedTopicIds.length > 0 ? selectedTopicIds.length : null;
@@ -163,6 +167,7 @@ export function TopicModelingAddToWorkspaceDialog({
       : ` ${String(selectedTopicCount)} selected topic${selectedTopicCount === 1 ? '' : 's'} will be included.`;
   return (
     <AddToWorkspaceDialog
+      columnFields={columnFields}
       // Remount per mode so default names and column choices match the mode.
       key={rowUnit}
       open={open}

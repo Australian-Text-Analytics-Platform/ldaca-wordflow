@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Analysis } from '@/api';
+import { useLayoutFocusStore } from '@/stores/layoutFocusStore';
 import type { RunAnalysisOptions } from '../../common/hooks/useAnalysisFeature';
 import { DEFAULT_ANNOTATION_PROMPT } from '../components/AnnotationPromptInput';
 import {
@@ -65,6 +66,8 @@ const mocks = vi.hoisted(() => ({
   classSelected: false,
   classRows: [] as { class: string; description: string }[],
   taskContext: '',
+  scale: false,
+  outsideScale: [] as string[],
   providerConfigurations: [] as {
     id: string;
     name: string;
@@ -75,6 +78,12 @@ const mocks = vi.hoisted(() => ({
   sourceColumnNames: ['text'] as string[],
   workspaceNodes: [] as { id: string; color: string; shape: [number, number] }[],
   runAllResult: null as { failed_row_count: number; failed_batch_count: number } | null,
+  // What the annotation column holds against the codebook (issue 499); empty by default.
+  columnFit: { filled: 0, notCodes: 0, examples: [] } as {
+    filled: number;
+    notCodes: number;
+    examples: string[];
+  },
 }));
 
 vi.mock('@/features/provider-credentials/providerCredentialRequests', () => ({
@@ -85,7 +94,11 @@ vi.mock('@/features/provider-credentials/providerCredentialRequests', () => ({
 vi.mock('@tanstack/react-query', async (importOriginal) => ({
   ...(await importOriginal()),
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
-  useQuery: () => ({ data: mocks.runAllResult }),
+  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => {
+    if (queryKey[2] !== 'annotation-codebook-fit') return { data: mocks.runAllResult };
+    const data = { get: () => mocks.columnFit };
+    return { data, refetch: () => Promise.resolve({ isSuccess: true, data }) };
+  },
 }));
 
 vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({
@@ -178,6 +191,7 @@ vi.mock('@/features/views/common/components/NodeInputsPanel', () => ({
       color: string;
       column: string;
       columns: string[];
+      columnFields: ReadonlyMap<string, never>;
     }) => ReactNode;
     onColumnChange: (nodeId: string, column: string) => void;
     onNodeColorChange?: (nodeId: string, color: string) => void;
@@ -201,6 +215,8 @@ vi.mock('@/features/views/common/components/NodeInputsPanel', () => ({
             color: '#000000',
             column: resolved.column,
             columns: resolved.columnOptions.map((option) => option.name),
+            // No column types in these tests: the pickers show names alone.
+            columnFields: new Map(),
           })}
         </div>
       ))}
@@ -284,13 +300,22 @@ vi.mock('../components/AnnotationResultsPanel', () => ({
 }));
 
 vi.mock('@/features/views/common/components/RunAllReviewTable', () => ({
-  RunAllReviewTable: () => <div>Run All review table</div>,
+  RunAllReviewTable: ({ correction }: { correction: { onUseAsExample: () => void } }) => (
+    <div>
+      Run All review table
+      <button type="button" onClick={correction.onUseAsExample}>
+        Use as example
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('../hooks/useAnnotationClassDescriptions', () => ({
   useAnnotationClassDescriptions: () => ({
     rows: mocks.classRows,
     taskContext: mocks.taskContext,
+    scale: mocks.scale,
+    outsideScale: mocks.outsideScale,
     query: {},
   }),
 }));
@@ -375,8 +400,11 @@ describe('AnnotationFeature', () => {
     mocks.submitRunAll.mockReset();
     mocks.exampleSelected = false;
     mocks.classSelected = false;
+    mocks.columnFit = { filled: 0, notCodes: 0, examples: [] };
     mocks.classRows = [];
     mocks.taskContext = '';
+    mocks.scale = false;
+    mocks.outsideScale = [];
     mocks.providerConfigurations = [];
     mocks.sourceColumnNames = ['text'];
     mocks.workspaceNodes = [];
@@ -435,8 +463,13 @@ describe('AnnotationFeature', () => {
     const user = userEvent.setup();
     mocks.exampleSelected = true;
     mocks.classSelected = true;
-    mocks.classRows = [{ class: 'support', description: 'Supports the claim' }];
+    mocks.classRows = [
+      { class: 'support', description: 'Supports the claim' },
+      { class: 'Not applicable', description: 'Not about the claim' },
+    ];
     mocks.taskContext = '  Posts from a workers forum.  ';
+    mocks.scale = true;
+    mocks.outsideScale = ['Not applicable'];
     mocks.providerConfigurations = [
       {
         id: 'provider-1',
@@ -493,14 +526,135 @@ describe('AnnotationFeature', () => {
       example_random_seed: 42,
       // The codebook's Task context goes with the request (issue 408).
       task_context: 'Posts from a workers forum.',
+      // An ordered-scale codebook rates the texts on its levels.
+      scale: true,
+      outside_scale: ['Not applicable'],
     });
     expect(previewRequest.classes).toEqual([
       { name: 'support', description: 'Supports the claim' },
+      { name: 'Not applicable', description: 'Not about the claim' },
     ]);
 
     await user.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
     expect(mocks.submitRunAll.mock.calls[0]?.[0].source).toEqual(previewRequest);
+  });
+
+  describe('checks the annotation column before Run (issue 499)', () => {
+    const renderAiTab = (settings: Record<string, string>) => {
+      mocks.classSelected = true;
+      mocks.classRows = [{ class: 'support', description: 'Supports the claim' }];
+      mocks.providerConfigurations = [
+        { id: 'provider-1', name: 'OpenAI', provider: 'openai', base_url: null, has_api_key: true },
+      ];
+      mocks.sourceColumnNames = ['text', 'annotation'];
+      render(
+        <AnnotationFeature
+          host={{
+            tabId: 'tab-1',
+            analyses: [],
+            latestPreview: null,
+            latestRunAll: null,
+            activeAnalysis: null,
+            inputSets: {},
+            settings,
+            correctionColumns: {},
+            setInputSet: mocks.setInputSet,
+            setSetting: mocks.setSetting,
+            setCorrectionColumn: vi.fn(),
+            clearCorrectionColumns: vi.fn(),
+            refreshAnalyses: vi.fn(),
+          }}
+        />,
+      );
+    };
+    const aiSettings = {
+      annotationMode: 'ai' as const,
+      annotationTargets: { 'source-1': 'annotation' },
+      aiProviderConfigurationId: 'provider-1',
+      aiProviderType: 'openai' as const,
+      aiProviderModels: { 'provider-1': 'gpt-test' },
+    };
+
+    it('runs at once into an empty column, with no reminder', async () => {
+      const user = userEvent.setup();
+      renderAiTab(annotationSettings(aiSettings));
+
+      expect(screen.queryByTestId('annotation-run-target')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+
+    it('asks before filling the empty rows of a column that holds codes, and Cancel stops', async () => {
+      const user = userEvent.setup();
+      mocks.columnFit = { filled: 1240, notCodes: 0, examples: [] };
+      renderAiTab(annotationSettings(aiSettings));
+
+      expect(screen.getByTestId('annotation-run-target')).toHaveTextContent(
+        'annotation already holds codes in 1,240 of 2,380 rows. Run will fill only the 1,140 empty rows.',
+      );
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      const dialog = await screen.findByRole('alertdialog', { name: 'Fill the empty rows?' });
+      expect(dialog).toHaveTextContent('turn on Advanced and change “Which rows to annotate”');
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      expect(mocks.submitRunAll).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      await user.click(await screen.findByRole('button', { name: 'Fill the empty rows' }));
+      await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
+      expect(mocks.submitRunAll.mock.calls[0]?.[0]).toMatchObject({
+        processingMode: 'fill_missing',
+      });
+    });
+
+    it('asks before replacing existing codes when Advanced says every row', async () => {
+      const user = userEvent.setup();
+      mocks.columnFit = { filled: 1240, notCodes: 0, examples: [] };
+      renderAiTab(advancedSettings({ ...aiSettings, aiProcessingMode: 'reprocess_all' }));
+
+      expect(screen.getByTestId('annotation-run-target')).toHaveTextContent(
+        'Run will replace them all.',
+      );
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      await user.click(await screen.findByRole('button', { name: 'Replace the codes' }));
+      await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
+      expect(mocks.submitRunAll.mock.calls[0]?.[0]).toMatchObject({
+        processingMode: 'reprocess_all',
+      });
+    });
+
+    it('warns about values that are not codes and only offers to overwrite the whole column', async () => {
+      const user = userEvent.setup();
+      mocks.columnFit = { filled: 30, notCodes: 30, examples: ['Promise', 'Cuts'] };
+      renderAiTab(annotationSettings(aiSettings));
+
+      expect(screen.getByTestId('annotation-run-target')).toHaveTextContent(
+        'None of the 30 values in annotation are codes in the selected codebook (for example “Promise”, “Cuts”). Check that the right column and codebook are selected: Run would overwrite the whole column.',
+      );
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      const dialog = await screen.findByRole('alertdialog', {
+        name: 'Overwrite the whole column?',
+      });
+      expect(within(dialog).queryByRole('button', { name: 'Fill the empty rows' })).toBeNull();
+      await user.click(within(dialog).getByRole('button', { name: 'Overwrite the whole column' }));
+      await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
+      // "Which rows to annotate" says empty rows only, but the whole column is overwritten.
+      expect(mocks.submitRunAll.mock.calls[0]?.[0]).toMatchObject({
+        processingMode: 'reprocess_all',
+      });
+    });
+
+    it('says there is nothing to fill when every row holds a code', async () => {
+      const user = userEvent.setup();
+      mocks.columnFit = { filled: 2380, notCodes: 0, examples: [] };
+      renderAiTab(annotationSettings(aiSettings));
+
+      await user.click(screen.getByRole('button', { name: 'Run' }));
+      const dialog = await screen.findByRole('alertdialog', { name: 'Nothing to fill' });
+      await user.click(within(dialog).getByRole('button', { name: 'OK' }));
+      expect(mocks.submitRunAll).not.toHaveBeenCalled();
+    });
   });
 
   it('sends the defaults of the hidden advanced settings in Basic, and keeps the draft', async () => {
@@ -790,45 +944,44 @@ describe('AnnotationFeature', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
-  it('keeps the open Manual table bound to its Start-time snapshot', async () => {
+  it('lets the open Manual table follow the codebook and annotation column (issue 498)', async () => {
     const user = userEvent.setup();
     mocks.sourceColumnNames = ['text', 'annotation'];
+    const host = {
+      tabId: 'tab-1',
+      analyses: [],
+      latestPreview: null,
+      latestRunAll: null,
+      activeAnalysis: null,
+      inputSets: {},
+      settings: annotationSettings({ annotationTargets: { 'source-1': 'annotation' } }),
+      correctionColumns: {},
+      setInputSet: mocks.setInputSet,
+      setSetting: mocks.setSetting,
+      setCorrectionColumn: vi.fn(),
+      clearCorrectionColumns: vi.fn(),
+      refreshAnalyses: vi.fn(),
+    };
 
-    render(
-      <AnnotationFeature
-        host={{
-          tabId: 'tab-1',
-          analyses: [],
-          latestPreview: null,
-          latestRunAll: null,
-          activeAnalysis: null,
-          inputSets: {},
-          settings: annotationSettings({ annotationTargets: { 'source-1': 'annotation' } }),
-          correctionColumns: {},
-          setInputSet: mocks.setInputSet,
-          setSetting: mocks.setSetting,
-          setCorrectionColumn: vi.fn(),
-          clearCorrectionColumns: vi.fn(),
-          refreshAnalyses: vi.fn(),
-        }}
-      />,
-    );
+    const { rerender } = render(<AnnotationFeature host={host} />);
 
     await user.click(screen.getByRole('button', { name: 'Start' }));
     expect(screen.getByTestId('manual-review-snapshot')).toHaveTextContent(
       'source-1:text:annotation:none',
     );
+
+    // A codebook chosen (or created) after Start: no Close and Start needed.
+    mocks.classSelected = true;
+    rerender(<AnnotationFeature host={{ ...host }} />);
+    expect(screen.getByTestId('manual-review-snapshot')).toHaveTextContent(
+      'source-1:text:annotation:class-1',
+    );
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('combobox', { name: 'Annotation column' }));
     await user.click(screen.getByRole('option', { name: 'text' }));
     expect(screen.getByTestId('manual-review-snapshot')).toHaveTextContent(
-      'source-1:text:annotation:none',
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Close' }));
-    await user.click(screen.getByRole('button', { name: 'Start' }));
-    expect(screen.getByTestId('manual-review-snapshot')).toHaveTextContent(
-      'source-1:text:text:none',
+      'source-1:text:text:class-1',
     );
   });
 
@@ -1038,5 +1191,53 @@ describe('AnnotationFeature', () => {
       'Annotation completed with 2 failed rows across 1 failed batch',
     );
     expect(screen.getByText('Run All review table')).toBeInTheDocument();
+  });
+
+  it('shows the Example Data Block after Use as example: back from maximised, scrolled and pulsing', async () => {
+    const user = userEvent.setup();
+    mocks.workspaceNodes = [{ id: 'source-1', color: '#2563eb', shape: [3, 2] }];
+    mocks.runAllResult = { failed_row_count: 0, failed_batch_count: 0 };
+    useLayoutFocusStore.setState({ maximised: 'analysis' });
+    const scrollIntoView = vi.spyOn(window.HTMLElement.prototype, 'scrollIntoView');
+    // jsdom has no matchMedia; the scroll asks it about reduced motion.
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: false })),
+    );
+    render(
+      <AnnotationFeature
+        host={{
+          tabId: 'tab-1',
+          analyses: [],
+          latestPreview: null,
+          latestRunAll: runAllAnalysis('succeeded'),
+          activeAnalysis: null,
+          inputSets: {},
+          settings: advancedSettings({ annotationMode: 'ai' }),
+          correctionColumns: { 'source-1': 'review' },
+          setInputSet: mocks.setInputSet,
+          setSetting: mocks.setSetting,
+          setCorrectionColumn: vi.fn(),
+          clearCorrectionColumns: vi.fn(),
+          refreshAnalyses: vi.fn(),
+        }}
+      />,
+    );
+    const section = screen.getByTestId('annotation-example-section');
+    expect(section).not.toHaveAttribute('data-fresh-item');
+
+    await user.click(screen.getByRole('button', { name: 'Use as example' }));
+
+    expect(useLayoutFocusStore.getState().maximised).toBeNull();
+    expect(section).toHaveAttribute('data-fresh-item', 'true');
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalled();
+    });
+    // Like a new upload, it pulses until clicked.
+    await user.click(section);
+    expect(section).not.toHaveAttribute('data-fresh-item');
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
+    scrollIntoView.mockRestore();
+    vi.unstubAllGlobals();
   });
 });

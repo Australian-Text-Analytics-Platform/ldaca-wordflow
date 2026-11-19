@@ -14,6 +14,7 @@ from .annotation_adapter import (
     INFERENCE_TIMEOUT_SECONDS,
     completion_error,
     reasoning_budget_tokens,
+    report_prompt_tokens,
 )
 
 _ADAPTIVE_THINKING_MODEL_PREFIXES = (
@@ -84,6 +85,7 @@ class AnthropicAnnotationAdapter:
                 )
             except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
                 raise completion_error(error, "Anthropic request failed") from error
+        report_prompt_tokens(config, getattr(getattr(message, "usage", None), "input_tokens", None))
         return "".join(
             block.text for block in message.content if isinstance(block, TextBlock)
         )

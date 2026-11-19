@@ -51,7 +51,7 @@ def test_load_spacy_model_uses_an_installed_package(monkeypatch, tmp_path):
             calls.append(target)
             return SimpleNamespace(name="installed-model")
 
-    monkeypatch.setattr(qe, "_SPACY_MODEL_CACHE_ROOT", tmp_path)
+    monkeypatch.setenv(qe.SPACY_CACHE_VARIABLE, str(tmp_path))
     monkeypatch.setitem(__import__("sys").modules, "spacy", FakeSpacyModule())
 
     model = qe._load_spacy_model()
@@ -71,7 +71,7 @@ def test_load_spacy_model_prefers_the_platform_cache(monkeypatch, tmp_path):
             calls.append(target)
             return SimpleNamespace(name="cached-model")
 
-    monkeypatch.setattr(qe, "_SPACY_MODEL_CACHE_ROOT", tmp_path)
+    monkeypatch.setenv(qe.SPACY_CACHE_VARIABLE, str(tmp_path))
     monkeypatch.setitem(__import__("sys").modules, "spacy", FakeSpacyModule())
 
     model = qe._load_spacy_model()
@@ -98,7 +98,7 @@ def test_load_spacy_model_downloads_only_when_the_package_is_missing(
                 )
             return SimpleNamespace(name="downloaded-model")
 
-    monkeypatch.setattr(qe, "_SPACY_MODEL_CACHE_ROOT", tmp_path / "cache")
+    monkeypatch.setenv(qe.SPACY_CACHE_VARIABLE, str(tmp_path / "cache"))
     monkeypatch.setattr(qe, "_download_spacy_model", lambda: downloaded)
     monkeypatch.setitem(__import__("sys").modules, "spacy", FakeSpacyModule())
 
@@ -110,7 +110,7 @@ def test_load_spacy_model_downloads_only_when_the_package_is_missing(
 
 def test_download_spacy_model_publishes_complete_model_data(monkeypatch, tmp_path):
     download_module = importlib.import_module("spacy.cli.download")
-    monkeypatch.setattr(qe, "_SPACY_MODEL_CACHE_ROOT", tmp_path / "cache")
+    monkeypatch.setenv(qe.SPACY_CACHE_VARIABLE, str(tmp_path / "cache"))
     monkeypatch.setattr(download_module, "get_compatibility", lambda: {})
     monkeypatch.setattr(download_module, "get_version", lambda _model, _data: "3.8.0")
     monkeypatch.setattr(
@@ -168,7 +168,7 @@ def test_download_or_extraction_failure_leaves_no_partial_cache(
 ):
     download_module = importlib.import_module("spacy.cli.download")
     cache_root = tmp_path / "cache"
-    monkeypatch.setattr(qe, "_SPACY_MODEL_CACHE_ROOT", cache_root)
+    monkeypatch.setenv(qe.SPACY_CACHE_VARIABLE, str(cache_root))
     monkeypatch.setattr(download_module, "get_compatibility", lambda: {})
     monkeypatch.setattr(download_module, "get_version", lambda _model, _data: "3.8.0")
     monkeypatch.setattr(
@@ -329,3 +329,64 @@ def test_normalize_quote_translates_indices_to_original_offsets():
     assert (
         original[normalized["quote_start_idx"] : normalized["quote_end_idx"]] == quote
     )
+
+
+def test_a_process_that_cannot_start_reports_the_cause(monkeypatch):
+    import pickle
+
+    from ldaca_wordflow.infrastructure import process_watchdog
+    from ldaca_wordflow.shared.errors import format_exception_diagnostic
+
+    def denied():
+        raise PermissionError("[WinError 5] Access is denied: 'spacy'")
+
+    monkeypatch.setattr(process_watchdog, "watch_parent", lambda *_a, **_k: None)
+    monkeypatch.setattr(qe, "_get_extractor", denied)
+    monkeypatch.setattr(qe, "_start_failure", None)
+
+    qe._start_quotation_process(0)
+
+    with pytest.raises(qe.QuotationProcessStartError) as raised:
+        qe._extract_chunk(["Alex said hello"])
+    # It crosses back to the Run's process whole.
+    error = pickle.loads(pickle.dumps(raised.value))
+    assert format_exception_diagnostic(error) == (
+        "QuotationProcessStartError: PermissionError: "
+        "[WinError 5] Access is denied: 'spacy'"
+    )
+
+
+def test_the_model_downloads_before_any_extraction_process_starts(monkeypatch):
+    import concurrent.futures
+
+    def offline():
+        raise httpx.ConnectError("no network")
+
+    def no_pool(*_args, **_kwargs):
+        raise AssertionError("no extraction process may start")
+
+    monkeypatch.setattr(qe, "_ensure_spacy_model", offline)
+    monkeypatch.setattr(concurrent.futures, "ProcessPoolExecutor", no_pool)
+
+    with pytest.raises(httpx.ConnectError):
+        qe.extract_quotations_in_chunks(
+            ["a", "b", "c", "d"],
+            processes=2,
+            chunk_size=1,
+            on_chunk=lambda *_args: None,
+        )
+
+
+def test_ensure_spacy_model_downloads_only_when_missing(monkeypatch, tmp_path):
+    downloads: list[bool] = []
+    monkeypatch.setenv(qe.SPACY_CACHE_VARIABLE, str(tmp_path))
+    monkeypatch.setattr(qe, "_download_spacy_model", lambda: downloads.append(True))
+
+    qe._ensure_spacy_model()
+    assert downloads == [True]
+
+    cached = tmp_path / qe._SPACY_MODEL
+    cached.mkdir()
+    (cached / "config.cfg").write_text("[nlp]\n", encoding="utf-8")
+    qe._ensure_spacy_model()
+    assert downloads == [True]

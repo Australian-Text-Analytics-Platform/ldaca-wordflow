@@ -1,6 +1,7 @@
 import polars as pl
 import pytest
 from ldaca_wordflow.analysis.concordance_core import (
+    build_concordance_lazyframe,
     build_concordance_search_pattern,
     compute_concordance_page,
     concordance_non_empty_expr,
@@ -59,6 +60,76 @@ def test_whole_word_skips_boundaries_next_to_unspaced_scripts(term, text, expect
 
     assert use_regex is True
     assert pl.Series([text]).str.contains(pattern).item() is expected
+
+
+@pytest.mark.parametrize(
+    ("term", "text", "expected"),
+    [
+        # A term ending in punctuation: whole means no letter or digit follows.
+        ("C++", "I write C++ today.", True),
+        ("C++", "I write C++.", True),
+        ("C++", "C++", True),
+        ("C++", "I write C++17 today.", False),
+        ("C++", "I write ABC++ today.", False),
+        # A term starting with punctuation.
+        ("#reef", "Save the #reef now", True),
+        ("#reef", "#reef", True),
+        ("#reef", "(#reef)", True),
+        ("#reef", "Save the #reefs", False),
+        ("#reef", "abc#reef", False),
+        ("@ann", "thanks @ann!", True),
+        ("@ann", "mail ann@anne.au or bob@ann.au", False),
+        (".NET", "on .NET today", True),
+        (".NET", "ASP.NET", False),
+        # Punctuation on both edges, and inside the term.
+        ("(sic)", "as written (sic) here", True),
+        ("(sic)", "x(sic)y", False),
+        ("O'Brien", "Mr O'Brien said", True),
+        ("O'Brien", "Mr O'Briens said", False),
+        ("alpha.beta", "see alpha.beta now", True),
+        ("alpha.beta", "see alpha.betas now", False),
+        # Plain words and accented letters behave as before.
+        ("cat", "the cat sat", True),
+        ("cat", "the cat.", True),
+        ("cat", "concatenate", False),
+        ("caf\u00e9", "a caf\u00e9 here", True),
+        ("caf\u00e9", "the caf\u00e9s", False),
+        ("x_1", "set x_1 = 2", True),
+        ("x_1", "set x_10 = 2", False),
+    ],
+)
+def test_whole_word_literals_do_not_run_into_a_longer_word(term, text, expected):
+    pattern, use_regex = build_concordance_search_pattern(
+        term, regex=False, whole_word=True
+    )
+
+    assert use_regex is True
+    assert pl.Series([text]).str.contains(pattern).item() is expected
+
+
+def test_whole_word_punctuated_term_keeps_its_offsets_in_preview_rows():
+    import polars_text  # noqa: F401
+
+    data = pl.LazyFrame({"text": ["I write C++ today.", "I write C++17 today.", "C++"]})
+
+    found = build_concordance_lazyframe(
+        data,
+        "text",
+        {
+            "search_word": "C++",
+            "regex": False,
+            "whole_word": True,
+            "case_sensitive": True,
+            "ignore_punctuation": False,
+            "num_left_tokens": 2,
+            "num_right_tokens": 2,
+        },
+    ).collect()
+
+    assert [
+        [(hit["matched_text"], hit["start_idx"], hit["end_idx"]) for hit in hits]
+        for hits in found["concordance"].to_list()
+    ] == [[("C++", 8, 11)], [], [("C++", 0, 3)]]
 
 
 def test_compute_concordance_page_groups_matches_by_source_row():

@@ -171,6 +171,36 @@ export const queryKeys = {
       },
     ] as const,
 
+  /** Every comparison's codes at once, for the multi-coder Alpha; edits refresh it by the prefix. */
+  annotationCoderAgreement: (
+    workspaceId: string,
+    nodeIds: string[],
+    sql: string,
+    columns: readonly string[],
+    classOptions: readonly string[],
+  ) =>
+    [
+      'workspaces',
+      workspaceId,
+      'annotation-coder-agreement',
+      { nodeIds: [...nodeIds], sql, columns: [...columns], classOptions: [...classOptions] },
+    ] as const,
+
+  /** Filled and not-a-code counts per Annotation column; edits refresh it by the prefix. */
+  annotationCodebookFit: (
+    workspaceId: string,
+    nodeIds: string[],
+    sql: string,
+    columns: readonly string[],
+    classOptions: readonly string[],
+  ) =>
+    [
+      'workspaces',
+      workspaceId,
+      'annotation-codebook-fit',
+      { nodeIds: [...nodeIds], sql, columns: [...columns], classOptions: [...classOptions] },
+    ] as const,
+
   /** Authoritative Arrow schema for one Data Block. */
   nodeSchema: (workspaceId: string, nodeId: string) =>
     ['workspaces', workspaceId, 'nodes', nodeId, 'schema'] as const,
@@ -254,12 +284,17 @@ export const queryKeys = {
     pageSize: number,
     selectedSheet: string | null,
     member: string | null = null,
+    recordPath: string | null = null,
   ) =>
     [
       ...queryKeys.file(filename),
       'preview',
-      { page, pageSize, sheet: selectedSheet, member },
+      { page, pageSize, sheet: selectedSheet, member, recordPath },
     ] as const,
+
+  /** Where a JSON file's rows could come from; `member` is a file inside a ZIP. */
+  jsonRecordPaths: (filename: string, member: string | null) =>
+    [...queryKeys.file(filename), 'json-record-paths', { member }] as const,
 
   /** Sheet names of the workbooks a folder or selection Add window lists. */
   workbookSheets: (paths: readonly string[]) => ['files', 'workbook-sheets', [...paths]] as const,
@@ -297,6 +332,10 @@ export const queryKeys = {
       ...queryKeys.annotationModelsForConfiguration(configurationId),
       { credentialRevision, provider, baseUrl },
     ] as const,
+
+  /** A Data Block's columns with at most `maxDistinct` different values (Trends group columns). */
+  distinctValueColumns: (workspaceId: string, nodeId: string, maxDistinct: number) =>
+    [...queryKeys.nodeColumns(workspaceId, nodeId), 'distinct-values', maxDistinct] as const,
 
   /** Per-column unique-value counts (used by sequential-analysis). */
   columnUniqueValues: (workspaceId: string, nodeId: string, columnName: string) =>

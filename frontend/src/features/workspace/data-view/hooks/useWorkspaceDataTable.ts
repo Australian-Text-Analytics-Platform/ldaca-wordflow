@@ -443,7 +443,9 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     ? JSON.stringify([committedColumns, committedTypes])
     : '';
   useEffect(() => {
-    if (committedColumns) setToolColumns(committedColumns, committedTypes ?? undefined);
+    if (committedColumns) {
+      setToolColumns(committedColumns, committedTypes ?? undefined, nodeData.columnFields);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the key captures the columns
   }, [committedColumnsKey, setToolColumns]);
 
@@ -512,6 +514,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
             nodeName: header.nodeLabel,
             columns: toolColumns(tool, nodeData),
             columnTypes: toolColumnTypes(nodeData),
+            columnFields: nodeData.columnFields,
             column: options.column ?? null,
             operation: options.operation ?? null,
           });

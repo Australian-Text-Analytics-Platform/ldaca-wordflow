@@ -3,6 +3,7 @@ import {
   annotationCellText,
   classifyAnnotationLabel,
   normalizeAnnotationClassOptions,
+  NOT_A_CODE_EXPLANATION,
 } from '../annotationLabelModel';
 
 interface CurrentAnnotationValueItemProps {
@@ -22,7 +23,7 @@ export function CurrentAnnotationValueItem({
     <SelectItem
       value={raw}
       className={invalid ? 'italic text-description' : undefined}
-      title={invalid ? 'Not a code in the Codebook, so treated as empty' : undefined}
+      title={invalid ? NOT_A_CODE_EXPLANATION : undefined}
     >
       {raw}
     </SelectItem>

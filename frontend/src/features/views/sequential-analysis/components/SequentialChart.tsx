@@ -9,6 +9,7 @@ import { FilterableSeriesControls } from '@/features/views/common/components/Fil
 import { Input } from '@/components/ui/input';
 import {
   SEQUENTIAL_SCALE_AXIS_NAMES,
+  minimumGroupCountTooltip,
   referenceNote,
   type SequentialReferenceSummary,
   type SequentialChartModel,
@@ -217,7 +218,7 @@ export function SequentialChart({
                   <HelpIcon
                     targetKey="analysis.sequential-analysis.minimum-group-count"
                     label="About Minimum group count"
-                    tooltip="Hides groups with fewer rows than this across all periods. Enter 0 to show every group."
+                    tooltip={minimumGroupCountTooltip(minimumGroupCount)}
                     className="size-5 shrink-0 text-description"
                   />
                 </span>

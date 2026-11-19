@@ -59,3 +59,7 @@ Windows, Linux, and the updater entry never load or invoke the JavaScript API.
   and private AppKit integration are part of the accepted release risk.
 - macOS release acceptance must cover transparent gutters and titlebar behavior
   as well as opaque content surfaces, fallback behavior, and failure opacity.
+- The gutters take the colour of whatever is behind the window: over dark-theme
+  windows they look like thick dark bars, over a light desktop like thin light
+  gaps. Reviewed on 20 November 2026 (issue 524) and kept as expected macOS
+  behaviour rather than a defect.

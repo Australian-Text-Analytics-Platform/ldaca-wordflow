@@ -8,6 +8,7 @@
  */
 import { create } from 'zustand';
 import type { EditNodeData } from '@/api';
+import type { ArrowField } from '@/lib/arrow/arrowTable';
 
 export type DataEditorTool =
   | 'find_replace'
@@ -40,6 +41,8 @@ interface DataEditorToolState {
   columns: string[];
   /** Each column's plain type name ("text", "category", ...), for the text-result note (issue 318). */
   columnTypes: Record<string, string>;
+  /** Each column's Arrow field, for the type symbol in the column pickers. */
+  columnFields: Record<string, ArrowField>;
   /** Column chosen from a column header menu, pre-filled in the form. */
   initialColumn: string | null;
   /** Pre-selected text cleaning operation, from the Clean text menu. */
@@ -73,6 +76,7 @@ interface DataEditorToolState {
       nodeName: string;
       columns: string[];
       columnTypes?: Record<string, string>;
+      columnFields?: Record<string, ArrowField>;
       column?: string | null;
       operation?: string | null;
     },
@@ -85,7 +89,11 @@ interface DataEditorToolState {
    */
   resetForm: (column: string, operation?: string) => void;
   /** Follows the Data Block's columns while the tool stays open (issue 217). */
-  setColumns: (columns: string[], columnTypes?: Record<string, string>) => void;
+  setColumns: (
+    columns: string[],
+    columnTypes?: Record<string, string>,
+    columnFields?: Record<string, ArrowField>,
+  ) => void;
   setDraft: (
     request: DataEditorEdit | null,
     highlightColumns: string[],
@@ -104,6 +112,7 @@ const CLOSED = {
   nodeName: '',
   columns: [],
   columnTypes: {},
+  columnFields: {},
   initialColumn: null,
   initialOperation: null,
   request: null,
@@ -128,6 +137,7 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
       nodeName: options.nodeName,
       columns: options.columns,
       columnTypes: options.columnTypes ?? {},
+      columnFields: options.columnFields ?? {},
       initialColumn: options.column ?? null,
       initialOperation: options.operation ?? null,
     }));
@@ -149,7 +159,7 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
       dirty: false,
     }));
   },
-  setColumns: (columns, columnTypes) => {
+  setColumns: (columns, columnTypes, columnFields) => {
     set((state) => {
       const sameColumns =
         state.columns.length === columns.length &&
@@ -158,7 +168,12 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
         columnTypes === undefined ||
         JSON.stringify(state.columnTypes) === JSON.stringify(columnTypes);
       if (sameColumns && sameTypes) return state;
-      return { columns, ...(columnTypes ? { columnTypes } : {}) };
+      return {
+        columns,
+        ...(columnTypes ? { columnTypes } : {}),
+        // The fields change when the columns or their types do.
+        ...(columnFields ? { columnFields } : {}),
+      };
     });
   },
   setDraft: (request, highlightColumns, dirty, scrollAnchor = null) => {

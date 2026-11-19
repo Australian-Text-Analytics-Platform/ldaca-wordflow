@@ -102,3 +102,32 @@ def test_zip_entries_are_dated_when_downloaded(tmp_path) -> None:
             assert (tag, size, flags) == (0x5455, 5, 1)
             assert before <= stamp <= after
         assert archive.read(members[0]).decode("utf-8-sig").splitlines() == ["text", "one"]
+
+
+@pytest.mark.parametrize(
+    ("names", "expected"),
+    [
+        (["a", "b"], ["a", "b"]),
+        (["Same Name", "Same Name"], ["Same_Name", "Same_Name_2"]),
+        # A numbered name another Data Block already has is passed over.
+        (["notes", "notes", "notes_2"], ["notes", "notes_3", "notes_2"]),
+        (["notes_2", "notes", "notes"], ["notes_2", "notes", "notes_3"]),
+        (["notes", "notes", "notes_2", "notes_2"], ["notes", "notes_3", "notes_2", "notes_2_2"]),
+        # Punctuation becomes "_", so these are one name.
+        (["a b", "a_b", "a.b"], ["a_b", "a_b_2", "a_b_3"]),
+        # Windows and macOS unzip names that differ only in capitals over
+        # each other.
+        (["Notes", "notes"], ["Notes", "notes_2"]),
+        (["CAF\u00c9", "caf\u00e9", "Caf\u00e9_2"], ["CAF\u00c9", "caf\u00e9_3", "Caf\u00e9_2"]),
+        # A name with nothing usable takes the fallback.
+        (["???", "???"], ["id0", "id1"]),
+    ],
+)
+def test_bundled_file_names_are_unique(names: list[str], expected: list[str]) -> None:
+    frame = pl.LazyFrame({"n": [1]})
+    frames = tuple((name, f"id{index}", frame) for index, name in enumerate(names))
+
+    archive_names = data_block_exports._archive_names(frames, "csv")
+
+    assert archive_names == [f"{stem}.csv" for stem in expected]
+    assert len({data_block_exports._name_key(name) for name in archive_names}) == len(names)

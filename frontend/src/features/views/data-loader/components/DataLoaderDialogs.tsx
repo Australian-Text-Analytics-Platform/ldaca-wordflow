@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { FileTreeDirectory } from '@/features/views/data-loader/types';
 import { LdacaImportDialog, type LdacaImportDialogProps } from './LdacaImportDialog';
+import type { BatchAddReport } from '../hooks/useDataLoaderWorkspaceActions';
 import type { LargeUploadReminder } from '../hooks/useUploadState';
 import { DESKTOP_APP_URL } from '../utils/largeUploadReminder';
 import { formatBytes } from '../utils/format';
@@ -65,6 +66,11 @@ export interface DataLoaderDialogsProps {
     paths: string[];
     onClose: () => void;
   };
+  /** Files a batch Add left out; the user closes the window to acknowledge. */
+  batchAddReport?: {
+    report: BatchAddReport | null;
+    onClose: () => void;
+  };
   /**
    * The reminder before a large upload on a shared server (issue 260) or an
    * upload of thousands of files anywhere (issue 447).
@@ -92,6 +98,7 @@ export function DataLoaderDialogs({
   createFolder,
   citation,
   uploadConflicts,
+  batchAddReport,
   largeUpload,
 }: DataLoaderDialogsProps) {
   return (
@@ -312,6 +319,33 @@ export function DataLoaderDialogs({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(batchAddReport?.report)}
+        onOpenChange={(open) => {
+          if (!open) batchAddReport?.onClose();
+        }}
+      >
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{batchAddReport?.report?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{batchAddReport?.report?.summary}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-64 overflow-y-auto rounded-md border p-3" tabIndex={0}>
+            <ul className="space-y-1 text-body" aria-label="Files left out">
+              {batchAddReport?.report?.items.map((item) => (
+                <li key={item.path}>
+                  <code className="break-all">{item.path}</code>
+                  <span className="text-description"> — {item.reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={batchAddReport?.onClose}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={Boolean(folderNameAlert.message)}

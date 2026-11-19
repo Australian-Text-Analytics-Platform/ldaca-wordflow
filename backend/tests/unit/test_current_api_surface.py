@@ -75,6 +75,7 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/user-files/worksheets", "list_file_worksheets"),
     ("POST", "/api/user-files/workbook-sheets", "list_workbook_sheets"),
     ("GET", "/api/user-files/zip-tables", "list_zip_table_members"),
+    ("GET", "/api/user-files/json-record-paths", "list_json_record_paths"),
     ("GET", "/api/user-files/raw", "get_raw_file"),
     ("POST", "/api/user-files/archives", "prepare_file_archive"),
     ("GET", "/api/user-files/archives/{archive_id}", "download_file_archive"),
@@ -249,6 +250,11 @@ EXPECTED_OPERATIONS = {
         "GET",
         "/api/workspaces/{workspace_id}/nodes/{node_id}/value-counts",
         "get_column_value_counts",
+    ),
+    (
+        "GET",
+        "/api/workspaces/{workspace_id}/nodes/{node_id}/distinct-value-columns",
+        "get_distinct_value_columns",
     ),
     (
         "GET",

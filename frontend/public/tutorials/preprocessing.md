@@ -19,7 +19,7 @@ There are currently eight sub-tabs:
 | Join | Combine two Data Blocks side-by-side on a shared column | New Data Block |
 | Segment | One row per sentence, paragraph, line, or pattern-led segment, such as speaker turns | New Data Block |
 | Aggregate | One row per group, such as one document per speaker, with a summary of each column | New Data Block |
-| Sample | Extract a contiguous slice or a random subset of rows | New Data Block |
+| Sample | Pick rows at random, or take a range of rows by position | New Data Block |
 | Deduplicate | Keep the first of each duplicate, and save the duplicate groups separately | Two new Data Blocks |
 | Stack | Put two or more Data Blocks that share the same columns one below the other | New Data Block |
 
@@ -48,7 +48,7 @@ The preview pane shows the result of the current configuration in a paginated fo
 
 <h3 id="help-preprocessing-common-apply-button">Result destination</h3>
 
-Every Data Builder tool creates new Data Blocks and never changes its sources: one for Filter, Join, Segment, Aggregate, Sample (including Slice, Random sample, and Shuffle), and Stack; one per ticked group for Group; and two for Deduplicate. The source is preserved and the new Data Block records its creation lineage.
+Every Data Builder tool creates new Data Blocks and never changes its sources: one for Filter, Join, Segment, Aggregate, Sample (including Random sample, Shuffle, and Row range), and Stack; one per ticked group for Group; and two for Deduplicate. The source is preserved and the new Data Block records its creation lineage.
 
 To add or change columns on the selected Data Block instead, use the Data Editor. Its edits keep the Data Block's identity, graph edges, and rows unchanged, and each one can be undone from the Data Editor header.
 
@@ -109,23 +109,16 @@ Give the filtered output a descriptive name so it is easy to find in the Project
 
 ![Sample screenshot](tutorials/assets/preprocessing/sample.png)
 
-The Sample sub-tab extracts either a contiguous range or a randomly selected set of rows. A small representative subset makes exploring and debugging quicker than working with the full Data Block.
+The Sample sub-tab makes a smaller Data Block from the selected one. A small subset makes exploring and debugging quicker than working with the full Data Block. It has two tabs:
 
-<h3 id="help-preprocessing-slice-offset">Slice: start row and length</h3>
-
-![Slice screenshot](tutorials/assets/preprocessing/sample_slice.png)
-
-The slice option extracts a contiguous chunk of rows. **Start row** sets the first row to include (0 means the first row) and **Length** sets how many rows to include. Leave Length blank to slice to the end of the Data Block. For example, to extract rows 101–200 set Start row = 100 and Length = 100.
-
-<h3 id="help-preprocessing-slice-length">Length</h3>
-
-The number of rows to be sliced from the start row. Leave blank to slice from the start row to the end of the Data Block.
+- **Random sample** (the first tab) picks rows at random from the whole Data Block, so the result still reflects all of it.
+- **Row range** takes rows in their current order, by position: for example the first 500 rows, or rows 101 to 200. Nothing is picked at random, so the rows you get depend on how the Data Block is sorted. Earlier versions called this tab Slice.
 
 <h3 id="help-preprocessing-sample-fraction">Random sample: fraction or count</h3>
 
 ![Random screenshot](tutorials/assets/preprocessing/sample_random.png)
 
-The random sample option extracts a randomly selected set of rows.
+Enter how many rows to pick, as a share of the rows or as a number of rows.
 
 - **Fraction**: enter a decimal between 0 and 1 (e.g. 0.3 for 30 % of rows).
 - **Count**: enter a whole number of rows to extract (e.g. 500). If the count exceeds the Data Block size, all rows are returned in shuffled order.
@@ -137,14 +130,24 @@ The random seed controls reproducibility. Using the same seed on the same data a
 - Use any non-negative integer (e.g. 0).
 - Check **No random seed** to let Wordflow pick the seed: a new random draw each time you create a Data Block this way. The seed Wordflow picked is recorded in the new Data Block's description, so the Data Block keeps the same rows when you reload the Project or build on it, and you can reuse that seed to reproduce the draw.
 
+<h3 id="help-preprocessing-slice-offset">Row range: start row and length</h3>
+
+![Row range screenshot](tutorials/assets/preprocessing/sample_slice.png)
+
+**Start row** sets the first row to take (0 means the first row) and **Length** sets how many rows to take. For example, to take rows 101–200 set Start row = 100 and Length = 100.
+
+<h3 id="help-preprocessing-slice-length">Length</h3>
+
+How many rows to take, counting from the start row. If fewer rows are left, the range stops at the end of the Data Block.
+
 <h3 id="help-preprocessing-slice-new-node-name">New Data Block name</h3>
 
-The pre-populated name includes the sampling parameters. Edit it if you need a more descriptive label. Sample is create-only.
+The pre-populated name includes the sampling parameters, such as `Corpus_sampled_fr_0_2_rs_7` for a random sample or `Corpus_rows_100_to_199` for a row range. Edit it if you need a more descriptive label. Sample is create-only.
 
 **Practice exercise**
 
 1. Select a Data Block with at least 200 rows.
-2. Try Slice with Start row 50 and Length 25, then try Random sample with Fraction 0.2 and a fixed seed.
+2. Try Random sample with Fraction 0.2 and a fixed seed, then try Row range with Start row 50 and Length 25.
 3. Add each result as a new Data Block and compare the row counts.
 
 <h2 id="help-preprocessing-join-section">Join</h2>
@@ -237,7 +240,7 @@ Separators are not kept, segments are trimmed, and empty segments are skipped.
 
 Group makes one Data Block per group of a column (not to be confused with Aggregate, which makes one row per group), so analyses that compare Data Blocks need one step instead of several filters.
 
-Choose the column under **Split by**; the choices below it depend on the column's type.
+Choose the column beside **Split by**; the choices below it depend on the column's type. A text, category or true/false column is listed only if it has 50 or fewer different values, because each value becomes a Data Block, and shows that number, such as *party (4 values)*; empty values are not counted. A column with more values is left out of the list. Number, date, date and time and elapsed time columns are always listed, because they are grouped into ranges or periods. Each column starts with the symbol of its type, the one the Data Editor shows in its column headers, such as **123** for a whole number or a calendar for a date; hover it to read the type's name. The **?** beside **Split by** gives this rule in brief. If no column can be grouped, a line under **Split by** says so.
 
 - For **text** and **category** columns, each value is a group. Values are listed with their row counts: text most frequent first, a category in its own order, with **(empty)** last.
 - For **dates**, group by year, year and month, or day.
@@ -258,7 +261,7 @@ Aggregate makes a new Data Block with one row per group, for example one documen
 - Numbers: **Sum**, **Mean**, **Minimum**, **Maximum**, **Count distinct**, **First**, **Last**
 - Dates: **Earliest & latest**, **Earliest**, **Latest**, **Count distinct**, **First**, **Last**
 
-The defaults are cautious. The text column chosen in the inputs panel is joined, with a blank line between texts (change this under **Put between joined texts**). Dates keep their earliest and latest values. An elapsed time column can be summed or averaged, for example each speaker's total speaking time from a duration column. Every other column starts as **Leave out**, so ids are never joined or summed by surprise. A **rows** column always counts the rows in each group. Groups appear in the order they first occur. Use **Find a column** to find a column in a long list.
+The defaults are cautious. The text column chosen in the inputs panel is joined, with a blank line between texts (change this under **Put between joined texts**). Dates keep their earliest and latest values. An elapsed time column can be summed or averaged, for example each speaker's total speaking time from a duration column. Every other column starts as **Leave out**, so ids are never joined or summed by surprise. A **rows** column always counts the rows in each group. Groups appear in the order they first occur. Each column in the list starts with the symbol of its type, the one the Data Editor shows in its column headers; the type decides which summaries its menu offers. Use **Find a column** to find a column in a long list.
 
 ![Aggregate grouped by username, with a summary chosen for each column](tutorials/assets/preprocessing/aggregate.png)
 

@@ -1,3 +1,5 @@
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
+import { useNodeColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BookText } from 'lucide-react';
@@ -51,6 +53,7 @@ export function CorpusOverviewPopover({
         ? documentColumn
         : (textColumns[0] ?? null);
 
+  const columnFields = useNodeColumnFields(workspaceId, nodeId);
   const overviewQuery = useQuery({
     queryKey: ['workspaces', workspaceId, 'nodes', nodeId, 'corpus-overview', column],
     enabled: open && column !== null,
@@ -98,8 +101,8 @@ export function CorpusOverviewPopover({
                   </SelectTrigger>
                   <SelectContent>
                     {textColumns.map((name) => (
-                      <SelectItem key={name} value={name}>
-                        {name}
+                      <SelectItem key={name} value={name} textValue={name}>
+                        <ColumnTypeLabel field={columnFields.get(name)}>{name}</ColumnTypeLabel>
                       </SelectItem>
                     ))}
                   </SelectContent>

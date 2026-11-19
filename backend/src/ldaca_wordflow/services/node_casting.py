@@ -28,6 +28,7 @@ from .conversion import (
     number_from_text,
     round_to_whole,
     uses_numbers,
+    whole_number_from_text,
 )
 from ..shared.elapsed_time import (
     elapsed_from_datetime,
@@ -288,9 +289,11 @@ def _cast_expr(
         return pl.col(column_name).cast(pl.Utf8).alias(column_name)
     if target_lower == "integer":
         # Text is read with the chosen marks, and decimals round to the nearest
-        # whole number, halves away from zero (issue 322).
+        # whole number, halves away from zero (issue 322). Digits are read as
+        # written, never through a decimal number, so long identifiers stay
+        # distinct.
         if is_text:
-            return round_to_whole(number_from_text(pl.col(column_name), options)).alias(
+            return whole_number_from_text(pl.col(column_name), options).alias(
                 column_name
             )
         if dtype is not None and dtype.is_float():

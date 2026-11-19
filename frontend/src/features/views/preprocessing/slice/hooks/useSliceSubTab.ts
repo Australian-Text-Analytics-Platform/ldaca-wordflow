@@ -111,7 +111,8 @@ export interface UseSliceSubTabResult {
 const PREVIEW_DEBOUNCE_MS = 400;
 const DEFAULT_RANDOM_SEED = '0';
 const DEFAULT_SLICE_FORM_VALUES: SliceFormValues = {
-  mode: 'slice',
+  // The tool is named Sample, so it opens on Random sample; Row range is the second tab.
+  mode: 'random_sample',
   offsetInput: '0',
   lengthInput: '',
   sampleSizeInput: '',
@@ -297,13 +298,13 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
     }
     const lastOffset = lastResult.offset ?? 0;
     if (lastResult.length === undefined) {
-      return `Last slice “${lastResult.nodeName}” (start row ${String(lastOffset)} → end).`;
+      return `Last row range “${lastResult.nodeName}” (start row ${String(lastOffset)} → end).`;
     }
     if (lastResult.length === 0) {
-      return `Last slice “${lastResult.nodeName}” (start row ${String(lastOffset)}, zero rows).`;
+      return `Last row range “${lastResult.nodeName}” (start row ${String(lastOffset)}, zero rows).`;
     }
     const endRow = lastOffset + lastResult.length - 1;
-    return `Last slice “${lastResult.nodeName}” (rows ${String(lastOffset)}–${String(endRow)}).`;
+    return `Last row range “${lastResult.nodeName}” (rows ${String(lastOffset)}–${String(endRow)}).`;
   })();
 
   const {
@@ -409,7 +410,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
       const responseName =
         response.name.trim() ||
         requestedName ||
-        `${selectedNodeLabel || selectedNodeId}_${mode === 'slice' ? 'sliced' : isFullShuffle ? 'shuffled' : 'sampled'}`;
+        `${selectedNodeLabel || selectedNodeId}_${mode === 'slice' ? 'rows' : isFullShuffle ? 'shuffled' : 'sampled'}`;
       const resultNodeId = response.id;
       setLastResultState({
         signature: resultSignature,
@@ -425,7 +426,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
       });
       toast.success(`Added ${responseName} to the Project.`);
     } catch (error) {
-      const operationLabel = mode === 'slice' ? 'Slice' : 'Random sample';
+      const operationLabel = mode === 'slice' ? 'Row range' : 'Random sample';
       const message = error instanceof Error ? error.message : `${operationLabel} operation failed`;
       setCurrentInlineError(message);
       onAlert("Couldn't create the Data Block.", error);

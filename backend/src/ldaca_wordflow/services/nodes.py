@@ -27,6 +27,8 @@ from ..infrastructure.storage.data_loading import (
     detect_file_type,
     extract_zip_table_member,
     materialize_data_file,
+    SkippedJsonFile,
+    materialize_json_files,
     read_documents,
     read_selected_documents,
     normalize_dtypes,
@@ -51,6 +53,10 @@ from ..shared.unsupported_columns import require_supported_columns
 from .conversion import detect_datetime_formats, format_tokens
 from .node_casting import check_cast
 from .node_operations import conversion_options
+from ..analysis.distinct_value_columns import (
+    columns_by_distinct_values,
+    is_groupable_or_temporal_dtype,
+)
 from .column_examples import column_examples
 from .corpus_overview import corpus_overview
 from ..analysis.topic_segment_lengths import topic_segment_lengths
@@ -65,6 +71,8 @@ from .category_order import (
 from ..models.node_resources import (
     CategoryValuesResource,
     ColumnExamplesResource,
+    DistinctValueColumn,
+    DistinctValueColumnsResource,
     AnnotationLabelsAppliedResource,
     ColumnValueCountsResource,
     MAP_VALUES_LIMIT,
@@ -79,6 +87,7 @@ from ..models.node_resources import (
     FileNodeCreateRequest,
     FilesNodeCreateRequest,
     GroupSummaryNodeCreateRequest,
+    JsonFilesNodeCreateRequest,
     NodeCreateRequest,
     NodeDerivationRequest,
     NodeEditRequest,
@@ -139,7 +148,10 @@ class NodeService:
     ) -> tuple[WorkspaceNodeInfo, int]:
         """Create a file source or immutable derived node and commit once."""
 
-        if isinstance(request, (FileNodeCreateRequest, FilesNodeCreateRequest)):
+        if isinstance(
+            request,
+            (FileNodeCreateRequest, FilesNodeCreateRequest, JsonFilesNodeCreateRequest),
+        ):
             return await self._create_from_file(
                 user_id,
                 workspace_id,
@@ -155,7 +167,9 @@ class NodeService:
         self,
         user_id: str,
         workspace_id: uuid.UUID,
-        request: FileNodeCreateRequest | FilesNodeCreateRequest,
+        request: (
+            FileNodeCreateRequest | FilesNodeCreateRequest | JsonFilesNodeCreateRequest
+        ),
     ) -> tuple[WorkspaceNodeInfo, int]:
         """Snapshot a user file, stage parquet, add a node, and commit once."""
 
@@ -167,6 +181,10 @@ class NodeService:
         try:
             if isinstance(request, FilesNodeCreateRequest):
                 return await self._create_from_files_admitted(
+                    user_id, workspace_id, request
+                )
+            if isinstance(request, JsonFilesNodeCreateRequest):
+                return await self._create_from_json_files_admitted(
                     user_id, workspace_id, request
                 )
             return await self._create_from_file_admitted(
@@ -186,6 +204,12 @@ class NodeService:
     ) -> tuple[WorkspaceNodeInfo, int]:
         """Create one source node after durable storage has been reserved."""
 
+        if request.record_path is not None and detect_file_type(
+            request.zip_member or request.file_path
+        ) not in {"json", "jsonl"}:
+            raise InvalidInputError(
+                "A place for the rows can be chosen only for JSON and JSON Lines files."
+            )
         async with self._files.read_path(
             user_id, request.file_path, allow_directory=True
         ) as source_path:
@@ -201,6 +225,7 @@ class NodeService:
                         request.zip_member,
                         self._max_storage_bytes,
                         request.sheet_name,
+                        request.record_path,
                     )
                     skipped: list[dict[str, str | int]] = []
                 else:
@@ -209,6 +234,7 @@ class NodeService:
                         source_path,
                         request.sheet_name,
                         self._max_storage_bytes,
+                        request.record_path,
                     )
             except DataFileLoadError as exc:
                 if isinstance(exc.__cause__, DirectoryTooLargeError):
@@ -290,6 +316,67 @@ class NodeService:
             skipped,
         )
 
+    async def _create_from_json_files_admitted(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        request: JsonFilesNodeCreateRequest,
+    ) -> tuple[WorkspaceNodeInfo, int]:
+        """Add the records of several JSON files as one Data Block, read one way.
+
+        Files are user files, or members of the ZIP at ``zip_path``; together
+        they are bounded by the Data Block storage limit, as a folder is.
+        """
+
+        try:
+            if request.zip_path is not None:
+                async with self._files.read_path(user_id, request.zip_path) as zip_path:
+                    if detect_file_type(zip_path.name) != "zip":
+                        raise InvalidInputError("zip_path is not a ZIP archive")
+                    dataframe, dtype_changes, skipped_json = await self._run_io(
+                        _load_zip_json_members,
+                        zip_path,
+                        request.file_paths,
+                        request.record_path,
+                        self._max_storage_bytes,
+                    )
+                default_name = f"{_node_name_from_path(request.zip_path)}_records"
+            else:
+                public = [PurePosixPath(path) for path in request.file_paths]
+                base = _common_folder(public)
+                async with self._files.read_paths(
+                    user_id, [path.as_posix() for path in public]
+                ) as targets:
+                    files = [
+                        (target, (path.relative_to(base) if base.parts else path).as_posix())
+                        for target, path in zip(targets, public, strict=True)
+                    ]
+                    dataframe, dtype_changes, skipped_json = await self._run_io(
+                        _load_json_files,
+                        files,
+                        request.record_path,
+                        self._max_storage_bytes,
+                    )
+                default_name = f"{base.name}_records" if base.parts else "json_records"
+        except DataFileLoadError as exc:
+            if isinstance(exc.__cause__, DirectoryTooLargeError):
+                raise ResourceTooLargeError(
+                    "The JSON files are too large to add as one Data Block"
+                ) from exc
+            raise InvalidInputError(
+                f"Couldn't load the JSON files. {describe_load_failure(exc, 'records.json')}",
+                details={"diagnostic": format_exception_diagnostic(exc)},
+            ) from exc
+        return await self._add_source_node(
+            user_id,
+            workspace_id,
+            dataframe,
+            (request.name or default_name).strip(),
+            dtype_changes,
+            [],
+            [{"path": item.path, "reason": item.reason} for item in skipped_json],
+        )
+
     async def _add_source_node(
         self,
         user_id: str,
@@ -298,6 +385,7 @@ class NodeService:
         node_name: str,
         dtype_changes: list[dict[str, str]],
         skipped: list[dict[str, str | int]],
+        skipped_json: list[dict[str, str]] | None = None,
     ) -> tuple[WorkspaceNodeInfo, int]:
         """Stage a loaded source as parquet, add its node, and commit once."""
 
@@ -330,6 +418,8 @@ class NodeService:
                     info["dtype_normalization"] = dtype_changes
                 if skipped:
                     info["skipped_files"] = skipped
+                if skipped_json:
+                    info["skipped_json_files"] = skipped_json
             return WorkspaceNodeInfo.model_validate(info), lease.revision
         except BaseException:
             if staged_path is not None:
@@ -757,6 +847,32 @@ class NodeService:
             max_values=MAX_CATEGORY_VALUES,
         )
 
+    async def distinct_value_columns(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        max_distinct: int,
+    ) -> DistinctValueColumnsResource:
+        """The columns a tool can group by: at most ``max_distinct`` values each.
+
+        The rule Topic Modelling's Colour by uses, for a whole Data Block; dates
+        and times qualify too, because Trends can group by them.
+        """
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = lease.workspace.nodes.get(node_id)
+            if node is None:
+                raise NodeNotFoundError("Data Block not found")
+            counts = await self._run_io(_group_columns, node.data, max_distinct)
+        return DistinctValueColumnsResource(
+            max_distinct=max_distinct,
+            columns=[
+                DistinctValueColumn(name=name, distinct_values=count)
+                for name, count in counts.items()
+            ],
+        )
+
     async def column_examples(
         self,
         user_id: str,
@@ -913,7 +1029,10 @@ class NodeService:
 
 
 def _load_dataframe(
-    path: Path, sheet_name: str | None, max_folder_bytes: int
+    path: Path,
+    sheet_name: str | None,
+    max_folder_bytes: int,
+    record_path: str | None = None,
 ) -> tuple[pl.DataFrame, list[dict[str, str]], list[dict[str, str | int]]]:
     """Fully infer and materialize one source before canonical normalization.
 
@@ -927,7 +1046,7 @@ def _load_dataframe(
         data, skipped = documents
         frame, changes = normalize_dtypes(data)
         return frame, changes, skipped.as_report()
-    data = materialize_data_file(path, sheet_name=sheet_name)
+    data = materialize_data_file(path, sheet_name=sheet_name, record_path=record_path)
     frame, changes = normalize_dtypes(data)
     # A Parquet category the file marks as ordered loses its order (issue 318).
     return frame, [*changes, *unreadable_order_notes(path, frame)], []
@@ -958,7 +1077,11 @@ def _load_selected_documents(
 
 
 def _load_zip_member_dataframe(
-    zip_path: Path, member: str, max_member_bytes: int, sheet_name: str | None = None
+    zip_path: Path,
+    member: str,
+    max_member_bytes: int,
+    sheet_name: str | None = None,
+    record_path: str | None = None,
 ) -> tuple[pl.DataFrame, list[dict[str, str]]]:
     """Load one table member of a ZIP (the chosen sheet of a workbook, else
     its first)."""
@@ -972,8 +1095,53 @@ def _load_zip_member_dataframe(
             raise ResourceTooLargeError("That file in the ZIP is too large to add as a Data Block") from exc
         except ValueError as exc:
             raise DataFileLoadError("ZIP member could not be loaded") from exc
-        data = materialize_data_file(extracted, sheet_name=sheet_name)
+        data = materialize_data_file(
+            extracted, sheet_name=sheet_name, record_path=record_path
+        )
     return normalize_dtypes(data)
+
+
+def _load_json_files(
+    files: list[tuple[Path, str]], record_path: str | None, max_total_bytes: int
+) -> tuple[pl.DataFrame, list[dict[str, str]], list[SkippedJsonFile]]:
+    """Read chosen JSON files as one table; folders are not admitted here."""
+
+    total = 0
+    for path, label in files:
+        if not path.is_file():
+            raise InvalidInputError(f"{label} is not a JSON file.")
+        total += path.stat().st_size
+        if total > max_total_bytes:
+            raise DataFileLoadError("JSON files are too large") from DirectoryTooLargeError(
+                "JSON files are too large to load"
+            )
+    frame, skipped = materialize_json_files(files, record_path)
+    return (*normalize_dtypes(frame), skipped)
+
+
+def _load_zip_json_members(
+    zip_path: Path, members: list[str], record_path: str | None, max_total_bytes: int
+) -> tuple[pl.DataFrame, list[dict[str, str]], list[SkippedJsonFile]]:
+    """Extract JSON members of a ZIP within one size budget, then read them."""
+
+    with tempfile.TemporaryDirectory(prefix="wordflow-zip-json-") as scratch:
+        files: list[tuple[Path, str]] = []
+        remaining = max_total_bytes
+        for index, member in enumerate(members):
+            destination = Path(scratch) / str(index)
+            destination.mkdir()
+            try:
+                extracted = extract_zip_table_member(
+                    zip_path, member, destination, max_bytes=remaining
+                )
+            except DirectoryTooLargeError as exc:
+                raise DataFileLoadError("ZIP members are too large") from exc
+            except ValueError as exc:
+                raise DataFileLoadError("ZIP member could not be loaded") from exc
+            remaining -= extracted.stat().st_size
+            files.append((extracted, member))
+        frame, skipped = materialize_json_files(files, record_path)
+        return (*normalize_dtypes(frame), skipped)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -1027,6 +1195,17 @@ def _emptied_values_report(
         rows=int(stats["rows"]),
         first_row=int(first_row) if first_row is not None else None,
         first_value=stats["first_value"],
+    )
+
+
+def _group_columns(data: pl.LazyFrame, max_distinct: int) -> dict[str, int]:
+    """Columns with 1 to ``max_distinct`` values, of a type Trends can group by."""
+
+    return columns_by_distinct_values(
+        data,
+        minimum=1,
+        maximum=max_distinct,
+        accepts=is_groupable_or_temporal_dtype,
     )
 
 

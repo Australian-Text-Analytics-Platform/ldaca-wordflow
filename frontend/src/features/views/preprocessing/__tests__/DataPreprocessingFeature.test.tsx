@@ -282,17 +282,22 @@ describe('DataPreprocessingFeature replace tab', () => {
     ).toBe(false);
   });
 
-  it('shows friendly canonical Arrow types in the filter column selector', async () => {
+  it('shows each column type as a symbol named in plain words in the filter column selector', async () => {
     const user = userEvent.setup();
     renderPreprocessingFeature();
 
     const filterPanel = await waitForFilterSchema();
     await user.click(within(filterPanel).getByRole('combobox', { name: 'Filter column' }));
 
-    expect(screen.getByText('Body (text)')).toBeInTheDocument();
-    expect(screen.getByText('Count (whole number)')).toBeInTheDocument();
-    expect(screen.queryByText('Body (Utf8View)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Count (Int64)')).not.toBeInTheDocument();
+    // The Data Editor's type symbol stands before each name; its hover text
+    // and the option's description give the type in plain words.
+    const body = screen.getByRole('option', { name: 'Body' });
+    expect(within(body).getByTitle('text')).toHaveTextContent('Aa');
+    expect(body).toHaveAccessibleDescription('text');
+    const count = screen.getByRole('option', { name: 'Count' });
+    expect(within(count).getByTitle('whole number')).toHaveTextContent('123');
+    expect(screen.queryByTitle('Utf8View')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Int64')).not.toBeInTheDocument();
   });
 
   it('uses the exact two-node join and six-node stack input caps', async () => {
@@ -326,7 +331,20 @@ describe('DataPreprocessingFeature replace tab', () => {
       expect(screen.getByRole('tab', { name: 'Sample' })).toHaveAttribute('aria-selected', 'true');
     });
 
-    expect(screen.getByRole('tab', { name: 'Slice' })).toBeInTheDocument();
+    // The tool is named Sample, so Random sample is the first tab and opens by default.
+    const modeTabs = within(screen.getByRole('tabpanel', { name: 'Sample' }))
+      .getAllByRole('tab')
+      .map((tab) => tab.textContent);
+    expect(modeTabs).toEqual(['Random sample', 'Row range']);
+    expect(screen.getByRole('tab', { name: 'Random sample' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByText(/Pick rows at random from the whole Data Block/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Start row')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Row range' }));
+    expect(screen.getByText(/Take rows in their current order, by position/)).toBeInTheDocument();
     expect(screen.getByLabelText('Start row')).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Random sample' }));

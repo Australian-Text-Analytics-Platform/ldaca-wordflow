@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { render as baseRender, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Field, Int64, Utf8 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({ getColumnExamples: vi.fn() }));
@@ -9,6 +10,13 @@ const api = vi.hoisted(() => ({ getColumnExamples: vi.fn() }));
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal()),
   ...api,
+}));
+
+const tableApi = vi.hoisted(() => ({ getNodeSchemaTable: vi.fn() }));
+
+vi.mock('@/api/tableApi', async (importOriginal) => ({
+  ...(await importOriginal()),
+  ...tableApi,
 }));
 
 import { DeleteColumnsDialog } from '../DeleteColumnsDialog';
@@ -94,5 +102,34 @@ describe('DeleteColumnsDialog (#141)', () => {
     expect(api.getColumnExamples).toHaveBeenCalledWith(
       expect.objectContaining({ path: { workspace_id: 'ws-1', node_id: 'node-1' } }),
     );
+  });
+
+  it('shows each column behind the type symbol its header shows', async () => {
+    api.getColumnExamples.mockResolvedValue({ data: { examples: {} } });
+    tableApi.getNodeSchemaTable.mockResolvedValue({
+      schema: [
+        { name: 'text', field: new Field('text', new Utf8()) },
+        { name: 'year', field: new Field('year', new Int64()) },
+      ],
+    });
+    render(
+      <DeleteColumnsDialog
+        open
+        onOpenChange={vi.fn()}
+        columns={['text', 'year']}
+        onConfirm={vi.fn()}
+        workspaceId="ws-1"
+        nodeId="node-1"
+      />,
+    );
+
+    expect(await screen.findByTitle('whole number')).toHaveTextContent('123');
+    expect(screen.getByTitle('text')).toHaveTextContent('Aa');
+    // A tick box is still named after its column alone: the symbol is decoration.
+    expect(screen.getByRole('checkbox', { name: 'year' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'text' })).toBeInTheDocument();
+    expect(tableApi.getNodeSchemaTable).toHaveBeenCalledWith({
+      path: { workspace_id: 'ws-1', node_id: 'node-1' },
+    });
   });
 });

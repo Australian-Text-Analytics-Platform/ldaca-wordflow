@@ -4,10 +4,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { useDataLoaderWorkspaceActions } from '../useDataLoaderWorkspaceActions';
 
-const mocks = vi.hoisted(() => ({ createNodeFromFile: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  createNodeFromFile: vi.fn(),
+  createNodeFromJsonFiles: vi.fn(),
+}));
 
 vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({
-  useWorkspaceActions: () => ({ createNodeFromFile: mocks.createNodeFromFile }),
+  useWorkspaceActions: () => ({
+    createNodeFromFile: mocks.createNodeFromFile,
+    createNodeFromJsonFiles: mocks.createNodeFromJsonFiles,
+  }),
 }));
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -70,14 +76,19 @@ describe('useDataLoaderWorkspaceActions add file', () => {
       ]);
     });
 
-    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('w.xlsx', 'Empty');
-    expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to Project.');
-    // The reason is given, such as an empty sheet (issue 323).
-    expect(notify).toHaveBeenCalledWith(
-      'error',
-      '1 table could not be added.',
-      'w.xlsx › Empty: bad file',
-    );
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('w.xlsx', 'Empty', undefined, undefined);
+    // The failures go to a window the user closes, not a toast; the reason is
+    // given, such as an empty sheet (issue 323).
+    expect(notify).not.toHaveBeenCalled();
+    expect(result.current.batchAddReport).toEqual({
+      title: '1 table could not be added',
+      summary: '2 Data Blocks added to Project. These tables were left out:',
+      items: [{ path: 'w.xlsx › Empty', reason: 'bad file' }],
+    });
+    act(() => {
+      result.current.closeBatchAddReport();
+    });
+    expect(result.current.batchAddReport).toBeNull();
   });
 
   it('adds ZIP table members through their archive', async () => {
@@ -104,8 +115,117 @@ describe('useDataLoaderWorkspaceActions add file', () => {
       );
     });
 
-    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('bundle.zip', undefined, 'tables/a.csv');
-    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('bundle.zip', 'Two', 'book.ods');
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith(
+      'bundle.zip',
+      undefined,
+      'tables/a.csv',
+      undefined,
+    );
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith(
+      'bundle.zip',
+      'Two',
+      'book.ods',
+      undefined,
+    );
     expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to Project.');
+  });
+
+  it('reads only the JSON tables of a batch at the chosen place', async () => {
+    mocks.createNodeFromFile.mockReset();
+    mocks.createNodeFromFile.mockResolvedValue({});
+    const { result } = renderHook(
+      () =>
+        useDataLoaderWorkspaceActions({
+          workspaceCatalogue: [],
+          hasWorkspaceSelected: true,
+          notify: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.handleAddFilesToWorkspace(
+        [
+          { id: 'a.csv', label: 'a.csv', path: 'ocr/a.csv' },
+          { id: 'p1.json', label: 'p1.json', path: 'ocr/p1.json' },
+        ],
+        undefined,
+        '/pages/parsing_res_list',
+      );
+    });
+
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith(
+      'ocr/a.csv',
+      undefined,
+      undefined,
+      undefined,
+    );
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith(
+      'ocr/p1.json',
+      undefined,
+      undefined,
+      '/pages/parsing_res_list',
+    );
+  });
+
+  it('adds JSON files as one Data Block and says so', async () => {
+    mocks.createNodeFromJsonFiles.mockResolvedValue({ name: 'ocr_records' });
+    const notify = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useDataLoaderWorkspaceActions({
+          workspaceCatalogue: [],
+          hasWorkspaceSelected: true,
+          notify,
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.handleAddJsonFilesToWorkspace(
+        ['ocr/p1.json', 'ocr/p2.json'],
+        '/pages/parsing_res_list',
+        'ocr.zip',
+      );
+    });
+
+    expect(mocks.createNodeFromJsonFiles).toHaveBeenCalledWith(
+      ['ocr/p1.json', 'ocr/p2.json'],
+      '/pages/parsing_res_list',
+      'ocr.zip',
+    );
+    expect(notify).toHaveBeenCalledWith(
+      'success',
+      'ocr_records added to Project: 2 JSON files as one Data Block.',
+    );
+  });
+
+  it('names the JSON files a batch left out in a window, not a toast', async () => {
+    mocks.createNodeFromJsonFiles.mockResolvedValue({
+      name: 'ocr_records',
+      skipped_json_files: [{ path: 'p2.json', reason: 'Not valid JSON (line 1)' }],
+    });
+    const notify = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useDataLoaderWorkspaceActions({
+          workspaceCatalogue: [],
+          hasWorkspaceSelected: true,
+          notify,
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.handleAddJsonFilesToWorkspace(['ocr/p1.json', 'ocr/p2.json'], null);
+    });
+
+    expect(notify).not.toHaveBeenCalled();
+    expect(result.current.batchAddReport).toEqual({
+      title: '1 JSON file was left out',
+      summary:
+        'ocr_records was added to Project with the rows of 1 of 2 files. These files were left out:',
+      items: [{ path: 'p2.json', reason: 'Not valid JSON (line 1)' }],
+    });
   });
 });

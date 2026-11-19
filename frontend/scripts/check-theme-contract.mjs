@@ -12,6 +12,8 @@ const allowedRawColorFiles = new Set([
   // Partner logos are drawn for light backgrounds, so their strip stays light in every theme.
   'components/help/PartnerLogos.tsx',
   'features/theme/themeRuntime.ts',
+  // The downloaded reliability matrix draws its text on the image's fixed white background.
+  'features/views/common/agreementMatrixImage.ts',
   'features/views/common/components/MultiSeriesChart.tsx',
   'features/views/common/components/NodeColorPicker.tsx',
   'features/views/common/components/NodeSelectionList.tsx',

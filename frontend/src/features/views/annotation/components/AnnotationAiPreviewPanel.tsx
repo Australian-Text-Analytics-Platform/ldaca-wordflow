@@ -30,7 +30,12 @@ import {
   ColumnComparisonSelector,
   type ConfusionCount,
 } from '@/features/views/common/components/ColumnComparison';
-import type { IntercoderReliabilityMetric } from '@/features/views/common/columnComparisonModel';
+import type {
+  CodeCombination,
+  IntercoderReliabilityMetric,
+  OrderedScale,
+} from '@/features/views/common/columnComparisonModel';
+import { MultiCoderAlphaBadge } from '@/features/views/common/components/MultiCoderAlphaBadge';
 import { MetadataColumnSelector } from '@/features/views/common/components/MetadataColumnSelector';
 import { PaginatedTableProcessingRow } from '@/features/views/common/components/PaginatedTableProcessingRow';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
@@ -40,12 +45,14 @@ import { toBgColor } from '@/features/views/common/vizPalette';
 import {
   annotationValuesDiffer,
   isInvalidAnnotationLabel,
-  normalizeAnnotationLabel,
   normalizeAnnotationClassOptions,
+  normalizeAnnotationLabel,
+  NOT_A_CODE_EXPLANATION,
 } from '../annotationLabelModel';
 import type { AnnotationAiPreview, AnnotationPreviewRow } from '../hooks/useAnnotationAiPreview';
 import { AnnotationCorrectionColumnControl } from './AnnotationCorrectionColumnControl';
 import { AnnotationTableFrame } from './AnnotationTableFrame';
+import { codebookFitFromValues } from '../codebookFit';
 import { CurrentAnnotationValueItem } from './CurrentAnnotationValueItem';
 import { toastError } from '@/lib/toastError';
 
@@ -67,6 +74,8 @@ interface AnnotationAiPreviewPanelProps {
     onColumnsChange: (columns: string[]) => void;
     metric: IntercoderReliabilityMetric;
     onMetricChange: (metric: IntercoderReliabilityMetric) => void;
+    /** The Preview's codebook as an ordered scale; null for categories. */
+    scale?: OrderedScale | null;
   };
   metadata: {
     columns: string[];
@@ -174,6 +183,50 @@ export function AnnotationAiPreviewPanel({
     });
     comparisonRows.set(targetColumn, Array.from(counts.values()));
   });
+  // Page-local, like these scores: how many values on this page are not
+  // codes, so the scores can say which columns they leave out (issue 498).
+  const previewFit = codebookFitFromValues(
+    page.rows.map((_, index) => predictions.labels[index]),
+    classOptions,
+  );
+  const comparisonFit = new Map(
+    activeComparisonColumns.map((targetColumn) => [
+      targetColumn,
+      codebookFitFromValues(
+        page.rows.map((row, index) => {
+          const rowPosition = page.pagination.pageIndex * page.pagination.pageSize + index;
+          const selectionKey = `${targetColumn}:${String(rowPosition)}`;
+          return Object.hasOwn(selections, selectionKey)
+            ? selections[selectionKey]
+            : row[targetColumn];
+        }),
+        classOptions,
+      ),
+    ]),
+  );
+  const codebookFit = new Map([[previewColumn, previewFit], ...comparisonFit]);
+  // With Alpha chosen and two or more comparisons, the preview column shows
+  // Alpha across every coder on this page (Chao, 16 Nov 2026).
+  const showMultiCoderAlpha =
+    comparison.metric === 'krippendorffs_alpha' && activeComparisonColumns.length >= 2;
+  const pageCombinations = new Map<string, CodeCombination>();
+  if (showMultiCoderAlpha) {
+    page.rows.forEach((row, index) => {
+      const rowPosition = page.pagination.pageIndex * page.pagination.pageSize + index;
+      const values = [
+        normalizeAnnotationLabel(predictions.labels[index], classOptions),
+        ...activeComparisonColumns.map((targetColumn) => {
+          const selectionKey = `${targetColumn}:${String(rowPosition)}`;
+          return normalizeAnnotationLabel(
+            Object.hasOwn(selections, selectionKey) ? selections[selectionKey] : row[targetColumn],
+            classOptions,
+          );
+        }),
+      ];
+      const key = JSON.stringify(values);
+      pageCombinations.set(key, { values, count: (pageCombinations.get(key)?.count ?? 0) + 1 });
+    });
+  }
   const tableColumns: ServerColumnDef<AnnotationPreviewRow>[] = [
     { id: columns.text, accessorFn: (row) => row[columns.text] },
     { id: 'annotation_preview', accessorFn: (row) => row[columns.annotation] },
@@ -226,6 +279,7 @@ export function AnnotationAiPreviewPanel({
         revealedComparisonColumns,
         // The existing annotation, before the preview's label.
         metadataColumns: [columns.annotation, ...activeMetadataColumns],
+        classOptions,
       });
     },
   });
@@ -275,6 +329,7 @@ export function AnnotationAiPreviewPanel({
         <div className="flex flex-wrap items-center gap-2">
           <ColumnComparisonSelector
             availableColumns={comparisonColumnOptions}
+            columnFields={preview.sourceColumnFields}
             selectedColumns={activeComparisonColumns}
             onSelectedColumnsChange={(selected) => {
               const next = selected.filter((column) => column !== correctionColumn);
@@ -285,12 +340,14 @@ export function AnnotationAiPreviewPanel({
             }}
             metric={comparison.metric}
             onMetricChange={comparison.onMetricChange}
+            ordered={Boolean(comparison.scale)}
             disabled={predictions.query.isFetching || preview.comparison.query.isFetching}
             disabledColumns={activeMetadataColumns}
           />
           <AnnotationCorrectionColumnControl
             value={correctionColumn}
             availableColumns={availableCorrectionColumns}
+            columnFields={preview.sourceColumnFields}
             onValueChange={(column) => {
               if (column) {
                 comparison.onColumnsChange(
@@ -313,9 +370,16 @@ export function AnnotationAiPreviewPanel({
           />
           <MetadataColumnSelector
             availableColumns={availableMetadataColumns}
+            columnFields={preview.sourceColumnFields}
             selectedColumns={activeMetadataColumns}
             onSelectedColumnsChange={metadata.onColumnsChange}
             disabledColumns={activeComparisonColumns}
+          />
+          {/* One help icon for the whole toolbar (Chao's one-per-row rule). */}
+          <HelpIcon
+            targetKey="analysis.annotation.table-toolbar"
+            label="About the table toolbar"
+            tooltip="What Compare to, Correction, Use as example, Show metadata and download do."
           />
         </div>
       </div>
@@ -394,7 +458,20 @@ export function AnnotationAiPreviewPanel({
                         label={columns.annotation}
                         className="w-px whitespace-nowrap"
                       >
-                        {columns.annotation} (preview)
+                        <span className="inline-flex flex-col items-start gap-1">
+                          {showMultiCoderAlpha ? (
+                            <MultiCoderAlphaBadge
+                              columns={[previewColumn, ...activeComparisonColumns]}
+                              combinations={Array.from(pageCombinations.values())}
+                              scale={comparison.scale ?? null}
+                              isLoading={comparisonLoading}
+                              isError={comparisonError}
+                              pageOnly
+                              codebookFit={codebookFit}
+                            />
+                          ) : null}
+                          <span>{columns.annotation} (preview)</span>
+                        </span>
                       </DraggableTableHead>
                       {showCorrectionColumn ? (
                         <>
@@ -420,6 +497,7 @@ export function AnnotationAiPreviewPanel({
                         {activeComparisonColumns.includes(column) ? (
                           <ColumnComparisonHeader
                             metric={comparison.metric}
+                            scale={comparison.scale ?? null}
                             referenceColumn={previewColumn}
                             comparisonColumn={column}
                             rows={comparisonRows.get(column)}
@@ -433,6 +511,11 @@ export function AnnotationAiPreviewPanel({
                                 else next.delete(column);
                                 return next;
                               });
+                            }}
+                            codebookFit={{
+                              reference: previewFit,
+                              comparison: comparisonFit.get(column),
+                              pageOnly: true,
                             }}
                           />
                         ) : (
@@ -561,6 +644,11 @@ export function AnnotationAiPreviewPanel({
                                         ? 'italic text-description'
                                         : ''
                                     }`}
+                                    title={
+                                      isInvalidAnnotationLabel(correctionValue, classOptions)
+                                        ? NOT_A_CODE_EXPLANATION
+                                        : undefined
+                                    }
                                   >
                                     <SelectValue placeholder="None" />
                                   </SelectTrigger>
@@ -612,11 +700,7 @@ export function AnnotationAiPreviewPanel({
                               ) : isComparison ? (
                                 <span
                                   className={invalid ? 'italic text-description' : undefined}
-                                  title={
-                                    invalid
-                                      ? 'Not a code in the Codebook, so treated as empty'
-                                      : undefined
-                                  }
+                                  title={invalid ? NOT_A_CODE_EXPLANATION : undefined}
                                 >
                                   {cellText(row[column]) || '—'}
                                 </span>

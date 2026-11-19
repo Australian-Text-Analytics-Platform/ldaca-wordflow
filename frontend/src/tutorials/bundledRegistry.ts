@@ -229,12 +229,12 @@ const tutorial = {
   'preprocessing.slice.offset': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-slice-offset',
-    label: 'Slice start row',
+    label: 'Row range start row',
   },
   'preprocessing.slice.length': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-slice-length',
-    label: 'Slice length',
+    label: 'Row range length',
   },
   'preprocessing.slice.new-node-name': {
     file: 'tutorials/preprocessing.md',
@@ -565,6 +565,16 @@ const tutorial = {
     file: 'tutorials/annotation.md',
     anchor: 'help-annotation-code-designer',
     label: 'AI Code Designer',
+  },
+  'analysis.annotation.scale': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-scale',
+    label: 'Ordered scales',
+  },
+  'analysis.annotation.table-toolbar': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-table-toolbar',
+    label: 'The table toolbar',
   },
   'analysis.annotation.manual': {
     file: 'tutorials/annotation.md',

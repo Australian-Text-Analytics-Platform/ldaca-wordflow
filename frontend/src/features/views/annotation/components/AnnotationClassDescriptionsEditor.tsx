@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import type { AnnotationClassDescriptionRow } from '@/api';
+import { Fragment, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,8 +24,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { Ban, Loader2, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  type Modifier,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import {
   normalizeClassDescriptionRows,
@@ -44,16 +58,24 @@ import {
   withoutRepeatedRows,
 } from '../codebookChecks';
 import {
-  isTaskContextCode,
-  TASK_CONTEXT_CODE,
+  type CodebookRow,
+  isReservedCodebookCode,
+  moveCodebookRow,
+  newCodebookRowId,
   TASK_CONTEXT_MAX_CHARS,
-  withTaskContext,
+  withCodebookRows,
 } from '../taskContext';
 import type { AnnotationProviderConfigurationView } from '@/features/provider-credentials/providerCredentialsStore';
 import { type CodeDesignerSettings, codebookSignature } from '../codebookDesigner';
 import { codebookDraftKey, useCodebookDraftStore } from '../codebookDraftStore';
 import { CodeDesignerBrief } from './CodeDesignerBrief';
+import { CodebookEditorSplit } from './CodebookEditorSplit';
+import { OrderedScaleSwitch } from './OrderedScaleSwitch';
+import { SortableCodeRow } from './SortableCodeRow';
 import { CodebookDesignerDialog } from './CodebookDesignerDialog';
+
+/** Codes move up and down only, never sideways. */
+const verticalOnly: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 
 /** What the Edit codebook window needs from its Annotation tab for the AI Code Designer. */
 interface CodebookDesignerContext {
@@ -147,23 +169,39 @@ export function AnnotationClassDescriptionsEditor({
   });
 
   const savedRows = classDescriptions.rows;
-  const editorRows = draft?.rows ?? normalizeClassDescriptionRows(savedRows);
+  const savedScale = classDescriptions.scale;
+  // On a scale, codes below the scale row are outside it; they come after the levels.
+  const savedOutside = new Set(classDescriptions.outsideScale);
+  const savedEditorRows: CodebookRow[] = normalizeClassDescriptionRows(savedRows).map(
+    (row, index) => ({
+      ...row,
+      id: `saved-${String(index)}`,
+      ...(savedScale && savedOutside.has(row.class.trim()) ? { outsideScale: true } : {}),
+    }),
+  );
+  const editorRows = draft?.rows ?? savedEditorRows;
   const savedTaskContext = classDescriptions.taskContext.trim();
   const editorTaskContext = draft?.taskContext ?? classDescriptions.taskContext;
+  const editorScale = draft?.scale ?? savedScale;
+  const outsideSignature = (rows: CodebookRow[]) =>
+    JSON.stringify(rows.map((row) => Boolean(row.outsideScale)));
   const savedSignature = codebookSignature(savedRows);
-  // Changes worth keeping: different codes or a different Task context.
+  // Changes worth keeping: different codes, Task context or scale setting.
   const dirty =
     draft !== undefined &&
     (codebookSignature(draft.rows) !== savedSignature ||
-      draft.taskContext.trim() !== savedTaskContext);
+      draft.taskContext.trim() !== savedTaskContext ||
+      draft.scale !== savedScale ||
+      (draft.scale && outsideSignature(draft.rows) !== outsideSignature(savedEditorRows)));
   const isAiDraft =
     dirty &&
     draft.designedSignature !== null &&
     codebookSignature(draft.rows) === draft.designedSignature;
-  const writeDraft = (patch: { rows?: AnnotationClassDescriptionRow[]; taskContext?: string }) => {
+  const writeDraft = (patch: { rows?: CodebookRow[]; taskContext?: string; scale?: boolean }) => {
     setDraft(draftKey, {
       rows: patch.rows ?? editorRows,
       taskContext: patch.taskContext ?? editorTaskContext,
+      scale: patch.scale ?? editorScale,
       designedSignature: draft?.designedSignature ?? null,
     });
   };
@@ -187,13 +225,67 @@ export function AnnotationClassDescriptionsEditor({
     });
   };
 
+  // On a scale the codes outside it stay last, so a new code joins the levels.
+  const firstOutside = editorScale ? editorRows.findIndex((row) => row.outsideScale) : -1;
+  const levelCount = firstOutside < 0 ? editorRows.length : firstOutside;
+
   const handleAddClass = () => {
-    writeDraft({ rows: [...editorRows, { class: '', description: '' }] });
+    const rows = [...editorRows];
+    rows.splice(levelCount, 0, { id: newCodebookRowId(), class: '', description: '' });
+    writeDraft({ rows });
   };
 
   // Remove the row from the draft; Save persists the remaining classes.
   const handleDeleteClass = (rowIndex: number) => {
     writeDraft({ rows: editorRows.filter((_, index) => index !== rowIndex) });
+  };
+
+  // Dragging a code reorders the codebook; on a scale it also sets the group.
+  // Each row keeps its own identity, so the row being dragged is the one that lands.
+  const rowIds = editorRows.map((row, index) => row.id ?? `row-${String(index)}`);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setIsDragging(false);
+    if (!over || active.id === over.id) return;
+    const from = rowIds.indexOf(String(active.id));
+    const to = rowIds.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    const rows = moveCodebookRow(editorRows, from, to, editorScale);
+    writeDraft({ rows });
+    // Dropping into the other group changes what the code is, so say so (Chao, 16 Nov 2026).
+    const before = editorRows[from];
+    const after = rows[to];
+    if (
+      editorScale &&
+      before &&
+      after &&
+      Boolean(before.outsideScale) !== Boolean(after.outsideScale)
+    ) {
+      const name = after.class.trim() || `Code ${String(to + 1)}`;
+      toast.info(
+        after.outsideScale ? `“${name}” is now outside the scale.` : `“${name}” is now a level.`,
+      );
+    }
+  };
+
+  // A code outside the scale (such as Not applicable) is not a level: it
+  // moves below the levels, and back to the top of the scale when it becomes one.
+  const handleToggleOutside = (rowIndex: number) => {
+    const row = editorRows[rowIndex];
+    if (!row) return;
+    const rest = editorRows.filter((_, index) => index !== rowIndex);
+    if (row.outsideScale) {
+      const { outsideScale: _outside, ...level } = row;
+      const restFirstOutside = rest.findIndex((item) => item.outsideScale);
+      rest.splice(restFirstOutside < 0 ? rest.length : restFirstOutside, 0, level);
+      writeDraft({ rows: rest });
+    } else {
+      writeDraft({ rows: [...rest, { ...row, outsideScale: true }] });
+    }
   };
 
   // Closing (×, Esc, a click outside) keeps unsaved changes for later.
@@ -216,21 +308,27 @@ export function AnnotationClassDescriptionsEditor({
 
   const handleSave = async () => {
     if (!nodeId || !classColumn || !descriptionColumn) return;
-    const normalized = normalizeClassDescriptionRows(editorRows).map((row) => ({
+    const normalized: CodebookRow[] = editorRows.map((row) => ({
       class: row.class.trim(),
       description: row.description,
+      ...(row.outsideScale ? { outsideScale: true } : {}),
     }));
     if (normalized.some((row) => row.class.length === 0)) {
       toast.error('Every annotation code needs a name.');
       return;
     }
-    if (normalized.some((row) => isTaskContextCode(row.class))) {
-      toast.error(`“${TASK_CONTEXT_CODE}” is reserved for the Task context. Rename that code.`);
+    const reserved = normalized.find((row) => isReservedCodebookCode(row.class));
+    if (reserved) {
+      toast.error(`“${reserved.class}” is reserved for the codebook's settings. Rename that code.`);
       return;
     }
     const uniqueNames = new Set(normalized.map((row) => codeKey(row.class)));
     if (uniqueNames.size !== normalized.length) {
       toast.error('Each code can appear only once. Follow the suggestion below the codes.');
+      return;
+    }
+    if (editorScale && normalized.filter((row) => !row.outsideScale).length < 2) {
+      toast.error('An ordered scale needs at least two levels.');
       return;
     }
     setIsSaving(true);
@@ -239,7 +337,7 @@ export function AnnotationClassDescriptionsEditor({
         nodeId,
         classColumn,
         descriptionColumn,
-        withTaskContext(normalized, editorTaskContext),
+        withCodebookRows(normalized, { taskContext: editorTaskContext, scale: editorScale }),
       );
       if (designer) {
         // Saving the AI draft as it came keeps the brief in step; codes
@@ -297,7 +395,12 @@ export function AnnotationClassDescriptionsEditor({
             </Button>
           </DialogTrigger>
           <DialogContent
-            className="max-w-2xl"
+            // Never taller than the window (Chao, 19 Nov 2026: on a 14-inch
+            // laptop its top and bottom were off screen and couldn't be
+            // scrolled to). The title and Save stay in place; between them
+            // the brief and the codebook are two panes with a divider. Wide, as
+            // nothing else can be used while it is open (Chao, 19 Nov 2026).
+            className="flex max-h-[calc(100dvh-2rem)] max-w-[min(1024px,calc(100vw-2rem))] flex-col"
             onOpenAutoFocus={(event) => {
               // Don't drop a cursor into the first class input on open: that
               // would persist a redundant no-op save the moment the user clicks
@@ -306,109 +409,207 @@ export function AnnotationClassDescriptionsEditor({
             }}
           >
             <DialogHeader>
-              <DialogTitle className="flex flex-wrap items-center gap-2">
-                Edit codebook
-                {dirty ? (
-                  // Orange, so an unsaved draft stands out (Chao, 15 Nov 2026):
-                  // the theme's orange as border, icon and a tint behind the
-                  // normal text colour, readable in light and dark themes.
-                  <Badge
-                    data-testid="codebook-unsaved-badge"
-                    className="gap-1 border-chart-4 bg-[color-mix(in_srgb,var(--color-chart-4)_22%,transparent)] font-semibold text-foreground"
-                  >
-                    <TriangleAlert aria-hidden="true" className="size-3 text-chart-4" />
-                    {isAiDraft ? 'AI draft, not saved' : 'Unsaved changes'}
-                  </Badge>
-                ) : null}
-              </DialogTitle>
+              {/* Ordered scale is a setting of the whole codebook, so it sits on the
+                  title line, clear of the close button (Chao, 16 Nov 2026). */}
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 pr-6">
+                <DialogTitle className="flex flex-wrap items-center gap-2">
+                  Edit codebook
+                  {dirty ? (
+                    // Orange, so an unsaved draft stands out (Chao, 15 Nov 2026):
+                    // the theme's orange as border, icon and a tint behind the
+                    // normal text colour, readable in light and dark themes.
+                    <Badge
+                      data-testid="codebook-unsaved-badge"
+                      className="gap-1 border-chart-4 bg-[color-mix(in_srgb,var(--color-chart-4)_22%,transparent)] font-semibold text-foreground"
+                    >
+                      <TriangleAlert aria-hidden="true" className="size-3 text-chart-4" />
+                      {isAiDraft ? 'AI draft, not saved' : 'Unsaved changes'}
+                    </Badge>
+                  ) : null}
+                </DialogTitle>
+                <OrderedScaleSwitch
+                  checked={editorScale}
+                  disabled={isSaving}
+                  onCheckedChange={(checked) => {
+                    writeDraft({ scale: checked });
+                  }}
+                />
+              </div>
               <DialogDescription>
                 Add, rename, or remove annotation codes and their descriptions.
               </DialogDescription>
             </DialogHeader>
-            {designer ? (
-              <CodeDesignerBrief
-                settings={designer.settings}
-                onSettingsChange={designer.onSettingsChange}
-                disabled={isSaving}
-                blockedReason={
-                  designer.source
-                    ? undefined
-                    : 'Choose an Annotation Data Block and its text column first.'
-                }
-                onDesign={startDesigner}
-              />
-            ) : null}
-            <div className="space-y-1.5">
-              <Label htmlFor="codebook-task-context">
-                Task context <span className="font-normal text-description">(optional)</span>
-              </Label>
-              <Textarea
-                id="codebook-task-context"
-                value={editorTaskContext}
-                rows={3}
-                maxLength={TASK_CONTEXT_MAX_CHARS}
-                placeholder="What the texts are and what the codes are for, for example: Tweets by Australian politicians during the 2025 election campaign."
-                className="min-h-16 resize-y"
-                onChange={(event) => {
-                  writeDraft({ taskContext: event.target.value });
-                }}
-              />
-              <p className="text-label-secondary text-description">
-                Saved with this codebook and sent to the AI with every request, after the prompt.
-              </p>
-            </div>
-            <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
-              {editorRows.length === 0 ? (
-                <p className="rounded-md border border-dashed border-surface-border px-4 py-6 text-center text-body text-description">
-                  No codes yet. Use “Add code” to create one.
+            <CodebookEditorSplit
+              top={
+                designer ? (
+                  <CodeDesignerBrief
+                    settings={designer.settings}
+                    onSettingsChange={designer.onSettingsChange}
+                    scale={editorScale}
+                    disabled={isSaving}
+                    blockedReason={
+                      designer.source
+                        ? undefined
+                        : 'Choose an Annotation Data Block and its text column first.'
+                    }
+                    onDesign={startDesigner}
+                  />
+                ) : null
+              }
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="codebook-task-context">
+                  Task context <span className="font-normal text-description">(optional)</span>
+                </Label>
+                <Textarea
+                  id="codebook-task-context"
+                  value={editorTaskContext}
+                  rows={3}
+                  maxLength={TASK_CONTEXT_MAX_CHARS}
+                  placeholder="What the texts are and what the codes are for, for example: Tweets by Australian politicians during the 2025 election campaign."
+                  className="min-h-16 resize-y"
+                  onChange={(event) => {
+                    writeDraft({ taskContext: event.target.value });
+                  }}
+                />
+                <p className="text-label-secondary text-description">
+                  Saved with this codebook and sent to the AI with every request, after the prompt.
                 </p>
-              ) : (
-                editorRows.map((row, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <Input
-                      aria-label={`Code ${String(index + 1)}`}
-                      value={row.class}
-                      placeholder="Code"
-                      data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
-                      className={cn('w-1/3', draftCheck.rowsToMark.has(index) && 'border-warning')}
-                      disabled={false}
-                      onChange={(event) => {
-                        updateDraftCell(index, 'class', event.target.value);
-                      }}
-                    />
-                    <Textarea
-                      aria-label={`Description ${String(index + 1)}`}
-                      value={row.description}
-                      rows={2}
-                      placeholder="Description"
-                      disabled={false}
-                      data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
-                      className={cn(
-                        'min-h-9 flex-1 resize-y',
-                        draftCheck.rowsToMark.has(index) && 'border-warning',
-                      )}
-                      onChange={(event) => {
-                        updateDraftCell(index, 'description', event.target.value);
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete code ${String(index + 1)}`}
-                      className="shrink-0 text-description hover:text-error"
-                      onClick={() => {
-                        handleDeleteClass(index);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
+              </div>
+              <div
+                className={cn(
+                  'space-y-2',
+                  // Dragging over the fields must not select their text.
+                  isDragging && 'select-none',
+                )}
+              >
+                {editorRows.length === 0 ? (
+                  <p className="rounded-md border border-dashed border-surface-border px-4 py-6 text-center text-body text-description">
+                    No codes yet. Use “Add code” to create one.
+                  </p>
+                ) : (
+                  <DndContext
+                    sensors={dragSensors}
+                    collisionDetection={closestCenter}
+                    modifiers={[verticalOnly]}
+                    onDragStart={() => {
+                      setIsDragging(true);
+                    }}
+                    onDragCancel={() => {
+                      setIsDragging(false);
+                    }}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+                      {editorRows.map((row, index) => (
+                        <Fragment key={rowIds[index]}>
+                          {/* On a scale, two labelled groups: the levels, then a divider
+                            with the codes outside the scale below it (Chao, 16 Nov 2026). */}
+                          {editorScale && index === 0 && !row.outsideScale ? (
+                            <p className="text-label-secondary font-medium text-description">
+                              Levels, from the lowest (top) to the highest
+                            </p>
+                          ) : null}
+                          {editorScale && index === firstOutside ? (
+                            <p
+                              className="flex items-center gap-1.5 border-t border-surface-border pt-2 text-label-secondary font-medium text-description"
+                              data-testid="codebook-outside-scale-heading"
+                            >
+                              <Ban aria-hidden="true" className="size-3.5 shrink-0 text-chart-4" />
+                              Outside the scale: the codes below are not levels
+                            </p>
+                          ) : null}
+                          <SortableCodeRow
+                            id={rowIds[index] ?? ''}
+                            handleLabel={`Drag code ${String(index + 1)} to reorder`}
+                          >
+                            <Input
+                              aria-label={`${editorScale && !row.outsideScale ? 'Level' : 'Code'} ${String(index + 1)}`}
+                              value={row.class}
+                              placeholder={editorScale && !row.outsideScale ? 'Level' : 'Code'}
+                              data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                              className={cn(
+                                // The description gets the room a wide window gives.
+                                'w-1/4 min-w-36',
+                                draftCheck.rowsToMark.has(index) && 'border-warning',
+                              )}
+                              disabled={false}
+                              onChange={(event) => {
+                                updateDraftCell(index, 'class', event.target.value);
+                              }}
+                            />
+                            <Textarea
+                              aria-label={`Description ${String(index + 1)}`}
+                              value={row.description}
+                              rows={2}
+                              placeholder="Description"
+                              disabled={false}
+                              data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                              className={cn(
+                                'min-h-9 flex-1 resize-y',
+                                draftCheck.rowsToMark.has(index) && 'border-warning',
+                              )}
+                              onChange={(event) => {
+                                updateDraftCell(index, 'description', event.target.value);
+                              }}
+                            />
+                            {editorScale ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    // Orange, the theme colour of the unsaved badge, marks
+                                    // a code outside the scale (Chao, 16 Nov 2026).
+                                    className={cn(
+                                      'shrink-0',
+                                      row.outsideScale
+                                        ? 'text-chart-4 hover:text-chart-4'
+                                        : 'text-description',
+                                    )}
+                                    aria-pressed={Boolean(row.outsideScale)}
+                                    aria-label={
+                                      row.outsideScale
+                                        ? `Make code ${String(index + 1)} a level`
+                                        : `Move code ${String(index + 1)} outside the scale`
+                                    }
+                                    onClick={() => {
+                                      handleToggleOutside(index);
+                                    }}
+                                  >
+                                    <Ban className="h-4 w-4" aria-hidden="true" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs whitespace-normal">
+                                  {row.outsideScale
+                                    ? 'Outside the scale: not a level. Click to make it a level again.'
+                                    : 'Move outside the scale, for a code that is not a level, such as Not applicable.'}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : null}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Delete code ${String(index + 1)}`}
+                              className="shrink-0 text-description hover:text-error"
+                              onClick={() => {
+                                handleDeleteClass(index);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                          </SortableCodeRow>
+                        </Fragment>
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </div>
+            </CodebookEditorSplit>
             {hasCodebookProblems(draftCheck) ? (
-              <div className="max-h-[30vh] space-y-2 overflow-y-auto pr-1">
+              <div className="max-h-[30vh] shrink-0 space-y-2 overflow-y-auto pr-1">
                 <CodebookSuggestions suggestions={codebookSuggestions(editorRows, draftCheck)} />
                 {draftCheck.repeatedRows.length > 0 ? (
                   <Button
@@ -522,7 +723,7 @@ export function AnnotationClassDescriptionsEditor({
             <AlertDialogDescription>
               {isAiDraft
                 ? "The AI Code Designer's draft hasn't been saved. Discarding it can't be undone."
-                : "Your changes to the codes and Task context haven't been saved. Discarding them can't be undone."}
+                : "Your changes to the codes, scale setting and Task context haven't been saved. Discarding them can't be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -576,11 +777,18 @@ export function AnnotationClassDescriptionsEditor({
           source={{ workspaceId, ...designer.source }}
           brief={designer.settings.brief}
           taskContext={editorTaskContext}
+          scale={editorScale}
           onDraft={(codes) => {
-            const rows = codes.map((code) => ({ class: code.name, description: code.definition }));
+            const rows: CodebookRow[] = codes.map((code) => ({
+              id: newCodebookRowId(),
+              class: code.name,
+              description: code.definition,
+              ...(code.outsideScale ? { outsideScale: true } : {}),
+            }));
             setDraft(draftKey, {
               rows,
               taskContext: editorTaskContext,
+              scale: editorScale,
               designedSignature: codebookSignature(rows),
             });
             toast.success('AI draft ready. Review the codes, then Save.');
@@ -601,6 +809,15 @@ export function AnnotationClassDescriptionsEditor({
         </p>
       ) : null}
 
+      {savedScale ? (
+        <p className="text-label-secondary text-description" data-testid="codebook-scale-note">
+          <span className="font-medium text-foreground">Ordered scale:</span> levels from the lowest
+          to the highest, in this order.
+          {classDescriptions.outsideScale.length > 0
+            ? ` Outside the scale: ${classDescriptions.outsideScale.join(', ')}.`
+            : null}
+        </p>
+      ) : null}
       {savedTaskContext ? (
         <p className="line-clamp-2 text-label-secondary text-description" title={savedTaskContext}>
           <span className="font-medium text-foreground">Task context:</span> {savedTaskContext}

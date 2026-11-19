@@ -220,9 +220,14 @@ class _StatusError(Exception):
         self.response = type("Response", (), {"headers": headers or {}})()
 
 
-def _binding(user_id: str = "user-a", end_user: str = "alice@uni.edu", purpose="run") -> str:
+def _binding(
+    user_id: str = "user-a",
+    end_user: str = "alice@uni.edu",
+    purpose="run",
+    details: tuple[tuple[str, str], ...] = (),
+) -> str:
     return server_binding.encode_binding(
-        server_binding.ServerAiBinding("research", purpose, user_id, end_user)
+        server_binding.ServerAiBinding("research", purpose, user_id, end_user, details)
     )
 
 
@@ -668,19 +673,19 @@ async def test_username_is_the_sign_ins_login_name_and_the_email_until_known(
 async def test_user_details_label_requests_only_when_the_provider_asks(
     research_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """send_user_details: app, email and name in LiteLLM's spend-log metadata header."""
-    calls = _install_fake_openai(monkeypatch, ['{"labels": ["Relevant"]}'] * 2)
+    """send_user_details: app, email and name in LiteLLM's spend-log metadata header.
 
-    class _Resolver:
-        async def user_details(self, user_id: str) -> dict[str, str]:
-            assert user_id == "user-a"
-            return {"email": "alice@uni.edu", "name": "Alice Ångström"}
+    From the binding alone: Runs call the model from a worker process, which has
+    no account lookup (issue 492), so none is installed here.
+    """
+    calls = _install_fake_openai(monkeypatch, ['{"labels": ["Relevant"]}'] * 2)
+    details = (("email", "alice@uni.edu"), ("name", "Alice Ångström"))
 
     labelled = {**PROVIDER, "send_user": "username", "send_user_details": True}
     _write_providers(tmp_path, monkeypatch, labelled)
-    monkeypatch.setattr(server_ai, "_resolver", _Resolver())
+    assert server_ai._resolver is None
     await ServerAiAnnotationAdapter(ServerAiProvider.model_validate(labelled)).complete(
-        "qwen3-32b", _binding(end_user="abcd1234"), "system", "user", CONFIG
+        "qwen3-32b", _binding(end_user="abcd1234", details=details), "system", "user", CONFIG
     )
     assert calls["creates"][-1]["user"] == "abcd1234"
     header = calls["clients"][-1]["default_headers"]["x-litellm-spend-logs-metadata"]
@@ -693,9 +698,43 @@ async def test_user_details_label_requests_only_when_the_provider_asks(
 
     _write_providers(tmp_path, monkeypatch, PROVIDER)
     await ServerAiAnnotationAdapter(_provider()).complete(
-        "qwen3-32b", _binding(end_user="abcd1234"), "system", "user", CONFIG
+        "qwen3-32b", _binding(end_user="abcd1234", details=details), "system", "user", CONFIG
     )
     assert calls["clients"][-1]["default_headers"] is None
+
+
+@pytest.mark.anyio
+async def test_binding_carries_the_labels_signed_and_only_when_asked(
+    research_env: None,
+    multi_user_test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Issue 492: the email and name are looked up when the Run is bound, in the server."""
+    user_id = multi_user_test_client.get("/api/session").json()["user"]["id"]
+    labelled = {**PROVIDER, "send_user": "username", "send_user_details": True}
+    _write_providers(tmp_path, monkeypatch, labelled)
+    unbound = server_binding.unbound_credential(_provider())
+
+    bound = await server_ai.bind_credential(unbound, user_id, "run")
+    _provider_found, binding = server_binding.decode_binding(bound)
+    assert binding.end_user == "fixture@example.test"
+    assert dict(binding.details) == {"email": "fixture@example.test", "name": "Fixture User"}
+
+    # The labels are signed: changing them breaks the binding.
+    assert bound is not None
+    payload, _, signature = bound.rpartition(":")
+    head, _, _labels = payload.rpartition(":")
+    forged = f"{head}:{server_binding._b64(json.dumps({'email': 'x@y.z'}))}:{signature}"
+    with pytest.raises(server_binding.ServerAiBindingError):
+        server_binding.decode_binding(forged)
+
+    # Without send_user_details: no labels, and the four-part form as before.
+    _write_providers(tmp_path, monkeypatch, {**PROVIDER, "send_user": "username"})
+    plain = await server_ai.bind_credential(unbound, user_id, "run")
+    assert plain is not None
+    assert plain.removeprefix("server-ai:v1:").count(":") == 4
+    assert server_binding.decode_binding(plain)[1].details == ()
 
 
 # One request at a time per user ------------------------------------------------------
@@ -962,3 +1001,131 @@ def test_the_route_lists_every_provider_in_file_order(
     assert [item["configuration"]["name"] for item in providers] == ["Campus LLM", "Research LLM"]
     assert providers[0]["max_requests_per_user"] is None
     assert "sk-campus" not in response.text and "llm.campus.example" not in response.text
+
+
+# The AI Code Designer (#486) with a server provider ---------------------------------
+
+
+def _designer_events(body: str) -> list[tuple[str, dict[str, Any]]]:
+    events: list[tuple[str, dict[str, Any]]] = []
+    for block in body.split("\n\n"):
+        name = data = None
+        for line in block.splitlines():
+            if line.startswith("event:"):
+                name = line.removeprefix("event:").strip()
+            elif line.startswith("data:"):
+                data = json.loads(line.removeprefix("data:").strip())
+        if name is not None and data is not None:
+            events.append((name, data))
+    return events
+
+
+def _designer_request(client: TestClient) -> tuple[str, dict[str, Any]]:
+    """A Project with a text Data Block, and a designer request on the server provider."""
+
+    content = b"text\n" + b"".join(
+        f"tweet number {index} about jobs\n".encode() for index in range(30)
+    )
+    assert (
+        client.post(
+            "/api/user-files/uploads",
+            params={"path": "tweets.csv"},
+            content=content,
+            headers={"Content-Type": "application/octet-stream"},
+        ).status_code
+        == 201
+    )
+    workspace_id = client.post("/api/workspaces", json={"name": "Designer"}).json()["id"]
+    assert client.put(f"/api/workspaces/{workspace_id}/open").status_code == 200
+    node_id = client.post(
+        f"/api/workspaces/{workspace_id}/nodes",
+        json={"kind": "file", "file_path": "tweets.csv"},
+    ).json()["id"]
+    request = {
+        "provider_configuration_id": str(RESEARCH_ID),
+        "provider": "custom",
+        "provider_base_url": PLACEHOLDER,
+        "model": "qwen3-32b",
+        "text_column": "text",
+        "brief": "How candidates talk about jobs.",
+        "max_classes": 3,
+        "sample_size": 20,
+        "sample_seed": 1,
+        "reasoning_effort": "high",
+        "system_prompt": "Design a first-draft codebook.",
+    }
+    return f"/api/workspaces/{workspace_id}/nodes/{node_id}/codebook-draft", request
+
+
+def test_the_designer_sends_this_persons_binding_with_their_labels(
+    research_env: None,
+    multi_user_test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """The designer used to send the key-free marker unbound: "Not a server AI credential"."""
+
+    _write_providers(tmp_path, monkeypatch, {**PROVIDER, "send_user_details": True})
+    codes = json.dumps(
+        {
+            "codes": [
+                {"name": "Promise", "definition": "Jobs created."},
+                {"name": "Cuts", "definition": "Jobs lost."},
+                {"name": "Other", "definition": "Anything else."},
+            ]
+        }
+    )
+    calls = _install_fake_openai(monkeypatch, [codes])
+    seen: list[server_binding.ServerAiBinding] = []
+    decode = server_binding.decode_binding
+
+    def spy(credential: str | None) -> Any:
+        provider, binding = decode(credential)
+        seen.append(binding)
+        return provider, binding
+
+    monkeypatch.setattr("ldaca_wordflow.server_ai.adapter.decode_binding", spy)
+    user_id = multi_user_test_client.get("/api/session").json()["user"]["id"]
+    url, request = _designer_request(multi_user_test_client)
+
+    response = multi_user_test_client.post(url, json=request)
+
+    assert response.status_code == 200
+    events = _designer_events(response.text)
+    assert events[-1][0] == "draft", events[-1]
+    assert [code["name"] for code in events[-1][1]["codes"]] == ["Promise", "Cuts", "Other"]
+    assert [(b.purpose, b.user_id, b.end_user) for b in seen] == [
+        ("preview", user_id, "fixture@example.test")
+    ]
+    assert calls["clients"][-1]["api_key"] == GATEWAY_KEY
+    assert calls["creates"][-1]["user"] == "fixture@example.test"
+    header = calls["clients"][-1]["default_headers"]["x-litellm-spend-logs-metadata"]
+    assert json.loads(header) == {
+        "app": "wordflow",
+        "email": "fixture@example.test",
+        "name": "Fixture User",
+    }
+    assert GATEWAY_KEY not in response.text
+
+
+def test_the_designer_says_plainly_when_the_persons_run_holds_the_provider(
+    research_env: None,
+    multi_user_test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _install_fake_openai(monkeypatch, [])
+    user_id = multi_user_test_client.get("/api/session").json()["user"]["id"]
+    url, request = _designer_request(multi_user_test_client)
+    # This person's Research LLM Run is going (one request at a time per person).
+    assert server_ai.user_gate().try_start_run("research", user_id)
+
+    response = multi_user_test_client.post(url, json=request)
+
+    event, data = _designer_events(response.text)[-1]
+    assert event == "error"
+    assert data["message"] == (
+        "Your Research LLM run is still going, and Research LLM takes a limited number "
+        "of requests at a time. Use the AI Code Designer when the run has finished."
+    )
+    assert "API key" not in response.text
+    assert calls["creates"] == []

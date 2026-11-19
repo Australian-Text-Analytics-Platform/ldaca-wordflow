@@ -55,6 +55,27 @@ class ZipTableMembersResource(_StrictModel):
     members: list[ZipTableMember]
     # ZIPs inside this ZIP: not opened (issue 323), listed so users know.
     nested_archives: list[str] = Field(default_factory=list)
+    # Text documents inside, which Texts mode makes rows of.
+    text_documents: int = Field(default=0, ge=0)
+
+
+class JsonRecordPath(_StrictModel):
+    """One place in a JSON file that holds records, offered as the rows."""
+
+    # A JSON Pointer of object keys; "" is the top level.
+    path: str
+    # The place in words, such as "pages › parsing_res_list".
+    label: str
+    records: int = Field(ge=0)
+    # The first few field names, to help users recognise the records.
+    fields: list[str]
+    field_count: int = Field(ge=0)
+
+
+class JsonRecordPathsResource(_StrictModel):
+    """Where a JSON or JSON Lines file's rows could come from, default first."""
+
+    paths: list[JsonRecordPath]
 
 
 class WorkbookSheetsRequest(_StrictModel):

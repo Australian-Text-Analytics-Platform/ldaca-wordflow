@@ -41,3 +41,8 @@ toolchain's unreliable command-line Icon Composer compilation. `wordflow.icon`
 remains the editable source, and `icon.icns` remains configured as a
 compatibility fallback. Windows and development surfaces use the rendered PNG
 or ICO files.
+
+The app is named "Wordflow (by LDaCA)" (`productName`). The Windows installer's
+upgrade code is pinned in `tauri.conf.json` (`bundle.windows.wix.upgradeCode`)
+to the one Tauri derived from the old name, "LDaCA Wordflow", so a new
+installer still replaces an old install. Never change it.

@@ -15,7 +15,7 @@ from pydantic import (
     model_validator,
 )
 
-from ..domain.annotation import TASK_CONTEXT_CODE
+from ..domain.annotation import RESERVED_CODEBOOK_CODES
 from ..domain.workspace.analysis import TopicEmbeddingModel, TopicSegmentationMethod
 from ..domain.workspace.provenance import (
     CastDerivation,
@@ -76,6 +76,22 @@ class FileNodeCreateRequest(_StrictRequest):
     name: NodeName | None = None
     # A table file inside the ZIP at ``file_path``, loaded as its own Data Block.
     zip_member: str | None = Field(default=None, min_length=1, max_length=4_000)
+    # Where a JSON or JSON Lines file's rows are; None takes the place holding
+    # the most text.
+    record_path: str | None = Field(default=None, max_length=4_000)
+
+    @field_validator("record_path")
+    @classmethod
+    def _record_path_is_pointer(cls, value: str | None) -> str | None:
+        return _validate_record_path(value)
+
+
+def _validate_record_path(value: str | None) -> str | None:
+    """A record path is a JSON Pointer of object keys ("" is the top level)."""
+
+    if value is not None and value != "" and not value.startswith("/"):
+        raise ValueError("record_path must be a JSON Pointer such as /pages/items")
+    return value
 
 
 class FilesNodeCreateRequest(_StrictRequest):
@@ -89,6 +105,37 @@ class FilesNodeCreateRequest(_StrictRequest):
     kind: Literal["files"] = "files"
     file_paths: list[str] = Field(min_length=1, max_length=100_000)
     name: NodeName | None = None
+
+
+class JsonFilesNodeCreateRequest(_StrictRequest):
+    """Create one Data Block from the records of several JSON files.
+
+    Every file is read at the same ``record_path``, so a batch is read one
+    way; each row starts with the file it came from. With ``zip_path``,
+    ``file_paths`` are members of that ZIP; otherwise they are user files.
+    """
+
+    kind: Literal["json_files"] = "json_files"
+    file_paths: list[str] = Field(min_length=1, max_length=100_000)
+    zip_path: str | None = Field(default=None, min_length=1)
+    record_path: str | None = Field(default=None, max_length=4_000)
+    name: NodeName | None = None
+
+    @field_validator("record_path")
+    @classmethod
+    def _record_path_is_pointer(cls, value: str | None) -> str | None:
+        return _validate_record_path(value)
+
+    @field_validator("file_paths")
+    @classmethod
+    def _json_files_only(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("file_paths must be unique")
+        if any(
+            not path.lower().endswith((".json", ".jsonl", ".ndjson")) for path in value
+        ):
+            raise ValueError("file_paths must be .json, .jsonl or .ndjson files")
+        return value
 
 
 class CloneNodeCreateRequest(CloneDerivation):
@@ -165,6 +212,7 @@ class DeduplicateNodeCreateRequest(DeduplicateDerivation):
 NodeCreateRequest = Annotated[
     FileNodeCreateRequest
     | FilesNodeCreateRequest
+    | JsonFilesNodeCreateRequest
     | CloneNodeCreateRequest
     | SliceNodeCreateRequest
     | FilterNodeCreateRequest
@@ -425,8 +473,10 @@ class AnnotationClassesNodeEditRequest(_StrictRequest):
     kind: Literal["annotation_classes"] = "annotation_classes"
     class_column: NonEmptyColumnName
     description_column: NonEmptyColumnName
-    # Up to 200 codes, plus the optional Task context row (issue 408).
-    rows: list[AnnotationClassRow] = Field(default_factory=list, max_length=201)
+    # Up to 200 codes, plus the optional Task context (issue 408) and scale rows.
+    rows: list[AnnotationClassRow] = Field(
+        default_factory=list, max_length=200 + len(RESERVED_CODEBOOK_CODES)
+    )
 
     @model_validator(mode="after")
     def validate_columns_and_rows(self) -> AnnotationClassesNodeEditRequest:
@@ -435,7 +485,7 @@ class AnnotationClassesNodeEditRequest(_StrictRequest):
         normalized = [row.class_name.casefold() for row in self.rows]
         if len(normalized) != len(set(normalized)):
             raise ValueError("Annotation class names must be unique")
-        if sum(name != TASK_CONTEXT_CODE for name in normalized) > 200:
+        if sum(name not in RESERVED_CODEBOOK_CODES for name in normalized) > 200:
             raise ValueError("A codebook can have at most 200 codes")
         return self
 
@@ -557,6 +607,29 @@ class ColumnValueCountsResource(BaseModel):
     unlisted_values: int
     unlisted_rows: int
     limit: int
+
+
+class DistinctValueColumn(BaseModel):
+    """A column and how many different values it holds, not counting missing ones."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    distinct_values: int
+
+
+class DistinctValueColumnsResource(BaseModel):
+    """A Data Block's columns with at most ``max_distinct`` different values.
+
+    The columns a tool can group by, in the Data Block's column order: numbers,
+    text, true/false, categories, dates and times with 1 to ``max_distinct``
+    values. An empty list means no column qualifies.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_distinct: int
+    columns: list[DistinctValueColumn]
 
 
 class ColumnExamplesResource(BaseModel):

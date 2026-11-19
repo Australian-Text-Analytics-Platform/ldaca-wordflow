@@ -12,6 +12,56 @@ const MICROS_PER_MINUTE = 60_000_000;
 /** At most this many Data Blocks per run. */
 export const MAX_GROUPS = 50;
 
+/** Shown when no column qualifies, so the empty list is never a mystery. */
+export const NO_GROUP_COLUMN_REASON = `No column in this Data Block has ${String(MAX_GROUPS)} or fewer different values, so there is nothing to group by.`;
+
+/**
+ * Whether a column's groups are its own values. Number, date and elapsed time
+ * columns are grouped into ranges or periods instead, however many different
+ * values they hold.
+ */
+export const groupsByValues = (kind: ColumnKind): boolean => kind === 'text' || kind === 'boolean';
+
+/** The tooltip of the help icon beside Split by. */
+export const SPLIT_BY_HELP = `Text and category columns are listed only when they have ${String(MAX_GROUPS)} or fewer different values, because each value becomes a Data Block. Number and time columns are always listed: they are grouped into ranges or periods.`;
+
+/**
+ * The columns Split by offers, each named with what decides its groups
+ * (Chao, 19 Nov 2026):
+ *
+ * - A column grouped by its values (text, category, true/false) is offered
+ *   only with at most MAX_GROUPS different values, and shows that number:
+ *   `party (4 values)`. `valueCounts` maps those columns to their number of
+ *   values.
+ * - A number, date, date and time or elapsed time column is always offered
+ *   under its own name, because it is grouped into ranges or periods. The
+ *   picker marks each column's type with the Data Editor's symbol.
+ *
+ * With `valueCounts` undefined (the numbers could not be read), every column
+ * is offered, and the count of groups below the picker still stops a column
+ * with too many.
+ */
+export function groupColumnOptions(
+  columns: readonly { name: string; kind: ColumnKind }[],
+  valueCounts: Record<string, number> | undefined,
+): { value: string; label?: string }[] {
+  const options: { value: string; label?: string }[] = [];
+  for (const column of columns) {
+    if (column.kind === 'other') continue;
+    if (!groupsByValues(column.kind) || !valueCounts) {
+      options.push({ value: column.name });
+      continue;
+    }
+    const values = valueCounts[column.name];
+    if (values === undefined) continue;
+    options.push({
+      value: column.name,
+      label: `${column.name} (${String(values)} ${values === 1 ? 'value' : 'values'})`,
+    });
+  }
+  return options;
+}
+
 export type DateGrouping = 'year' | 'year_month' | 'date';
 
 export type Grouping =

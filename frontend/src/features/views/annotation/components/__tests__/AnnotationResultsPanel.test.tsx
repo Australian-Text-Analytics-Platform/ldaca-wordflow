@@ -74,12 +74,28 @@ vi.mock('../../hooks/useAnnotationNodePage', () => ({
     refreshFilteredRows: vi.fn(),
   }),
 }));
+// Codes per codebook Data Block, so a test can switch the codebook under an open table.
+const codebooks = vi.hoisted(() => ({
+  codes: {} as Record<string, string[]>,
+  loading: false,
+}));
 vi.mock('../../hooks/useAnnotationClassDescriptions', () => ({
-  useAnnotationClassDescriptions: () => ({
-    rows: [{ class: 'covid' }, { class: 'job' }],
+  useAnnotationClassDescriptions: ({ nodeId }: { nodeId: string | null }) => ({
+    rows: codebooks.loading
+      ? []
+      : (codebooks.codes[nodeId ?? ''] ?? []).map((name) => ({ class: name, description: '' })),
+    scale: false,
+    outsideScale: [],
+    query: { isLoading: codebooks.loading },
   }),
 }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
+
+/** SQL sent by queries of one kind: the score's comparison or the codebook counts. */
+const sqlCalls = (marker: string) =>
+  queryWorkspaceSqlTable.mock.calls.filter(([options]) =>
+    String((options as { body: { sql: string } }).body.sql).includes(marker),
+  );
 
 function ManualResults(
   props: Omit<
@@ -140,6 +156,80 @@ const renderPanel = (correctionColumn: string | null = null) => {
   );
 };
 
+/** Renders the panel on one codebook and returns a way to choose another while it is open. */
+const renderOnCodebook = (classNodeId: string) => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+  });
+  const panel = (codebook: string) => (
+    <QueryClientProvider client={client}>
+      <ManualResults
+        workspaceId="workspace-1"
+        nodeId="node-1"
+        sourceColumns={['text', 'annotation', 'correction', 'reviewer', 'username', 'record_id']}
+        sourceColor="#2563eb"
+        rowCount={2380}
+        textColumn="text"
+        annotationColumn="annotation"
+        classNodeId={codebook}
+        classColumn="class"
+        descriptionColumn="description"
+        correction={{ column: null, onColumnChange: vi.fn(), onCreate: vi.fn() }}
+      />
+    </QueryClientProvider>
+  );
+  const view = render(panel(classNodeId));
+  return {
+    chooseCodebook: (codebook: string) => {
+      view.rerender(panel(codebook));
+    },
+  };
+};
+
+/**
+ * Answers the score and codebook-count queries like the server: the
+ * comparison counts rows coded in both columns, and the codebook counts say
+ * how many values are not codes. Every value here is covid or job.
+ */
+const answerLikeTheServer = () => {
+  queryWorkspaceSqlTable.mockImplementation(({ body }: { body: { sql: string } }) => {
+    const knowsCovid = body.sql.includes("'covid'");
+    if (body.sql.includes('__fit_column')) {
+      return Promise.resolve({
+        rows: [
+          {
+            __fit_column: 0,
+            __fit_value: null,
+            __fit_filled: 2,
+            __fit_not_codes: knowsCovid ? 0 : 2,
+          },
+          ...(knowsCovid ? [] : [{ __fit_column: 0, __fit_value: 'covid', __fit_filled: 1 }]),
+          {
+            __fit_column: 1,
+            __fit_value: null,
+            __fit_filled: 2,
+            __fit_not_codes: knowsCovid ? 0 : 2,
+          },
+          ...(knowsCovid ? [] : [{ __fit_column: 1, __fit_value: 'covid', __fit_filled: 1 }]),
+        ],
+        hasNext: false,
+        etag: 'revision-1',
+      });
+    }
+    return Promise.resolve({
+      columns: ['__reference', '__comparison', '__count'],
+      rows: knowsCovid
+        ? [
+            { __reference: 'covid', __comparison: 'covid', __count: 1 },
+            { __reference: 'job', __comparison: 'job', __count: 1 },
+          ]
+        : [],
+      hasNext: false,
+      etag: 'revision-1',
+    });
+  });
+};
+
 describe('AnnotationResultsPanel', () => {
   beforeEach(() => {
     window.HTMLElement.prototype.hasPointerCapture = vi.fn();
@@ -150,6 +240,8 @@ describe('AnnotationResultsPanel', () => {
     setCell.mockReset();
     setCell.mockResolvedValue(undefined);
     setPagination.mockReset();
+    codebooks.codes = { classes: ['covid', 'job'] };
+    codebooks.loading = false;
     nodePageRows.value = [
       {
         __wordflow_annotation_source_row_index: 0,
@@ -509,7 +601,11 @@ describe('AnnotationResultsPanel', () => {
     const cells = within(resultRow).getAllByRole('cell');
     expect(cells[2]).toHaveStyle({ backgroundColor: toBgColor('#2563eb') });
     expect(cells[3]).toHaveStyle({ backgroundColor: toBgColor('#2563eb') });
-    expect(queryWorkspaceSqlTable).toHaveBeenCalledTimes(1);
+    expect(sqlCalls('__reference')).toHaveLength(1);
+    // The codebook counts include the edited column, so they load again.
+    await waitFor(() => {
+      expect(sqlCalls('__fit_column')).toHaveLength(2);
+    });
   });
 
   it('leaves comparison counts unchanged when the cell save fails', async () => {
@@ -544,6 +640,113 @@ describe('AnnotationResultsPanel', () => {
         name: 'Cohen’s Kappa 0.000 for annotation versus reviewer',
       }),
     ).not.toBeInTheDocument();
-    expect(queryWorkspaceSqlTable).toHaveBeenCalledTimes(1);
+    expect(sqlCalls('__reference')).toHaveLength(1);
+  });
+  describe('follows the codebook while open (issue 498)', () => {
+    it('uses a codebook chosen after Start, keeping the page, comparisons and revealed columns', async () => {
+      const user = userEvent.setup();
+      codebooks.codes = { wrong: ['Promise', 'Cuts', 'Other'], classes: ['covid', 'job'] };
+      answerLikeTheServer();
+
+      const { chooseCodebook } = renderOnCodebook('wrong');
+      await user.click(screen.getByRole('button', { name: 'Show comparison values for reviewer' }));
+
+      const annotation = screen.getByRole('combobox', { name: 'Class for row 1' });
+      expect(annotation).toHaveClass('italic');
+      expect(
+        await screen.findByRole('button', {
+          name: 'Cohen’s Kappa unavailable for annotation versus reviewer',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText(
+          'None of the values in annotation are codes in the selected codebook (Promise, Cuts, Other), so the scores leave them out. Is the right codebook selected?',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText('No codes from this codebook')).toBeInTheDocument();
+
+      chooseCodebook('classes');
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Cohen’s Kappa 1.000 for annotation versus reviewer',
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: 'Class for row 1' })).not.toHaveClass('italic');
+      expect(screen.queryByText(/Is the right codebook selected\?/)).not.toBeInTheDocument();
+      expect(screen.queryByText('No codes from this codebook')).not.toBeInTheDocument();
+      // Still revealed, still compared, still on the same page.
+      expect(
+        screen.getByRole('button', { name: 'Hide comparison values for reviewer' }),
+      ).toBeInTheDocument();
+      expect(setPagination).not.toHaveBeenCalled();
+    });
+
+    it('keeps the previous codes while the new codebook loads', () => {
+      codebooks.codes = { classes: ['covid', 'job'], other: ['Promise'] };
+      answerLikeTheServer();
+
+      const { chooseCodebook } = renderOnCodebook('classes');
+      expect(screen.getByRole('combobox', { name: 'Class for row 1' })).not.toHaveClass('italic');
+
+      codebooks.loading = true;
+      chooseCodebook('other');
+
+      expect(screen.getByRole('combobox', { name: 'Class for row 1' })).not.toHaveClass('italic');
+    });
+
+    it('waits for a save in progress, says so, then applies the new codes', async () => {
+      const user = userEvent.setup();
+      codebooks.codes = { classes: ['covid', 'job'], wider: ['covid', 'job', 'other'] };
+      answerLikeTheServer();
+      let finishSave: () => void = () => undefined;
+      setCell.mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        }),
+      );
+
+      const { chooseCodebook } = renderOnCodebook('classes');
+      await user.click(screen.getByRole('combobox', { name: 'Class for row 1' }));
+      await user.click(screen.getByRole('option', { name: 'job' }));
+      await waitFor(() => {
+        expect(setCell).toHaveBeenCalledWith('node-1', 'annotation', 0, 'job');
+      });
+
+      chooseCodebook('wider');
+      expect(
+        screen.getByText('The codebook changed. The table will update when the save finishes.'),
+      ).toBeInTheDocument();
+
+      finishSave();
+      await waitFor(() => {
+        expect(
+          screen.queryByText('The codebook changed. The table will update when the save finishes.'),
+        ).not.toBeInTheDocument();
+      });
+      await user.click(screen.getByRole('combobox', { name: 'Class for row 1' }));
+      expect(screen.getByRole('option', { name: 'other' })).toBeInTheDocument();
+    });
+  });
+
+  it('explains a value that is not a code wherever it shows grey italic', async () => {
+    const user = userEvent.setup();
+    queryWorkspaceSqlTable.mockResolvedValue({
+      columns: ['__reference', '__comparison', '__count'],
+      rows: [],
+      hasNext: false,
+      etag: 'revision-1',
+    });
+    nodePageRows.value = [{ ...nodePageRows.value[0], annotation: 'P', reviewer: 'Other' }];
+    const explanation = 'Not a code in the selected codebook, so it is left out of the scores.';
+
+    renderPanel();
+
+    const classSelect = screen.getByRole('combobox', { name: 'Class for row 1' });
+    expect(classSelect).toHaveAttribute('title', explanation);
+    await user.click(screen.getByRole('button', { name: 'Show comparison values for reviewer' }));
+    expect(screen.getByText('Other')).toHaveAttribute('title', explanation);
+    await user.click(classSelect);
+    expect(screen.getByRole('option', { name: 'P' })).toHaveAttribute('title', explanation);
   });
 });

@@ -24,7 +24,7 @@ from ..infrastructure.providers.annotation_ai import (
 )
 from ..infrastructure.storage.durable_fs import atomic_output_path
 from ..infrastructure.storage.input_snapshots import load_snapshot_node
-from ..domain.annotation import provider_failure_message
+from ..domain.annotation import provider_failure_message, text_too_long_message
 from ..shared.errors import format_exception_diagnostic
 from ..shared.annotation_labels import append_labels
 from .progress import ProgressCallback, Step, StepReporter, keep_alive
@@ -177,10 +177,13 @@ def run_annotation_analysis(
             raise ValueError("Annotation provider returned a misaligned result")
         labels = list(existing_labels)
         failed_row_count = 0
+        too_long_row_count = 0
         for index, text in zip(target_indices, row_texts, strict=True):
             position = text_position[text]
             if outcome.failed_rows[position]:
                 failed_row_count += 1
+                if outcome.too_long_rows and outcome.too_long_rows[position]:
+                    too_long_row_count += 1
             else:
                 labels[index] = outcome.labels[position]
         annotation_dtype = frame.schema[source_request.annotation_column]
@@ -197,26 +200,39 @@ def run_annotation_analysis(
             result.write_parquet(temporary)
         if progress_callback:
             progress_callback(0.95, "Publishing annotated Data Block")
+        counts: dict[str, Any] = {
+            "record_count": result.height,
+            "attempted_count": len(target_indices),
+            "failed_batch_count": outcome.failed_batch_count,
+            # Rows, not distinct texts: a failed text leaves all its rows.
+            "failed_row_count": failed_row_count,
+        }
+        message = (
+            "Annotation completed successfully"
+            if outcome.failed_batch_count == 0
+            else (
+                "Annotation completed with "
+                f"{outcome.failed_batch_count} failed batches and "
+                f"{failed_row_count} unannotated rows"
+            )
+        )
+        if too_long_row_count:
+            # Which failed rows could never fit, and why (issue 493).
+            counts["too_long_row_count"] = too_long_row_count
+            if outcome.context_window is not None:
+                counts["context_window_tokens"] = outcome.context_window
+            message += (
+                f". {too_long_row_count} of them: "
+                + text_too_long_message(source_request.model, outcome.context_window)
+            )
         return {
             "state": "successful",
             "result": {
                 "parquet_path": relative_path,
                 "output_columns": list(result.columns),
-                "record_count": result.height,
-                "attempted_count": len(target_indices),
-                "failed_batch_count": outcome.failed_batch_count,
-                # Rows, not distinct texts: a failed text leaves all its rows.
-                "failed_row_count": failed_row_count,
+                **counts,
             },
-            "message": (
-                "Annotation completed successfully"
-                if outcome.failed_batch_count == 0
-                else (
-                    "Annotation completed with "
-                    f"{outcome.failed_batch_count} failed batches and "
-                    f"{failed_row_count} unannotated rows"
-                )
-            ),
+            "message": message,
         }
     except Exception:
         logger.exception("Annotation Analysis failed")

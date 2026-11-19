@@ -50,6 +50,7 @@ import {
   findDirectory,
   isWorkbookPath,
   tableFilesInDirectory,
+  textFileCountInDirectory,
 } from './utils/fileTreeHelpers';
 import { toastError } from '@/lib/toastError';
 
@@ -214,7 +215,10 @@ function DataLoaderFeature() {
     handleUploadWorkspaceZip,
     handleAddFileToWorkspace,
     handleAddFilesToWorkspace,
+    handleAddJsonFilesToWorkspace,
     handleAddSelectionToWorkspace,
+    batchAddReport,
+    closeBatchAddReport,
     workspaceLoadFailures,
     workspaceSelectionOperation,
   } = useDataLoaderWorkspaceActions({
@@ -333,10 +337,10 @@ function DataLoaderFeature() {
    * workspace action hook, report any failure through the feature toast adapter,
    * then clear the pending filename so the dialog cannot resubmit stale state.
    */
-  const handleAddToWorkspace = async () => {
+  const handleAddToWorkspace = async (recordPath: string | null) => {
     if (!addFileName) return;
     try {
-      await handleAddFileToWorkspace(addFileName);
+      await handleAddFileToWorkspace(addFileName, null, recordPath);
     } catch (error) {
       notify('error', "Couldn't add file to Project.", undefined, error);
     } finally {
@@ -406,13 +410,34 @@ function DataLoaderFeature() {
       notify('error', "Couldn't add to Project.", undefined, error);
     }
   };
-  const handleAddBatchTables = async (files: BatchTableFile[]) => {
+  const handleAddBatchTables = async (files: BatchTableFile[], recordPath: string | null) => {
     if (!addBatchSource) return;
     await handleAddFilesToWorkspace(
       files,
       addBatchSource.kind === 'zip' ? addBatchSource.path : undefined,
+      recordPath,
     );
   };
+  /** JSON files of a folder, selection or ZIP as one Data Block, read one way. */
+  const handleAddBatchJsonRecords = async (files: BatchTableFile[], recordPath: string | null) => {
+    if (!addBatchSource) return;
+    try {
+      await handleAddJsonFilesToWorkspace(
+        files.map((file) => file.path),
+        recordPath,
+        addBatchSource.kind === 'zip' ? addBatchSource.path : undefined,
+      );
+    } catch (error) {
+      notify('error', "Couldn't add the JSON files to Project.", undefined, error);
+    }
+  };
+  // With no text documents, a window of only JSON files opens on JSON records.
+  const batchTextCount =
+    addBatchSource?.kind === 'zip'
+      ? zipTables.textDocuments
+      : batchFolder
+        ? textFileCountInDirectory(batchFolder)
+        : null;
   /**
    * A workbook with several sheets opens the Add window with one row per
    * sheet (issue 323); other files, and workbooks whose sheets can't be read,
@@ -738,6 +763,8 @@ function DataLoaderFeature() {
         onClose={closeAddBatch}
         onConfirmTexts={handleAddBatchTexts}
         onConfirmTables={handleAddBatchTables}
+        onConfirmJsonRecords={handleAddBatchJsonRecords}
+        textCount={batchTextCount}
       />
       <AddFilePanel
         filename={addFileName}
@@ -803,6 +830,7 @@ function DataLoaderFeature() {
           paths: uploadConflicts,
           onClose: closeConflictDialog,
         }}
+        batchAddReport={{ report: batchAddReport, onClose: closeBatchAddReport }}
         largeUpload={{
           reminder: largeUploadReminder,
           onAccept: acceptLargeUpload,

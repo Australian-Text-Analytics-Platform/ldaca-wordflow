@@ -584,6 +584,15 @@ class _AnnotationRunAllCounts(_StrictModel):
     attempted_count: int = Field(ge=0)
     failed_batch_count: int = Field(ge=0)
     failed_row_count: int = Field(ge=0)
+    # Failed rows whose text is too long for the model's context window, and
+    # that window in tokens where the provider gave it (issue 493). Left out
+    # when no row was too long, so earlier versions read those Results.
+    too_long_row_count: int | None = Field(
+        default=None, ge=1, exclude_if=lambda value: value is None
+    )
+    context_window_tokens: int | None = Field(
+        default=None, ge=1, exclude_if=lambda value: value is None
+    )
 
     @model_validator(mode="after")
     def validate_counts(self) -> _AnnotationRunAllCounts:
@@ -591,6 +600,8 @@ class _AnnotationRunAllCounts(_StrictModel):
             raise ValueError("Annotation attempted count exceeds its row count")
         if self.failed_row_count > self.attempted_count:
             raise ValueError("Annotation failed row count exceeds its attempted count")
+        if (self.too_long_row_count or 0) > self.failed_row_count:
+            raise ValueError("Annotation too-long row count exceeds its failed row count")
         if self.failed_batch_count > self.failed_row_count:
             raise ValueError("Annotation failed batch count exceeds its failed row count")
         return self

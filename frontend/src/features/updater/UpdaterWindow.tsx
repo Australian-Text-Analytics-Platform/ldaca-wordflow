@@ -231,7 +231,7 @@ export function UpdaterWindow({ mode }: { mode: 'manual' | 'available' }) {
   return (
     <main className="flex h-dvh min-h-[30rem] flex-col bg-editor text-foreground">
       <header className="border-b border-surface-border px-6 py-4">
-        <p className="text-heading-3 font-semibold">LDaCA Wordflow Update</p>
+        <p className="text-heading-3 font-semibold">Wordflow Update</p>
         <p className="mt-1 text-label-secondary text-description">
           Keep Wordflow current and secure.
         </p>

@@ -122,6 +122,50 @@ export const GENERATED_COLUMN_EXPLANATIONS: Readonly<Record<string, string>> = {
   QUOTE_quote_row_idx: 'Quote number',
 };
 
+/**
+ * The data type of each column an analysis adds, for the type symbol beside
+ * its name: such a column is in no source Data Block, so its type cannot be
+ * read from one. They follow the backend (the concordance struct of
+ * polars-text, QUOTATION_GROUP_DTYPE in quotation_core.py, and the Topic
+ * Modelling worker); keep them in step.
+ */
+export type GeneratedColumnKind = 'text' | 'whole number' | 'decimal' | 'true/false';
+
+export const GENERATED_COLUMN_KINDS: Readonly<Record<string, GeneratedColumnKind>> = {
+  CONC_source: 'text',
+  QUOTE_source: 'text',
+  CONC_left_context: 'text',
+  CONC_matched_text: 'text',
+  CONC_right_context: 'text',
+  CONC_start_idx: 'whole number',
+  CONC_end_idx: 'whole number',
+  CONC_l1: 'text',
+  CONC_r1: 'text',
+  CONC_l1_freq: 'whole number',
+  CONC_r1_freq: 'whole number',
+  CONC_extraction: 'text',
+  QUOTE_extraction: 'text',
+  QUOTE_speaker: 'text',
+  QUOTE_speaker_start_idx: 'whole number',
+  QUOTE_speaker_end_idx: 'whole number',
+  QUOTE_quote: 'text',
+  QUOTE_quote_start_idx: 'whole number',
+  QUOTE_quote_end_idx: 'whole number',
+  QUOTE_verb: 'text',
+  QUOTE_verb_start_idx: 'whole number',
+  QUOTE_verb_end_idx: 'whole number',
+  QUOTE_quote_type: 'text',
+  QUOTE_quote_token_count: 'whole number',
+  QUOTE_is_floating_quote: 'true/false',
+  QUOTE_quote_row_idx: 'whole number',
+  TOPIC_topic: 'whole number',
+  TOPIC_top1: 'whole number',
+  TOPIC_share: 'decimal',
+  TOPIC_segment_count: 'whole number',
+  TOPIC_topic_name: 'text',
+  TOPIC_top1_name: 'text',
+};
+
 /** The full explanation of a generated column, shown in a tooltip on its label. */
 export const GENERATED_COLUMN_DETAILS: Readonly<Record<string, string>> = {
   CONC_source: 'The searched text, renamed from a Concordance column',

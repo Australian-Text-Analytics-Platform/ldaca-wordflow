@@ -38,7 +38,7 @@ jobs:
           fetch-depth: 0
 
       - name: Test the scope rules
-        run: node --test scripts/ci-scope.test.mjs
+        run: node --test scripts/ci-scope.test.mjs scripts/ci-own-wheels.test.mjs
 
       - name: Decide what runs
         id: scope
@@ -123,7 +123,19 @@ jobs:
       - name: Stage frontend for backend packaging
         run: node scripts/deploy-frontend-to-backend.mjs
 
+      # Our own Rust packages took 36 to 60 minutes of each job to compile. A
+      # submodule at exactly its release tag installs that release's wheel
+      # from PyPI instead; anything else builds from source as before. Every
+      # other package still comes from uv.lock (scripts/ci-own-wheels.mjs).
+      - name: Choose wheels or source for polars-text and polars-source-utils
+        id: own
+        shell: bash
+        env:
+          PYTHON_VERSION: "3.14"
+        run: node scripts/ci-own-wheels.mjs
+
       - name: Set up Rust nightly for source dependencies
+        if: steps.own.outputs.rust == 'true'
         uses: dtolnay/rust-toolchain@nightly
 
       - name: Set up uv
@@ -134,9 +146,23 @@ jobs:
           cache-python: true
           cache-dependency-glob: backend/uv.lock
 
-      - name: Synchronize backend from checked-out sources
+      - name: Synchronize backend from uv.lock
         working-directory: backend
-        run: uv sync --locked
+        shell: bash
+        env:
+          SYNC_ARGS: ${{ steps.own.outputs.sync_args }}
+          WHEELS: ${{ steps.own.outputs.wheels }}
+        run: |
+          set -Eeuo pipefail
+          # Word splitting is intended: each holds space-separated arguments.
+          # shellcheck disable=SC2086
+          uv sync --locked $SYNC_ARGS
+          if [ -n "$WHEELS" ]; then
+            # Only our released packages, with no dependencies: those are
+            # already installed from uv.lock.
+            # shellcheck disable=SC2086
+            uv pip install --no-deps --only-binary :all: $WHEELS
+          fi
 
       - name: Run Ruff
         working-directory: backend

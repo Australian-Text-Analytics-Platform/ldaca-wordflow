@@ -42,6 +42,24 @@ _PROVIDER_NAMES: dict[str, str] = {
 }
 
 
+def text_too_long_message(model: str, context_window: int | None) -> str:
+    """A plain sentence for a text that cannot fit the model (issue 493).
+
+    It names the model and its context window where the provider gave it.
+    """
+
+    advice = (
+        "Choose a model that takes longer texts, use fewer examples, or "
+        "annotate shorter texts."
+    )
+    if context_window is None:
+        return f"A text is too long for {model}. {advice}"
+    return (
+        f"A text is too long for {model}, whose context window is "
+        f"{context_window:,} tokens. {advice}"
+    )
+
+
 def provider_failure_message(code: str, provider: str | None) -> str:
     """A plain sentence, with what to do, for one provider failure (issue 205).
 
@@ -88,6 +106,13 @@ AnnotationExampleSamplingMethod = Literal["random", "first_n", "last_n"]
 # `__task_context__`, text in the description column. Never a code.
 TASK_CONTEXT_CODE = "__task_context__"
 TASK_CONTEXT_MAX_CHARS = 2_000
+# The codebook row that marks an ordered scale: its codes are levels from the
+# lowest (first row) to the highest (last row). The row's presence is the
+# setting; its description only explains it to people reading the Data Block.
+# Kept in the codebook, not in Data Block metadata, so the setting travels
+# with the codes through edits, export and import (Chao, 16 Nov 2026).
+SCALE_CODE = "__scale__"
+RESERVED_CODEBOOK_CODES = frozenset({TASK_CONTEXT_CODE, SCALE_CODE})
 
 AnnotationClassName = Annotated[
     str,
@@ -146,6 +171,8 @@ class AnnotationProviderSnapshot(BaseModel):
 
 
 __all__ = [
+    "RESERVED_CODEBOOK_CODES",
+    "SCALE_CODE",
     "TASK_CONTEXT_CODE",
     "TASK_CONTEXT_MAX_CHARS",
     "AnnotationClass",

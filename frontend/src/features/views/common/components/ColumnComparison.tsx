@@ -1,6 +1,11 @@
-import { ArrowDown, ArrowRight, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import type { ColumnFields } from '@/features/workspace/common/columnTypeOptions';
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
+import { useState } from 'react';
+import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -14,19 +19,46 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { AnnotationRowFilterValue } from '@/features/views/annotation/annotationRowFilter';
 import {
+  type ColumnCodebookFit,
+  codebookFitNotes,
+  hasNoCodes,
+  NO_CODES_HEADER_HINT,
+} from '@/features/views/annotation/codebookFit';
+import {
   type ConfusionCount,
   INTERCODER_RELIABILITY_METRICS,
   type IntercoderReliabilityMetric,
   calculateIntercoderReliability,
   formatIntercoderReliability,
+  intercoderReliabilityLabel,
+  intercoderReliabilitySymbol,
   isIntercoderReliabilityMetric,
+  type OrderedScale,
 } from '@/features/views/common/columnComparisonModel';
+import { AgreementMatrix } from './AgreementMatrix';
+import {
+  AgreementMatrixDownloadButton,
+  AgreementMatrixDownloadDialog,
+} from './AgreementMatrixDownload';
 import { AnnotationColumnFilterMenu } from './AnnotationColumnFilterMenu';
 import { COLUMN_MENU_CLASS, COLUMN_MENU_ITEM_CLASS } from './columnMenuStyles';
 
 export type { ConfusionCount } from '@/features/views/common/columnComparisonModel';
 
-const displayLabel = (value: string): string => (value === '' ? '(blank)' : value);
+/** The method behind the score, in words, so a scale and categories can't be mistaken. */
+const reliabilityMethod = (metric: IntercoderReliabilityMetric, ordered: boolean): string => {
+  if (metric === 'percent_agreement') {
+    return ordered
+      ? 'Percent Agreement on an ordered scale: only exact matches agree.'
+      : 'Percent Agreement on categories: only exact matches agree.';
+  }
+  if (!ordered) {
+    return `${intercoderReliabilityLabel(metric)} on categories: only exact matches agree.`;
+  }
+  return metric === 'cohens_kappa'
+    ? 'Weighted Cohen’s Kappa on an ordered scale: a near miss counts as partial agreement (quadratic weights).'
+    : 'Ordinal Krippendorff’s Alpha on an ordered scale: a near miss counts as partial agreement.';
+};
 
 interface ColumnComparisonHeaderProps {
   label?: string;
@@ -41,6 +73,23 @@ interface ColumnComparisonHeaderProps {
   /** Row filter carried by this column; omitted by tables without server-side filtering. */
   filter?: AnnotationRowFilterValue;
   onFilterChange?: (filter: AnnotationRowFilterValue) => void;
+  /**
+   * An ordered-scale codebook: Kappa is then weighted, Alpha ordinal, and
+   * the matrix lists the levels in order, then the codes outside the scale.
+   */
+  scale?: OrderedScale | null;
+  /**
+   * How many values in each of the two columns are not codes in the codebook.
+   * The tooltip then names the columns the score leaves out, or how many of
+   * their values it leaves out; Preview counts the page on screen only.
+   */
+  codebookFit?: {
+    reference?: ColumnCodebookFit;
+    comparison?: ColumnCodebookFit;
+    pageOnly?: boolean;
+  };
+  /** The Data Block's name, for the downloaded matrix's subtitle and file name. */
+  nodeName?: string;
 }
 
 /**
@@ -62,15 +111,31 @@ export function ColumnComparisonHeader({
   onRevealedChange,
   filter,
   onFilterChange,
+  scale = null,
+  codebookFit,
+  nodeName,
 }: ColumnComparisonHeaderProps) {
-  const labels = Array.from(
-    new Set((rows ?? []).flatMap((row) => [row.reference, row.comparison])),
-  ).toSorted((a, b) => a.localeCompare(b));
-  const countByPair = new Map(
-    (rows ?? []).map((row) => [JSON.stringify([row.reference, row.comparison]), row.count]),
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const ordered = scale !== null;
+  // The annotation column is compared by every score, so its note says so.
+  const fitNotes = codebookFitNotes(
+    [
+      {
+        column: referenceColumn,
+        fit: codebookFit?.reference,
+        everyScore: true,
+      },
+      { column: comparisonColumn, fit: codebookFit?.comparison },
+    ],
+    { pageOnly: codebookFit?.pageOnly },
   );
-  const metricDefinition = INTERCODER_RELIABILITY_METRICS.find((option) => option.value === metric);
-  const reliability = rows ? calculateIntercoderReliability(rows, metric) : null;
+  const columnLeftOut = fitNotes.some((note) => note.leftOut);
+  const comparisonHasNoCodes = hasNoCodes(codebookFit?.comparison);
+  const metricDefinition = {
+    label: intercoderReliabilityLabel(metric, ordered),
+    symbol: intercoderReliabilitySymbol(metric, ordered),
+  };
+  const reliability = rows ? calculateIntercoderReliability(rows, metric, scale) : null;
   const accessibleScore =
     reliability == null
       ? null
@@ -78,15 +143,20 @@ export function ColumnComparisonHeader({
         ? `${(reliability * 100).toFixed(1)}%`
         : reliability.toFixed(3);
   const score = isLoading
-    ? `${metricDefinition?.symbol ?? ''} …`
+    ? `${metricDefinition.symbol} …`
     : reliability == null
-      ? `${metricDefinition?.symbol ?? ''} —`
-      : formatIntercoderReliability(reliability, metric);
+      ? `${metricDefinition.symbol} —`
+      : formatIntercoderReliability(reliability, metric, ordered);
   const scoreDescription = isLoading
-    ? `${metricDefinition?.label ?? ''} loading for ${referenceColumn} versus ${comparisonColumn}`
+    ? `${metricDefinition.label} loading for ${referenceColumn} versus ${comparisonColumn}`
     : isError || !rows || reliability == null
-      ? `${metricDefinition?.label ?? ''} unavailable for ${referenceColumn} versus ${comparisonColumn}`
-      : `${metricDefinition?.label ?? ''} ${accessibleScore ?? ''} for ${referenceColumn} versus ${comparisonColumn}`;
+      ? `${metricDefinition.label} unavailable for ${referenceColumn} versus ${comparisonColumn}`
+      : `${metricDefinition.label} ${accessibleScore ?? ''} for ${referenceColumn} versus ${comparisonColumn}`;
+  const method = reliabilityMethod(metric, ordered);
+  // Preview scores only the page on screen, so its image says Preview.
+  const preview = codebookFit?.pageOnly === true;
+  const showMatrix = !isLoading && !isError && rows !== undefined && rows.length > 0;
+  const downloadLabel = 'Download confusion matrix';
 
   return (
     <span className="inline-flex flex-col items-start gap-1">
@@ -104,71 +174,48 @@ export function ColumnComparisonHeader({
             </Badge>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-none p-3">
+            {/* Says which method the score uses, since the scale setting is a
+                hidden codebook row (Chao, 16 Nov 2026). */}
+            <div className="mb-2 flex items-start gap-3">
+              <p className="max-w-sm whitespace-normal" data-testid="reliability-method">
+                {method}
+              </p>
+              {showMatrix ? (
+                <AgreementMatrixDownloadButton
+                  label={downloadLabel}
+                  onClick={() => {
+                    setDownloadOpen(true);
+                  }}
+                />
+              ) : null}
+            </div>
+            {fitNotes.map((note) => (
+              <p
+                key={note.column}
+                className="mb-2 max-w-sm whitespace-normal"
+                data-testid="codebook-fit-note"
+              >
+                {note.text}
+              </p>
+            ))}
             {isLoading ? (
               <p>Loading comparison…</p>
             ) : isError || !rows ? (
               <p>Couldn't load comparison.</p>
-            ) : labels.length === 0 ? (
-              <p>No rows contain values in both columns.</p>
+            ) : rows.length === 0 ? (
+              // A column left out already explains the missing score.
+              columnLeftOut ? null : (
+                <p>No rows contain values in both columns.</p>
+              )
             ) : (
-              <div className="grid grid-cols-[auto_auto] grid-rows-[auto_auto] gap-x-2 gap-y-1">
-                <div
-                  aria-label={`${comparisonColumn} column axis`}
-                  className="col-start-2 row-start-1 flex items-center justify-center gap-1 border-b border-widget-foreground/25 pb-1 font-medium"
-                >
-                  <span>{comparisonColumn}</span>
-                  <ArrowRight aria-hidden="true" className="size-3" />
-                </div>
-                <div
-                  aria-label={`${referenceColumn} row axis`}
-                  className="col-start-1 row-start-2 flex flex-col items-center justify-center gap-1 border-r border-widget-foreground/25 pr-1.5 font-medium"
-                >
-                  <span className="rotate-180 [writing-mode:vertical-rl]">{referenceColumn}</span>
-                  <ArrowDown aria-hidden="true" className="size-3" />
-                </div>
-                <table
-                  aria-label={`${referenceColumn} versus ${comparisonColumn} confusion matrix`}
-                  className="col-start-2 row-start-2 border-separate border-spacing-x-2 border-spacing-y-1 text-label-secondary tabular-nums"
-                >
-                  <caption className="sr-only">
-                    Rows are {referenceColumn}; columns are {comparisonColumn}.
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th className="px-1 font-normal" scope="col">
-                        <span className="sr-only">Row label</span>
-                      </th>
-                      {labels.map((comparisonLabel) => (
-                        <th
-                          key={comparisonLabel}
-                          className="px-1 text-center text-widget-foreground/80"
-                          scope="col"
-                        >
-                          {displayLabel(comparisonLabel)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {labels.map((referenceLabel) => (
-                      <tr key={referenceLabel}>
-                        <th className="pr-2 text-right text-widget-foreground/80" scope="row">
-                          {displayLabel(referenceLabel)}
-                        </th>
-                        {labels.map((comparisonLabel) => (
-                          <td
-                            key={comparisonLabel}
-                            className="min-w-8 px-1 text-center font-medium"
-                          >
-                            {countByPair.get(JSON.stringify([referenceLabel, comparisonLabel])) ??
-                              0}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <AgreementMatrix
+                rows={rows}
+                scale={scale}
+                rowAxis={referenceColumn}
+                columnAxis={comparisonColumn}
+                tableLabel={`${referenceColumn} versus ${comparisonColumn} confusion matrix`}
+                agreementKey="Green: both columns agree."
+              />
             )}
           </TooltipContent>
         </Tooltip>
@@ -205,7 +252,32 @@ export function ColumnComparisonHeader({
             />
           ) : null}
         </span>
+        {comparisonHasNoCodes ? (
+          <span
+            className="text-label-secondary font-normal text-warning"
+            title={fitNotes.find((note) => note.column === comparisonColumn)?.text}
+          >
+            {NO_CODES_HEADER_HINT}
+          </span>
+        ) : null}
       </TooltipProvider>
+      <AgreementMatrixDownloadDialog
+        open={downloadOpen}
+        onOpenChange={setDownloadOpen}
+        title={downloadLabel}
+        image={() => ({
+          title: `${metricDefinition.label}, ${referenceColumn} versus ${comparisonColumn}: ${score}${preview ? ' (Preview)' : ''}`,
+          ...(nodeName ? { subtitle: `Data Block: ${nodeName}` } : {}),
+          paragraphs: [method, ...fitNotes.map((note) => note.text)],
+          rows: rows ?? [],
+          scale,
+          rowAxis: referenceColumn,
+          columnAxis: comparisonColumn,
+          agreementKey: 'Green: both columns agree.',
+        })}
+        fileStem={`${nodeName ? `${nodeName} ` : ''}${referenceColumn} vs ${comparisonColumn}`}
+        fileSuffix={preview ? 'confusion_matrix_preview' : 'confusion_matrix'}
+      />
     </span>
   );
 }
@@ -218,6 +290,10 @@ interface ColumnComparisonSelectorProps {
   onMetricChange: (metric: IntercoderReliabilityMetric) => void;
   disabledColumns?: string[];
   disabled?: boolean;
+  /** An ordered-scale codebook: the menu names weighted Kappa and ordinal Alpha. */
+  ordered?: boolean;
+  /** The columns' types, for the type symbol before each name. */
+  columnFields?: ColumnFields;
 }
 
 /**
@@ -233,6 +309,8 @@ export function ColumnComparisonSelector({
   onMetricChange,
   disabledColumns = [],
   disabled = false,
+  ordered = false,
+  columnFields,
 }: ColumnComparisonSelectorProps) {
   const normalizedAvailableColumns = Array.from(new Set(availableColumns));
   const normalizedSelectedColumns = selectedColumns.filter((column) =>
@@ -256,18 +334,28 @@ export function ColumnComparisonSelector({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={disabled || normalizedAvailableColumns.length === 0}
-          aria-label="Compare to"
-        >
-          Compare to ({normalizedSelectedColumns.length})
-          <ChevronDown className="ml-2 h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <DisabledReasonTooltip
+        reason={
+          !disabled && normalizedAvailableColumns.length === 0
+            ? 'There are no other columns to compare with.'
+            : undefined
+        }
+      >
+        <HintTooltip text="Compare this column with other coders or models, and choose the reliability statistic. Each comparison stays hidden until you reveal it.">
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled || normalizedAvailableColumns.length === 0}
+              aria-label="Compare to"
+            >
+              Compare to ({normalizedSelectedColumns.length})
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+        </HintTooltip>
+      </DisabledReasonTooltip>
       <DropdownMenuContent align="end" className={COLUMN_MENU_CLASS}>
         <DropdownMenuLabel>Intercoder reliability</DropdownMenuLabel>
         <DropdownMenuRadioGroup
@@ -284,7 +372,7 @@ export function ColumnComparisonSelector({
                 event.preventDefault();
               }}
             >
-              {option.label}
+              {intercoderReliabilityLabel(option.value, ordered)}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
@@ -306,6 +394,8 @@ export function ColumnComparisonSelector({
         {normalizedAvailableColumns.map((column) => (
           <DropdownMenuCheckboxItem
             key={column}
+            // Type-ahead goes by the column's name, not by a symbol such as "Aa".
+            textValue={column}
             className={COLUMN_MENU_ITEM_CLASS}
             checked={normalizedSelectedColumns.includes(column)}
             disabled={disabledColumnSet.has(column)}
@@ -316,7 +406,7 @@ export function ColumnComparisonSelector({
               event.preventDefault();
             }}
           >
-            {column}
+            <ColumnTypeLabel field={columnFields?.get(column)}>{column}</ColumnTypeLabel>
           </DropdownMenuCheckboxItem>
         ))}
       </DropdownMenuContent>

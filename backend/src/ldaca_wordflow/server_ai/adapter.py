@@ -144,11 +144,10 @@ class ServerAiAnnotationAdapter:
                 f"This model is not available through {provider.name}",
                 code="annotation_provider_request_rejected",
             )
-        details = None
-        if provider.send_user_details and binding.end_user:
-            from . import user_details
-
-            details = await user_details(binding.user_id)
+        # Carried in the signed binding: this runs in a worker process for Runs (#492).
+        details = (
+            dict(binding.details) if provider.send_user_details and binding.end_user else None
+        )
         inner = self._inner(binding.end_user, details)
         if binding.purpose == "preview" and provider.max_requests_per_user is not None:
             async with user_gate().preview(provider, binding.user_id):
@@ -176,6 +175,14 @@ class ServerAiAnnotationAdapter:
                 delay = _rate_limit_delay(attempt, _retry_after(error))
             await asyncio.sleep(delay)
         raise AssertionError("Rate-limit retry loop did not return")
+
+    async def context_window(self, model: str, api_key: str | None) -> int | None:
+        """The model's context window, asked with the server's key (issue 493)."""
+
+        try:
+            return await self._inner(None).context_window(model, self.provider.api_key())
+        except Exception:  # noqa: BLE001 - the window is optional
+            return None
 
     async def list_models(self, api_key: str | None) -> list[str]:
         """Models from the server, with the server's key; the client's key is ignored."""

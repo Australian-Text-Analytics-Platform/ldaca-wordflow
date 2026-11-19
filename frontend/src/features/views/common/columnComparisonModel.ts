@@ -115,19 +115,311 @@ export const calculateKrippendorffsAlpha = (rows: ConfusionCount[]): number | nu
   return 1 - observedDisagreement / expectedDisagreement;
 };
 
+/**
+ * An ordered-scale codebook (Chao, 16 Nov 2026): its levels, lowest first,
+ * and the codes outside the scale, such as Not applicable.
+ */
+export interface OrderedScale {
+  levels: readonly string[];
+  outside: readonly string[];
+}
+
+/** A scale codebook's classes, in order: those named in ``outside`` are not levels. */
+export const orderedScale = (
+  classes: readonly string[],
+  outside: readonly string[],
+): OrderedScale => ({
+  levels: classes.filter((name) => !outside.includes(name)),
+  outside: classes.filter((name) => outside.includes(name)),
+});
+
+/**
+ * The scale Compare to uses for a Preview or Run (Chao, 16 Nov 2026). Ordered
+ * scale is a setting of the codebook, so the codebook as it is now decides,
+ * also for a Run made before the setting was turned on or off, as long as it
+ * holds the same codes as the Run. A codebook since changed to other codes
+ * can't speak for the Run, which then keeps the setting it was made with.
+ */
+export const comparisonScale = (
+  run: {
+    classes: readonly string[];
+    scale?: boolean | null;
+    outside_scale?: readonly string[] | null;
+  },
+  codebook: { classes: readonly string[]; scale: boolean; outsideScale: readonly string[] } | null,
+): OrderedScale | null => {
+  const codes = (names: readonly string[]) =>
+    JSON.stringify(names.map((name) => name.trim()).toSorted());
+  if (codebook && codes(codebook.classes) === codes(run.classes)) {
+    return codebook.scale ? orderedScale(codebook.classes, codebook.outsideScale) : null;
+  }
+  return run.scale ? orderedScale(run.classes, run.outside_scale ?? []) : null;
+};
+
+/**
+ * How far apart two codes are on a scale, from 0 (the same code) to 1: levels
+ * by their distance in levels over the width of the scale, and a code outside
+ * the scale 1 from every other code. Null for a label that is neither. Used to
+ * shade the confusion matrix (Chao, 16 Nov 2026).
+ */
+export const scaleDistance = (
+  scale: OrderedScale,
+  first: string,
+  second: string,
+): number | null => {
+  if (first === second) return 0;
+  const firstLevel = scale.levels.indexOf(first);
+  const secondLevel = scale.levels.indexOf(second);
+  if (firstLevel >= 0 && secondLevel >= 0) {
+    return scale.levels.length < 2
+      ? 0
+      : Math.abs(firstLevel - secondLevel) / (scale.levels.length - 1);
+  }
+  const known = (label: string) => scale.levels.includes(label) || scale.outside.includes(label);
+  return known(first) && known(second) ? 1 : null;
+};
+
+/**
+ * Ordered-scale statistics. A near miss between levels is a smaller
+ * disagreement than a far one, scaled so the lowest against the highest
+ * level costs 1. A code outside the scale is not near any level: against a
+ * level or another outside code it costs 1, as much as the two most distant
+ * levels, and against itself 0. Pairs with a label that is neither are left
+ * out (the comparison queries already keep only codebook labels).
+ */
+const scalePairs = (rows: ConfusionCount[], scale: OrderedScale) => {
+  const codes = [...scale.levels, ...scale.outside];
+  const position = new Map(codes.map((label, index) => [label, index] as const));
+  const pairs = rows.flatMap((row) => {
+    const reference = position.get(row.reference);
+    const comparison = position.get(row.comparison);
+    return reference === undefined || comparison === undefined || row.count <= 0
+      ? []
+      : [{ reference, comparison, count: row.count }];
+  });
+  return { codeCount: codes.length, levelCount: scale.levels.length, pairs };
+};
+
+/**
+ * Cohen’s Kappa with quadratic weights: a disagreement between levels costs
+ * the squared distance in levels, over the squared width of the scale.
+ */
+export const calculateWeightedKappa = (
+  rows: ConfusionCount[],
+  scale: OrderedScale,
+): number | null => {
+  const { codeCount, levelCount, pairs } = scalePairs(rows, scale);
+  if (levelCount < 2) return null;
+  const weight = (first: number, second: number): number =>
+    first < levelCount && second < levelCount
+      ? ((first - second) / (levelCount - 1)) ** 2
+      : first === second
+        ? 0
+        : 1;
+  const referenceTotals = new Array<number>(codeCount).fill(0);
+  const comparisonTotals = new Array<number>(codeCount).fill(0);
+  let total = 0;
+  let observed = 0;
+  pairs.forEach(({ reference, comparison, count }) => {
+    total += count;
+    referenceTotals[reference] = (referenceTotals[reference] ?? 0) + count;
+    comparisonTotals[comparison] = (comparisonTotals[comparison] ?? 0) + count;
+    observed += weight(reference, comparison) * count;
+  });
+  if (total === 0) return null;
+  let expected = 0;
+  referenceTotals.forEach((referenceCount, reference) => {
+    comparisonTotals.forEach((comparisonCount, comparison) => {
+      expected += (weight(reference, comparison) * referenceCount * comparisonCount) / total;
+    });
+  });
+  if (expected === 0) return null;
+  return 1 - observed / expected;
+};
+
+/**
+ * Krippendorff’s Alpha with the ordinal distance between levels, scaled so
+ * the lowest against the highest level is 1, for two annotation columns.
+ */
+export const calculateOrdinalAlpha = (
+  rows: ConfusionCount[],
+  scale: OrderedScale,
+): number | null => {
+  const { codeCount, levelCount, pairs } = scalePairs(rows, scale);
+  if (levelCount < 2) return null;
+  // Coincidence matrix: each coded pair counts once in each direction.
+  const coincidences = Array.from({ length: codeCount }, () =>
+    new Array<number>(codeCount).fill(0),
+  );
+  const coincide = (first: number, second: number, count: number) => {
+    const row = coincidences[first];
+    if (row) row[second] = (row[second] ?? 0) + count;
+  };
+  pairs.forEach(({ reference, comparison, count }) => {
+    coincide(reference, comparison, count);
+    coincide(comparison, reference, count);
+  });
+  const codeTotals = coincidences.map((row) => row.reduce((sum, count) => sum + count, 0));
+  const valueCount = codeTotals.reduce((sum, count) => sum + count, 0);
+  if (valueCount < 2) return null;
+  const codeTotal = (code: number): number => codeTotals[code] ?? 0;
+  // Ordinal distance: the values lying between two levels, inclusive, minus half of each end.
+  const ordinal = (low: number, high: number): number => {
+    let between = 0;
+    for (let level = low; level <= high; level += 1) between += codeTotal(level);
+    return (between - (codeTotal(low) + codeTotal(high)) / 2) ** 2;
+  };
+  const widest = ordinal(0, levelCount - 1);
+  const distance = (first: number, second: number): number =>
+    first < levelCount && second < levelCount
+      ? widest === 0
+        ? 0
+        : ordinal(first, second) / widest
+      : 1;
+  let observed = 0;
+  let expected = 0;
+  for (let first = 0; first < codeCount; first += 1) {
+    for (let second = first + 1; second < codeCount; second += 1) {
+      const squared = distance(first, second);
+      observed += 2 * (coincidences[first]?.[second] ?? 0) * squared;
+      expected += 2 * codeTotal(first) * codeTotal(second) * squared;
+    }
+  }
+  if (expected === 0) return null;
+  return 1 - ((valueCount - 1) * observed) / expected;
+};
+
+/**
+ * The chosen statistic. With an ordered ``scale``, Kappa is weighted and
+ * Alpha ordinal; Percent Agreement stays exact matches.
+ */
 export const calculateIntercoderReliability = (
   rows: ConfusionCount[],
   metric: IntercoderReliabilityMetric,
+  scale?: OrderedScale | null,
 ): number | null => {
   if (metric === 'percent_agreement') return calculatePercentAgreement(rows);
-  if (metric === 'krippendorffs_alpha') return calculateKrippendorffsAlpha(rows);
-  return calculateCohensKappa(rows);
+  if (metric === 'krippendorffs_alpha') {
+    return scale ? calculateOrdinalAlpha(rows, scale) : calculateKrippendorffsAlpha(rows);
+  }
+  return scale ? calculateWeightedKappa(rows, scale) : calculateCohensKappa(rows);
+};
+
+/** The statistic's name; on a scale, Kappa is weighted and Alpha ordinal. */
+export const intercoderReliabilityLabel = (
+  metric: IntercoderReliabilityMetric,
+  ordered = false,
+): string => {
+  const label = INTERCODER_RELIABILITY_METRICS.find((option) => option.value === metric)?.label;
+  if (!ordered || metric === 'percent_agreement') return label ?? '';
+  return metric === 'cohens_kappa' ? `${label ?? ''} (weighted)` : `${label ?? ''} (ordinal)`;
+};
+
+/** The short symbol on the score badge: κ, or κw for weighted Kappa, α or αo for ordinal Alpha. */
+export const intercoderReliabilitySymbol = (
+  metric: IntercoderReliabilityMetric,
+  ordered = false,
+): string => {
+  const symbol = INTERCODER_RELIABILITY_METRICS.find((option) => option.value === metric)?.symbol;
+  if (!ordered || metric === 'percent_agreement') return symbol ?? '';
+  return metric === 'cohens_kappa' ? 'κw' : 'αo';
 };
 
 export const formatIntercoderReliability = (
   value: number,
   metric: IntercoderReliabilityMetric,
+  ordered = false,
 ): string =>
   metric === 'percent_agreement'
     ? `${(value * 100).toFixed(1)}%`
-    : `${INTERCODER_RELIABILITY_METRICS.find((option) => option.value === metric)?.symbol ?? ''} ${value.toFixed(3)}`;
+    : `${intercoderReliabilitySymbol(metric, ordered)} ${value.toFixed(3)}`;
+
+/** One combination of codes the coders gave the same texts (null: no code), and how many texts got it. */
+export interface CodeCombination {
+  values: readonly (string | null)[];
+  count: number;
+}
+
+export interface MultiCoderAgreement {
+  alpha: number | null;
+  /**
+   * Krippendorff's coincidence matrix: every pair of codes two different
+   * coders gave the same text, each text's pairs sharing one unit of weight
+   * per code (1/(m-1) each, for m codes on the text).
+   */
+  coincidences: ConfusionCount[];
+  /** Texts with codes from at least two coders: the ones Alpha counts. */
+  pairableTexts: number;
+}
+
+/**
+ * Krippendorff's Alpha across any number of coders (Chao, 16 Nov 2026), from
+ * the coincidence matrix of their codes. A text counts when at least two
+ * coders gave it a code, so coders who each coded only some texts still
+ * count. Nominal for categories; on an ordered ``scale``, the same distances
+ * as the two-column ordinal Alpha (codes outside the scale 1 from the rest).
+ * With two coders and every text coded by both, it equals the two-column
+ * Alpha.
+ */
+export const multiCoderAgreement = (
+  combinations: readonly CodeCombination[],
+  scale: OrderedScale | null,
+): MultiCoderAgreement => {
+  const scaleCodes = scale ? [...scale.levels, ...scale.outside] : null;
+  const keep = scaleCodes ? new Set(scaleCodes) : null;
+  const matrix = new Map<string, number>();
+  const totals = new Map<string, number>();
+  let pairableTexts = 0;
+  combinations.forEach(({ values, count }) => {
+    const codes = values.filter(
+      (value): value is string => value !== null && (keep === null || keep.has(value)),
+    );
+    if (codes.length < 2 || count <= 0) return;
+    pairableTexts += count;
+    const weight = count / (codes.length - 1);
+    codes.forEach((first, firstIndex) => {
+      codes.forEach((second, secondIndex) => {
+        if (firstIndex === secondIndex) return;
+        const key = JSON.stringify([first, second]);
+        matrix.set(key, (matrix.get(key) ?? 0) + weight);
+        totals.set(first, (totals.get(first) ?? 0) + weight);
+      });
+    });
+  });
+  const coincidences = Array.from(matrix, ([key, count]) => {
+    const [reference = '', comparison = ''] = JSON.parse(key) as string[];
+    return { reference, comparison, count };
+  });
+  const total = (code: string): number => totals.get(code) ?? 0;
+  const valueCount = Array.from(totals.values()).reduce((sum, count) => sum + count, 0);
+  const codes = scaleCodes ?? Array.from(totals.keys());
+  if (valueCount < 2 || (scale && scale.levels.length < 2)) {
+    return { alpha: null, coincidences, pairableTexts };
+  }
+  // Squared distance between two codes: 1 between categories; on a scale, the
+  // ordinal distance between levels over the widest, and 1 for a code outside.
+  const levelCount = scale?.levels.length ?? 0;
+  const ordinal = (low: number, high: number): number => {
+    let between = 0;
+    for (let level = low; level <= high; level += 1) between += total(codes[level] ?? '');
+    return (between - (total(codes[low] ?? '') + total(codes[high] ?? '')) / 2) ** 2;
+  };
+  const widest = scale ? ordinal(0, levelCount - 1) : 0;
+  const distance = (first: number, second: number): number => {
+    if (!scale || first >= levelCount || second >= levelCount) return 1;
+    if (widest === 0) return 0;
+    return ordinal(Math.min(first, second), Math.max(first, second)) / widest;
+  };
+  let observed = 0;
+  let expected = 0;
+  codes.forEach((first, firstIndex) => {
+    codes.forEach((second, secondIndex) => {
+      if (firstIndex === secondIndex) return;
+      const squared = distance(firstIndex, secondIndex);
+      observed += (matrix.get(JSON.stringify([first, second])) ?? 0) * squared;
+      expected += total(first) * total(second) * squared;
+    });
+  });
+  if (expected === 0) return { alpha: null, coincidences, pairableTexts };
+  return { alpha: 1 - ((valueCount - 1) * observed) / expected, coincidences, pairableTexts };
+};

@@ -31,12 +31,12 @@ export function LoginScreen({ isLoading, error, authMethods = [] }: LoginScreenP
     <div className="app-window-backplane flex h-full min-h-0 items-center justify-center px-4 py-10">
       <div className="w-full max-w-xl space-y-4 rounded-lg border bg-surface px-10 py-12 text-center">
         <div className="flex justify-center">
-          <img src={wordflowIcon} alt="LDaCA Wordflow icon" className="size-16 object-contain" />
+          <img src={wordflowIcon} alt="Wordflow (by LDaCA)" className="size-16 object-contain" />
         </div>
         <div className="space-y-2">
           <h1 className="text-heading-1 font-semibold">Sign in to continue</h1>
           <p className="text-body text-description">
-            LDaCA Wordflow requires you to sign in with {providerLabel}.
+            Wordflow requires you to sign in with {providerLabel}.
           </p>
         </div>
         <ErrorBoundary>

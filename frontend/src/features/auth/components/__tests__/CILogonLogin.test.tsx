@@ -20,7 +20,7 @@ describe('OIDC sign-in button (issue 405)', () => {
     );
 
     expect(
-      screen.getByText('LDaCA Wordflow requires you to sign in with single sign-on (SSO).'),
+      screen.getByText('Wordflow requires you to sign in with single sign-on (SSO).'),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Sign in with SSO' })).toBeInTheDocument();
   });

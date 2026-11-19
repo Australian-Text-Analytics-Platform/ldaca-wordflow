@@ -6,8 +6,9 @@ import asyncio
 import json
 import re
 import uuid
-from collections.abc import Callable
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Collection
+from dataclasses import dataclass, field, replace
+from functools import partial
 from typing import cast
 
 from ...analysis.annotation_examples import AnnotationExample
@@ -22,13 +23,22 @@ from .annotation_adapter import (
     AnnotationProviderAdapter,
     AnnotationResponseError,
     InferenceConfig,
+    max_completion_tokens,
 )
 from .annotation_anthropic import AnthropicAnnotationAdapter
+from .annotation_batching import (
+    Batch,
+    BatchPlanner,
+    TokenBudget,
+    estimate_tokens,
+    json_as_written,
+)
 from .annotation_google import GoogleAnnotationAdapter
 from .annotation_openai import (
     CustomOpenAICompatibleAnnotationAdapter,
     OpenAIAnnotationAdapter,
 )
+from .context_window import learned_context_window, remember_context_window
 from .model_descriptions import ModelOption
 from ... import server_ai
 
@@ -52,6 +62,10 @@ class AnnotationAllResult:
     failed_rows: list[bool]
     failed_batch_count: int
     failed_row_count: int
+    # Failed rows whose text is too long for the model's context window, and
+    # the window in tokens where it is known (issue 493).
+    too_long_rows: list[bool] = field(default_factory=list)
+    context_window: int | None = None
 
 
 def default_max_concurrency(provider_id: str) -> int:
@@ -105,20 +119,35 @@ async def list_model_options(
     return [ModelOption(model) for model in await adapter.list_models(api_key)]
 
 
-def build_annotation_system_prompt(
-    instruction: str,
-    classes: list[AnnotationClass],
-    examples: list[AnnotationExample] | None = None,
-    task_context: str = "",
-) -> str:
-    """Assemble the instruction, Task context, classes, examples, and strict JSON contract."""
-
-    class_lines = "\n".join(
+def _class_lines(classes: list[AnnotationClass]) -> str:
+    return "\n".join(
         f"- {option.name}: {option.description.strip()}"
         if option.description.strip()
         else f"- {option.name}"
         for option in classes
     )
+
+
+def build_annotation_system_prompt(
+    instruction: str,
+    classes: list[AnnotationClass],
+    examples: list[AnnotationExample] | None = None,
+    task_context: str = "",
+    scale: bool = False,
+    outside_scale: Collection[str] = (),
+) -> str:
+    """Assemble the instruction, Task context, classes, examples, and strict JSON contract.
+
+    Every text gets a class; the model is never asked for null, since an
+    empty label means "not coded" (Chao, 16 Nov 2026).
+
+    With ``scale`` the classes are the levels of an ordered scale, lowest
+    first, except those named in ``outside_scale`` (such as Not applicable),
+    which are listed apart. Each text is judged against the level definitions
+    on its own, not against the other texts in its batch, and examples cannot
+    add labels.
+    """
+
     parts = [instruction.strip(), ""]
     if task_context.strip():
         # The codebook's Task context (issue 408): what the texts are and
@@ -128,12 +157,42 @@ def build_annotation_system_prompt(
         "The batch and JSON response rules below take precedence over any conflicting "
         "response-format wording in the instruction.",
         "",
-        "Classify each input text into exactly one of these classes:",
-        class_lines,
-        "",
-        "Rules:",
-        "- Use the exact class name shown above for each text.",
-        "- If no class applies, use null.",
+    ]
+    if scale:
+        outside = [option for option in classes if option.name in outside_scale]
+        levels = [option for option in classes if option.name not in outside_scale]
+        parts += [
+            "Rate each input text on this ordered scale. The levels run from the "
+            "lowest (first) to the highest (last):",
+            _class_lines(levels),
+        ]
+        if outside:
+            parts += ["", "Outside the scale (these codes are not levels):", _class_lines(outside)]
+        parts += [
+            "",
+            "Rules:",
+            "- Use the exact name of a level or of a code outside the scale for each text."
+            if outside
+            else "- Use the exact level name shown above for each text.",
+            "- Judge each text against the level definitions on its own, not against "
+            "the other texts in this batch.",
+            "- If the scale does not apply to a text, use a code outside the scale. "
+            "Never answer null."
+            if outside
+            else "- Give every text the closest level. Never answer null.",
+        ]
+    else:
+        parts += [
+            "Classify each input text into exactly one of these classes:",
+            _class_lines(classes),
+            "",
+            "Rules:",
+            "- Use the exact class name shown above for each text.",
+            "- Give every text one class. Never answer null. If no class fits well, use "
+            'the class for texts that fit none of the others, such as "Other", if there '
+            "is one; otherwise use the closest class.",
+        ]
+    parts += [
         '- Respond with ONLY a JSON object of the form {"labels": [...]} containing one',
         "  entry per input text, in the same order. No prose, no markdown.",
     ]
@@ -141,7 +200,9 @@ def build_annotation_system_prompt(
         parts.extend(
             [
                 "",
-                "Examples (labels are authoritative and may extend the class list):",
+                "Examples (labels are authoritative):"
+                if scale
+                else "Examples (labels are authoritative and may extend the class list):",
                 json.dumps(
                     [
                         {"text": example.text, "label": example.label}
@@ -160,7 +221,8 @@ def build_annotation_user_prompt(texts: list[str]) -> str:
     return "\n".join(
         [
             f"Classify these {len(texts)} texts (JSON array, preserve order):",
-            json.dumps(texts),
+            # As written: "气候" is two characters to the model, not twelve.
+            json_as_written(texts),
         ]
     )
 
@@ -169,7 +231,9 @@ def build_labels_schema(labels: list[str], count: int) -> dict[str, object]:
     """The answer for one batch as a strict JSON schema (issue 406).
 
     ``labels`` is an array of exactly ``count`` items, each one of the known
-    labels (the classes, plus labels the examples add) or null.
+    labels (the classes, plus labels the examples add). Null is not offered:
+    every text gets a class, since an empty label means "not coded" (Chao,
+    16 Nov 2026). A model that answers null anyway leaves its row empty.
     """
 
     known = list(dict.fromkeys(labels))
@@ -182,7 +246,7 @@ def build_labels_schema(labels: list[str], count: int) -> dict[str, object]:
                 "type": "array",
                 "minItems": count,
                 "maxItems": count,
-                "items": {"enum": [*known, None]},
+                "items": {"enum": known},
             }
         },
     }
@@ -256,6 +320,28 @@ def align_labels(content: str, count: int, class_names: list[str]) -> list[str |
     return result
 
 
+def _known_labels(
+    classes: list[AnnotationClass], examples: list[AnnotationExample] | None
+) -> list[str]:
+    """The labels an answer may use: the classes, then labels the examples add."""
+
+    labels = [option.name for option in classes]
+    if examples is not None:
+        labels.extend(example.label for example in examples)
+    return labels
+
+
+def _scale_examples(
+    source: AnnotationAnalysisRequest, examples: list[AnnotationExample] | None
+) -> list[AnnotationExample] | None:
+    """On an ordered scale, only examples labelled with one of its levels."""
+
+    if not source.scale or examples is None:
+        return examples
+    levels = {option.name for option in source.classes}
+    return [example for example in examples if example.label in levels]
+
+
 def _inference_config(request: AnnotationAnalysisRequest) -> InferenceConfig:
     return InferenceConfig(
         temperature=request.temperature,
@@ -276,16 +362,18 @@ async def _annotate_batch(
     examples: list[AnnotationExample] | None = None,
     *,
     task_context: str = "",
+    scale: bool = False,
+    outside_scale: Collection[str] = (),
 ) -> list[str | None]:
     """Classify one batch with shared prompt, retry, and label policy."""
 
     if not texts:
         return []
-    system = build_annotation_system_prompt(instruction, classes, examples, task_context)
+    system = build_annotation_system_prompt(
+        instruction, classes, examples, task_context, scale, outside_scale
+    )
     user = build_annotation_user_prompt(texts)
-    known_labels = [option.name for option in classes]
-    if examples is not None:
-        known_labels.extend(example.label for example in examples)
+    known_labels = _known_labels(classes, examples)
     config = replace(
         config, labels_schema=build_labels_schema(known_labels, len(texts))
     )
@@ -303,30 +391,266 @@ async def _annotate_batch(
     raise AssertionError("Annotation response retry loop did not return")
 
 
+def _window_source(adapter: AnnotationProviderAdapter) -> str:
+    """What a learned context window belongs to: the adapter kind and its server."""
+
+    base_url = getattr(adapter, "base_url", None) or getattr(
+        getattr(adapter, "provider", None), "base_url", None
+    )
+    return f"{type(adapter).__name__}:{base_url or ''}"
+
+
+async def _token_budget(
+    adapter: AnnotationProviderAdapter,
+    source: AnnotationAnalysisRequest,
+    api_key: str | None,
+    examples: list[AnnotationExample] | None,
+    config: InferenceConfig,
+) -> TokenBudget:
+    """The Run's token budget; with no window known, batches go by text count."""
+
+    window = learned_context_window(_window_source(adapter), source.model)
+    lookup = getattr(adapter, "context_window", None)
+    if window is None and lookup is not None:
+        try:
+            window = await lookup(source.model, api_key)
+        except Exception:  # noqa: BLE001 - a missing window must never stop a Run
+            window = None
+    known_labels = _known_labels(source.classes, examples)
+    overhead = estimate_tokens(
+        build_annotation_system_prompt(
+            source.instruction,
+            source.classes,
+            examples,
+            source.task_context,
+            source.scale,
+            source.outside_scale,
+        )
+    ) + estimate_tokens(json.dumps(build_labels_schema(known_labels, 1)))
+    return TokenBudget(
+        window=window, reserve=max_completion_tokens(config), overhead=overhead
+    )
+
+
+async def _annotate_texts(
+    source: AnnotationAnalysisRequest,
+    api_key: str | None,
+    texts: list[str],
+    examples: list[AnnotationExample] | None,
+    *,
+    batch_size: int,
+    max_concurrency: int | None,
+    row_failures: bool,
+    progress_callback: Callable[[int, int, int], None] | None = None,
+    labels_callback: Callable[[list[str], list[str | None]], None] | None = None,
+) -> AnnotationAllResult:
+    """Classify texts in batches sized to the model's context window (issue 493).
+
+    A batch holds up to ``batch_size`` texts or the token budget, whichever
+    comes first; with no window known it goes by ``batch_size`` alone. A batch
+    the provider still refuses for size is cut smaller and sent again.
+
+    With ``row_failures`` (a Run), rows that cannot be classified are marked
+    failed and the rest go on. Without (a Preview), the first failure is raised.
+    """
+
+    adapter = resolve_provider_adapter(
+        source.provider, source.provider_base_url, source.provider_configuration_id
+    )
+    examples = _scale_examples(source, examples)
+    config = _inference_config(source)
+    budget = await _token_budget(adapter, source, api_key, examples, config)
+    planner = BatchPlanner(texts, batch_size, budget)
+    window_source = _window_source(adapter)
+    # Within a server AI provider's per-person limit (issue 411).
+    slots = server_ai.cap_concurrency(
+        adapter, max_concurrency or default_max_concurrency(source.provider)
+    )
+    semaphore = asyncio.Semaphore(slots)
+    labels: list[str | None] = [None] * len(texts)
+    failed_rows = [False] * len(texts)
+    too_long_rows = [False] * len(texts)
+    completed_rows = 0
+    failed_batch_count = 0
+    failed_row_count = 0
+    answered_batches = 0
+    provider_failure_streak = 0
+    last_provider_failure: AnnotationAiError | None = None
+
+    def record_provider_failure(error: AnnotationAiError) -> None:
+        """Count an unreachable provider; stop the run when it stays down."""
+
+        nonlocal provider_failure_streak, last_provider_failure
+        provider_failure_streak += 1
+        last_provider_failure = error
+        if provider_failure_streak >= PROVIDER_FAILURE_STREAK:
+            raise error
+
+    def record_terminal_batch(batch: Batch, *, failed: bool) -> None:
+        nonlocal completed_rows, failed_batch_count, failed_row_count
+        row_count = len(batch.texts)
+        completed_rows += row_count
+        if failed:
+            failed_batch_count += 1
+            failed_row_count += row_count
+            for index in range(batch.start, batch.start + row_count):
+                failed_rows[index] = True
+        if progress_callback is not None:
+            progress_callback(completed_rows, len(texts), failed_batch_count)
+
+    def too_long(batch: Batch) -> AnnotationContextLimitError | None:
+        """Fail a text that cannot fit the window, or return the error to raise."""
+
+        if not row_failures:
+            return AnnotationContextLimitError(
+                "A text is too long for the model's context window",
+                limit=budget.window,
+            )
+        too_long_rows[batch.start] = True
+        record_terminal_batch(batch, failed=True)
+        return None
+
+    async def attempt(batch: Batch) -> list[Batch]:
+        """Send one batch; the smaller batches to send instead if it is refused."""
+
+        nonlocal answered_batches, provider_failure_streak
+        if batch.too_long:
+            # Not sent: the provider could only refuse it.
+            error = too_long(batch)
+            if error is not None:
+                raise error
+            return []
+        count = len(batch.texts)
+        batch_config = config
+        if budget.window is not None:
+            # Correct later batches by the provider's own count of this one.
+            batch_config = replace(
+                config,
+                on_usage=partial(
+                    budget.observe, planner.request_estimate(batch.start, count)
+                ),
+            )
+        try:
+            received = await _annotate_batch(
+                adapter,
+                source.model,
+                api_key,
+                source.instruction,
+                source.classes,
+                batch.texts,
+                batch_config,
+                source.max_retries_per_batch,
+                examples,
+                task_context=source.task_context,
+                scale=source.scale,
+                outside_scale=source.outside_scale,
+            )
+        except AnnotationAiError as error:
+            refused_for_size = isinstance(error, AnnotationContextLimitError)
+            if isinstance(error, AnnotationContextLimitError):
+                # Most providers state the window in the refusal: use it for
+                # the rest of the Run, and next time for this model.
+                budget.learn(
+                    limit=error.limit,
+                    requested=error.requested,
+                    estimate=planner.request_estimate(batch.start, count),
+                )
+                if error.limit is not None and budget.window is not None:
+                    remember_context_window(window_source, source.model, budget.window)
+                error.limit = budget.window
+            if not row_failures:
+                pieces = planner.split(batch.start, count) if refused_for_size else []
+                if not pieces:
+                    raise
+                return pieces
+            if error.code in _BATCH_PROVIDER_FAILURES:
+                # Its rows fail; the run goes on unless the provider stays down.
+                record_provider_failure(error)
+                record_terminal_batch(batch, failed=True)
+                return []
+            if not isinstance(
+                error, (AnnotationContextLimitError, AnnotationResponseError)
+            ):
+                raise
+            pieces = planner.split(batch.start, count)
+            if not pieces:
+                if refused_for_size:
+                    too_long_rows[batch.start] = True
+                record_terminal_batch(batch, failed=True)
+            return pieces
+        answered_batches += 1
+        provider_failure_streak = 0
+        labels[batch.start : batch.start + count] = received
+        if labels_callback is not None:
+            labels_callback(batch.texts, received)
+        record_terminal_batch(batch, failed=False)
+        return []
+
+    async def send(batch: Batch) -> None:
+        async with semaphore:
+            pieces = await attempt(batch)
+        if pieces:
+            await asyncio.gather(*(send(piece) for piece in pieces))
+
+    async def worker() -> None:
+        # The next batch is cut when a request slot is free, so it uses what
+        # the answers so far have taught about the model's token counts.
+        while True:
+            async with semaphore:
+                batch = planner.next()
+                if batch is None:
+                    return
+                pieces = await attempt(batch)
+            if pieces:
+                await asyncio.gather(*(send(piece) for piece in pieces))
+
+    # One worker per request slot is enough; any more would only wait.
+    workers = [asyncio.ensure_future(worker()) for _ in range(min(len(texts), slots))]
+    try:
+        await asyncio.gather(*workers)
+    except BaseException:
+        # Stop the other requests: nothing they return would be used.
+        for task in workers:
+            task.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
+        raise
+    if answered_batches == 0 and last_provider_failure is not None:
+        # The provider never answered: a failed run, not one of failed rows.
+        raise last_provider_failure
+    return AnnotationAllResult(
+        labels=labels,
+        failed_rows=failed_rows,
+        failed_batch_count=failed_batch_count,
+        failed_row_count=failed_row_count,
+        too_long_rows=too_long_rows,
+        context_window=budget.window,
+    )
+
+
 async def annotate_preview(
     request: AnnotationAnalysisRequest,
     api_key: str | None,
     texts: list[str],
     examples: list[AnnotationExample] | None = None,
 ) -> list[str | None]:
-    """Classify one fresh Preview page from its immutable request."""
+    """Classify one fresh Preview page from its immutable request.
 
-    return await _annotate_batch(
-        resolve_provider_adapter(
-            request.provider,
-            request.provider_base_url,
-            request.provider_configuration_id,
-        ),
-        request.model,
+    The page is one request when it fits the model's context window, and
+    several otherwise (issue 493). Any failure fails the page.
+    """
+
+    if not texts:
+        return []
+    outcome = await _annotate_texts(
+        request,
         api_key,
-        request.instruction,
-        request.classes,
         texts,
-        _inference_config(request),
-        request.max_retries_per_batch,
         examples,
-        task_context=request.task_context,
+        batch_size=len(texts),
+        max_concurrency=None,
+        row_failures=False,
     )
+    return outcome.labels
 
 
 async def annotate_all(
@@ -345,96 +669,16 @@ async def annotate_all(
 
     if not texts:
         return AnnotationAllResult([], [], 0, 0)
-    source = request.source
-    adapter = resolve_provider_adapter(
-        source.provider, source.provider_base_url, source.provider_configuration_id
-    )
-    config = _inference_config(source)
-    size = request.batch_size
-    chunks = [texts[start : start + size] for start in range(0, len(texts), size)]
-    semaphore = asyncio.Semaphore(
-        # Within a server AI provider's per-person limit (issue 411).
-        server_ai.cap_concurrency(
-            adapter,
-            request.max_concurrency or default_max_concurrency(source.provider),
-        )
-    )
-    completed_rows = 0
-    failed_batch_count = 0
-    failed_row_count = 0
-    answered_batches = 0
-    provider_failure_streak = 0
-    last_provider_failure: AnnotationAiError | None = None
-
-    def record_provider_failure(error: AnnotationAiError) -> None:
-        """Count an unreachable provider; stop the run when it stays down."""
-
-        nonlocal provider_failure_streak, last_provider_failure
-        provider_failure_streak += 1
-        last_provider_failure = error
-        if provider_failure_streak >= PROVIDER_FAILURE_STREAK:
-            raise error
-
-    def record_terminal_batch(row_count: int, *, failed: bool) -> None:
-        nonlocal completed_rows, failed_batch_count, failed_row_count
-        completed_rows += row_count
-        if failed:
-            failed_batch_count += 1
-            failed_row_count += row_count
-        if progress_callback is not None:
-            progress_callback(completed_rows, len(texts), failed_batch_count)
-
-    async def run(chunk: list[str]) -> tuple[list[str | None], list[bool]]:
-        nonlocal answered_batches, provider_failure_streak
-        try:
-            async with semaphore:
-                labels = await _annotate_batch(
-                    adapter,
-                    source.model,
-                    api_key,
-                    source.instruction,
-                    source.classes,
-                    chunk,
-                    config,
-                    source.max_retries_per_batch,
-                    examples,
-                    task_context=source.task_context,
-                )
-        except AnnotationAiError as error:
-            if error.code in _BATCH_PROVIDER_FAILURES:
-                # Its rows fail; the run goes on unless the provider stays down.
-                record_provider_failure(error)
-                record_terminal_batch(len(chunk), failed=True)
-                return [None] * len(chunk), [True] * len(chunk)
-            if not isinstance(
-                error, (AnnotationContextLimitError, AnnotationResponseError)
-            ):
-                raise
-            if len(chunk) == 1:
-                record_terminal_batch(1, failed=True)
-                return [None], [True]
-            midpoint = len(chunk) // 2
-            left, right = await asyncio.gather(
-                run(chunk[:midpoint]),
-                run(chunk[midpoint:]),
-            )
-            return [*left[0], *right[0]], [*left[1], *right[1]]
-        answered_batches += 1
-        provider_failure_streak = 0
-        if labels_callback is not None:
-            labels_callback(chunk, labels)
-        record_terminal_batch(len(chunk), failed=False)
-        return labels, [False] * len(labels)
-
-    batches = await asyncio.gather(*(run(chunk) for chunk in chunks))
-    if answered_batches == 0 and last_provider_failure is not None:
-        # The provider never answered: a failed run, not one of failed rows.
-        raise last_provider_failure
-    return AnnotationAllResult(
-        labels=[label for batch, _failed in batches for label in batch],
-        failed_rows=[failed for _batch, failures in batches for failed in failures],
-        failed_batch_count=failed_batch_count,
-        failed_row_count=failed_row_count,
+    return await _annotate_texts(
+        request.source,
+        api_key,
+        texts,
+        examples,
+        batch_size=request.batch_size,
+        max_concurrency=request.max_concurrency,
+        row_failures=True,
+        progress_callback=progress_callback,
+        labels_callback=labels_callback,
     )
 
 

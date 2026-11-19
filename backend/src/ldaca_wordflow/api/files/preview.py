@@ -8,6 +8,7 @@ from starlette.background import BackgroundTask
 
 from ...models.files import (
     FileWorksheetsResource,
+    JsonRecordPathsResource,
     WorkbookSheetsRequest,
     WorkbookSheetsResource,
     ZipTableMembersResource,
@@ -24,6 +25,9 @@ from .dependencies import UserFileStoreDep
 
 router = APIRouter()
 TEXT_RESPONSE_SCHEMA = {"schema": {"type": "string"}}
+# A JSON Pointer of object keys ("" is the top level), naming where a JSON
+# file's rows are; omitted, the place holding the most text is used.
+RECORD_PATH_QUERY = Query(None, max_length=4_000, pattern=r"^(|/.*)$")
 BINARY_RESPONSE_SCHEMA = {"schema": {"type": "string", "format": "binary"}}
 
 
@@ -40,6 +44,7 @@ async def preview_file(
     page_size: int = Query(20, ge=1, le=500),
     sheet_name: str | None = Query(None),
     member: str | None = Query(None, min_length=1, max_length=4_000),
+    record_path: str | None = RECORD_PATH_QUERY,
 ) -> Response:
     """Return one self-contained Arrow IPC preview page.
 
@@ -53,6 +58,7 @@ async def preview_file(
         page_size=page_size,
         sheet_name=sheet_name,
         member=member,
+        record_path=record_path,
     )
     return arrow_page_response(page_result)
 
@@ -67,6 +73,7 @@ async def preview_file_schema(
     runtime: RuntimeDep,
     path: str = Query(..., min_length=1),
     sheet_name: str | None = Query(None),
+    record_path: str | None = RECORD_PATH_QUERY,
 ) -> Response:
     """Return one file preview schema as a zero-row Arrow IPC stream."""
 
@@ -74,8 +81,30 @@ async def preview_file_schema(
         principal.user.id,
         path,
         sheet_name=sheet_name,
+        record_path=record_path,
     )
     return arrow_stream_response(content)
+
+
+@router.get(
+    "/json-record-paths",
+    response_model=JsonRecordPathsResource,
+    responses=api_errors(400, 403, 404, 413, 422),
+)
+async def list_json_record_paths(
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    path: str = Query(..., min_length=1),
+    member: str | None = Query(None, min_length=1, max_length=4_000),
+) -> JsonRecordPathsResource:
+    """List where a JSON file's rows could come from, the default first.
+
+    With ``member``, lists the JSON file inside the ZIP at ``path``.
+    """
+
+    return await runtime.file_read_service.json_record_paths(
+        principal.user.id, path, member=member
+    )
 
 
 @router.get(

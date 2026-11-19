@@ -38,4 +38,39 @@ describe('NodeActionsToolbar', () => {
 
     expect(onRename).toHaveBeenCalledWith('node-1', 'Renamed Data Block');
   });
+
+  it('exports from the sidebar through the same window as the Project Graph', async () => {
+    const user = userEvent.setup();
+    const props = {
+      node: { id: 'node-1', name: 'Tweets' },
+      isPinned: false,
+      onTogglePin: vi.fn(),
+      onAddToSelection: vi.fn(),
+      onRename: vi.fn(),
+      onClone: vi.fn(),
+      onDelete: vi.fn(),
+    };
+    const { rerender } = render(
+      <NodeActionsToolbar
+        {...props}
+        exportProject={{ workspaceId: 'workspace-1', workspaceName: 'Election' }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Actions for Tweets' }));
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Rename',
+      'Make a copy',
+      'Export',
+      'Delete',
+    ]);
+    await user.click(screen.getByRole('menuitem', { name: 'Export' }));
+    expect(screen.getByRole('dialog', { name: 'Export “Tweets”' })).toBeVisible();
+
+    // Without an open Project there is nothing to export to.
+    await user.keyboard('{Escape}');
+    rerender(<NodeActionsToolbar {...props} />);
+    await user.click(screen.getByRole('button', { name: 'Actions for Tweets' }));
+    expect(screen.queryByRole('menuitem', { name: 'Export' })).toBeNull();
+  });
 });

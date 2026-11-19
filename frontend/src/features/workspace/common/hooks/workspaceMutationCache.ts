@@ -55,7 +55,10 @@ const queryKeyDependsOnNode = (
   if (
     queryKey[0] !== 'workspaces' ||
     queryKey[1] !== workspaceId ||
-    (queryKey[2] !== 'sql' && queryKey[2] !== 'preprocessing-previews')
+    (queryKey[2] !== 'sql' &&
+      queryKey[2] !== 'preprocessing-previews' &&
+      // Annotation's filled and not-a-code counts per column (issues 498, 499).
+      queryKey[2] !== 'annotation-codebook-fit')
   ) {
     return false;
   }

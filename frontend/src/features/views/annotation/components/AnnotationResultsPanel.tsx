@@ -1,3 +1,4 @@
+import { columnFieldsOf } from '@/features/workspace/common/columnTypeOptions';
 import { DataBlockDownloadButton } from '@/features/views/common/components/DataBlockDownloadButton';
 import HelpIcon from '@/components/help/HelpIcon';
 import { useQueryClient } from '@tanstack/react-query';
@@ -23,6 +24,7 @@ import {
   applyReferenceComparisonEdit,
   type ConfusionCount,
   type IntercoderReliabilityMetric,
+  orderedScale,
 } from '@/features/views/common/columnComparisonModel';
 import { AnnotationColumnFilterMenu } from '@/features/views/common/components/AnnotationColumnFilterMenu';
 import {
@@ -39,7 +41,12 @@ import { AnnotationRowViewButton } from '@/features/views/common/components/Anno
 import { buildAnnotationRowDetailPayload } from '@/features/views/common/components/annotationRowDetail';
 import { useAnnotationRowViewer } from '@/features/views/common/hooks/useAnnotationRowViewer';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
-import { useFullColumnComparisons } from '@/features/views/common/hooks/useFullColumnComparisons';
+import {
+  useCodebookFit,
+  useCodeCombinations,
+  useFullColumnComparisons,
+} from '@/features/views/common/hooks/useFullColumnComparisons';
+import { MultiCoderAlphaBadge } from '@/features/views/common/components/MultiCoderAlphaBadge';
 import { type ServerColumnDef, useServerTable } from '@/features/views/common/hooks/useServerTable';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { queryKeys } from '@/lib/queryKeys';
@@ -49,9 +56,11 @@ import { toBgColor } from '@/features/views/common/vizPalette';
 import {
   annotationValuesDiffer,
   isInvalidAnnotationLabel,
-  normalizeAnnotationLabel,
   normalizeAnnotationClassOptions,
+  normalizeAnnotationLabel,
+  NOT_A_CODE_EXPLANATION,
 } from '../annotationLabelModel';
+import { annotationColumnCodebookHint } from '../codebookFit';
 import { useAnnotationClassDescriptions } from '../hooks/useAnnotationClassDescriptions';
 import { type AnnotationNodePageRow, useAnnotationNodePage } from '../hooks/useAnnotationNodePage';
 import { useAnnotationRowFilter } from '../hooks/useAnnotationRowFilter';
@@ -85,7 +94,11 @@ interface AnnotationResultsPanelProps {
   rowCount: number;
   textColumn: string;
   annotationColumn: string;
-  /** Class-description node supplying the dropdown options; null disables them. */
+  /**
+   * Codebook Data Block supplying the dropdown options; null disables them.
+   * The open table follows it: a different codebook or edited codes apply at
+   * once, or as soon as a save in progress finishes.
+   */
   classNodeId: string | null;
   classColumn: string | null;
   descriptionColumn: string | null;
@@ -173,9 +186,29 @@ export function AnnotationResultsPanel({
     classColumn,
     descriptionColumn,
   });
-  const classOptions = normalizeAnnotationClassOptions(
-    classDescriptions.rows.map((row) => cellText(row.class)),
-  );
+  const liveCodebook = {
+    classOptions: normalizeAnnotationClassOptions(
+      classDescriptions.rows.map((row) => cellText(row.class)),
+    ),
+    scale: classDescriptions.scale,
+    outsideScale: classDescriptions.outsideScale,
+  };
+  // The table follows the selected codebook (issue 498). A save in progress
+  // keeps the codes it started with, so its optimistic score update and the
+  // refreshed scores agree; the new codes apply as soon as it finishes. A
+  // codebook still loading keeps the previous codes rather than showing none.
+  const [appliedCodebook, setAppliedCodebook] = useState(liveCodebook);
+  const isSaving = savingRows.size > 0 || savingCorrectionRows.size > 0;
+  const codebookChanged =
+    !classDescriptions.query.isLoading &&
+    JSON.stringify(liveCodebook) !== JSON.stringify(appliedCodebook);
+  if (codebookChanged && !isSaving) setAppliedCodebook(liveCodebook);
+  const codebookWaitsForSave = codebookChanged && isSaving;
+  const classOptions = appliedCodebook.classOptions;
+  // An ordered-scale codebook: its levels and the codes outside it, for the reliability statistics.
+  const codebookScale = appliedCodebook.scale
+    ? orderedScale(classOptions, appliedCodebook.outsideScale)
+    : null;
   // Columns the annotation-column difference filter compares against; excludes role conflicts.
   const queryComparisonColumns = comparisonColumns.filter(
     (column) =>
@@ -220,6 +253,8 @@ export function AnnotationResultsPanel({
       .filter((column) => isArrowStringField(column.field) || isArrowDictionaryField(column.field))
       .map((column) => column.name) ?? [],
   );
+  // The result columns' types, for the type symbols in the column menus.
+  const resultColumnFields = columnFieldsOf(resultsQuery.data?.schema ?? []);
   const stringColumnSet = new Set(
     resultsQuery.data?.schema
       .filter((column) => column.name !== sourceRowIndexColumn && isArrowStringField(column.field))
@@ -330,6 +365,7 @@ export function AnnotationResultsPanel({
         comparisonColumns: activeComparisonColumns,
         revealedComparisonColumns,
         metadataColumns: activeMetadataColumns,
+        classOptions,
       });
     },
   });
@@ -341,9 +377,33 @@ export function AnnotationResultsPanel({
     comparisonColumns: activeComparisonColumns,
     classOptions,
   });
+  // With Alpha chosen and two or more comparisons, the annotation column shows
+  // Alpha across every coder (Chao, 16 Nov 2026).
+  const coderColumns = [annotationColumn, ...activeComparisonColumns];
+  const showMultiCoderAlpha =
+    reliabilityMetric === 'krippendorffs_alpha' && activeComparisonColumns.length >= 2;
+  const codeCombinations = useCodeCombinations({
+    workspaceId,
+    nodeIds: [nodeId],
+    sql: sourceSql,
+    columns: coderColumns,
+    classOptions,
+    enabled: showMultiCoderAlpha,
+  });
   const comparisonQueryByColumn = new Map(
     activeComparisonColumns.map((column, index) => [column, comparisonQueries[index]]),
   );
+  // How many values in each scored column are not codes, so the scores can
+  // say which columns they leave out (issue 498).
+  const codebookFit = useCodebookFit({
+    workspaceId,
+    nodeIds: [nodeId],
+    sql: sourceSql,
+    columns: coderColumns,
+    classOptions,
+  }).data;
+  const annotationFit = codebookFit?.get(annotationColumn);
+  const codebookHint = annotationColumnCodebookHint(annotationColumn, annotationFit, classOptions);
 
   return (
     <section aria-label="Annotation Results" className="mt-5 rounded-lg border bg-editor/60 p-4">
@@ -355,6 +415,7 @@ export function AnnotationResultsPanel({
           <div className="flex flex-wrap items-center gap-2">
             <ColumnComparisonSelector
               availableColumns={availableComparisonColumns}
+              columnFields={resultColumnFields}
               selectedColumns={activeComparisonColumns}
               onSelectedColumnsChange={(columns) => {
                 const selected = columns.filter((column) => column !== correctionColumn);
@@ -365,11 +426,13 @@ export function AnnotationResultsPanel({
               }}
               metric={reliabilityMetric}
               onMetricChange={onReliabilityMetricChange}
+              ordered={codebookScale !== null}
               disabledColumns={activeMetadataColumns}
             />
             <AnnotationCorrectionColumnControl
               value={correctionColumn}
               availableColumns={availableCorrectionColumns}
+              columnFields={resultColumnFields}
               onValueChange={(column) => {
                 if (column) {
                   onComparisonColumnsChange(
@@ -391,6 +454,7 @@ export function AnnotationResultsPanel({
             />
             <MetadataColumnSelector
               availableColumns={availableMetadataColumns}
+              columnFields={resultColumnFields}
               selectedColumns={activeMetadataColumns}
               onSelectedColumnsChange={onMetadataColumnsChange}
               disabledColumns={activeComparisonColumns}
@@ -403,9 +467,28 @@ export function AnnotationResultsPanel({
                 label="Annotation table"
               />
             ) : null}
+            {/* One help icon for the whole toolbar (Chao's one-per-row rule). */}
+            <HelpIcon
+              targetKey="analysis.annotation.table-toolbar"
+              label="About the table toolbar"
+              tooltip="What Compare to, Correction, Use as example, Show metadata and download do."
+            />
           </div>
         ) : null}
       </div>
+      {codebookWaitsForSave ? (
+        <p role="status" className="mb-3 text-body text-description">
+          The codebook changed. The table will update when the save finishes.
+        </p>
+      ) : null}
+      {codebookHint ? (
+        <p
+          role="status"
+          className="mb-3 rounded-md border border-warning bg-warning-background px-3 py-2 text-body"
+        >
+          {codebookHint}
+        </p>
+      ) : null}
       {resultsQuery.isLoading || countQuery.isLoading ? (
         <div className="rounded-md border border-surface-border px-4 py-3 text-body text-description">
           Loading annotations…
@@ -453,18 +536,31 @@ export function AnnotationResultsPanel({
                           label={annotationColumn}
                           className="w-px whitespace-nowrap"
                         >
-                          <span className="inline-flex items-center gap-1.5">
-                            <span>{annotationColumn}</span>
-                            <AnnotationColumnFilterMenu
-                              column={annotationColumn}
-                              value={filterValueFor(annotationColumn)}
-                              onChange={(value) => {
-                                setColumnFilter(annotationColumn, value);
-                              }}
-                              differsLabel="Differs from any comparison column"
-                              differsDisabled={activeComparisonColumns.length === 0}
-                              differsDisabledReason="Select a Compare to column first"
-                            />
+                          <span className="inline-flex flex-col items-start gap-1">
+                            {showMultiCoderAlpha ? (
+                              <MultiCoderAlphaBadge
+                                {...(nodeName ? { nodeName } : {})}
+                                columns={coderColumns}
+                                combinations={codeCombinations.data}
+                                scale={codebookScale}
+                                isLoading={codeCombinations.isLoading}
+                                isError={codeCombinations.isError}
+                                {...(codebookFit ? { codebookFit } : {})}
+                              />
+                            ) : null}
+                            <span className="inline-flex items-center gap-1.5">
+                              <span>{annotationColumn}</span>
+                              <AnnotationColumnFilterMenu
+                                column={annotationColumn}
+                                value={filterValueFor(annotationColumn)}
+                                onChange={(value) => {
+                                  setColumnFilter(annotationColumn, value);
+                                }}
+                                differsLabel="Differs from any comparison column"
+                                differsDisabled={activeComparisonColumns.length === 0}
+                                differsDisabledReason="Select a Compare to column first"
+                              />
+                            </span>
                           </span>
                         </DraggableTableHead>
                         {correctionColumn ? (
@@ -490,7 +586,9 @@ export function AnnotationResultsPanel({
                         >
                           {activeComparisonColumns.includes(column) ? (
                             <ColumnComparisonHeader
+                              {...(nodeName ? { nodeName } : {})}
                               metric={reliabilityMetric}
+                              scale={codebookScale}
                               referenceColumn={annotationColumn}
                               comparisonColumn={column}
                               rows={comparisonQueryByColumn.get(column)?.data}
@@ -508,6 +606,10 @@ export function AnnotationResultsPanel({
                               filter={filterValueFor(column)}
                               onFilterChange={(value) => {
                                 setColumnFilter(column, value);
+                              }}
+                              codebookFit={{
+                                reference: annotationFit,
+                                comparison: codebookFit?.get(column),
                               }}
                             />
                           ) : (
@@ -648,6 +750,21 @@ export function AnnotationResultsPanel({
                                         });
                                       }
                                     });
+                                    // The multi-coder Alpha and the codebook counts include this column too.
+                                    void queryClient.invalidateQueries({
+                                      queryKey: [
+                                        'workspaces',
+                                        workspaceId ?? '',
+                                        'annotation-coder-agreement',
+                                      ],
+                                    });
+                                    void queryClient.invalidateQueries({
+                                      queryKey: [
+                                        'workspaces',
+                                        workspaceId ?? '',
+                                        'annotation-codebook-fit',
+                                      ],
+                                    });
                                     return nodePage.refreshFilteredRows();
                                   })
                                   .catch((error: unknown) => {
@@ -686,6 +803,11 @@ export function AnnotationResultsPanel({
                                     ? 'italic text-description'
                                     : ''
                                 }`}
+                                title={
+                                  isInvalidAnnotationLabel(committedValue, classOptions)
+                                    ? NOT_A_CODE_EXPLANATION
+                                    : undefined
+                                }
                               >
                                 <SelectValue placeholder="Select code" />
                               </SelectTrigger>
@@ -760,6 +882,11 @@ export function AnnotationResultsPanel({
                                         ? 'italic text-description'
                                         : ''
                                     }`}
+                                    title={
+                                      isInvalidAnnotationLabel(correctionValue, classOptions)
+                                        ? NOT_A_CODE_EXPLANATION
+                                        : undefined
+                                    }
                                   >
                                     <SelectValue placeholder="None" />
                                   </SelectTrigger>
@@ -812,11 +939,7 @@ export function AnnotationResultsPanel({
                               ) : isComparison ? (
                                 <span
                                   className={invalid ? 'italic text-description' : undefined}
-                                  title={
-                                    invalid
-                                      ? 'Not a code in the Codebook, so treated as empty'
-                                      : undefined
-                                  }
+                                  title={invalid ? NOT_A_CODE_EXPLANATION : undefined}
                                 >
                                   {cellText(comparisonValue(column)) || '—'}
                                 </span>

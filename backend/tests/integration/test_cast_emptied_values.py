@@ -78,3 +78,43 @@ def test_cast_with_a_few_typos_converts_the_rest(files_test_client: TestClient) 
             assert response.headers["X-Wordflow-Emptied-Values"] == "2"
             assert response.headers["X-Wordflow-First-Emptied-Row"] == "500"
             assert response.headers["X-Wordflow-First-Emptied-Value"] == "5OO"
+
+
+def test_text_identifiers_stay_distinct_as_whole_numbers(
+    files_test_client: TestClient,
+) -> None:
+    """Converting text to whole numbers never merges two identifiers."""
+
+    import io
+
+    import polars as pl
+
+    client = files_test_client
+    workspace_id = client.post("/api/workspaces", json={"name": "Ids"}).json()["id"]
+    assert client.put(f"/api/workspaces/{workspace_id}/open").status_code == 200
+    uploaded = client.post(
+        "/api/user-files/uploads",
+        params={"path": "ids.json"},
+        content=b'[{"id": "9007199254740992"}, {"id": "9007199254740993"}]',
+        headers={"Content-Type": "application/octet-stream"},
+    )
+    assert uploaded.status_code == 201
+    nodes = f"/api/workspaces/{workspace_id}/nodes"
+    node = client.post(
+        nodes, json={"kind": "file", "file_path": "ids.json", "name": "Ids"}
+    ).json()
+
+    converted = client.post(
+        f"{nodes}/{node['id']}/edits",
+        json={"kind": "cast", "column": "id", "target_type": "integer"},
+    )
+    assert converted.status_code == 200, converted.text
+    assert converted.headers["X-Wordflow-Emptied-Values"] == "0"
+
+    rows = client.post(
+        f"{nodes}/previews", json={"kind": "clone", "source_node_id": node["id"]}
+    )
+    assert rows.status_code == 200, rows.text
+    table = pl.read_ipc_stream(io.BytesIO(rows.content))
+    assert table.schema["id"] == pl.Int64
+    assert table["id"].to_list() == [9007199254740992, 9007199254740993]

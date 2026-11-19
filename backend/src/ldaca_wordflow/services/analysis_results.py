@@ -23,7 +23,7 @@ from ..shared.empty_values import empty_last_key
 from ..shared.topic_types import UNGROUPED_TOPIC_ID
 from .category_order import natural_key
 from .. import server_ai
-from ..domain.annotation import provider_failure_message
+from ..domain.annotation import provider_failure_message, text_too_long_message
 from ..analysis.concordance_core import compute_node_concordance_page
 from ..analysis.annotation_examples import prepare_annotation_examples
 from ..analysis.concordance_projection import filter_concordance_documents
@@ -69,6 +69,7 @@ from ..infrastructure.providers.quotation_client import QuotationProviderClient
 from ..infrastructure.providers.quotation_engines import resolve_quotation_engine
 from ..infrastructure.providers.annotation_ai import (
     AnnotationAiError,
+    AnnotationContextLimitError,
     annotate_preview,
 )
 from ..models.analysis_results import (
@@ -1939,9 +1940,13 @@ async def _annotate_preview_rows(
         )
     except AnnotationAiError as exc:
         # Plain words for users; the provider's text is the cause (issue 205).
+        message = provider_failure_message(exc.code, request.provider)
+        if isinstance(exc, AnnotationContextLimitError):
+            # One text on the page cannot fit: name the model and its window.
+            message = text_too_long_message(request.model, exc.limit)
         raise AnnotationProviderError(
             exc.code,
-            provider_failure_message(exc.code, request.provider),
+            message,
             provider=request.provider,
             model=request.model,
         ) from exc

@@ -10,6 +10,8 @@ const releaseRoots = [
 
 await Promise.all(
   releaseRoots.flatMap((bundleRoot) => [
+    rm(resolve(bundleRoot, 'macos/Wordflow (by LDaCA).app'), { recursive: true, force: true }),
+    // The bundle's name before 0.7.22, left behind by older builds.
     rm(resolve(bundleRoot, 'macos/LDaCA Wordflow.app'), { recursive: true, force: true }),
     rm(resolve(bundleRoot, 'dmg'), { recursive: true, force: true }),
   ]),

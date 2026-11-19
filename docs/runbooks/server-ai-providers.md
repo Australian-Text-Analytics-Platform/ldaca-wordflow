@@ -117,7 +117,10 @@ university Keycloak, the login name such as a UniKey. OIDC sign-ins need the
   provides one, the email is sent instead. A gateway that merges ids per person
   should map those emails to login names.
 - Pair it with `send_user_details: true` to keep the email and name with every
-  request.
+  request. They are read from the account when a Run or Preview starts and
+  travel with it (signed), so a name changed meanwhile shows from the next Run.
+  Runs need 0.7.22 or later for this (#492); with 0.7.21, set it to
+  `false`.
 
 Database schema 8 (after 0.7.20) adds the `users.username` column; a version 7
 database is upgraded in place at start-up. To go back to an earlier release,
@@ -127,6 +130,20 @@ remove the column first, with the server stopped:
 sqlite3 "$DATA_ROOT/deployment.sqlite3" \
   'ALTER TABLE users DROP COLUMN username; PRAGMA user_version = 7;'
 ```
+
+## Batches follow the model's context window
+
+Annotation fills each request with as many texts as fit the model's context
+window, up to the Run's **Rows per request**, so it does not send requests the
+model must refuse. It reads the window from the endpoint: `GET
+{base_url}/model/info` (`model_info.max_input_tokens`, LiteLLM), or the
+`/models` list (`context_length` or `max_model_len`). Set `max_input_tokens`
+for each model on a gateway. For a model server that counts the answer in the
+same limit, give the whole context length: Wordflow keeps room for the answer.
+
+Without a window, requests hold **Rows per request** texts; one the model
+refuses as too long is sent again in smaller parts, and a window stated in the
+refusal is used from then on.
 
 ## Requests sent to the endpoint
 

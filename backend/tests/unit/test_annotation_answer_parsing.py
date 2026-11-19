@@ -68,7 +68,7 @@ def test_wrong_answers_still_fail(content: str, message: str) -> None:
 # The labels schema ---------------------------------------------------------------------
 
 
-def test_labels_schema_has_the_count_the_labels_and_null() -> None:
+def test_labels_schema_has_the_count_and_the_labels_but_no_null() -> None:
     schema = build_labels_schema(["Promise", "Critic", "Neutral", "Critic"], 20)
 
     assert schema == {
@@ -80,7 +80,7 @@ def test_labels_schema_has_the_count_the_labels_and_null() -> None:
                 "type": "array",
                 "minItems": 20,
                 "maxItems": 20,
-                "items": {"enum": ["Promise", "Critic", "Neutral", None]},
+                "items": {"enum": ["Promise", "Critic", "Neutral"]},
             }
         },
     }
@@ -113,7 +113,7 @@ async def test_each_batch_asks_for_its_own_count_and_example_labels() -> None:
     assert labels == ["Promise", "Sarcasm"]
     items = seen[0]["properties"]["labels"]
     assert (items["minItems"], items["maxItems"]) == (2, 2)
-    assert items["items"]["enum"] == [*CLASSES, "Sarcasm", None]
+    assert items["items"]["enum"] == [*CLASSES, "Sarcasm"]
 
 
 # Sending it, and the 400 fallback --------------------------------------------------------

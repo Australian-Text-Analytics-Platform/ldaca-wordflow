@@ -1,3 +1,4 @@
+import { columnOptions, type ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Label } from '@/components/ui/label';
@@ -36,10 +37,13 @@ function suggestionsFor(query: string, columns: readonly string[]): string[] {
 export function CombineTemplateField({
   value,
   columns,
+  columnFields,
   onChange,
 }: {
   value: string;
   columns: string[];
+  /** The columns' types, for the type symbol in the Insert column list. */
+  columnFields?: ColumnFields;
   onChange: (value: string) => void;
 }) {
   const id = useId();
@@ -111,7 +115,7 @@ export function CombineTemplateField({
       <div className="flex items-end justify-between gap-2">
         <Label htmlFor={id}>Template</Label>
         <SearchableSelect
-          options={columns.map((column) => ({ value: column }))}
+          options={columnOptions(columns, columnFields)}
           value=""
           onChange={(column) => {
             insertAt(column, caretRef.current, caretRef.current, true);

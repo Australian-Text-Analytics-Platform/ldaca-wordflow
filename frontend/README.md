@@ -1,6 +1,6 @@
-# LDaCA Wordflow Frontend
+# Wordflow (by LDaCA): frontend
 
-React + TypeScript frontend for LDaCA Wordflow. Engineering architecture is
+React + TypeScript frontend for Wordflow. Engineering architecture is
 centralized at the repository root; package-local docs describe the UI and its
 use.
 

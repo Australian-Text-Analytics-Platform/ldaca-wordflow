@@ -10,7 +10,9 @@ import anyio
 import polars as pl
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 
+from .. import server_ai
 from ..domain.annotation import provider_failure_message
+from ..server_ai.gate import ServerAiRunActiveError
 from ..infrastructure.providers.annotation_adapter import (
     InferenceConfig,
 )
@@ -168,6 +170,11 @@ class AnnotationService:
                 request,
                 supplied=request.api_key,
             )
+            # A server AI provider's credential is a key-free marker; like a
+            # Preview, the request goes out bound to this person, under their
+            # one-request-at-a-time limit and with their user labels (#474,
+            # #492). A person's own key passes unchanged.
+            api_key = await server_ai.bind_credential(api_key, user_id, "preview")
             adapter = resolve_provider_adapter(
                 request.provider,
                 request.provider_base_url,
@@ -181,19 +188,22 @@ class AnnotationService:
                     if request.reasoning_effort == "none"
                     else request.reasoning_effort
                 ),
-                labels_schema=codebook_schema(request.max_classes),
+                labels_schema=codebook_schema(
+                    request.max_classes, scale=request.scale
+                ),
             )
             content = await adapter.complete(
                 request.model,
                 api_key,
                 build_designer_system_prompt(
-                    request.system_prompt, request.max_classes
+                    request.system_prompt, request.max_classes, scale=request.scale
                 ),
                 build_designer_user_prompt(
                     brief=request.brief,
                     task_context=request.task_context,
                     max_classes=request.max_classes,
                     sample=sample,
+                    scale=request.scale,
                 ),
                 config,
             )
@@ -207,13 +217,24 @@ class AnnotationService:
                 detail=str(exc),
             )
             return
+        except ServerAiRunActiveError as exc:
+            yield CodebookDraftErrorEvent(
+                message=(
+                    f"Your {exc.provider_name} run is still going, and "
+                    f"{exc.provider_name} takes a limited number of requests at a "
+                    "time. Use the AI Code Designer when the run has finished."
+                )
+            )
+            return
         except AppError as exc:
             yield CodebookDraftErrorEvent(message=exc.message)
             return
 
         yield CodebookDraftStageEvent(stage="reading")
         try:
-            codes = parse_codebook_answer(content, request.max_classes)
+            codes = parse_codebook_answer(
+                content, request.max_classes, scale=request.scale
+            )
         except CodebookAnswerError as exc:
             yield CodebookDraftErrorEvent(
                 message=_DESIGNER_ANSWER_MESSAGE, detail=str(exc)
@@ -221,7 +242,11 @@ class AnnotationService:
             return
         yield CodebookDraftResultEvent(
             codes=[
-                CodebookDraftCode(name=code.name, definition=code.definition)
+                CodebookDraftCode(
+                    name=code.name,
+                    definition=code.definition,
+                    outside_scale=code.outside_scale,
+                )
                 for code in codes
             ],
             sampled=len(sample.texts),

@@ -190,9 +190,10 @@ def test_json_lines_extensions_share_one_ingestion_path(tmp_path: Path) -> None:
         path.write_text('{"text":"first"}\n{"text":"second"}\n', encoding="utf-8")
 
         assert detect_file_type(path.name) == "jsonl"
+        # Both read through json_records, which parses the file to find the rows.
         loaded = load_data_file(path)
-        assert isinstance(loaded, pl.LazyFrame)
-        assert loaded.collect().to_dicts() == [
+        frame = loaded.collect() if isinstance(loaded, pl.LazyFrame) else loaded
+        assert frame.to_dicts() == [
             {"text": "first"},
             {"text": "second"},
         ]

@@ -12,6 +12,9 @@ The same two sources say what kind of model each is (``mode``): LiteLLM marks
 embedding, OCR, rerank and other models that can't answer a chat request.
 Annotation lists only chat models; Topic Modelling servers offer embedding
 models (issues 415, 417).
+
+``/model/info`` also gives each model's context window (``max_input_tokens``),
+which sizes Annotation batches (issue 493, ``context_window.py``).
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ import hashlib
 import logging
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import anyio
 import httpx
@@ -55,6 +58,8 @@ class ModelInfo:
 
     descriptions: dict[str, str]
     modes: dict[str, str]
+    # Tokens a request may hold, where the gateway says (issue 493).
+    context_windows: dict[str, int] = field(default_factory=dict)
 
 
 def model_mode(value: object) -> str | None:
@@ -81,12 +86,28 @@ def sanitize_description(value: object) -> str | None:
     return text
 
 
+def positive_int(value: object) -> int | None:
+    """A whole number above zero, also when written as a float or text."""
+
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        value = value.strip().replace(",", "")
+        if not value.isdigit():
+            return None
+        value = int(value)
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    return value if isinstance(value, int) and value > 0 else None
+
+
 def _parse_model_info(payload: object) -> ModelInfo:
     descriptions: dict[str, str] = {}
     modes: dict[str, str] = {}
+    windows: dict[str, int] = {}
     data = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(data, list):
-        return ModelInfo(descriptions, modes)
+        return ModelInfo(descriptions, modes, windows)
     for item in data:
         if not isinstance(item, dict):
             continue
@@ -103,7 +124,14 @@ def _parse_model_info(payload: object) -> ModelInfo:
         mode = model_mode(info.get("mode"))
         if mode and name not in modes:
             modes[name] = mode
-    return ModelInfo(descriptions, modes)
+        # max_input_tokens is the window; max_tokens stands in when it is all
+        # the gateway has. Several deployments: the smallest is safe for all.
+        window = positive_int(info.get("max_input_tokens")) or positive_int(
+            info.get("max_tokens")
+        )
+        if window is not None:
+            windows[name] = min(window, windows.get(name, window))
+    return ModelInfo(descriptions, modes, windows)
 
 
 _cache: dict[tuple[str, str], tuple[float, ModelInfo]] = {}
@@ -152,7 +180,7 @@ async def litellm_model_info(base_url: str, api_key: str | None) -> ModelInfo:
         # The type only: a message could carry the URL or a key.
         logger.info("Model descriptions unavailable (%s)", type(exc).__name__)
         info = ModelInfo({}, {})
-    found = info.descriptions or info.modes
+    found = info.descriptions or info.modes or info.context_windows
     ttl = MODEL_INFO_CACHE_SECONDS if found else MODEL_INFO_RETRY_SECONDS
     _cache[cache_key] = (now + ttl, info)
     return info
@@ -169,5 +197,6 @@ __all__ = [
     "litellm_model_descriptions",
     "litellm_model_info",
     "model_mode",
+    "positive_int",
     "sanitize_description",
 ]

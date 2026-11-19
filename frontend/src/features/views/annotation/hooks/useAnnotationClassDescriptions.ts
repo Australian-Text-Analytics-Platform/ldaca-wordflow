@@ -2,7 +2,7 @@ import type { AnnotationClassDescriptionRow } from '@/api';
 import { queryWorkspaceSqlTable, sqlIdentifier, sqlTable } from '@/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { useQuery } from '@tanstack/react-query';
-import { splitTaskContext } from '../taskContext';
+import { splitCodebookRows } from '../taskContext';
 
 const DISABLED_CLASS_DESCRIPTIONS_QUERY_KEY = [
   'workspaces',
@@ -102,13 +102,19 @@ export function useAnnotationClassDescriptions({
     },
   });
 
-  // The Task context row is split off here, so no code list ever sees it.
-  const { codes, taskContext } = splitTaskContext(normalizeClassDescriptionRows(query.data?.rows));
+  // The reserved rows (Task context, scale) are split off here, so no code list ever sees them.
+  const { codes, taskContext, scale, outsideScale } = splitCodebookRows(
+    normalizeClassDescriptionRows(query.data?.rows),
+  );
   return {
     canLoad,
     queryKey,
     query,
     rows: codes,
     taskContext,
+    /** The codes are levels of an ordered scale, lowest first. */
+    scale,
+    /** On a scale, the codes that are not levels (below the scale row), such as Not applicable. */
+    outsideScale,
   };
 }

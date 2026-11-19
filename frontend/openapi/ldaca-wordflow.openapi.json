@@ -599,6 +599,15 @@
             "title": "Node Id",
             "type": "string"
           },
+          "outside_scale": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Outside Scale",
+            "type": "array"
+          },
           "provider": {
             "enum": [
               "openai",
@@ -640,6 +649,11 @@
           "reasoning_enabled": {
             "default": false,
             "title": "Reasoning Enabled",
+            "type": "boolean"
+          },
+          "scale": {
+            "default": false,
+            "title": "Scale",
             "type": "boolean"
           },
           "task_context": {
@@ -833,6 +847,15 @@
             "title": "Node Id",
             "type": "string"
           },
+          "outside_scale": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Outside Scale",
+            "type": "array"
+          },
           "provider": {
             "enum": [
               "openai",
@@ -874,6 +897,11 @@
           "reasoning_enabled": {
             "default": false,
             "title": "Reasoning Enabled",
+            "type": "boolean"
+          },
+          "scale": {
+            "default": false,
+            "title": "Scale",
             "type": "boolean"
           },
           "task_context": {
@@ -984,7 +1012,7 @@
             "items": {
               "$ref": "#/components/schemas/AnnotationClassRow"
             },
-            "maxItems": 201,
+            "maxItems": 202,
             "title": "Rows",
             "type": "array"
           }
@@ -1593,6 +1621,18 @@
             "title": "Committed Workspace Revision",
             "type": "integer"
           },
+          "context_window_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window Tokens"
+          },
           "failed_batch_count": {
             "minimum": 0.0,
             "title": "Failed Batch Count",
@@ -1613,6 +1653,18 @@
             "minimum": 0.0,
             "title": "Record Count",
             "type": "integer"
+          },
+          "too_long_row_count": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Too Long Row Count"
           }
         },
         "required": [
@@ -3244,6 +3296,11 @@
             "minimum": 20.0,
             "title": "Sample Size",
             "type": "integer"
+          },
+          "scale": {
+            "default": false,
+            "title": "Scale",
+            "type": "boolean"
           },
           "system_prompt": {
             "maxLength": 20000,
@@ -6082,6 +6139,49 @@
         "title": "DerivationProvenance",
         "type": "object"
       },
+      "DistinctValueColumn": {
+        "additionalProperties": false,
+        "description": "A column and how many different values it holds, not counting missing ones.",
+        "properties": {
+          "distinct_values": {
+            "title": "Distinct Values",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "distinct_values"
+        ],
+        "title": "DistinctValueColumn",
+        "type": "object"
+      },
+      "DistinctValueColumnsResource": {
+        "additionalProperties": false,
+        "description": "A Data Block's columns with at most ``max_distinct`` different values.\n\nThe columns a tool can group by, in the Data Block's column order: numbers,\ntext, true/false, categories, dates and times with 1 to ``max_distinct``\nvalues. An empty list means no column qualifies.",
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/DistinctValueColumn"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "max_distinct": {
+            "title": "Max Distinct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_distinct",
+          "columns"
+        ],
+        "title": "DistinctValueColumnsResource",
+        "type": "object"
+      },
       "DtypeNormalizationChange": {
         "additionalProperties": false,
         "description": "One source-file dtype normalization applied during node creation.",
@@ -6927,6 +7027,18 @@
             ],
             "title": "Name"
           },
+          "record_path": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Path"
+          },
           "sheet_name": {
             "anyOf": [
               {
@@ -7643,6 +7755,127 @@
             "type": "null"
           }
         ]
+      },
+      "JsonFilesNodeCreateRequest": {
+        "additionalProperties": false,
+        "description": "Create one Data Block from the records of several JSON files.\n\nEvery file is read at the same ``record_path``, so a batch is read one\nway; each row starts with the file it came from. With ``zip_path``,\n``file_paths`` are members of that ZIP; otherwise they are user files.",
+        "properties": {
+          "file_paths": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100000,
+            "minItems": 1,
+            "title": "File Paths",
+            "type": "array"
+          },
+          "kind": {
+            "const": "json_files",
+            "default": "json_files",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "record_path": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Path"
+          },
+          "zip_path": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zip Path"
+          }
+        },
+        "required": [
+          "file_paths"
+        ],
+        "title": "JsonFilesNodeCreateRequest",
+        "type": "object"
+      },
+      "JsonRecordPath": {
+        "additionalProperties": false,
+        "description": "One place in a JSON file that holds records, offered as the rows.",
+        "properties": {
+          "field_count": {
+            "minimum": 0.0,
+            "title": "Field Count",
+            "type": "integer"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "records": {
+            "minimum": 0.0,
+            "title": "Records",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "label",
+          "records",
+          "fields",
+          "field_count"
+        ],
+        "title": "JsonRecordPath",
+        "type": "object"
+      },
+      "JsonRecordPathsResource": {
+        "additionalProperties": false,
+        "description": "Where a JSON or JSON Lines file's rows could come from, default first.",
+        "properties": {
+          "paths": {
+            "items": {
+              "$ref": "#/components/schemas/JsonRecordPath"
+            },
+            "title": "Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "title": "JsonRecordPathsResource",
+        "type": "object"
       },
       "LiteralExpression": {
         "additionalProperties": false,
@@ -10363,6 +10596,26 @@
           "count"
         ],
         "title": "SkippedFileCount",
+        "type": "object"
+      },
+      "SkippedJsonFile": {
+        "additionalProperties": false,
+        "description": "A file left out of JSON files added as one Data Block, and why.",
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "reason"
+        ],
+        "title": "SkippedJsonFile",
         "type": "object"
       },
       "SliceDerivation": {
@@ -14082,6 +14335,20 @@
             ],
             "title": "Skipped Files"
           },
+          "skipped_json_files": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SkippedJsonFile"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped Json Files"
+          },
           "tokenizer_model": {
             "anyOf": [
               {
@@ -14364,6 +14631,12 @@
             },
             "title": "Nested Archives",
             "type": "array"
+          },
+          "text_documents": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Text Documents",
+            "type": "integer"
           }
         },
         "required": [
@@ -14443,8 +14716,8 @@
   },
   "info": {
     "description": "Workspace-oriented text analysis API",
-    "title": "LDaCA Wordflow API",
-    "version": "0.7.19"
+    "title": "Wordflow API",
+    "version": "0.7.22-pre"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -18294,6 +18567,123 @@
         ]
       }
     },
+    "/api/user-files/json-record-paths": {
+      "get": {
+        "description": "List where a JSON file's rows could come from, the default first.\n\nWith ``member``, lists the JSON file inside the ZIP at ``path``.",
+        "operationId": "list_json_record_paths",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "member",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Member"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRecordPathsResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request or resource exceeds the configured size limit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "List Json Record Paths",
+        "tags": [
+          "user-files"
+        ]
+      }
+    },
     "/api/user-files/preview": {
       "get": {
         "description": "Return one self-contained Arrow IPC preview page.\n\nWith ``member``, previews that table file inside the ZIP at ``path``.",
@@ -18364,6 +18754,24 @@
                 }
               ],
               "title": "Member"
+            }
+          },
+          {
+            "in": "query",
+            "name": "record_path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4000,
+                  "pattern": "^(|/.*)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Record Path"
             }
           }
         ],
@@ -18480,6 +18888,24 @@
                 }
               ],
               "title": "Sheet Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "record_path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4000,
+                  "pattern": "^(|/.*)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Record Path"
             }
           }
         ],
@@ -22560,6 +22986,7 @@
                     "filter": "#/components/schemas/FilterNodeCreateRequest",
                     "group_summary": "#/components/schemas/GroupSummaryNodeCreateRequest",
                     "join": "#/components/schemas/JoinNodeCreateRequest",
+                    "json_files": "#/components/schemas/JsonFilesNodeCreateRequest",
                     "replace": "#/components/schemas/ReplaceNodeCreateRequest",
                     "segment": "#/components/schemas/SegmentNodeCreateRequest",
                     "slice": "#/components/schemas/SliceNodeCreateRequest"
@@ -22572,6 +22999,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/FilesNodeCreateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/JsonFilesNodeCreateRequest"
                   },
                   {
                     "$ref": "#/components/schemas/CloneNodeCreateRequest"
@@ -24180,6 +24610,96 @@
           }
         ],
         "summary": "Get Datetime Formats",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/distinct-value-columns": {
+      "get": {
+        "description": "List the columns with at most ``max_distinct`` different values, with\nthat number: the columns a tool such as Trends can group by.",
+        "operationId": "get_distinct_value_columns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_distinct",
+            "required": true,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Max Distinct",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistinctValueColumnsResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Distinct Value Columns",
         "tags": [
           "nodes"
         ]

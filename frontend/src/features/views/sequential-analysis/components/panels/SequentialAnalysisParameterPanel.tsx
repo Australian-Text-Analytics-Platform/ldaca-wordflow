@@ -15,8 +15,10 @@ import {
 } from '@/components/ui/select';
 
 import type { SequentialAnalysisRequest } from '@/api';
-import { arrowTypeDisplayName, type ArrowField } from '@/lib/arrow/arrowTable';
+import type { ArrowField } from '@/lib/arrow/arrowTable';
 import { UniqueValueCount } from '../UniqueValueCount';
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
+import { NO_GROUP_COLUMN_REASON } from '../../trendsGroups';
 import { elapsedFrequency, elapsedUnit } from '../../trendsAxisColumns';
 import { AdvancedSection } from '@/features/views/common/toolMode/AdvancedSection';
 import {
@@ -106,6 +108,11 @@ export interface SequentialAnalysisParameterPanelProps {
 
   // Group by
   availableColumns: ColumnLike[];
+  /**
+   * The number of different values of each column Add group may offer (those
+   * with few enough). Undefined while it is not known: every column is listed.
+   */
+  groupColumnValueCounts?: Record<string, number>;
   groupByColumns: string[];
   onAddGroupByColumn: () => void;
   onRemoveGroupByColumn: (index: number) => void;
@@ -142,12 +149,18 @@ export function SequentialAnalysisParameterPanel({
   numericIntervalInput,
   onNumericIntervalChange,
   availableColumns,
+  groupColumnValueCounts,
   groupByColumns,
   onAddGroupByColumn,
   onRemoveGroupByColumn,
   onGroupByColumnChange,
   reference,
 }: SequentialAnalysisParameterPanelProps) {
+  const offeredColumns = groupColumnValueCounts
+    ? availableColumns.filter((column) => column.name in groupColumnValueCounts)
+    : availableColumns;
+  const noGroupColumn = groupColumnValueCounts !== undefined && offeredColumns.length === 0;
+  const unchosenColumns = offeredColumns.filter((column) => !groupByColumns.includes(column.name));
   return (
     <>
       <NodeInputsPanel
@@ -300,7 +313,9 @@ export function SequentialAnalysisParameterPanel({
             </div>
             <Button
               onClick={onAddGroupByColumn}
-              disabled={inputsDisabled || groupByColumns.length >= 3}
+              disabled={
+                inputsDisabled || groupByColumns.length >= 3 || unchosenColumns.length === 0
+              }
               size="sm"
               className="gap-1"
             >
@@ -308,6 +323,12 @@ export function SequentialAnalysisParameterPanel({
               Add group
             </Button>
           </div>
+
+          {noGroupColumn ? (
+            <p role="note" className="mb-2 text-label-secondary text-description">
+              {NO_GROUP_COLUMN_REASON}
+            </p>
+          ) : null}
 
           {groupByColumns.map((column, index) => (
             <div key={index} className="flex items-center space-x-2 mb-2">
@@ -322,21 +343,34 @@ export function SequentialAnalysisParameterPanel({
                   <SelectValue placeholder="Select column" />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* A column already chosen in another row is not offered
-                      again: Trends cannot group by the same column twice (issue 212). */}
+                  {/* Only columns with few enough different values are offered,
+                      each behind its type symbol and with that number. A column already chosen in another
+                      row is not offered again: Trends cannot group by the same
+                      column twice (issue 212). This row's own column stays
+                      listed even when it has too many values, so the row
+                      still shows what is chosen. */}
                   {availableColumns
                     .filter(
                       (col) =>
                         col.name === column ||
-                        !groupByColumns.some(
-                          (chosen, chosenIndex) => chosenIndex !== index && chosen === col.name,
-                        ),
+                        (offeredColumns.includes(col) &&
+                          !groupByColumns.some(
+                            (chosen, chosenIndex) => chosenIndex !== index && chosen === col.name,
+                          )),
                     )
-                    .map((col) => (
-                      <SelectItem key={col.name} value={col.name}>
-                        {col.name} ({arrowTypeDisplayName(col.field)})
-                      </SelectItem>
-                    ))}
+                    .map((col) => {
+                      const values = groupColumnValueCounts?.[col.name];
+                      return (
+                        <SelectItem key={col.name} value={col.name} textValue={col.name}>
+                          <ColumnTypeLabel field={col.field}>
+                            {col.name}
+                            {values === undefined
+                              ? ''
+                              : ` (${String(values)} ${values === 1 ? 'value' : 'values'})`}
+                          </ColumnTypeLabel>
+                        </SelectItem>
+                      );
+                    })}
                 </SelectContent>
               </Select>
               {column && (

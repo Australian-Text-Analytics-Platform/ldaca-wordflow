@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { listFileWorksheets, previewFileTable } from '@/api';
 import { queryKeys } from '@/lib/queryKeys';
-import { isWorkbookPath } from '../utils/fileTreeHelpers';
+import { isJsonPath, isWorkbookPath } from '../utils/fileTreeHelpers';
+import { useJsonRecordPaths } from './useJsonRecordPaths';
 
 /** Manages paginated file preview state for the data-loader preview dialog. */
 /**
@@ -19,16 +20,24 @@ export const useFilePreview = (
    * that sheet, or the first with null, and offers no Sheet menu.
    */
   fixedSheet?: string | null,
+  /**
+   * Where a JSON file's rows are, chosen elsewhere (a batch Add window reads
+   * every file at one place): previews that place; null leaves the file's
+   * default. Undefined lets this preview choose its own.
+   */
+  fixedRecordPath?: string | null,
 ) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedSheet, setSelectedSheet] = useState<string | null>(null);
+  const [chosenRecordPath, setChosenRecordPath] = useState<string | null>(null);
 
   /* eslint-disable react-hooks/set-state-in-effect -- Resetting local UI state on prop change; no cascading renders */
   useEffect(() => {
     if (!isOpen) {
       setPage(1);
       setSelectedSheet(null);
+      setChosenRecordPath(null);
     }
   }, [isOpen, filename]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -50,9 +59,17 @@ export const useFilePreview = (
     staleTime: 5 * 60 * 1000,
   });
 
+  // A JSON file, or a JSON file inside a ZIP: its rows' place can be chosen.
+  const isJson = Boolean(filename && isJsonPath(member ?? filename));
+  const hasFixedRecordPath = fixedRecordPath !== undefined;
+  const recordPaths = useJsonRecordPaths(filename, member, isOpen && isJson);
+  // Sent only once chosen, so the first page needn't wait for the list; the
+  // backend reads the same default place.
+  const recordPath = isJson ? (hasFixedRecordPath ? fixedRecordPath : chosenRecordPath) : null;
+
   const sheet = hasFixedSheet ? fixedSheet : selectedSheet;
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: queryKeys.filePreview(filename ?? '', page, pageSize, sheet, member),
+    queryKey: queryKeys.filePreview(filename ?? '', page, pageSize, sheet, member, recordPath),
     /** Loads the current preview page only when the dialog has a filename to display. */
     /** Called by: TanStack Query inside useFilePreview. */
     queryFn: async () => {
@@ -64,6 +81,7 @@ export const useFilePreview = (
           page_size: pageSize,
           sheet_name: sheet,
           member,
+          ...(recordPath === null ? {} : { record_path: recordPath }),
         },
       });
     },
@@ -75,6 +93,7 @@ export const useFilePreview = (
   const reset = () => {
     setPage(1);
     setSelectedSheet(null);
+    setChosenRecordPath(null);
   };
 
   return {
@@ -85,6 +104,13 @@ export const useFilePreview = (
     sheetNames: worksheetsQuery.data?.sheets ?? null,
     selectedSheet: selectedSheet ?? worksheetsQuery.data?.default_sheet ?? null,
     setSelectedSheet,
+    // JSON only: the places the rows could come from, and the one shown.
+    recordPaths: isJson ? recordPaths.paths : null,
+    recordPath: isJson ? (recordPath ?? recordPaths.paths?.[0]?.path ?? null) : null,
+    setRecordPath: (path: string) => {
+      setPage(1);
+      setChosenRecordPath(path);
+    },
     page,
     setPage,
     pageSize,

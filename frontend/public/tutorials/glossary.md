@@ -48,8 +48,10 @@ See [AI Code Designer](./annotation.md#help-annotation-code-designer) and
 The list of codes you want to apply in Annotation, each with a description
 that says when it applies. In Wordflow a Codebook is a Data Block with a column
 of codes and a column of descriptions, so it can be edited, exported and
-reused. See
-[Set up the source and Codebook](./annotation.md#help-annotation-setup).
+reused. Its codes are either categories, with no order, or the levels of an
+[ordered scale](#help-glossary-ordered-scale). See
+[Set up the source and Codebook](./annotation.md#help-annotation-setup) and
+[Categories](./annotation.md#help-annotation-categories).
 
 <h3 id="help-glossary-contextual-hint">Contextual Hint</h3>
 
@@ -93,6 +95,14 @@ See [Data Editor](./ui.md#help-ui-data-viewer) and
 The word cloud that compares two Data Blocks in Frequency. It shows the words
 used most distinctively by each one. See
 [Juxtorpus](./token-frequency.md#help-token-frequency-unified-word-cloud).
+
+<h3 id="help-glossary-ordered-scale">Ordered scale</h3>
+
+A Codebook setting for codes that are levels from low to high, such as a
+rating, rather than separate categories. The first code is the lowest; a code
+such as **Not applicable** can sit outside the scale. AI annotation then rates
+each text on the scale, and Compare to uses weighted Kappa and ordinal Alpha.
+See [Ordered scales](./annotation.md#help-annotation-scale).
 
 <h3 id="help-glossary-passage">Passage</h3>
 
@@ -204,6 +214,18 @@ count for each million tokens (or words) of text, so collections of different
 sizes can be compared fairly. See
 [List view](./token-frequency.md#help-token-frequency-list-view) and, for
 change over time, [Show as](./sequential-analysis.md#help-sequential-show-as).
+
+<h3 id="help-glossary-reliability">Intercoder reliability: Kappa and Alpha</h3>
+
+How far two coders, or a coder and an AI model, give the same texts the same
+codes. **Percent Agreement** counts exact matches. **Cohen's Kappa** and
+**Krippendorff's Alpha** also correct for the agreement chance alone would
+give: 1 is perfect, 0 is no better than chance. On an
+[ordered scale](#help-glossary-ordered-scale), **weighted Kappa** and
+**ordinal Alpha** count a near miss, such as Medium against High, as a smaller
+disagreement than a far one. With three or more coders, Alpha can also be
+calculated across all of them at once. See
+[Reliability statistics](./annotation.md#help-annotation-reliability).
 
 <h3 id="help-glossary-keyword">Keyword analysis and log-likelihood</h3>
 

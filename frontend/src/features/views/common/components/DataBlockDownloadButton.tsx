@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Download } from 'lucide-react';
 import type { DataBlockExportFormat } from '@/api';
 import { Button } from '@/components/ui/button';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,18 +66,19 @@ export function DataBlockDownloadButton({
   };
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy}
-          className={className}
-          aria-label={`Download ${label}`}
-          title={`Download ${label}`}
-        >
-          <Download className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <HintTooltip text={`Download the ${label} as CSV or Excel.`}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            className={className}
+            aria-label={`Download ${label}`}
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+      </HintTooltip>
       <DropdownMenuContent align="end">
         {FORMATS.map((format) => (
           <DropdownMenuItem

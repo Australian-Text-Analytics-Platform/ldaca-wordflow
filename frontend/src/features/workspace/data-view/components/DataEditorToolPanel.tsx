@@ -39,6 +39,7 @@ import {
   type EmptyValues,
   type OutputTarget,
 } from '../dataEditorRequests';
+import { columnOptions, type ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import { CombineTemplateField } from './CombineTemplateField';
 import { DelimiterChips } from './DelimiterChips';
 import { MapValuesFields } from './MapValuesFields';
@@ -52,18 +53,21 @@ function ColumnSelect({
   label,
   value,
   columns,
+  columnFields,
   onChange,
 }: {
   label: string;
   value: string;
   columns: string[];
+  /** The columns' types, for the type symbol before each name. */
+  columnFields: ColumnFields;
   onChange: (value: string) => void;
 }) {
   return (
     <div className="space-y-1">
       <span className="text-body font-medium">{label}</span>
       <SearchableSelect
-        options={columns.map((column) => ({ value: column }))}
+        options={columnOptions(columns, columnFields)}
         value={value}
         onChange={onChange}
         placeholder="Choose a column"
@@ -216,6 +220,8 @@ export function DataEditorToolPanel() {
   const nodeName = useDataEditorToolStore((state) => state.nodeName);
   const columns = useDataEditorToolStore((state) => state.columns);
   const columnTypes = useDataEditorToolStore((state) => state.columnTypes);
+  const storedColumnFields = useDataEditorToolStore((state) => state.columnFields);
+  const columnFields = new Map(Object.entries(storedColumnFields));
   const initialColumn = useDataEditorToolStore((state) => state.initialColumn);
   const initialOperation = useDataEditorToolStore((state) => state.initialOperation);
   const request = useDataEditorToolStore((state) => state.request);
@@ -435,6 +441,7 @@ export function DataEditorToolPanel() {
             <CombineTemplateField
               value={template}
               columns={columns}
+              columnFields={columnFields}
               onChange={touch(setTemplate)}
             />
             <TextField
@@ -485,6 +492,7 @@ export function DataEditorToolPanel() {
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-48 flex-1">
               <ColumnSelect
+                columnFields={columnFields}
                 label="Column"
                 value={column}
                 columns={columns}

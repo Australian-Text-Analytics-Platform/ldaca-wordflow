@@ -192,7 +192,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.preprocessing.sample,
     '[data-guidance="preprocessing-operation-sample"]',
     'Test ideas on a smaller Data Block',
-    'Choose a contiguous Slice or a reproducible Random sample; Sample always creates a new Data Block. Set the sample, then choose Preview.',
+    'Pick rows with a reproducible Random sample, or take a Row range by position; Sample always creates a new Data Block. Set the sample, then choose Preview.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.preprocessing.join,

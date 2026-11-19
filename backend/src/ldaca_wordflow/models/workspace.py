@@ -48,6 +48,14 @@ class SkippedFileCount(_StrictModel):
     count: int = Field(ge=1)
 
 
+class SkippedJsonFile(_StrictModel):
+    """A file left out of JSON files added as one Data Block, and why."""
+
+    path: str
+    # In plain words, such as "Not valid JSON (line 3)".
+    reason: str
+
+
 class WorkspaceNodeInfo(_StrictModel):
     """Complete addressable node metadata returned by node routes."""
 
@@ -64,6 +72,8 @@ class WorkspaceNodeInfo(_StrictModel):
     dtype_normalization: list[DtypeNormalizationChange] | None = None
     # Set only when a folder or ZIP of documents was loaded and files were skipped.
     skipped_files: list[SkippedFileCount] | None = None
+    # Set only when JSON files were added as one Data Block and some were left out.
+    skipped_json_files: list[SkippedJsonFile] | None = None
     tokenizer_model: str | None = Field(default=None, max_length=500)
     can_undo: bool
     can_redo: bool

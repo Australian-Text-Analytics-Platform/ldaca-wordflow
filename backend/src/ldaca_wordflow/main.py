@@ -356,7 +356,7 @@ def create_app(
             yield LifespanState(runtime_manager=manager)
 
     app = FastAPI(
-        title="LDaCA Wordflow API",
+        title="Wordflow API",
         version=__version__,
         description="Workspace-oriented text analysis API",
         lifespan=lifespan,

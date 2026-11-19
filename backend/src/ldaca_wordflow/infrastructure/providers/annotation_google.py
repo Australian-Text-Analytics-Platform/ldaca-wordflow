@@ -13,6 +13,7 @@ from .annotation_adapter import (
     completion_error,
     max_completion_tokens,
     reasoning_budget_tokens,
+    report_prompt_tokens,
 )
 from .model_descriptions import ModelOption, sanitize_description
 
@@ -71,6 +72,9 @@ class GoogleAnnotationAdapter:
             raise completion_error(error, "Google request failed") from error
         finally:
             client.close()
+        report_prompt_tokens(
+            config, getattr(getattr(response, "usage_metadata", None), "prompt_token_count", None)
+        )
         return response.text or ""
 
     async def list_models(self, api_key: str | None) -> list[str]:

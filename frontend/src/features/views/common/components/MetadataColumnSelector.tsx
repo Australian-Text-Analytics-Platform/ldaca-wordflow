@@ -1,3 +1,5 @@
+import type { ColumnFields } from '@/features/workspace/common/columnTypeOptions';
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
 import React, { useState } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 
@@ -10,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { normalizeMetadataColumns } from './metadataColumnSelection';
 import {
   COLUMN_MENU_CLASS as MENU_CLASS,
@@ -40,6 +43,8 @@ interface MetadataColumnSelectorProps {
   onSelectedColumnsChange: (columns: string[]) => void;
   /** Columns owned by another control remain visible but cannot be selected here. */
   disabledColumns?: string[];
+  /** The columns' types, for the type symbol before each name. */
+  columnFields?: ColumnFields;
   /**
    * Optional grouping of `availableColumns`. When provided and there is more
    * than one section, the dropdown renders each group with a divider so
@@ -74,6 +79,7 @@ export function MetadataColumnSelector({
   disabledColumns = [],
   sections,
   disabledReason,
+  columnFields,
 }: MetadataColumnSelectorProps) {
   const normalizedAvailableColumns = normalizeMetadataColumns(availableColumns);
   const normalizedSelectedColumns = normalizeMetadataColumns(selectedColumns).filter((column) =>
@@ -141,18 +147,20 @@ export function MetadataColumnSelector({
         }}
       >
         <DisabledReasonTooltip reason={triggerDisabled ? disabledReason : undefined}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={triggerDisabled}
-              aria-label="Show metadata"
-            >
-              Show metadata ({normalizedSelectedColumns.length})
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
+          <HintTooltip text="Show more of the Data Block's columns beside the results, for context.">
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={triggerDisabled}
+                aria-label="Show metadata"
+              >
+                Show metadata ({normalizedSelectedColumns.length})
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+          </HintTooltip>
         </DisabledReasonTooltip>
         <DropdownMenuContent ref={measureMenu} align="start" className={MENU_CLASS}>
           {showFilter ? (
@@ -215,6 +223,8 @@ export function MetadataColumnSelector({
                   out.push(
                     <DropdownMenuCheckboxItem
                       key={`${String(sectionIdx)}-${column}`}
+                      // Type-ahead goes by the column's name, not by a symbol such as "Aa".
+                      textValue={column}
                       checked={normalizedSelectedColumns.includes(column)}
                       onCheckedChange={(checked) => {
                         toggleColumn(column, checked);
@@ -226,7 +236,7 @@ export function MetadataColumnSelector({
                       style={section.color ? { color: section.color } : undefined}
                       className={ITEM_CLASS}
                     >
-                      {column}
+                      <ColumnTypeLabel field={columnFields?.get(column)}>{column}</ColumnTypeLabel>
                     </DropdownMenuCheckboxItem>,
                   );
                 });
@@ -235,6 +245,7 @@ export function MetadataColumnSelector({
             : normalizedAvailableColumns.filter(matches).map((column) => (
                 <DropdownMenuCheckboxItem
                   key={column}
+                  textValue={column}
                   className={ITEM_CLASS}
                   checked={normalizedSelectedColumns.includes(column)}
                   disabled={disabledColumnSet.has(column)}
@@ -245,7 +256,7 @@ export function MetadataColumnSelector({
                     event.preventDefault();
                   }}
                 >
-                  {column}
+                  <ColumnTypeLabel field={columnFields?.get(column)}>{column}</ColumnTypeLabel>
                 </DropdownMenuCheckboxItem>
               ))}
         </DropdownMenuContent>

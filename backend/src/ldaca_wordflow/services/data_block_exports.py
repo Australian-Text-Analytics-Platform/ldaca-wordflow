@@ -462,15 +462,38 @@ def _excel_workbook_bytes(frame: pl.LazyFrame, *, columns_chosen: bool = False) 
 def _archive_names(
     frames: tuple[tuple[str, str, pl.LazyFrame], ...], extension: str
 ) -> list[str]:
-    counts: dict[str, int] = {}
-    names: list[str] = []
-    for name, fallback, _frame in frames:
-        stem = _safe_export_stem(name, fallback)
-        occurrence = counts.get(stem, 0) + 1
-        counts[stem] = occurrence
-        unique_stem = stem if occurrence == 1 else f"{stem}_{occurrence}"
-        names.append(f"{unique_stem}.{extension}")
-    return names
+    """One file name per Data Block, no two alike, in the order given.
+
+    The first Data Block with a name keeps it; each later one with the same
+    name gets the next free ``_2``, ``_3``. A number is free only if no other
+    file has that name, so "notes", "notes" and "notes_2" give notes, notes_3
+    and notes_2 rather than two files called notes_2. Names that differ only
+    in capitals count as the same: Windows and macOS would unzip them over
+    each other.
+    """
+
+    stems = [_safe_export_stem(name, fallback) for name, fallback, _frame in frames]
+    taken: set[str] = set()
+    names: list[str | None] = [None] * len(stems)
+    for index, stem in enumerate(stems):
+        if _name_key(stem) not in taken:
+            taken.add(_name_key(stem))
+            names[index] = stem
+    for index, stem in enumerate(stems):
+        if names[index] is not None:
+            continue
+        number = 2
+        while _name_key(f"{stem}_{number}") in taken:
+            number += 1
+        taken.add(_name_key(f"{stem}_{number}"))
+        names[index] = f"{stem}_{number}"
+    return [f"{name}.{extension}" for name in names]
+
+
+def _name_key(stem: str) -> str:
+    """How a file system that ignores capitals compares two names."""
+
+    return stem.casefold()
 
 
 def _safe_export_stem(value: str, fallback: str) -> str:

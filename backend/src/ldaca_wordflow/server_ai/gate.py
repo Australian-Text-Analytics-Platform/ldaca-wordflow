@@ -34,6 +34,15 @@ def waiting_message(provider: ServerAiProvider) -> str:
 class ServerAiRunActiveError(ResourceConflictError):
     code = "server_ai_run_active"
 
+    def __init__(self, provider_name: str) -> None:
+        super().__init__(
+            f"Your {provider_name} run is still going, and {provider_name} "
+            "takes a limited number of requests at a time. "
+            "Preview more rows when the run has finished."
+        )
+        # So other interactive requests (the AI Code Designer) can say it in their own words.
+        self.provider_name = provider_name
+
 
 class ServerAiUserGate:
     def __init__(self) -> None:
@@ -78,11 +87,7 @@ class ServerAiUserGate:
         lock = self._preview_locks.setdefault(key, anyio.Lock())
         async with lock:
             if key in self._runs:
-                raise ServerAiRunActiveError(
-                    f"Your {provider.name} run is still going, and {provider.name} "
-                    "takes a limited number of requests at a time. "
-                    "Preview more rows when the run has finished."
-                )
+                raise ServerAiRunActiveError(provider.name)
             self._previews[key] += 1
             try:
                 yield

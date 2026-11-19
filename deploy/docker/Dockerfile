@@ -1,4 +1,4 @@
-# LDaCA Wordflow server image (issue 411): a hosted, multi-user Wordflow.
+# Wordflow (by LDaCA) server image (issue 411): a hosted, multi-user Wordflow.
 # Built by .github/workflows/server-image.yml (manual dispatch) from the wheel
 # of the chosen ref. Settings and secrets come from the environment at run
 # time (docs/runbooks/server-image.md); nothing secret is baked into the image.

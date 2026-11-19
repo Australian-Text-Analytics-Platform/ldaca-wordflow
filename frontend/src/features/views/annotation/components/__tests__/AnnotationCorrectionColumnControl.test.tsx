@@ -103,4 +103,43 @@ describe('AnnotationCorrectionColumnControl', () => {
     );
     expect(onValueChange).toHaveBeenCalledTimes(1);
   });
+
+  it('explains each control on hover, and why Use as example waits', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <AnnotationCorrectionColumnControl
+        value={null}
+        availableColumns={['review']}
+        onValueChange={vi.fn()}
+        onCreate={vi.fn()}
+        onUseAsExample={vi.fn()}
+      />,
+    );
+
+    // The disabled button's wrapper takes focus and shows why it waits.
+    await user.tab();
+    await user.tab();
+    expect(
+      (await screen.findAllByText('Choose a correction column first.'))[0],
+    ).toBeInTheDocument();
+
+    rerender(
+      <AnnotationCorrectionColumnControl
+        value="review"
+        availableColumns={['review']}
+        onValueChange={vi.fn()}
+        onCreate={vi.fn()}
+        onUseAsExample={vi.fn()}
+      />,
+    );
+    await user.hover(screen.getByRole('button', { name: 'Use as example' }));
+    expect(
+      (await screen.findAllByText(/Use the corrected rows as examples for AI annotation/))[0],
+    ).toBeInTheDocument();
+
+    await user.hover(screen.getByRole('combobox', { name: 'Correction column' }));
+    expect(
+      (await screen.findAllByText(/A column for your corrections, kept apart/))[0],
+    ).toBeInTheDocument();
+  });
 });

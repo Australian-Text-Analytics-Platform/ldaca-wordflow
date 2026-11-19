@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+import os
 import re
 import shutil
 import tarfile
@@ -24,18 +25,29 @@ import httpx
 import polars as pl
 
 from ..data_root_config import platform_cache_root
+from ..runtime_caches import SPACY_CACHE_VARIABLE
 from .quotation_core import QUOTATION_GROUP_COLUMN, QUOTATION_GROUP_DTYPE
 
 _ENGLISH_DIR = Path(__file__).resolve().parents[1] / "_vendor" / "gender_gap_tracker"
 _QUOTE_VERBS_PATH = _ENGLISH_DIR / "rules" / "quote_verb_list.txt"
 _SPACY_MODEL = "en_core_web_md"
-_SPACY_MODEL_CACHE_ROOT = platform_cache_root() / "spacy"
 
 _extractor = None
 
 
+def _spacy_model_cache_root() -> Path:
+    """The folder the model downloads into, read on each use.
+
+    The runtime names it in ``WORDFLOW_SPACY_CACHE``, in the Data Root, when
+    it opens one; unset (the server image), it is the OS cache.
+    """
+
+    configured = os.environ.get(SPACY_CACHE_VARIABLE, "").strip()
+    return Path(configured) if configured else platform_cache_root() / "spacy"
+
+
 def _cached_spacy_model_dir() -> Path:
-    return _SPACY_MODEL_CACHE_ROOT / _SPACY_MODEL
+    return _spacy_model_cache_root() / _SPACY_MODEL
 
 
 def _is_cached_spacy_model(path: Path) -> bool:
@@ -82,10 +94,11 @@ def _download_spacy_model() -> Path:
     archive_name = get_model_filename(_SPACY_MODEL, version, sdist=True)
     archive_url = f"{about.__download_url__.rstrip('/')}/{archive_name}"
 
-    _SPACY_MODEL_CACHE_ROOT.mkdir(parents=True, exist_ok=True)
+    cache_root = _spacy_model_cache_root()
+    cache_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix=f".{_SPACY_MODEL}.",
-        dir=_SPACY_MODEL_CACHE_ROOT,
+        dir=cache_root,
     ) as temporary_directory:
         temporary_root = Path(temporary_directory)
         archive_path = temporary_root / Path(archive_name).name
@@ -124,6 +137,23 @@ def _load_spacy_model():
         if not _is_missing_spacy_model_error(exc):
             raise
     return spacy.load(_download_spacy_model())
+
+
+def _ensure_spacy_model() -> None:
+    """Have the model data on disk, downloading it now if it is missing.
+
+    A Quotation Run calls this before it starts extraction processes, so the
+    model downloads once, not once per process, and a failure is reported
+    with its cause.
+    """
+
+    if _is_cached_spacy_model(_cached_spacy_model_dir()):
+        return
+    import importlib.util
+
+    if importlib.util.find_spec(_SPACY_MODEL) is not None:
+        return
+    _download_spacy_model()
 
 
 def _get_extractor():
@@ -353,19 +383,54 @@ def extract_quotations_for_texts(
     return results
 
 
+class QuotationProcessStartError(RuntimeError):
+    """An extraction process could not start; names the cause.
+
+    A failure in a process pool's start-up otherwise reaches the Run only as
+    ``BrokenProcessPool``, with the cause printed to a console that the
+    desktop app never shows. Details then show the cause instead.
+    """
+
+    def __init__(self, cause_type: str, cause_message: str) -> None:
+        super().__init__(cause_type, cause_message)
+        self.cause_type = cause_type
+        self.cause_message = cause_message
+
+    def __str__(self) -> str:
+        return f"{self.cause_type}: {self.cause_message}"
+
+
+# Why this extraction process could not start, raised by each of its chunks.
+_start_failure: QuotationProcessStartError | None = None
+
+
 def _start_quotation_process(parent_pid: int) -> None:
     """Start one extra extraction process of a Quotation Run (issue 381).
 
     It exits once the Run's process is gone (Stop, a crash), so none is left
-    behind, and loads the model before its first chunk.
+    behind, and loads the model before its first chunk. A failure is kept for
+    the first chunk to raise, since one raised here would break the pool and
+    lose its cause.
     """
 
-    from ..infrastructure.process_watchdog import watch_parent
-    from ..infrastructure.system_certificates import use_system_certificates
+    global _start_failure
+    try:
+        from ..infrastructure.process_watchdog import watch_parent
+        from ..infrastructure.system_certificates import use_system_certificates
 
-    use_system_certificates()
-    watch_parent(parent_pid, interval_seconds=1.0, failure_threshold=2)
-    _get_extractor()
+        use_system_certificates()
+        watch_parent(parent_pid, interval_seconds=1.0, failure_threshold=2)
+        _get_extractor()
+    except Exception as exc:  # noqa: BLE001 - reported by the chunk instead
+        _start_failure = QuotationProcessStartError(type(exc).__name__, str(exc))
+
+
+def _extract_chunk(texts: list[str]) -> list[list[dict[str, Any]]]:
+    """One chunk in an extraction process, or the reason it could not start."""
+
+    if _start_failure is not None:
+        raise _start_failure
+    return extract_quotations_for_texts(texts)
 
 
 def extract_quotations_in_chunks(
@@ -394,9 +459,10 @@ def extract_quotations_in_chunks(
         return
 
     import multiprocessing
-    import os
     from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 
+    # Once here, not once per process, and any failure keeps its cause.
+    _ensure_spacy_model()
     remaining = iter(chunks)
     pending: dict[Future[list[list[dict[str, Any]]]], list[str]] = {}
     with ProcessPoolExecutor(
@@ -411,7 +477,7 @@ def extract_quotations_in_chunks(
                 return
             chunk = next(remaining, None)
             if chunk is not None:
-                pending[pool.submit(extract_quotations_for_texts, chunk)] = chunk
+                pending[pool.submit(_extract_chunk, chunk)] = chunk
 
         for _ in range(workers * 2):
             submit_next()
@@ -419,7 +485,20 @@ def extract_quotations_in_chunks(
             done, _ = wait(pending, return_when=FIRST_COMPLETED)
             for future in done:
                 chunk = pending.pop(future)
-                on_chunk(chunk, future.result())
+                try:
+                    quotations = future.result()
+                except BaseException as exc:
+                    # Report it now, not after the chunks still waiting.
+                    for waiting in pending:
+                        waiting.cancel()
+                    if isinstance(exc, QuotationProcessStartError):
+                        # Without the child's traceback text as its cause, so
+                        # Details shows the cause itself.
+                        raise QuotationProcessStartError(
+                            exc.cause_type, exc.cause_message
+                        ) from None
+                    raise
+                on_chunk(chunk, quotations)
                 submit_next()
 
 

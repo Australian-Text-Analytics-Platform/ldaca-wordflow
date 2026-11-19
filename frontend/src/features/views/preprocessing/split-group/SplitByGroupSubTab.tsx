@@ -1,9 +1,13 @@
 import { type ReactNode, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Split } from 'lucide-react';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { distinctValueColumnsQuery } from '@/features/views/common/distinctValueColumns';
+import { columnOption } from '@/features/workspace/common/columnTypeOptions';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { BuilderToolCard } from '../builder/BuilderToolCard';
 import type { BuilderInput } from '../builder/builderTypes';
@@ -12,8 +16,11 @@ import {
   type DateGrouping,
   type Grouping,
   MAX_GROUPS,
+  NO_GROUP_COLUMN_REASON,
+  SPLIT_BY_HELP,
   defaultGrouping,
   groupBlockName,
+  groupColumnOptions,
   groupCountSql,
   rangeSql,
   toGroups,
@@ -52,6 +59,27 @@ export function SplitByGroupSubTab({
   // Unticked groups; everything else is ticked.
   const [unticked, setUnticked] = useState<Set<string>>(new Set());
   const [name, setName] = useState('');
+
+  // Text and category columns are offered only with few enough values to
+  // make a Data Block each; the rule Trends uses for its group columns.
+  const valueCounts = useQuery(
+    distinctValueColumnsQuery(workspaceId ?? '', input?.id ?? '', MAX_GROUPS),
+  );
+  // While the values are being counted, text columns wait rather than show
+  // unchecked; if the count fails, every column is offered so the tool works.
+  // Each column carries the Data Editor's symbol for its type, which tells
+  // number and time columns (grouped into ranges or periods) from the rest.
+  const columnOptions = groupColumnOptions(
+    input?.columns ?? [],
+    valueCounts.data ?? (valueCounts.isError ? undefined : {}),
+  ).map((option) =>
+    columnOption(
+      option.value,
+      input?.columns.find((item) => item.name === option.value)?.field,
+      option.label,
+    ),
+  );
+  const noGroupColumn = input !== null && valueCounts.isSuccess && columnOptions.length === 0;
 
   const columnInfo = input?.columns.find((item) => item.name === column);
   const kind = columnInfo?.kind ?? 'text';
@@ -146,20 +174,36 @@ export function SplitByGroupSubTab({
       onAlert={onAlert}
     >
       <div className="space-y-1">
-        <span className="text-body font-medium">Split by</span>
-        <SearchableSelect
-          options={(input?.columns ?? [])
-            .filter((item) => item.kind !== 'other')
-            .map((item) => ({ value: item.name }))}
-          value={column}
-          onChange={(next) => {
-            setColumn(next);
-            resetTicks();
-          }}
-          placeholder="Choose a column"
-          ariaLabel="Split by column"
-          triggerClassName="w-64"
-        />
+        <div role="group" aria-label="Split by" className="flex flex-wrap items-center gap-2">
+          <span className="text-body font-medium">Split by</span>
+          <HelpIcon
+            targetKey="preprocessing.split-group.tab"
+            label="About the columns listed under Split by"
+            tooltip={SPLIT_BY_HELP}
+            className="size-5 shrink-0 text-description"
+          />
+          <SearchableSelect
+            options={columnOptions}
+            value={column}
+            onChange={(next) => {
+              setColumn(next);
+              resetTicks();
+            }}
+            placeholder="Choose a column"
+            emptyMessage={valueCounts.isPending && input ? 'Counting values…' : undefined}
+            ariaLabel="Split by column"
+            // The picker takes the rest of the row, so long column names and
+            // their numbers of values are not cut short; its list is as wide
+            // as it is.
+            triggerClassName="min-w-64 max-w-xl flex-1"
+            disabled={noGroupColumn}
+          />
+        </div>
+        {noGroupColumn ? (
+          <p role="note" className="text-label-secondary text-description">
+            {NO_GROUP_COLUMN_REASON}
+          </p>
+        ) : null}
       </div>
 
       {column && kind === 'date' ? (

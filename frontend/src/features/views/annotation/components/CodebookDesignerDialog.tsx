@@ -26,8 +26,10 @@ import { canListModels } from '../aiProviders';
 import {
   type CodeDesignerSettings,
   DEFAULT_CODEBOOK_DESIGNER_PROMPT,
+  DEFAULT_SCALE_DESIGNER_PROMPT,
   DESIGNER_EFFORTS,
   DESIGNER_SAMPLE_SIZE,
+  type DesignedCode,
   type DesignerEffort,
   type DesignerStage,
   runCodebookDesigner,
@@ -57,7 +59,9 @@ interface CodebookDesignerDialogProps {
   source: CodebookDesignerSource;
   brief: string;
   taskContext: string;
-  onDraft: (codes: { name: string; definition: string }[]) => void;
+  /** Design an ordered scale (levels, lowest first, then Not applicable) instead of categories. */
+  scale: boolean;
+  onDraft: (codes: DesignedCode[]) => void;
 }
 
 const formatElapsed = (seconds: number): string =>
@@ -82,6 +86,7 @@ export function CodebookDesignerDialog({
   source,
   brief,
   taskContext,
+  scale,
   onDraft,
 }: CodebookDesignerDialogProps) {
   const [advanced, setAdvanced] = useState(false);
@@ -109,7 +114,10 @@ export function CodebookDesignerDialog({
       : settings.providerConfigurationId === providerId && settings.model
         ? settings.model
         : (providerModels[providerId] ?? (providerId === fallbackProviderId ? fallbackModel : ''));
-  const systemPrompt = settings.systemPrompt || DEFAULT_CODEBOOK_DESIGNER_PROMPT;
+  // Categories and scales keep their own prompt, each with its own default.
+  const promptSetting = scale ? 'scaleSystemPrompt' : 'systemPrompt';
+  const defaultPrompt = scale ? DEFAULT_SCALE_DESIGNER_PROMPT : DEFAULT_CODEBOOK_DESIGNER_PROMPT;
+  const systemPrompt = settings[promptSetting] || defaultPrompt;
   const canStart = Boolean(provider && model.trim() && !running);
 
   // A running clock, so a slow model never looks stuck.
@@ -154,6 +162,7 @@ export function CodebookDesignerDialog({
         brief,
         task_context: taskContext,
         max_classes: settings.maxClasses,
+        scale,
         sample_size: settings.sampleSize,
         sample_seed: settings.sampleSeed,
         reasoning_effort: settings.effort,
@@ -194,7 +203,11 @@ export function CodebookDesignerDialog({
       }}
     >
       <DialogContent
-        className="max-w-xl"
+        // Never taller than the window (Chao, 19 Nov 2026: with Advanced on,
+        // the prompt pushed its top and bottom off screen). The title and the
+        // buttons stay in place and the settings between them scroll. Wider
+        // than before, as nothing else can be used while it is open.
+        className="flex max-h-[calc(100dvh-2rem)] max-w-[min(768px,calc(100vw-2rem))] flex-col"
         hideCloseButton={running}
         onEscapeKeyDown={(event) => {
           if (running) event.preventDefault();
@@ -219,8 +232,9 @@ export function CodebookDesignerDialog({
             )}
           </div>
           <DialogDescription>
-            Drafts up to {String(settings.maxClasses)} codes and an “Other” code from your brief and
-            a sample of your texts.
+            {scale
+              ? `Drafts an ordered scale of up to ${String(settings.maxClasses)} levels, from the lowest to the highest, and a “Not applicable” code outside the scale, from your brief and a sample of your texts.`
+              : `Drafts up to ${String(settings.maxClasses)} codes and an “Other” code from your brief and a sample of your texts.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -246,7 +260,10 @@ export function CodebookDesignerDialog({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div
+            data-testid="codebook-designer-body"
+            className="-mr-1 min-h-0 space-y-4 overflow-y-auto pr-1"
+          >
             <div
               className="rounded-md border border-warning bg-warning-background px-3 py-2 text-label-secondary text-warning"
               data-testid="codebook-designer-disclaimer"
@@ -353,8 +370,8 @@ export function CodebookDesignerDialog({
             </div>
             <p className="text-label-secondary text-description">
               Texts are picked at random from the distinct, non-empty texts in{' '}
-              <strong>{source.textColumn}</strong>, each cut to its first 150 words. The same seed
-              picks the same texts.
+              <strong>{source.textColumn}</strong>, each cut to its first 150 words (about 300
+              characters in Chinese or Japanese). The same seed picks the same texts.
             </p>
 
             {advanced ? (
@@ -365,9 +382,9 @@ export function CodebookDesignerDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    disabled={!settings.systemPrompt}
+                    disabled={!settings[promptSetting]}
                     onClick={() => {
-                      onSettingsChange({ systemPrompt: '' });
+                      onSettingsChange({ [promptSetting]: '' });
                     }}
                   >
                     Restore default
@@ -381,13 +398,14 @@ export function CodebookDesignerDialog({
                   onChange={(event) => {
                     const value = event.target.value;
                     onSettingsChange({
-                      systemPrompt: value === DEFAULT_CODEBOOK_DESIGNER_PROMPT ? '' : value,
+                      [promptSetting]: value === defaultPrompt ? '' : value,
                     });
                   }}
                 />
                 <p className="text-label-secondary text-description">
-                  Wordflow adds the answer format after this prompt: a JSON list of codes, at most
-                  the maximum, then “Other”.
+                  {scale
+                    ? 'Wordflow adds the answer format after this prompt: a JSON list of levels from the lowest to the highest, at most the maximum, then a code for texts the scale doesn’t fit (“Not applicable” in English), all named in the language of the brief.'
+                    : 'Wordflow adds the answer format after this prompt: a JSON list of codes, at most the maximum, then a code for texts that fit none of them (“Other” in English), all named in the language of the brief.'}
                 </p>
               </div>
             ) : null}

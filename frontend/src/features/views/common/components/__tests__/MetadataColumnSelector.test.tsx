@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { Field, Int64, Utf8 } from 'apache-arrow';
 import { describe, expect, it } from 'vitest';
 
 import { MetadataColumnSelector } from '../MetadataColumnSelector';
@@ -133,6 +134,35 @@ describe('MetadataColumnSelector', () => {
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Select all matching' }));
     expect(screen.getByRole('button', { name: /show metadata/i, hidden: true })).toHaveTextContent(
       '(11)',
+    );
+  });
+
+  it('shows each column behind its type symbol when the types are known', () => {
+    const { container } = render(
+      <MetadataColumnSelector
+        availableColumns={['speaker', 'year', 'untyped']}
+        columnFields={
+          new Map([
+            ['speaker', new Field('speaker', new Utf8())],
+            ['year', new Field('year', new Int64())],
+          ])
+        }
+        selectedColumns={[]}
+        onSelectedColumnsChange={() => undefined}
+      />,
+    );
+    fireEvent.pointerDown(within(container).getByRole('button', { name: /show metadata/i }), {
+      button: 0,
+    });
+
+    // The item is still named after its column; the symbol's hover text is the type.
+    const year = screen.getByRole('menuitemcheckbox', { name: 'year' });
+    expect(within(year).getByTitle('whole number')).toHaveTextContent('123');
+    expect(
+      within(screen.getByRole('menuitemcheckbox', { name: 'speaker' })).getByTitle('text'),
+    ).toHaveTextContent('Aa');
+    expect(screen.getByRole('menuitemcheckbox', { name: 'untyped' })).toHaveTextContent(
+      /^untyped$/,
     );
   });
 });

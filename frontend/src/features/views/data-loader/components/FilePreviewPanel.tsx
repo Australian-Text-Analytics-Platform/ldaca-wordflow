@@ -36,6 +36,9 @@ export function FilePreviewPanel({ filename, open, onClose }: FilePreviewPanelPr
     sheetNames,
     selectedSheet,
     setSelectedSheet,
+    recordPaths,
+    recordPath,
+    setRecordPath,
     page,
     pageSize,
     loading,
@@ -111,6 +114,9 @@ export function FilePreviewPanel({ filename, open, onClose }: FilePreviewPanelPr
         sheetNames,
         selectedSheet,
         setSelectedSheet,
+        recordPaths,
+        recordPath,
+        setRecordPath,
       }}
       dialogMaxWidth="min(80vw, 1000px)"
       title={filename ? `Preview: ${filename}` : 'File preview'}

@@ -1,10 +1,14 @@
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { queryWorkspaceSqlTable, sqlIdentifier } from '@/api';
 import {
   annotationLabelSql,
   normalizeAnnotationClassOptions,
 } from '@/features/views/annotation/annotationLabelModel';
-import type { ConfusionCount } from '@/features/views/common/columnComparisonModel';
+import { codebookFitSql, parseCodebookFitRows } from '@/features/views/annotation/codebookFit';
+import type {
+  CodeCombination,
+  ConfusionCount,
+} from '@/features/views/common/columnComparisonModel';
 import { queryKeys } from '@/lib/queryKeys';
 
 const COMPARISON_PAGE_SIZE = 500;
@@ -116,5 +120,139 @@ export function useFullColumnComparisons({
       staleTime: 0,
       refetchOnMount: 'always' as const,
     })),
+  });
+}
+
+/**
+ * How many values in each column are not codes in the codebook, with a few
+ * examples, so the scores can say which columns they leave out and why. One
+ * query for every column, and only when the codebook has codes.
+ */
+export function useCodebookFit({
+  workspaceId,
+  nodeIds,
+  sql,
+  columns,
+  classOptions,
+}: {
+  workspaceId: string | null;
+  nodeIds: string[];
+  sql: string;
+  columns: readonly string[];
+  classOptions: readonly string[];
+}) {
+  const canonicalClassOptions = normalizeAnnotationClassOptions(classOptions);
+  return useQuery({
+    queryKey: queryKeys.annotationCodebookFit(
+      workspaceId ?? '',
+      nodeIds,
+      sql,
+      columns,
+      canonicalClassOptions,
+    ),
+    queryFn: async ({ signal }) => {
+      if (!workspaceId) throw new Error('Missing Project ID');
+      const result = await queryWorkspaceSqlTable({
+        path: { workspace_id: workspaceId },
+        body: {
+          mode: 'query',
+          node_ids: nodeIds,
+          sql: codebookFitSql(sql, columns, canonicalClassOptions),
+          page: 1,
+          // A totals row and at most three examples per column.
+          page_size: Math.max(1, columns.length * 4),
+        },
+        signal,
+      });
+      return parseCodebookFitRows(result.rows, columns);
+    },
+    enabled: Boolean(workspaceId) && columns.length > 0 && canonicalClassOptions.length > 0,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+}
+
+const coderAlias = (index: number) => `__coder_${String(index)}`;
+
+const codeCombinationsSql = (
+  sql: string,
+  columns: readonly string[],
+  classOptions: readonly string[],
+): string => {
+  const labels = columns.map((column) => annotationLabelSql(column, classOptions));
+  const aliases = columns.map((_, index) => sqlIdentifier(coderAlias(index)));
+  const coded = labels.map((label) => `(CASE WHEN ${label} IS NULL THEN 0 ELSE 1 END)`).join(' + ');
+  return `SELECT ${labels.map((label, index) => `${label} AS ${aliases[index] ?? ''}`).join(', ')}, COUNT(*) AS ${sqlIdentifier(COUNT_ALIAS)} FROM (${sql}) AS ${sqlIdentifier('__annotation_agreement_source')} WHERE ${coded} >= 2 GROUP BY ${aliases.join(', ')} ORDER BY ${aliases.join(', ')}`;
+};
+
+/**
+ * The combinations of codes the given columns hold for the same rows, with
+ * how many rows hold each, for the multi-coder Alpha (Chao, 16 Nov 2026).
+ * Only rows where at least two columns hold a Codebook code are counted.
+ */
+export function useCodeCombinations({
+  workspaceId,
+  nodeIds,
+  sql,
+  columns,
+  classOptions,
+  enabled,
+}: {
+  workspaceId: string | null;
+  nodeIds: string[];
+  sql: string;
+  columns: readonly string[];
+  classOptions: readonly string[];
+  enabled: boolean;
+}) {
+  const canonicalClassOptions = normalizeAnnotationClassOptions(classOptions);
+  return useQuery({
+    queryKey: queryKeys.annotationCoderAgreement(
+      workspaceId ?? '',
+      nodeIds,
+      sql,
+      columns,
+      canonicalClassOptions,
+    ),
+    queryFn: async ({ signal }): Promise<CodeCombination[]> => {
+      if (!workspaceId) throw new Error('Missing Project ID');
+      const aggregateSql = codeCombinationsSql(sql, columns, canonicalClassOptions);
+      const combinations: CodeCombination[] = [];
+      let page = 1;
+      let initialEtag: string | null | undefined;
+      let hasNext: boolean;
+      do {
+        const aggregate = await queryWorkspaceSqlTable({
+          path: { workspace_id: workspaceId },
+          body: {
+            mode: 'query',
+            node_ids: nodeIds,
+            sql: aggregateSql,
+            page,
+            page_size: COMPARISON_PAGE_SIZE,
+          },
+          signal,
+        });
+        initialEtag ??= aggregate.etag;
+        if (initialEtag !== aggregate.etag) {
+          throw new Error('Project changed while loading the annotation agreement');
+        }
+        combinations.push(
+          ...aggregate.rows.map((row) => ({
+            values: columns.map((_, index) => {
+              const value = row[coderAlias(index)];
+              return value == null ? null : displayCell(value);
+            }),
+            count: numericCount(row[COUNT_ALIAS]),
+          })),
+        );
+        hasNext = aggregate.hasNext;
+        page += 1;
+      } while (hasNext);
+      return combinations;
+    },
+    enabled: Boolean(workspaceId) && enabled && columns.length >= 3,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }

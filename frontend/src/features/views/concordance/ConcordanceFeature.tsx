@@ -63,6 +63,7 @@ import { usePersistNodeTokenizerModel } from '../common/hooks/usePersistNodeToke
 import type { ConcordanceRunAllReviewSource } from './concordanceRunAllReview';
 import { queryKeys } from '@/lib/queryKeys';
 import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWorkspaceDialog';
+import { PreviewResultActions } from '../common/components/PreviewResultActions';
 import { downloadResultSelection } from '../common/resultDownload';
 import { useExcelCellLimitNotice } from '../common/useExcelCellLimitNotice';
 import { Download } from 'lucide-react';
@@ -511,16 +512,20 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     };
   }, [results]);
 
-  const { availableMetadataColumns, metadataColumnSections, metadataDisabledReason } =
-    useConcordanceMetadataColumns({
-      results,
-      panelSelectedNodes: resultPanelNodes,
-      effectiveNodeColumnSelections: resultPanelColumnSelections,
-      getColumnInfos,
-      viewMode,
-      nodeColors,
-      resolveNodeIdForKey,
-    });
+  const {
+    availableMetadataColumns,
+    metadataColumnFields,
+    metadataColumnSections,
+    metadataDisabledReason,
+  } = useConcordanceMetadataColumns({
+    results,
+    panelSelectedNodes: resultPanelNodes,
+    effectiveNodeColumnSelections: resultPanelColumnSelections,
+    getColumnInfos,
+    viewMode,
+    nodeColors,
+    resolveNodeIdForKey,
+  });
   const availableMetadataColumnsKey = availableMetadataColumns.join('|');
 
   // No auto-selection on activation: Show metadata starts empty and the user
@@ -999,6 +1004,11 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
                     Add to Project
                   </Button>
                 </div>
+              ) : !isReview ? (
+                <PreviewResultActions
+                  resultsLabel="Concordance Results"
+                  running={analysisActionLifecycle.isRunningAll}
+                />
               ) : null
             }
             shell={{
@@ -1046,6 +1056,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
             metadata={{
               showMetadata,
               availableMetadataColumns,
+              columnFields: metadataColumnFields,
               sections: metadataColumnSections,
               disabledReason: metadataDisabledReason,
               selectedColumns: selectedMetadataColumns,
@@ -1100,6 +1111,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         {downloadDialogOpen ? (
           <ResultAddToWorkspaceDialog
             open
+            columnFields={metadataColumnFields}
             onOpenChange={(nextOpen) => {
               excelLimit.clear();
               setDownloadDialogOpen(nextOpen);
@@ -1122,6 +1134,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         {addToWorkspaceDialogOpen ? (
           <ResultAddToWorkspaceDialog
             open
+            columnFields={metadataColumnFields}
             onOpenChange={setAddToWorkspaceDialogOpen}
             title={`Add Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'} to Project`}
             nameSuffix={resultNameSuffix}

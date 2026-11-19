@@ -77,6 +77,11 @@ export interface RowDetailPayload {
   fullText?: string;
   /** Columns to exclude from the metadata table (e.g. generated columns) */
   excludeMetadataColumns?: string[];
+  /**
+   * Values shown grey italic, keyed by column, with what that means on hover
+   * (Annotation: a value that is not a code in the selected codebook).
+   */
+  valueNotes?: Record<string, string>;
 }
 
 export interface RowDetailPanelProps {
@@ -144,6 +149,27 @@ const scrollDocumentToAnchor = (documentBox: HTMLElement) => {
   documentBox.scrollTop = Math.max(0, offset - DOCUMENT_ANCHOR_MARGIN_PX);
 };
 
+/** Controls that use the arrow keys themselves keep them. */
+const ARROW_KEY_OWNERS =
+  'input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="combobox"], [role="listbox"], [role="menu"], [role="menubar"], [role="slider"], [role="spinbutton"], [role="tablist"], [role="radiogroup"], [role="separator"], [role="grid"], [role="tree"]';
+
+/**
+ * Left and Right arrow keys step to the previous and next row, passage or
+ * item, as the buttons do. Ignored with a modifier (Shift extends a text
+ * selection), while typing or using a control that owns the arrow keys,
+ * during IME composition, and while a step is loading.
+ */
+const arrowStep = (event: KeyboardEvent, navigation: RowDetailNavigation): (() => void) | null => {
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return null;
+  if (event.defaultPrevented || event.isComposing) return null;
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return null;
+  const target = event.target as HTMLElement | null;
+  if (target?.closest(ARROW_KEY_OWNERS)) return null;
+  if (navigation.pendingDirection !== null) return null;
+  if (event.key === 'ArrowLeft') return navigation.canPrevious ? navigation.onPrevious : null;
+  return navigation.canNext ? navigation.onNext : null;
+};
+
 // ---- Component ----
 
 /**
@@ -159,6 +185,32 @@ export function RowDetailPanel({
   navigation,
 }: RowDetailPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  // The latest handlers, read when a key is pressed.
+  const navigationRef = useRef(navigation);
+  useEffect(() => {
+    navigationRef.current = navigation;
+  });
+
+  // Listens on the document, not the window: stepping to the last row
+  // disables Next, and the browser then moves focus out to the page.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const content = contentRef.current;
+      const inWindow = target instanceof Node && content?.contains(target) === true;
+      if (!inWindow && target !== document.body) return;
+      const step = arrowStep(event, navigationRef.current);
+      if (!step) return;
+      event.preventDefault();
+      step();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
   // State rather than a ref: Radix mounts dialog content after the render that
   // opens it, so the effect must rerun once the document box exists.
   const [documentBox, setDocumentBox] = useState<HTMLDivElement | null>(null);
@@ -173,7 +225,7 @@ export function RowDetailPanel({
 
   if (!payload) return null;
 
-  const { record, textColumn, fullText, excludeMetadataColumns } = payload;
+  const { record, textColumn, fullText, excludeMetadataColumns, valueNotes } = payload;
   const excludeSet = new Set(excludeMetadataColumns ?? []);
   if (textColumn) excludeSet.add(textColumn);
 
@@ -200,7 +252,10 @@ export function RowDetailPanel({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="grid max-h-[80vh] w-full max-w-4xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
+      <DialogContent
+        ref={contentRef}
+        className="grid max-h-[80vh] w-full max-w-4xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden"
+      >
         <DialogHeader>
           <DialogTitle>
             {customization?.title ?? 'Row Details'}
@@ -278,11 +333,18 @@ export function RowDetailPanel({
                   <TableBody>
                     {metadataEntries.map(([key, value]) => {
                       const displayValue = formatMetadataValue(value);
+                      const note = valueNotes?.[key];
                       return (
                         <TableRow key={key}>
                           <TableCell className="font-medium">{key}</TableCell>
                           <TableCell>
-                            <div className="max-w-md whitespace-pre-wrap wrap-break-word">
+                            <div
+                              className={cn(
+                                'max-w-md whitespace-pre-wrap wrap-break-word',
+                                note && 'italic text-description',
+                              )}
+                              title={note}
+                            >
                               {typeof value === 'object' && value !== null ? (
                                 <pre className="text-label-secondary bg-panel p-2 rounded-sm overflow-x-auto">
                                   {displayValue}
@@ -312,6 +374,8 @@ export function RowDetailPanel({
             onClick={navigation.onPrevious}
             disabled={!navigation.canPrevious || navigation.pendingDirection !== null}
             aria-label={navigation.previousLabel ?? 'Previous row'}
+            aria-keyshortcuts="ArrowLeft"
+            title={`${navigation.previousLabel ?? 'Previous row'} (Left arrow key)`}
           >
             {navigation.pendingDirection === 'previous' ? (
               <Loader2 aria-hidden="true" className="animate-spin" />
@@ -337,6 +401,8 @@ export function RowDetailPanel({
             onClick={navigation.onNext}
             disabled={!navigation.canNext || navigation.pendingDirection !== null}
             aria-label={navigation.nextLabel ?? 'Next row'}
+            aria-keyshortcuts="ArrowRight"
+            title={`${navigation.nextLabel ?? 'Next row'} (Right arrow key)`}
           >
             {navigation.nextLabel ?? 'Next row'}
             {navigation.pendingDirection === 'next' ? (

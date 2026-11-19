@@ -9,7 +9,8 @@ interface AddFilePanelProps {
   filename: string | null;
   open: boolean;
   onClose: () => void;
-  onConfirm: () => Promise<void> | void;
+  /** Adds the file; a JSON file's rows come from `recordPath` (null: its default). */
+  onConfirm: (recordPath: string | null) => Promise<void> | void;
 }
 
 /**
@@ -45,6 +46,9 @@ function AddFilePanelBody({
     sheetNames,
     selectedSheet,
     setSelectedSheet,
+    recordPaths,
+    recordPath,
+    setRecordPath,
   } = useFilePreview(filename, true, null, null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +56,7 @@ function AddFilePanelBody({
   const handleConfirm = async () => {
     try {
       setSubmitting(true);
-      await onConfirm();
+      await onConfirm(recordPath);
       onClose();
     } finally {
       setSubmitting(false);
@@ -102,6 +106,9 @@ function AddFilePanelBody({
         sheetNames,
         selectedSheet,
         setSelectedSheet,
+        recordPaths,
+        recordPath,
+        setRecordPath,
       }}
       title={`Add File: ${filename}`}
       description="Check the preview, then add the file to the Project as a Data Block."

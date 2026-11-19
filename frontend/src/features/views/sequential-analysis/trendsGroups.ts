@@ -1,4 +1,5 @@
 import { queryWorkspaceSqlTable, sqlIdentifier, sqlTable } from '@/api';
+import { distinctValueColumnsQuery } from '@/features/views/common/distinctValueColumns';
 import { queryKeys } from '@/lib/queryKeys';
 
 /**
@@ -7,6 +8,20 @@ import { queryKeys } from '@/lib/queryKeys';
  * result is not drawn (issue 326). The backend uses the same limit.
  */
 export const MAX_TRENDS_GROUPS = 1_000;
+
+/**
+ * A group column has at most this many different values: each becomes a
+ * line or bar series, and more cannot be told apart in the chart and its
+ * legend. Add group offers only such columns (Chao, 19 Nov 2026).
+ */
+export const MAX_TRENDS_GROUP_VALUES = 16;
+
+/** Shown when no column qualifies, so the reason is never a mystery. */
+export const NO_GROUP_COLUMN_REASON = `No column in this Data Block has ${String(MAX_TRENDS_GROUP_VALUES)} or fewer different values, so there is nothing to group by.`;
+
+/** The columns Add group offers, with each one's number of different values. */
+export const groupColumnsQuery = (workspaceId: string, nodeId: string) =>
+  distinctValueColumnsQuery(workspaceId, nodeId, MAX_TRENDS_GROUP_VALUES);
 
 /** The number of groups in a Trends result's rows (one group_index each). */
 export function countResultGroups(rows: readonly Record<string, unknown>[]): number {

@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DataBlockExportDialog } from '@/features/workspace/common/components/DataBlockExportDialog';
 import { DataBlockRenameDialog } from '@/features/workspace/common/components/DataBlockRenameDialog';
 import type { NodeInputPointerPosition } from '@/stores/nodeInputRequestsStore';
 
@@ -34,6 +35,11 @@ export interface NodeActionsToolbarProps {
   onRename: (nodeId: string, newName: string) => unknown;
   onClone: (nodeId: string) => void;
   onDelete: (nodeId: string) => void;
+  /**
+   * The open Project, for Export: the same window as the Project Graph's
+   * Export (Chao, 17 Nov 2026). Without it the menu has no Export.
+   */
+  exportProject?: { workspaceId: string; workspaceName: string };
 }
 
 const iconButtonClass =
@@ -81,8 +87,9 @@ export function NodePinButton({ node, isPinned, onTogglePin }: NodePinButtonProp
 /**
  * Compact per-Data-Block action toolbar rendered at the end of each row in the
  * sidebar Data Blocks list. Mirrors the graph card's hover toolbar
- * (settings menu with Rename / Make a copy / Undo / Redo / Delete, and an add-to-inputs
- * button) with hover action overlay.
+ * (settings menu with Rename / Make a copy / Export / Delete, and an add-to-inputs
+ * button) with hover action overlay. Export opens the graph's export window,
+ * with every format, not the Data Editor's CSV or Excel download.
  *
  * Rendered by: Sidebar via WorkspaceNodeList's ``renderRowActions``
  * slot. Wired to the same workspace actions the graph uses (delete/rename/clone/
@@ -100,8 +107,10 @@ export function NodeActionsToolbar({
   onRename,
   onClone,
   onDelete,
+  exportProject,
 }: NodeActionsToolbarProps) {
   const [renameOpen, setRenameOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(node.name);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -135,6 +144,15 @@ export function NodeActionsToolbar({
           >
             Make a copy
           </DropdownMenuItem>
+          {exportProject ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                setExportOpen(true);
+              }}
+            >
+              Export
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
             className="text-error focus:text-error"
             onSelect={() => {
@@ -169,6 +187,16 @@ export function NodeActionsToolbar({
         onValueChange={setRenameValue}
         onRename={(name) => onRename(node.id, name)}
       />
+
+      {exportProject ? (
+        <DataBlockExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          workspaceId={exportProject.workspaceId}
+          workspaceName={exportProject.workspaceName}
+          dataBlock={{ id: node.id, name: node.name }}
+        />
+      ) : null}
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>

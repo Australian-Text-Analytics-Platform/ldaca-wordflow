@@ -219,7 +219,7 @@ entry point directly:
 
 ```ini
 [Unit]
-Description=LDaCA Wordflow
+Description=Wordflow (by LDaCA)
 After=network-online.target
 Wants=network-online.target
 

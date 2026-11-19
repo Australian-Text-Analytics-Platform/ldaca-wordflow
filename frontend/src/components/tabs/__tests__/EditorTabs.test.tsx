@@ -122,6 +122,18 @@ describe('EditorTabs', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Analysis 1');
   });
 
+  it('shows a tab tooltip in place of the name when one is given', async () => {
+    const user = userEvent.setup();
+    renderTabs({
+      tabs: [{ id: 'filter', title: 'Filter', tooltip: 'Keep only the rows that match' }],
+      activeTabId: 'filter',
+    });
+
+    await user.hover(screen.getByRole('tab', { name: 'Filter' }));
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Keep only the rows that match');
+  });
+
   it('renames the active tab on double-click, not on a single click (issue 206)', async () => {
     const user = userEvent.setup();
     const { onRename } = renderTabs();

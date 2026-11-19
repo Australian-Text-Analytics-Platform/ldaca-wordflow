@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Field, Utf8 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyReferenceComparisonEdit,
@@ -60,6 +61,91 @@ describe('ColumnComparison', () => {
         comparison: null,
       }),
     ).toBe(rows);
+  });
+
+  it('names the method and shades the matrix by scale distance on an ordered scale', async () => {
+    const user = userEvent.setup();
+    const scaleRows = [
+      { reference: 'Low', comparison: 'Low', count: 4 },
+      { reference: 'Low', comparison: 'Medium', count: 1 },
+      { reference: 'Low', comparison: 'High', count: 1 },
+      { reference: 'High', comparison: 'Not applicable', count: 1 },
+    ];
+    render(
+      <ColumnComparisonHeader
+        metric="cohens_kappa"
+        referenceColumn="annotation"
+        comparisonColumn="review"
+        rows={scaleRows}
+        isLoading={false}
+        isError={false}
+        revealed
+        onRevealedChange={vi.fn()}
+        scale={{ levels: ['Low', 'Medium', 'High'], outside: ['Not applicable'] }}
+      />,
+    );
+
+    const score = screen.getByRole('button', { name: /Cohen’s Kappa \(weighted\)/ });
+    expect(score).toHaveTextContent(/^κw /);
+    await user.hover(score);
+
+    const [method] = await screen.findAllByTestId('reliability-method');
+    expect(method).toHaveTextContent(
+      'Weighted Cohen’s Kappa on an ordered scale: a near miss counts as partial agreement',
+    );
+    expect(screen.getAllByTestId('reliability-shading-key')[0]).toBeVisible();
+    const [matrix] = screen.getAllByRole('table', {
+      name: 'annotation versus review confusion matrix',
+    });
+    if (!matrix) throw new Error('Expected a confusion matrix.');
+    // Levels in scale order, then the code outside the scale.
+    expect(
+      within(matrix)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Row label', 'Low', 'Medium', 'High', 'Not applicable']);
+    const lowRow = within(matrix).getByRole('row', { name: /^Low/ });
+    const [same, near, far, outside] = within(lowRow).getAllByRole('cell');
+    const shade = (cell: HTMLElement | undefined) => cell?.getAttribute('style') ?? '';
+    expect(shade(same)).toContain('--color-chart-3');
+    expect(shade(near)).toContain('36%');
+    expect(shade(far)).toContain('60%');
+    expect(shade(outside)).toContain('60%');
+  });
+
+  it('says a categorical score counts only exact matches, with agreement in green', async () => {
+    const user = userEvent.setup();
+    render(
+      <ColumnComparisonHeader
+        metric="krippendorffs_alpha"
+        referenceColumn="annotation"
+        comparisonColumn="review"
+        rows={rows}
+        isLoading={false}
+        isError={false}
+        revealed
+        onRevealedChange={vi.fn()}
+      />,
+    );
+    await user.hover(screen.getByRole('button', { name: /Krippendorff’s Alpha/ }));
+    const [method] = await screen.findAllByTestId('reliability-method');
+    expect(method).toHaveTextContent(
+      'Krippendorff’s Alpha on categories: only exact matches agree.',
+    );
+    // Agreement is green; disagreements stay plain, with no scale to measure them on.
+    const [key] = screen.getAllByTestId('reliability-shading-key');
+    expect(key).toHaveTextContent('Green: both columns agree.');
+    expect(key).not.toHaveTextContent('Orange');
+    const [matrix] = screen.getAllByRole('table', {
+      name: 'annotation versus review confusion matrix',
+    });
+    if (!matrix) throw new Error('Expected a confusion matrix.');
+    const shaded = (token: string) =>
+      within(matrix)
+        .getAllByRole('cell')
+        .filter((cell) => cell.getAttribute('style')?.includes(token));
+    expect(shaded('--color-chart-3')).toHaveLength(2);
+    expect(shaded('--color-chart-4')).toHaveLength(0);
   });
 
   it('stacks Cohen’s Kappa above the column name and shows plain matrix counts on hover', async () => {
@@ -291,5 +377,134 @@ describe('ColumnComparison', () => {
     );
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'Select all' }));
     expect(onSelectedColumnsChange).toHaveBeenCalledWith(['review']);
+  });
+
+  it('explains Compare to on hover, and says why it waits without columns', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ColumnComparisonSelector
+        availableColumns={['review']}
+        selectedColumns={[]}
+        onSelectedColumnsChange={vi.fn()}
+        metric="cohens_kappa"
+        onMetricChange={vi.fn()}
+      />,
+    );
+    await user.hover(screen.getByRole('button', { name: 'Compare to' }));
+    expect(
+      (await screen.findAllByText(/Compare this column with other coders or models/))[0],
+    ).toBeInTheDocument();
+
+    rerender(
+      <ColumnComparisonSelector
+        availableColumns={[]}
+        selectedColumns={[]}
+        onSelectedColumnsChange={vi.fn()}
+        metric="cohens_kappa"
+        onMetricChange={vi.fn()}
+      />,
+    );
+    // The disabled button's wrapper takes focus and shows why it waits.
+    await user.tab();
+    expect(
+      (await screen.findAllByText('There are no other columns to compare with.'))[0],
+    ).toBeInTheDocument();
+  });
+  describe('says which columns do not match the codebook (issue 498)', () => {
+    const renderHeader = (
+      rows: ConfusionCount[],
+      codebookFit: Parameters<typeof ColumnComparisonHeader>[0]['codebookFit'],
+    ) =>
+      render(
+        <ColumnComparisonHeader
+          metric="cohens_kappa"
+          referenceColumn="job.gemini25"
+          comparisonColumn="Job_AI"
+          rows={rows}
+          isLoading={false}
+          isError={false}
+          revealed={false}
+          onRevealedChange={vi.fn()}
+          codebookFit={codebookFit}
+        />,
+      );
+    const openTooltip = async () => {
+      const user = userEvent.setup();
+      await user.hover(screen.getByRole('button', { name: /Cohen’s Kappa/ }));
+      await screen.findAllByTestId('reliability-method');
+    };
+
+    it('names a comparison column with no codes instead of blaming empty rows', async () => {
+      renderHeader([], {
+        reference: { filled: 30, notCodes: 0, examples: [] },
+        comparison: { filled: 30, notCodes: 30, examples: ['Other'] },
+      });
+      expect(screen.getByText('No codes from this codebook')).toBeInTheDocument();
+      await openTooltip();
+
+      expect(screen.getAllByTestId('codebook-fit-note')[0]).toHaveTextContent(
+        'None of the values in Job_AI are codes in the selected codebook (for example “Other”), so Job_AI is left out of this score. Check the codebook.',
+      );
+      expect(screen.queryByText('No rows contain values in both columns.')).not.toBeInTheDocument();
+    });
+
+    it('says an annotation column with no codes affects every score', async () => {
+      renderHeader([], {
+        reference: { filled: 30, notCodes: 30, examples: ['Promise'] },
+        comparison: { filled: 30, notCodes: 0, examples: [] },
+      });
+      await openTooltip();
+
+      expect(screen.getAllByTestId('codebook-fit-note')[0]).toHaveTextContent(
+        'so job.gemini25 is left out of every score, since all of them compare against it.',
+      );
+    });
+
+    it('keeps the empty-rows wording when a column is just empty', async () => {
+      renderHeader([], {
+        reference: { filled: 30, notCodes: 0, examples: [] },
+        comparison: { filled: 0, notCodes: 0, examples: [] },
+      });
+      await openTooltip();
+
+      expect(screen.queryByTestId('codebook-fit-note')).not.toBeInTheDocument();
+      expect(
+        (await screen.findAllByText('No rows contain values in both columns.'))[0],
+      ).toBeInTheDocument();
+    });
+
+    it('shows the score and how many values were left out when some are not codes', async () => {
+      renderHeader(rows, {
+        reference: { filled: 30, notCodes: 0, examples: [] },
+        comparison: { filled: 30, notCodes: 12, examples: ['Other'] },
+      });
+      expect(screen.getByRole('button', { name: /Cohen’s Kappa/ })).toHaveTextContent('κ 0.500');
+      await openTooltip();
+
+      expect(screen.getAllByTestId('codebook-fit-note')[0]).toHaveTextContent(
+        '12 values in Job_AI are not codes in the selected codebook and were left out.',
+      );
+      expect(screen.queryByText('No codes from this codebook')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows each Compare to column behind its type symbol when the types are known', async () => {
+    const user = userEvent.setup();
+    render(
+      <ColumnComparisonSelector
+        availableColumns={['review', 'label']}
+        columnFields={new Map([['review', new Field('review', new Utf8())]])}
+        selectedColumns={[]}
+        onSelectedColumnsChange={vi.fn()}
+        metric="cohens_kappa"
+        onMetricChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
+
+    const review = screen.getByRole('menuitemcheckbox', { name: 'review' });
+    expect(within(review).getByTitle('text')).toHaveTextContent('Aa');
+    expect(screen.getByRole('menuitemcheckbox', { name: 'label' })).toHaveTextContent(/^label$/);
   });
 });

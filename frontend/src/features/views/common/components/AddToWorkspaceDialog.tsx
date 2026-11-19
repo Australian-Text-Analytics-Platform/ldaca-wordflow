@@ -1,3 +1,8 @@
+import {
+  resultColumnField,
+  type ColumnFields,
+} from '@/features/workspace/common/columnTypeOptions';
+import { ColumnTypeMark } from '@/features/workspace/common/ColumnTypeLabel';
 import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -61,6 +66,11 @@ interface Props {
   options?: ReactNode;
   /** Download the same table as a file instead of adding it (issue 352). */
   purpose?: 'add' | 'download';
+  /**
+   * The source Data Blocks' column types, for the type symbol before each
+   * column. Columns the analysis adds have known types of their own.
+   */
+  columnFields?: ColumnFields;
 }
 
 const defaultColumns = (source: AddToWorkspaceSource): string[] =>
@@ -134,6 +144,7 @@ export function AddToWorkspaceDialog({
   allowSourceSelection = false,
   columnsLabel = 'Columns',
   purpose = 'add',
+  columnFields,
 }: Props) {
   const [columnsBySource, setColumnsBySource] = useState<Record<string, string[]>>(() =>
     Object.fromEntries(sources.map((source) => [source.id, defaultColumns(source)])),
@@ -338,6 +349,9 @@ export function AddToWorkspaceDialog({
                                 onCheckedChange={() => {
                                   toggleColumn(source, column.name);
                                 }}
+                              />
+                              <ColumnTypeMark
+                                field={resultColumnField(column.name, columnFields)}
                               />
                               <span className="truncate" title={columnHoverText(column)}>
                                 {column.name}{' '}

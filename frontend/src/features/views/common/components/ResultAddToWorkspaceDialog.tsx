@@ -1,3 +1,4 @@
+import type { ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import { type ReactNode, useState } from 'react';
 import { orderColumns } from '../columnOrder';
 import type {
@@ -39,6 +40,8 @@ interface Props {
   purpose?: 'add' | 'download';
   /** The results table's column order, kept in the new Data Block or file (issue 373). */
   columnOrder?: readonly string[];
+  /** The source Data Blocks' column types, for the type symbol before each column. */
+  columnFields?: ColumnFields;
   /** Shown under the Format choice, such as the Excel cell-limit suggestion (issue 397). */
   notice?: ReactNode;
 }
@@ -184,6 +187,7 @@ export function ResultAddToWorkspaceDialog({
   purpose = 'add',
   columnOrder = [],
   notice,
+  columnFields,
 }: Props) {
   const [format, setFormat] = useState<DataBlockExportFormat>('csv');
   return (
@@ -200,6 +204,7 @@ export function ResultAddToWorkspaceDialog({
       isSubmitting={isSubmitting}
       allowSourceSelection={allowSourceSelection}
       purpose={purpose}
+      columnFields={columnFields}
       options={
         purpose === 'download' ? (
           <div>
