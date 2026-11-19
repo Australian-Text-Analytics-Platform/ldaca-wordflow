@@ -24,11 +24,12 @@ def _create_node(
     *,
     file_path: str,
     name: str,
+    content: bytes = b"text,count\nhello,1\nworld,2\n",
 ) -> str:
     uploaded = client.post(
         "/api/user-files/uploads",
         params={"path": file_path},
-        content=b"text,count\nhello,1\nworld,2\n",
+        content=content,
         headers={"Content-Type": "application/octet-stream"},
     )
     assert uploaded.status_code == 201
@@ -115,6 +116,46 @@ def test_multiple_data_blocks_export_as_one_backend_built_zip(
         assert archive.namelist() == ["Same_Name.parquet", "Same_Name_2.parquet"]
         for name in archive.namelist():
             assert pl.read_parquet(io.BytesIO(archive.read(name))).shape == (2, 2)
+
+
+def test_bundled_data_blocks_never_share_a_file_name(
+    files_test_client: TestClient,
+) -> None:
+    """A numbered name is not given to two files (two blocks called notes, one notes_2)."""
+
+    workspace_id = _create_workspace(files_test_client)
+    blocks = [
+        ("notes", b"first\n1\n"),
+        ("notes", b"second\n2\n"),
+        ("notes_2", b"third\n3\n"),
+        # Punctuation becomes "_" and capitals don't tell files apart when unzipped.
+        ("Notes!", b"fourth\n4\n"),
+    ]
+    node_ids = [
+        _create_node(
+            files_test_client,
+            workspace_id,
+            file_path=f"source{index}.csv",
+            name=name,
+            content=content,
+        )
+        for index, (name, content) in enumerate(blocks)
+    ]
+
+    response = files_test_client.post(
+        f"/api/workspaces/{workspace_id}/nodes/exports",
+        json={"node_ids": node_ids, "format": "csv"},
+    )
+
+    assert response.status_code == 200, response.text
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        names = archive.namelist()
+        assert names == ["notes.csv", "notes_3.csv", "notes_2.csv", "Notes_4.csv"]
+        assert len({name.casefold() for name in names}) == len(names)
+        # Each name leads to its own Data Block's rows.
+        assert [
+            pl.read_csv(io.BytesIO(archive.read(name))).columns for name in names
+        ] == [["first"], ["second"], ["third"], ["fourth"]]
 
 
 def test_data_block_export_rejects_invalid_selection(
