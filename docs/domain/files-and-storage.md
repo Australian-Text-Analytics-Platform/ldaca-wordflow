@@ -59,7 +59,12 @@ text, nested values are JSON text, and scalar fields of the objects above the
 records are copied onto each row with a dotted name (`pages.width`) plus a
 1-based position for each list walked (`pages.number`). A batch of JSON files
 added as one Data Block is read at one record path, with a leading
-`file_path` column. A file that is not valid JSON or UTF-8, or has no records
+`file_path` column that always names the file each row came from. No value
+replaces another: a record's own `file_path` field in a batch becomes
+`file_path (record)`, and a value from above the records whose name is taken
+gets ` (parent)`, each repeated until the name is free. A JSON Lines record
+ends only at a line ending (LF, CRLF, or CR); U+2028, U+2029, and U+0085 are
+ordinary characters inside text. A file that is not valid JSON or UTF-8, or has no records
 at that place, is left out and returned by name with a plain reason
 (`skipped_json_files`); the batch fails only when no file gives a row. JSON files are parsed whole in memory, so very large files are better
 supplied as JSON Lines or Parquet.

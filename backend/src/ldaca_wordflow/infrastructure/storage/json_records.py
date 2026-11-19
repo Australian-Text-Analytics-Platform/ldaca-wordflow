@@ -18,12 +18,18 @@ nested values written as JSON. Scalar fields of the objects above the records
 are copied onto every row after the record's own fields, named after their
 place (``pages.width``), and each list walked above the records adds its
 1-based position (``pages.number``).
+
+Every value keeps a column of its own. The file a row came from is always
+the leading ``file_path`` of a batch; a record's own field of that name is
+kept beside it as ``file_path (record)``, and a value from above the records
+whose name is taken gets ``(parent)``, repeated until the name is free.
 """
 
 from __future__ import annotations
 
 import json
 import math
+import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,6 +43,17 @@ MAX_DISCOVERY_DEPTH: Final = 32
 MAX_LISTED_FIELDS: Final = 8
 _INT64_MIN: Final = -(2**63)
 _INT64_MAX: Final = 2**63 - 1
+# The line endings of a JSON Lines file. ``str.splitlines`` also breaks at
+# U+2028, U+2029 and U+0085, which JSON allows inside text, so a line of
+# multilingual text was cut in two and refused. None of these three can occur
+# inside a valid record: JSON text must write them as \n and \r.
+_LINE_ENDING: Final = re.compile(r"\r\n|\n|\r")
+# Where a value copied from above the records sits: the keys leading to its
+# object, its field, and whether it is a list position rather than a field.
+# Two different places can share a column name (the position ``pages.number``
+# and a page's own ``number``), so rows are keyed by place, not by name.
+type _ContextKey = tuple[tuple[str, ...], str, bool]
+type _Context = tuple[tuple[_ContextKey, Any], ...]
 
 
 class JsonRecordsError(ValueError):
@@ -85,7 +102,7 @@ def read_json_document(file_path: Path) -> Any:
     if not is_json_lines_path(file_path):
         return json.loads(text)
     lines: list[Any] = []
-    for number, line in enumerate(text.splitlines(), start=1):
+    for number, line in enumerate(_LINE_ENDING.split(text), start=1):
         if not line.strip():
             continue
         try:
@@ -189,19 +206,19 @@ def _walk(
     node: Any,
     keys: tuple[str, ...],
     place: tuple[str, ...],
-    context: tuple[tuple[str, Any], ...],
-) -> Iterator[tuple[tuple[tuple[str, Any], ...], dict[str, Any]]]:
+    context: _Context,
+) -> Iterator[tuple[_Context, dict[str, Any]]]:
     """Yield each record at ``keys`` with the parent values copied onto it.
 
-    ``place`` names where ``node`` sits; ``context`` holds the parent columns
-    gathered so far, as (column name, value) pairs.
+    ``place`` names where ``node`` sits; ``context`` holds the parent values
+    gathered so far, each with the place it came from.
     """
 
     if isinstance(node, list):
         numbered = bool(place) and bool(keys)
         for position, item in enumerate(node, start=1):
             item_context = (
-                (*context, (_column(place, "number"), position)) if numbered else context
+                (*context, ((place, "number", True), position)) if numbered else context
             )
             yield from _walk(item, keys, place, item_context)
         return
@@ -211,7 +228,7 @@ def _walk(
         yield context, node
         return
     scalars = tuple(
-        (_column(place, field), value)
+        ((place, field, False), value)
         for field, value in node.items()
         if not isinstance(value, (dict, list)) and field != keys[0]
     )
@@ -281,47 +298,49 @@ def _flatten(
         raise JsonRecordsError("There are no JSON files to read.")
     path = _default_for_batch(sources) if record_path is None else record_path
     keys = parse_record_path(path)
+    labels: list[str] = []
     record_rows: list[dict[str, Any]] = []
-    context_rows: list[dict[str, Any]] = []
+    context_rows: list[dict[_ContextKey, Any]] = []
     missing: list[str] = []
     for source in sources:
         if not _has_place(source.document, keys):
             missing.append(source.label)
             continue
         for context, record in _walk(source.document, keys, (), ()):
+            labels.append(source.label)
             record_rows.append(record)
-            context_rows.append(
-                {**({file_column: source.label} if file_column else {}), **dict(context)}
-            )
+            context_rows.append(dict(context))
     if not record_rows:
         raise JsonRecordsError(
             f"Wordflow found no records at {describe_record_path(path)}."
         )
     record_fields = list(dict.fromkeys(field for row in record_rows for field in row))
-    context_fields = list(dict.fromkeys(field for row in context_rows for field in row))
-    taken = set(record_fields)
-    renamed: dict[str, str] = {}
-    for field in context_fields:
-        name = field
-        while name in taken:
-            name = f"{name} (parent)"
-        taken.add(name)
-        renamed[field] = name
+    context_keys = list(dict.fromkeys(key for row in context_rows for key in row))
     # The file first, then the record's own fields (where the text is), then
-    # the values copied from the levels above.
+    # the values copied from the levels above. The file column and every
+    # record field that doesn't clash with it keep their names; the rest are
+    # named around them, so no value overwrites another.
+    taken = {field for field in record_fields if field != file_column}
     columns: dict[str, pl.Series] = {}
-    leading = [file_column] if file_column in context_fields else []
-    for field in leading:
-        columns[field] = _series(field, [row.get(field) for row in context_rows])
+    if file_column is not None:
+        taken.add(file_column)
+        columns[file_column] = pl.Series(file_column, labels, dtype=pl.String)
     for field in record_fields:
-        columns[field] = _series(field, [row.get(field) for row in record_rows])
-    for field in context_fields:
-        if field in leading:
-            continue
-        columns[renamed[field]] = _series(
-            renamed[field], [row.get(field) for row in context_rows]
-        )
+        name = _free_name(field, " (record)", taken) if field == file_column else field
+        columns[name] = _series(name, [row.get(field) for row in record_rows])
+    for key in context_keys:
+        name = _free_name(_column(key[0], key[1]), " (parent)", taken)
+        columns[name] = _series(name, [row.get(key) for row in context_rows])
     return pl.DataFrame(columns), missing, path
+
+
+def _free_name(name: str, suffix: str, taken: set[str]) -> str:
+    """``name``, with ``suffix`` added until no column has it; the result is taken."""
+
+    while name in taken:
+        name += suffix
+    taken.add(name)
+    return name
 
 
 def describe_record_path(path: str) -> str:

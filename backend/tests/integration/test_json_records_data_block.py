@@ -249,3 +249,96 @@ def test_json_rows_are_chosen_previewed_and_added(tmp_path: Path) -> None:
             headers=unsafe,
         )
         assert not_json_batch.status_code == 422, not_json_batch.text
+
+
+def test_a_json_batch_keeps_file_names_and_reads_unicode_separators(
+    tmp_path: Path,
+) -> None:
+    """Rows start with their file even when records carry ``file_path`` themselves."""
+
+    settings = Settings(
+        data_root=tmp_path,
+        multi_user=False,
+        session_cookie_secure=False,
+        cors_allowed_origins=("http://testserver",),
+        trusted_hosts=("testserver",),
+    )
+    files = {
+        "batch/s1.json": json.dumps([{"file_path": "inside_a", "text": "one"}]).encode(),
+        # A literal U+2028 inside the text, as multilingual sources write it.
+        "batch/s2.jsonl": (
+            json.dumps({"file_path": "inside_b", "text": "two\u2028lines"}, ensure_ascii=False)
+            + "\n"
+            + json.dumps({"file_path": "inside_c", "text": "three"})
+            + "\n"
+        ).encode(),
+    }
+    bundle = BytesIO()
+    with zipfile.ZipFile(bundle, "w") as archive:
+        for name, content in files.items():
+            archive.writestr(name, content)
+    with TestClient(
+        create_app(settings, serve_frontend=False),
+        base_url="http://testserver",
+    ) as client:
+        csrf = client.get("/api/session").json()["csrf_token"]
+        unsafe = {"Origin": "http://testserver", "X-CSRF-Token": csrf}
+        folder = client.post(
+            "/api/user-files/folders",
+            json={"name": "batch", "parent_path": ""},
+            headers=unsafe,
+        )
+        assert folder.status_code in {200, 201}, folder.text
+        for name, content in {**files, "batch.zip": bundle.getvalue()}.items():
+            uploaded = client.post(
+                "/api/user-files/uploads",
+                params={"path": name},
+                content=content,
+                headers={**unsafe, "Content-Type": "application/octet-stream"},
+            )
+            assert uploaded.status_code == 201, uploaded.text
+        workspace_id = client.post(
+            "/api/workspaces", json={"name": "Batch"}, headers=unsafe
+        ).json()["id"]
+        client.put(f"/api/workspaces/{workspace_id}/open", headers=unsafe)
+        nodes = f"/api/workspaces/{workspace_id}/nodes"
+
+        def rows_of(body: dict) -> pl.DataFrame:
+            created = client.post(nodes, json=body, headers=unsafe)
+            assert created.status_code in {200, 201}, created.text
+            assert created.json().get("skipped_json_files") is None
+            rows = client.post(
+                f"{nodes}/previews",
+                json={"kind": "clone", "source_node_id": created.json()["id"]},
+                params={"page": 1, "page_size": 10},
+                headers=unsafe,
+            )
+            assert rows.status_code == 200, rows.text
+            return pl.read_ipc_stream(BytesIO(rows.content))
+
+        expected = {
+            "file_path": ["s1.json", "s2.jsonl", "s2.jsonl"],
+            "file_path (record)": ["inside_a", "inside_b", "inside_c"],
+            "text": ["one", "two\u2028lines", "three"],
+        }
+        from_folder = rows_of(
+            {
+                "kind": "json_files",
+                "file_paths": ["batch/s1.json", "batch/s2.jsonl"],
+                "record_path": "",
+            }
+        )
+        assert from_folder.to_dict(as_series=False) == expected
+        from_zip = rows_of(
+            {
+                "kind": "json_files",
+                "zip_path": "batch.zip",
+                "file_paths": ["batch/s1.json", "batch/s2.jsonl"],
+                "record_path": "",
+            }
+        )
+        # A ZIP's rows carry the file's place inside the archive.
+        assert from_zip.to_dict(as_series=False) == {
+            **expected,
+            "file_path": ["batch/s1.json", "batch/s2.jsonl", "batch/s2.jsonl"],
+        }
