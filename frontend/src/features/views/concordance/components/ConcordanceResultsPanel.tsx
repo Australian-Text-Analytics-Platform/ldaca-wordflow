@@ -1,3 +1,4 @@
+import type { ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import { Loader2 } from 'lucide-react';
 import { type Dispatch, type RefObject, type SetStateAction } from 'react';
 import type { ConcordanceAnalysisResponse, ConcordanceDensityResult } from '@/api';
@@ -59,6 +60,8 @@ interface ConcordanceResultsDisplay {
 interface ConcordanceResultsMetadata {
   showMetadata: boolean;
   availableMetadataColumns: string[];
+  /** The metadata columns' types, for the type symbol in Show metadata. */
+  columnFields?: ColumnFields;
   sections: Section[];
   disabledReason: string | undefined;
   selectedColumns: string[];
@@ -224,6 +227,7 @@ export function ConcordanceResultsPanel({
   metadata: {
     showMetadata,
     availableMetadataColumns,
+    columnFields: metadataColumnFields,
     sections: metadataColumnSections,
     disabledReason: metadataDisabledReason,
     selectedColumns: selectedMetadataColumns,
@@ -360,6 +364,7 @@ export function ConcordanceResultsPanel({
               ) : null}
               <MetadataColumnSelector
                 availableColumns={availableMetadataColumns}
+                columnFields={metadataColumnFields}
                 selectedColumns={selectedMetadataColumns}
                 onSelectedColumnsChange={setSelectedMetadataColumns}
                 sections={metadataColumnSections}

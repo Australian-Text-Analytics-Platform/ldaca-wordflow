@@ -1,3 +1,5 @@
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
+import { useNodeColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Trash2 } from 'lucide-react';
@@ -36,6 +38,8 @@ export function DeleteColumnsDialog({
   workspaceId,
   nodeId,
 }: DeleteColumnsDialogProps) {
+  // Each column's type, as the symbol the column headers show.
+  const columnFields = useNodeColumnFields(open ? workspaceId : null, nodeId);
   // Each column's first value, so unclear names can be recognised (issue 354).
   // The list works without them while they load or if they fail.
   const examplesQuery = useQuery({
@@ -152,7 +156,9 @@ export function DeleteColumnsDialog({
                   htmlFor={`delete-column-${column}`}
                   className="flex min-w-0 flex-1 items-baseline gap-2"
                 >
-                  <span className="max-w-[60%] shrink-0 truncate text-body">{column}</span>
+                  <span className="max-w-[60%] shrink-0 truncate text-body">
+                    <ColumnTypeLabel field={columnFields.get(column)}>{column}</ColumnTypeLabel>
+                  </span>
                   {examples && column in examples ? (
                     <span
                       data-testid={`delete-column-example-${column}`}

@@ -329,6 +329,7 @@ export function AnnotationAiPreviewPanel({
         <div className="flex flex-wrap items-center gap-2">
           <ColumnComparisonSelector
             availableColumns={comparisonColumnOptions}
+            columnFields={preview.sourceColumnFields}
             selectedColumns={activeComparisonColumns}
             onSelectedColumnsChange={(selected) => {
               const next = selected.filter((column) => column !== correctionColumn);
@@ -369,6 +370,7 @@ export function AnnotationAiPreviewPanel({
           />
           <MetadataColumnSelector
             availableColumns={availableMetadataColumns}
+            columnFields={preview.sourceColumnFields}
             selectedColumns={activeMetadataColumns}
             onSelectedColumnsChange={metadata.onColumnsChange}
             disabledColumns={activeComparisonColumns}

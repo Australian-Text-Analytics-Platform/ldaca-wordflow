@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Field, Utf8 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyReferenceComparisonEdit,
@@ -485,5 +486,25 @@ describe('ColumnComparison', () => {
       );
       expect(screen.queryByText('No codes from this codebook')).not.toBeInTheDocument();
     });
+  });
+
+  it('shows each Compare to column behind its type symbol when the types are known', async () => {
+    const user = userEvent.setup();
+    render(
+      <ColumnComparisonSelector
+        availableColumns={['review', 'label']}
+        columnFields={new Map([['review', new Field('review', new Utf8())]])}
+        selectedColumns={[]}
+        onSelectedColumnsChange={vi.fn()}
+        metric="cohens_kappa"
+        onMetricChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
+
+    const review = screen.getByRole('menuitemcheckbox', { name: 'review' });
+    expect(within(review).getByTitle('text')).toHaveTextContent('Aa');
+    expect(screen.getByRole('menuitemcheckbox', { name: 'label' })).toHaveTextContent(/^label$/);
   });
 });

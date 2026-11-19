@@ -1,3 +1,4 @@
+import { columnFieldsOf } from '@/features/workspace/common/columnTypeOptions';
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import { orderColumns, tabColumnLayout } from '@/features/views/common/columnOrder';
 import {
@@ -800,6 +801,10 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
 
         {runAllSource || progressNode || showPreviewTable ? (
           <QuotationResultsPanel
+            metadataColumnFields={columnFieldsOf(
+              nodeInputs.resolvedNodes.find((resolved) => resolved.id === displayedNodes[0]?.id)
+                ?.columnOptions ?? [],
+            )}
             title={!runAllSource && progressNode ? 'Quotation Results so far' : 'Quotation Results'}
             guidanceTarget={
               runAllSource || progressNode

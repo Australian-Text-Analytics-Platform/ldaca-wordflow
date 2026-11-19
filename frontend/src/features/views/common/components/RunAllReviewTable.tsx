@@ -1,3 +1,4 @@
+import { columnFieldsOf } from '@/features/workspace/common/columnTypeOptions';
 import { DataBlockDownloadButton } from './DataBlockDownloadButton';
 import HelpIcon from '@/components/help/HelpIcon';
 import { ArrowRight } from 'lucide-react';
@@ -176,6 +177,8 @@ export function RunAllReviewTable({
   const { pagination, setPagination, query, countQuery, sourceRowIndexColumn } = page;
   const data = query.data;
   const dataColumns = data?.columns.filter((column) => column !== sourceRowIndexColumn);
+  // The result columns' types, for the type symbols in the column menus.
+  const resultColumnFields = columnFieldsOf(data?.schema ?? []);
   const requiredColumnSet = new Set(requiredColumns);
   // Topic coverage is not offered as metadata (issue 200).
   const unsupportedColumnSet = new Set(
@@ -353,6 +356,7 @@ export function RunAllReviewTable({
           <div className="flex flex-wrap items-center gap-2">
             <ColumnComparisonSelector
               availableColumns={availableComparisonColumns}
+              columnFields={resultColumnFields}
               selectedColumns={activeComparisonColumns}
               onSelectedColumnsChange={(columns) => {
                 const selected = columns.filter((column) => column !== correctionColumn);
@@ -369,6 +373,7 @@ export function RunAllReviewTable({
             <AnnotationCorrectionColumnControl
               value={correctionColumn}
               availableColumns={availableCorrectionColumns}
+              columnFields={resultColumnFields}
               onValueChange={(column) => {
                 if (column) {
                   onComparisonColumnsChange(
@@ -391,6 +396,7 @@ export function RunAllReviewTable({
             />
             <MetadataColumnSelector
               availableColumns={availableMetadataColumns}
+              columnFields={resultColumnFields}
               selectedColumns={activeMetadataColumns}
               onSelectedColumnsChange={onMetadataColumnsChange}
               disabledColumns={activeComparisonColumns}

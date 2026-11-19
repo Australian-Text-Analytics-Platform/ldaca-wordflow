@@ -512,16 +512,20 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     };
   }, [results]);
 
-  const { availableMetadataColumns, metadataColumnSections, metadataDisabledReason } =
-    useConcordanceMetadataColumns({
-      results,
-      panelSelectedNodes: resultPanelNodes,
-      effectiveNodeColumnSelections: resultPanelColumnSelections,
-      getColumnInfos,
-      viewMode,
-      nodeColors,
-      resolveNodeIdForKey,
-    });
+  const {
+    availableMetadataColumns,
+    metadataColumnFields,
+    metadataColumnSections,
+    metadataDisabledReason,
+  } = useConcordanceMetadataColumns({
+    results,
+    panelSelectedNodes: resultPanelNodes,
+    effectiveNodeColumnSelections: resultPanelColumnSelections,
+    getColumnInfos,
+    viewMode,
+    nodeColors,
+    resolveNodeIdForKey,
+  });
   const availableMetadataColumnsKey = availableMetadataColumns.join('|');
 
   // No auto-selection on activation: Show metadata starts empty and the user
@@ -1052,6 +1056,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
             metadata={{
               showMetadata,
               availableMetadataColumns,
+              columnFields: metadataColumnFields,
               sections: metadataColumnSections,
               disabledReason: metadataDisabledReason,
               selectedColumns: selectedMetadataColumns,

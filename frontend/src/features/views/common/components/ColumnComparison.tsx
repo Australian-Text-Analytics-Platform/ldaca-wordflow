@@ -1,3 +1,5 @@
+import type { ColumnFields } from '@/features/workspace/common/columnTypeOptions';
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
 import { useState } from 'react';
 import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -290,6 +292,8 @@ interface ColumnComparisonSelectorProps {
   disabled?: boolean;
   /** An ordered-scale codebook: the menu names weighted Kappa and ordinal Alpha. */
   ordered?: boolean;
+  /** The columns' types, for the type symbol before each name. */
+  columnFields?: ColumnFields;
 }
 
 /**
@@ -306,6 +310,7 @@ export function ColumnComparisonSelector({
   disabledColumns = [],
   disabled = false,
   ordered = false,
+  columnFields,
 }: ColumnComparisonSelectorProps) {
   const normalizedAvailableColumns = Array.from(new Set(availableColumns));
   const normalizedSelectedColumns = selectedColumns.filter((column) =>
@@ -389,6 +394,8 @@ export function ColumnComparisonSelector({
         {normalizedAvailableColumns.map((column) => (
           <DropdownMenuCheckboxItem
             key={column}
+            // Type-ahead goes by the column's name, not by a symbol such as "Aa".
+            textValue={column}
             className={COLUMN_MENU_ITEM_CLASS}
             checked={normalizedSelectedColumns.includes(column)}
             disabled={disabledColumnSet.has(column)}
@@ -399,7 +406,7 @@ export function ColumnComparisonSelector({
               event.preventDefault();
             }}
           >
-            {column}
+            <ColumnTypeLabel field={columnFields?.get(column)}>{column}</ColumnTypeLabel>
           </DropdownMenuCheckboxItem>
         ))}
       </DropdownMenuContent>

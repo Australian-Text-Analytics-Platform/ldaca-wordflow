@@ -1,3 +1,4 @@
+import type { ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import { Loader2 } from 'lucide-react';
 import { orderColumns } from '@/features/views/common/columnOrder';
 
@@ -30,6 +31,8 @@ interface QuotationResultsPanelProps {
   reviewRowUnit: QuotationReviewRowUnit | null;
   selectedMetadataColumns: string[];
   onSelectedMetadataColumnsChange: (columns: string[]) => void;
+  /** The source columns' types, for the type symbol in Show metadata. */
+  metadataColumnFields?: ColumnFields;
   /** Column order from dragged headers, and how to save a new one (issue 373). */
   columnOrder?: readonly string[];
   onReorderColumns?: (order: string[]) => void;
@@ -90,6 +93,7 @@ export function QuotationResultsPanel({
   onRowClick,
   isPageLoading,
   emptyMessage,
+  metadataColumnFields,
 }: QuotationResultsPanelProps) {
   const metadataNodeId = displayedNodes[0]?.id ?? '';
   const metadataResult = metadataNodeId ? resultsByNode[metadataNodeId] : null;
@@ -161,6 +165,7 @@ export function QuotationResultsPanel({
             </div>
             <MetadataColumnSelector
               availableColumns={quotationMetadataColumns}
+              columnFields={metadataColumnFields}
               selectedColumns={resolvedMetadataColumns}
               onSelectedColumnsChange={onSelectedMetadataColumnsChange}
             />

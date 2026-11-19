@@ -253,6 +253,8 @@ export function AnnotationResultsPanel({
       .filter((column) => isArrowStringField(column.field) || isArrowDictionaryField(column.field))
       .map((column) => column.name) ?? [],
   );
+  // The result columns' types, for the type symbols in the column menus.
+  const resultColumnFields = columnFieldsOf(resultsQuery.data?.schema ?? []);
   const stringColumnSet = new Set(
     resultsQuery.data?.schema
       .filter((column) => column.name !== sourceRowIndexColumn && isArrowStringField(column.field))
@@ -413,6 +415,7 @@ export function AnnotationResultsPanel({
           <div className="flex flex-wrap items-center gap-2">
             <ColumnComparisonSelector
               availableColumns={availableComparisonColumns}
+              columnFields={resultColumnFields}
               selectedColumns={activeComparisonColumns}
               onSelectedColumnsChange={(columns) => {
                 const selected = columns.filter((column) => column !== correctionColumn);
@@ -429,7 +432,7 @@ export function AnnotationResultsPanel({
             <AnnotationCorrectionColumnControl
               value={correctionColumn}
               availableColumns={availableCorrectionColumns}
-              columnFields={columnFieldsOf(resultsQuery.data.schema)}
+              columnFields={resultColumnFields}
               onValueChange={(column) => {
                 if (column) {
                   onComparisonColumnsChange(
@@ -451,6 +454,7 @@ export function AnnotationResultsPanel({
             />
             <MetadataColumnSelector
               availableColumns={availableMetadataColumns}
+              columnFields={resultColumnFields}
               selectedColumns={activeMetadataColumns}
               onSelectedColumnsChange={onMetadataColumnsChange}
               disabledColumns={activeComparisonColumns}
