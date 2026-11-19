@@ -138,10 +138,12 @@ text first. Each record becomes a row and its fields become columns:
   `[1, 2, 3, 4]`; empty values (`null`) stay empty.
 - Plain values of the levels above the records are copied onto every row,
   named after their place (_pages.width_), and _pages.number_ says which page
-  a row came from.
+  a row came from. If a record already has a field with that name, the copied
+  value's column ends in _(parent)_, so both are kept.
 
 A JSON Lines file (`.jsonl`, `.ndjson`) is read as a list with one record per
-line.
+line. Unusual characters inside the text, such as the Unicode line separator
+some multilingual sources contain, do not end a record.
 
 <span id="help-data-loader-add-folder"></span>
 A ZIP archive or a whole folder becomes a document table with one row per text
@@ -184,8 +186,12 @@ how to load it:
 - **JSON records as one Data Block** appears when there are JSON or JSON
   Lines files. Every ticked JSON file is read the same way, from the place
   chosen under **Rows from**, and together they become one Data Block whose
-  first column, _file_path_, names the file each row came from. All JSON files
-  are ticked at first. A folder or ZIP holding JSON files and no text files
+  first column, _file_path_, names the file each row came from. If the
+  records have a _file_path_ field of their own, it is kept as
+  _file_path (record)_. The place under **Rows from** starts as the one that
+  suits the first ticked file, and stays as you set it once you choose one.
+  All JSON files are ticked at first. A folder or ZIP holding JSON files and
+  no text files
   opens in this mode. A file that isn't valid JSON, isn't saved as UTF-8, or
   has no records at the chosen place is left out, and the others are added.
   A window then lists each file left out and why, such as _p2.json — Not

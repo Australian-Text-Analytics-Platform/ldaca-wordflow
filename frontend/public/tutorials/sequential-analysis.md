@@ -65,6 +65,8 @@ When a whole number or decimal column is selected, two fields appear:
 
 **Step**: the width of each group (required). For example, a step of 10 gives 0–9, 10–19, 20–29, and so on.
 
+Each group includes its start value and stops just short of the next group's start. With a start of 1.2 and a step of 0.1, the value 1.4 belongs to the group labelled `[1.4, 1.5)`, not to `[1.3, 1.4)`. Labels show both ends in full, so a very small step such as 0.0000001 still gives each group its own label.
+
 <h3 id="help-sequential-group-by">Step 4: Group By Columns (optional)</h3>
 
 To split the trend into multiple lines (one per category), add up to three columns as grouping conditions. Each added column should have a small number of distinct values; these become the separate series in the chart.

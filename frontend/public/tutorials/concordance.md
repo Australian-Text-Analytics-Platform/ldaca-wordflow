@@ -78,6 +78,11 @@ test it before relying on the results. Whole word relies on spaces between words
 Japanese, Chinese, Thai, or other text written without them: there it matches
 anywhere, as if it were off.
 
+Whole word also works for a term that starts or ends with punctuation, such as
+*C++*, *#reef* or *.NET*: it is found only where no letter or digit touches
+it. *C++* is found in *I write C++ today.* but not in *C++17*, and *#reef* is
+found in *Save the #reef!* but not in *#reefs*.
+
 <h5 id="help-concordance-unspaced-text">Japanese, Chinese, and other text without spaces</h5>
 
 In Tokens mode, a tokeniser such as UniDic for Japanese splits an expression
@@ -426,6 +431,7 @@ Preview and Run stay off until you choose **Clear results**. See [How Preview, R
 | No results on one page | The current source-document batch has no match | Continue to the next page |
 | Tokens mode is unavailable | At least one selected Data Block has no source column | Select a source text column for every input |
 | Too many partial matches | Whole word is off in Text mode | Tick **Whole word** (not for Japanese or Chinese, which have no spaces between words) |
+| A term such as *C++* is also found inside *C++17* | Whole word is off | Tick **Whole word**: a term that ends or starts with punctuation is then found only where no letter or digit touches it |
 | Tokens mode finds nothing for a phrase, or finds unrelated hits | Tokens mode matches one token at a time, and a space means *any of* | Use Text mode with a regular expression; see [text without spaces](#help-concordance-unspaced-text) |
 | A regular expression fails | Invalid pattern syntax | Test the pattern on regex101.com with the Rust flavour |
 | A generated Preview header does not sort | Sorting generated columns needs every match, which only Run processes | Run, then sort the separated table |
