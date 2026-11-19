@@ -12,6 +12,44 @@ const MICROS_PER_MINUTE = 60_000_000;
 /** At most this many Data Blocks per run. */
 export const MAX_GROUPS = 50;
 
+/** Shown when no column qualifies, so the empty list is never a mystery. */
+export const NO_GROUP_COLUMN_REASON = `No column in this Data Block has ${String(MAX_GROUPS)} or fewer different values, so there is nothing to group by.`;
+
+/**
+ * Whether a column's groups are its own values. Number, date and elapsed time
+ * columns are grouped into ranges or periods instead, however many different
+ * values they hold.
+ */
+export const groupsByValues = (kind: ColumnKind): boolean => kind === 'text' || kind === 'boolean';
+
+/**
+ * The columns Split by offers. A column grouped by its values is offered only
+ * with at most MAX_GROUPS different values, and shows that number
+ * (Chao, 19 Nov 2026). `valueCounts` maps those columns to their number of
+ * values; while it is not known, every column is offered and the count of
+ * groups below the picker still stops a column with too many.
+ */
+export function groupColumnOptions(
+  columns: readonly { name: string; kind: ColumnKind }[],
+  valueCounts: Record<string, number> | undefined,
+): { value: string; label?: string }[] {
+  return columns
+    .filter(
+      (column) =>
+        column.kind !== 'other' &&
+        (!groupsByValues(column.kind) || !valueCounts || column.name in valueCounts),
+    )
+    .map((column) => {
+      const values = groupsByValues(column.kind) ? valueCounts?.[column.name] : undefined;
+      return values === undefined
+        ? { value: column.name }
+        : {
+            value: column.name,
+            label: `${column.name} (${String(values)} ${values === 1 ? 'value' : 'values'})`,
+          };
+    });
+}
+
 export type DateGrouping = 'year' | 'year_month' | 'date';
 
 export type Grouping =

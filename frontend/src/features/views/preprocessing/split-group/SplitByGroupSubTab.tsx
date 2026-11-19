@@ -1,9 +1,11 @@
 import { type ReactNode, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Split } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { distinctValueColumnsQuery } from '@/features/views/common/distinctValueColumns';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { BuilderToolCard } from '../builder/BuilderToolCard';
 import type { BuilderInput } from '../builder/builderTypes';
@@ -12,8 +14,10 @@ import {
   type DateGrouping,
   type Grouping,
   MAX_GROUPS,
+  NO_GROUP_COLUMN_REASON,
   defaultGrouping,
   groupBlockName,
+  groupColumnOptions,
   groupCountSql,
   rangeSql,
   toGroups,
@@ -52,6 +56,14 @@ export function SplitByGroupSubTab({
   // Unticked groups; everything else is ticked.
   const [unticked, setUnticked] = useState<Set<string>>(new Set());
   const [name, setName] = useState('');
+
+  // Text and category columns are offered only with few enough values to
+  // make a Data Block each; the rule Trends uses for its group columns.
+  const valueCounts = useQuery(
+    distinctValueColumnsQuery(workspaceId ?? '', input?.id ?? '', MAX_GROUPS),
+  );
+  const columnOptions = groupColumnOptions(input?.columns ?? [], valueCounts.data);
+  const noGroupColumn = input !== null && valueCounts.isSuccess && columnOptions.length === 0;
 
   const columnInfo = input?.columns.find((item) => item.name === column);
   const kind = columnInfo?.kind ?? 'text';
@@ -148,9 +160,7 @@ export function SplitByGroupSubTab({
       <div className="space-y-1">
         <span className="text-body font-medium">Split by</span>
         <SearchableSelect
-          options={(input?.columns ?? [])
-            .filter((item) => item.kind !== 'other')
-            .map((item) => ({ value: item.name }))}
+          options={columnOptions}
           value={column}
           onChange={(next) => {
             setColumn(next);
@@ -159,7 +169,13 @@ export function SplitByGroupSubTab({
           placeholder="Choose a column"
           ariaLabel="Split by column"
           triggerClassName="w-64"
+          disabled={noGroupColumn}
         />
+        {noGroupColumn ? (
+          <p role="note" className="text-label-secondary text-description">
+            {NO_GROUP_COLUMN_REASON}
+          </p>
+        ) : null}
       </div>
 
       {column && kind === 'date' ? (

@@ -240,7 +240,7 @@ Separators are not kept, segments are trimmed, and empty segments are skipped.
 
 Group makes one Data Block per group of a column (not to be confused with Aggregate, which makes one row per group), so analyses that compare Data Blocks need one step instead of several filters.
 
-Choose the column under **Split by**; the choices below it depend on the column's type.
+Choose the column under **Split by**; the choices below it depend on the column's type. A text, category or true/false column is listed only if it has 50 or fewer different values, and shows that number, such as *party (4 values)*; empty values are not counted. Number, date and elapsed time columns are always listed, because they are grouped into ranges or periods. If no column can be grouped, a line under **Split by** says so.
 
 - For **text** and **category** columns, each value is a group. Values are listed with their row counts: text most frequent first, a category in its own order, with **(empty)** last.
 - For **dates**, group by year, year and month, or day.
