@@ -194,13 +194,19 @@ moved or deleted directory; each recoverable failure must return to folder
 selection while `/health/live` remains available. Relaunch and confirm the
 saved selected directory is restored.
 
-On macOS, check in light and dark Wordflow themes that the window looks like
-the browser version: the titlebar and the gutters between the application
-cards are solid theme colours, not see-through, so no thick grey bars appear
-between the panels (issue 524). Titlebar text and icons must stay readable with
-the window active and inactive. Exercise resize, sidebar collapse,
+On macOS 26 or later, visually verify the Clear Liquid Glass backplane in light
+and dark Wordflow themes over light, dark, and colorful desktop content.
+The gutters around the application cards must show native glass and the
+titlebar strip a lightly tinted glass, while the sidebar interior, middle
+content card, tabbed analysis panels, graph, data table, and startup or login
+card remain opaque. Titlebar text and icons use the theme's titlebar
+foreground and must stay readable over a white desktop and a dark one, with
+the window active and inactive (issue 214). Exercise resize, sidebar collapse,
 traffic-light controls, titlebar dragging, inactive-window state, reload, and
-fullscreen.
+fullscreen. On an older supported macOS release, repeat the surface checks
+against the plugin's vibrancy fallback. A forced plugin initialization failure
+must retain the normal solid backgrounds. Browser deployments and the updater
+window must remain opaque and visually unchanged.
 
 Verify the packaged application reaches the Workspace after setup, then reload
 the webview repeatedly and confirm each load discovers the current random-port

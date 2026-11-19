@@ -142,12 +142,22 @@ capability, while the navigation, quick access, and application controls opt
 out. The header has no visual divider from the application shell. The separate
 updater entry retains its own utility-window layout.
 
-The macOS main window is opaque, like every other desktop and browser surface:
-its titlebar and the gutters between the application cards use the theme's
-solid titlebar and editor backgrounds. From 0.7.7 to 0.7.22 it used the native
-Clear Liquid Glass material (ADR 0030); that was removed in V07-448 (issue 524)
-because on macOS 27 the clear gutters showed as thick grey bars, and it relied
-on a private macOS API.
+The macOS main window also uses the native Clear Liquid Glass material. Its
+platform configuration repeats the complete base window definition, adds
+transparency, retains the base `Overlay` titlebar style, and enables Tauri's
+private macOS API; contract tests prevent the definitions from drifting in any
+other property. The overlay keeps native traffic lights within Wordflow's
+35-pixel React header. Before React renders, the main entry initializes the
+macOS-only plugin with zero corner radius and no tint. A success-only document
+marker makes the HTML, React root, application frame, titlebar, Workspace
+wrapper, and startup or login backdrop transparent. The titlebar strip alone
+(`app-glass-titlebar`) takes an 88% tint of the theme's titlebar background
+over the glass, so its text and icons keep the theme's titlebar foreground and
+stay readable over any desktop (issue 214). The sidebar interior, content
+cards, tabbed analysis panels, graph, data table, and startup or login card
+remain opaque. Initialization failures leave the marker unset and therefore
+retain the existing solid theme backgrounds. Browser, Windows, Linux, and the
+updater entry do not load the plugin.
 
 Debug desktop builds allow both the fixed Vite development origin and the
 platform's packaged Tauri origin through backend CORS, so `tauri dev` and a
@@ -182,9 +192,11 @@ arbitrary URL, HTTP method, or headers. Browser deployments continue to fetch
 through the generated client and delegate saving to the browser download UI.
 
 Plugin-specific capabilities grant only the JavaScript commands the webview
-invokes: native folder selection and revealing an already saved file. Native
-Save As dialogs are opened by Rust commands and do not grant the webview a
-dialog-save or filesystem capability. Two additional explicit core grants support Tauri's zoom shortcut and
+invokes: native folder selection, revealing an already saved file, and, on
+macOS, initializing Liquid Glass in the `main` window. Native Save As dialogs
+are opened by Rust commands and do not grant the webview a dialog-save or
+filesystem capability. The updater window does not receive the Liquid Glass
+grant. Two additional explicit core grants support Tauri's zoom shortcut and
 macOS title-bar dragging commands; `core:default` remains Tauri's standard core
 set. Rust-side dialogs do not require a webview dialog-default grant.
 Production scripts are restricted to `self`; Tauri injects the hashes and

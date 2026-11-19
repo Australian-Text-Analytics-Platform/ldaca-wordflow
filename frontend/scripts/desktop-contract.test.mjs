@@ -195,7 +195,7 @@ describe('desktop configuration contracts', () => {
     expect(desktopFrame).toContain("['--desktop-titlebar-height' as string]: '35px'");
     expect(workspaceShell).toContain('<DesktopNavigationHeader />');
     expect(desktopHeader).toContain('data-tauri-drag-region="deep"');
-    expect(desktopHeader).toContain('app-titlebar-backplane fixed');
+    expect(desktopHeader).toContain('app-titlebar-backplane app-glass-titlebar');
     expect(desktopHeader).toContain('hasNativeTrafficLights={isMacOSDesktop()}');
     expect(desktopHeader).toContain('data-tauri-drag-region="false"');
     expect(desktopHeader).toContain('h-[22px] w-[38vw] max-w-[600px]');
@@ -208,28 +208,32 @@ describe('desktop configuration contracts', () => {
     expect(capability.permissions).toContain('core:window:allow-start-dragging');
   });
 
-  // Liquid Glass (ADR 0030) was removed in V07-448: on macOS 27 its clear
-  // gutters showed as thick grey bars between the panels (issue 524).
-  it('keeps every desktop window opaque, without Liquid Glass or private macOS APIs', () => {
+  it('enables Liquid Glass only for the transparent macOS main window', () => {
     const tauri = JSON.parse(read('frontend/src-tauri/tauri.conf.json'));
+    const macOS = JSON.parse(read('frontend/src-tauri/tauri.macos.conf.json'));
+    const liquidGlassCapability = JSON.parse(
+      read('frontend/src-tauri/capabilities/liquid-glass.json'),
+    );
+    const updaterCapability = JSON.parse(read('frontend/src-tauri/capabilities/updater.json'));
     const cargo = read('frontend/src-tauri/Cargo.toml');
     const packageJson = JSON.parse(read('frontend/package.json'));
     const desktopShell = read('frontend/src-tauri/src/lib.rs');
-    const entry = read('frontend/src/index.tsx');
-    const styles = read('frontend/src/index.css');
+    const [baseMainWindow] = tauri.app.windows;
 
-    expect(tauri.app).not.toHaveProperty('macOSPrivateApi');
-    expect(tauri.app.windows.every((window) => !window.transparent)).toBe(true);
-    expect(existsSync(resolve(repoRoot, 'frontend/src-tauri/tauri.macos.conf.json'))).toBe(false);
-    expect(existsSync(resolve(repoRoot, 'frontend/src-tauri/capabilities/liquid-glass.json'))).toBe(
-      false,
-    );
-    expect(cargo).not.toContain('macos-private-api');
-    expect(cargo).not.toContain('liquid-glass');
-    expect(packageJson.dependencies).not.toHaveProperty('tauri-plugin-liquid-glass-api');
-    expect(desktopShell).not.toContain('liquid_glass');
-    expect(entry).not.toContain('WindowMaterial');
-    expect(styles).not.toContain('data-native-glass');
+    expect(tauri.app.macOSPrivateApi).toBe(true);
+    expect(macOS.app).not.toHaveProperty('macOSPrivateApi');
+    expect(macOS.app.windows).toEqual([{ ...baseMainWindow, transparent: true }]);
+    expect(liquidGlassCapability).toMatchObject({
+      windows: ['main'],
+      platforms: ['macOS'],
+      permissions: ['liquid-glass:default'],
+    });
+    expect(updaterCapability.permissions).not.toContain('liquid-glass:default');
+    expect(cargo).toContain('tauri = { version = "2", features = ["macos-private-api"] }');
+    expect(cargo).toContain('tauri-plugin-liquid-glass = "=0.1.6"');
+    expect(packageJson.dependencies['tauri-plugin-liquid-glass-api']).toBe('0.1.6');
+    expect(desktopShell).toContain('#[cfg(target_os = "macos")]');
+    expect(desktopShell).toContain('tauri_plugin_liquid_glass::init()');
   });
 
   it('discovers the desktop backend through IPC without page-load injection', () => {

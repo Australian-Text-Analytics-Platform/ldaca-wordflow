@@ -15,7 +15,7 @@ tauri-build = { version = "2", features = [] }
 dev-runtime = []
 
 [dependencies]
-tauri = { version = "2" }
+tauri = { version = "2", features = ["macos-private-api"] }
 # Used by native save commands to fetch large export bodies from the local
 # backend and stream them to disk. Bypassing the JS
 # fetch body path avoids WebView2 + IPC reliability issues on Windows for
@@ -38,6 +38,7 @@ objc2 = "0.6.4"
 block2 = "0.6.2"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSObject", "NSString", "NSThread"] }
 objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "block2", "NSApplication", "NSResponder", "NSUserInterfaceItemSearching"] }
+tauri-plugin-liquid-glass = "=0.1.6"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
