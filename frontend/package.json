@@ -1,6 +1,6 @@
 {
   "name": "ldaca_wordflow_frontend",
-  "version": "0.7.22-pre",
+  "version": "0.7.22",
   "description": "Wordflow (by LDaCA): the React frontend for text analytics and corpus analysis",
   "type": "module",
   "private": true,
