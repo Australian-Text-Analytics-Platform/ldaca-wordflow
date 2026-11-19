@@ -1,3 +1,4 @@
+import { columnOption } from '@/features/workspace/common/columnTypeOptions';
 import { type ReactNode, useState } from 'react';
 import { Sigma, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -130,7 +131,7 @@ export function GroupSummarySubTab({
           <SearchableSelect
             options={columns
               .filter((column) => !groupBy.includes(column.name))
-              .map((column) => ({ value: column.name }))}
+              .map((column) => columnOption(column.name, column.field))}
             value=""
             onChange={(column) => {
               setGroupBy([...groupBy, column]);

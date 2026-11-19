@@ -1,3 +1,4 @@
+import { columnFieldsOf } from '@/features/workspace/common/columnTypeOptions';
 import { useQuery } from '@tanstack/react-query';
 import type { PaginationState } from '@tanstack/react-table';
 import { useState } from 'react';
@@ -137,6 +138,8 @@ export function useAnnotationAiPreview({
       sourcePageQuery.data?.schema
         .filter((column) => isSupportedColumnField(column.field))
         .map((column) => column.name) ?? [],
+    /** The source columns' types, for the type symbol in column pickers. */
+    sourceColumnFields: columnFieldsOf(sourcePageQuery.data?.schema ?? []),
     sourceStringColumns:
       sourcePageQuery.data?.schema
         .filter((column) => isArrowStringField(column.field))

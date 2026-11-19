@@ -16,7 +16,10 @@ export interface SearchableSelectOption {
    * in `iconLabel`.
    */
   icon?: React.ReactNode;
-  /** What the icon stands for: its hover text, and read out after the label. */
+  /**
+   * What the icon stands for: its hover text, and the option's description
+   * for screen readers. The option's name stays its label alone.
+   */
   iconLabel?: string;
 }
 
@@ -262,6 +265,7 @@ export function SearchableSelect({
                   role="option"
                   id={`${listboxId}-${String(index)}`}
                   aria-selected={isSelected}
+                  aria-description={row.icon ? row.iconLabel : undefined}
                   data-active={isActive ? 'true' : undefined}
                   className={cn(
                     'relative flex h-control-sm w-full items-center rounded-sm py-0.5 pl-2 pr-8 text-left text-body',
@@ -276,9 +280,6 @@ export function SearchableSelect({
                 >
                   <OptionIcon option={row} />
                   <span className="truncate">{row.label ?? row.value}</span>
-                  {row.icon && row.iconLabel ? (
-                    <span className="sr-only">, {row.iconLabel}</span>
-                  ) : null}
                   {isSelected && <Check className="absolute right-2 h-4 w-4" aria-hidden="true" />}
                 </button>
               );

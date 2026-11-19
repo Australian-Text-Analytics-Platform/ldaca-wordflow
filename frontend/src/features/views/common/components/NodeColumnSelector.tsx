@@ -1,10 +1,13 @@
 import React from 'react';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { columnOptions, type ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import { cn } from '@/lib/utils';
 
 export interface NodeColumnSelectorProps {
   columns: string[];
+  /** The columns' types, for the type symbol before each name. */
+  columnFields?: ColumnFields;
   value?: string;
   onChange: (value: string) => void;
   label?: React.ReactNode;
@@ -32,6 +35,7 @@ export interface NodeColumnSelectorProps {
  */
 export function NodeColumnSelector({
   columns,
+  columnFields,
   value,
   onChange,
   label,
@@ -78,7 +82,7 @@ export function NodeColumnSelector({
   if (preserveValue && preserveValue.length > 0 && !optionValues.includes(preserveValue)) {
     optionValues.push(preserveValue);
   }
-  const options: SearchableSelectOption[] = optionValues.map((column) => ({ value: column }));
+  const options: SearchableSelectOption[] = columnOptions(optionValues, columnFields);
 
   return (
     <div className={cn('space-y-1', className)}>

@@ -1,3 +1,4 @@
+import { columnFieldsOf } from '@/features/workspace/common/columnTypeOptions';
 import { DataBlockDownloadButton } from '@/features/views/common/components/DataBlockDownloadButton';
 import HelpIcon from '@/components/help/HelpIcon';
 import { useQueryClient } from '@tanstack/react-query';
@@ -428,6 +429,7 @@ export function AnnotationResultsPanel({
             <AnnotationCorrectionColumnControl
               value={correctionColumn}
               availableColumns={availableCorrectionColumns}
+              columnFields={columnFieldsOf(resultsQuery.data.schema)}
               onValueChange={(column) => {
                 if (column) {
                   onComparisonColumnsChange(

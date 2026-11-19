@@ -33,6 +33,8 @@ import {
 import HelpIcon from '@/components/help/HelpIcon';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
 import type { NodeInputColumnAddonArgs } from '@/features/views/common/components/NodeInputsPanel';
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
+import type { ArrowField } from '@/lib/arrow/arrowTable';
 import { NodeInputsPanel } from '@/features/views/common/components/NodeInputsPanel';
 import { RunAllReviewTable } from '@/features/views/common/components/RunAllReviewTable';
 import type { NodeInputConstraints } from '@/features/views/common/nodeInputs';
@@ -173,7 +175,8 @@ function CodebookChangedNotice({ codes, since }: { codes: readonly string[]; sin
 interface ColumnPickerProps {
   label: string;
   value: string;
-  options: { value: string; label: string }[];
+  /** `field` gives a column its type symbol; actions such as "Start new annotation" have none. */
+  options: { value: string; label: string; field?: ArrowField }[];
   placeholder: string;
   onValueChange: (value: string) => void;
   /** Locks the picker while an annotation run is active. */
@@ -215,8 +218,8 @@ function AnnotationColumnPicker({
         <SelectContent>
           <SelectGroup>
             {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
+              <SelectItem key={option.value} value={option.value} textValue={option.label}>
+                <ColumnTypeLabel field={option.field}>{option.label}</ColumnTypeLabel>
               </SelectItem>
             ))}
           </SelectGroup>
@@ -477,7 +480,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     void persistDocumentColumn(nodeId, column);
   };
 
-  const renderAnnotationColumnPicker = ({ nodeId, columns }: NodeInputColumnAddonArgs) => {
+  const renderAnnotationColumnPicker = ({
+    nodeId,
+    columns,
+    columnFields,
+  }: NodeInputColumnAddonArgs) => {
     const value = annotationTargets[nodeId] ?? '';
     const selectedColumnOption = value && !columns.includes(value) ? [{ value, label: value }] : [];
     return (
@@ -489,7 +496,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         options={[
           { value: CREATE_ANNOTATION_COLUMN_ACTION, label: 'Start new annotation' },
           ...selectedColumnOption,
-          ...columns.map((column) => ({ value: column, label: column })),
+          ...columns.map((column) => ({
+            value: column,
+            label: column,
+            field: columnFields.get(column),
+          })),
         ]}
         onValueChange={(next) => {
           if (next === CREATE_ANNOTATION_COLUMN_ACTION) {
@@ -504,7 +515,12 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     );
   };
 
-  const renderDescriptionColumnPicker = ({ nodeId, columns, column }: NodeInputColumnAddonArgs) => {
+  const renderDescriptionColumnPicker = ({
+    nodeId,
+    columns,
+    column,
+    columnFields,
+  }: NodeInputColumnAddonArgs) => {
     const fallback = resolveDescriptionColumn(columns, column);
     const value = descriptionColumns[nodeId] ?? fallback;
     return (
@@ -513,7 +529,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         value={value}
         placeholder="Select description column"
         disabled={controlsLocked}
-        options={columns.map((column) => ({ value: column, label: column }))}
+        options={columns.map((column) => ({
+          value: column,
+          label: column,
+          field: columnFields.get(column),
+        }))}
         onValueChange={(next) => {
           setDescriptionColumns((current) => ({ ...current, [nodeId]: next }));
         }}
@@ -524,7 +544,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   // Annotation-column picker for the AI example selector. Mirrors the source
   // selector's addon but offers only existing columns (no "Start new
   // annotation"), since examples point at columns that already hold labels.
-  const renderExampleAnnotationColumnPicker = ({ nodeId, columns }: NodeInputColumnAddonArgs) => {
+  const renderExampleAnnotationColumnPicker = ({
+    nodeId,
+    columns,
+    columnFields,
+  }: NodeInputColumnAddonArgs) => {
     const value = exampleAnnotationColumns[nodeId] ?? '';
     return (
       <AnnotationColumnPicker
@@ -532,7 +556,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         value={value}
         placeholder="Select annotation column"
         disabled={controlsLocked}
-        options={columns.map((column) => ({ value: column, label: column }))}
+        options={columns.map((column) => ({
+          value: column,
+          label: column,
+          field: columnFields.get(column),
+        }))}
         onValueChange={(next) => {
           setExampleAnnotationColumns((current) => ({ ...current, [nodeId]: next }));
         }}

@@ -15,8 +15,9 @@ import {
 } from '@/components/ui/select';
 
 import type { SequentialAnalysisRequest } from '@/api';
-import { arrowTypeDisplayName, type ArrowField } from '@/lib/arrow/arrowTable';
+import type { ArrowField } from '@/lib/arrow/arrowTable';
 import { UniqueValueCount } from '../UniqueValueCount';
+import { ColumnTypeLabel } from '@/features/workspace/common/ColumnTypeLabel';
 import { NO_GROUP_COLUMN_REASON } from '../../trendsGroups';
 import { elapsedFrequency, elapsedUnit } from '../../trendsAxisColumns';
 import { AdvancedSection } from '@/features/views/common/toolMode/AdvancedSection';
@@ -343,7 +344,7 @@ export function SequentialAnalysisParameterPanel({
                 </SelectTrigger>
                 <SelectContent>
                   {/* Only columns with few enough different values are offered,
-                      each with that number. A column already chosen in another
+                      each behind its type symbol and with that number. A column already chosen in another
                       row is not offered again: Trends cannot group by the same
                       column twice (issue 212). This row's own column stays
                       listed even when it has too many values, so the row
@@ -360,12 +361,13 @@ export function SequentialAnalysisParameterPanel({
                     .map((col) => {
                       const values = groupColumnValueCounts?.[col.name];
                       return (
-                        <SelectItem key={col.name} value={col.name}>
-                          {col.name} ({arrowTypeDisplayName(col.field)}
-                          {values === undefined
-                            ? ''
-                            : `, ${String(values)} ${values === 1 ? 'value' : 'values'}`}
-                          )
+                        <SelectItem key={col.name} value={col.name} textValue={col.name}>
+                          <ColumnTypeLabel field={col.field}>
+                            {col.name}
+                            {values === undefined
+                              ? ''
+                              : ` (${String(values)} ${values === 1 ? 'value' : 'values'})`}
+                          </ColumnTypeLabel>
                         </SelectItem>
                       );
                     })}

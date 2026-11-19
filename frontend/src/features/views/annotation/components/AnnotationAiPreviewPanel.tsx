@@ -346,6 +346,7 @@ export function AnnotationAiPreviewPanel({
           <AnnotationCorrectionColumnControl
             value={correctionColumn}
             availableColumns={availableCorrectionColumns}
+            columnFields={preview.sourceColumnFields}
             onValueChange={(column) => {
               if (column) {
                 comparison.onColumnsChange(

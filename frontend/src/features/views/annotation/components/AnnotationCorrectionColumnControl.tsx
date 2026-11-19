@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { columnOptions, type ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 
 const CREATE_CORRECTION_COLUMN = '__create_correction_column__';
 const NO_CORRECTION_COLUMN = '__no_correction_column__';
@@ -11,6 +12,8 @@ interface AnnotationCorrectionColumnControlProps {
   value: string | null;
   /** Null while the source schema is still loading. */
   availableColumns: string[] | null;
+  /** The columns' types, for the type symbol before each name. */
+  columnFields?: ColumnFields;
   onValueChange: (column: string | null) => void;
   onCreate: () => void;
   onUseAsExample?: () => void;
@@ -21,6 +24,7 @@ interface AnnotationCorrectionColumnControlProps {
 export function AnnotationCorrectionColumnControl({
   value,
   availableColumns,
+  columnFields,
   onValueChange,
   onCreate,
   onUseAsExample,
@@ -47,7 +51,7 @@ export function AnnotationCorrectionColumnControl({
         <span className="inline-flex">
           <SearchableSelect
             value={invalidValue ? NO_CORRECTION_COLUMN : (value ?? NO_CORRECTION_COLUMN)}
-            options={columns.map((column) => ({ value: column }))}
+            options={columnOptions(columns, columnFields)}
             pinnedOptions={[
               { value: NO_CORRECTION_COLUMN, label: 'None' },
               { value: CREATE_CORRECTION_COLUMN, label: 'Create new…' },

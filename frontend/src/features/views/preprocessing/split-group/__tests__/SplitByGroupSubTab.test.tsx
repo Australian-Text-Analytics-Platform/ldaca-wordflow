@@ -135,12 +135,13 @@ describe('Group: columns offered under Split by', () => {
     await user.click(picker);
 
     // Each column starts with the Data Editor's symbol for its type, whose
-    // name is read out after the column's and shows on hover.
-    const party = await screen.findByRole('option', { name: 'party (4 values), text' });
+    // name shows on hover and is the option's description.
+    const party = await screen.findByRole('option', { name: 'party (4 values)' });
     expect(within(party).getByTitle('text')).toHaveTextContent('Aa');
-    const year = screen.getByRole('option', { name: 'year, whole number' });
+    const year = screen.getByRole('option', { name: 'year' });
     expect(within(year).getByTitle('whole number')).toHaveTextContent('123');
-    expect(screen.getByRole('option', { name: 'date, date' })).toBeInTheDocument();
+    expect(year).toHaveAccessibleDescription('whole number');
+    expect(screen.getByRole('option', { name: 'date' })).toHaveAccessibleDescription('date');
     // No symbol is known for this column in the test, so it shows its name only.
     expect(screen.getByRole('option', { name: 'start' })).toBeInTheDocument();
     expect(screen.getAllByRole('option')).toHaveLength(4);
@@ -162,8 +163,8 @@ describe('Group: columns offered under Split by', () => {
     await user.click(screen.getByRole('combobox', { name: 'Split by column' }));
 
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
-      '123year, whole number',
-      'date, date',
+      '123year',
+      'date',
       'start',
     ]);
     expect(screen.queryByRole('note')).not.toBeInTheDocument();

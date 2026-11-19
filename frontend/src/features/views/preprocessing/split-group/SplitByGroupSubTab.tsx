@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { distinctValueColumnsQuery } from '@/features/views/common/distinctValueColumns';
-import { ColumnTypeSymbol } from '@/features/workspace/data-view/components/ColumnTypeSymbol';
+import { columnOption } from '@/features/workspace/common/columnTypeOptions';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { BuilderToolCard } from '../builder/BuilderToolCard';
 import type { BuilderInput } from '../builder/builderTypes';
@@ -72,12 +72,13 @@ export function SplitByGroupSubTab({
   const columnOptions = groupColumnOptions(
     input?.columns ?? [],
     valueCounts.data ?? (valueCounts.isError ? undefined : {}),
-  ).map((option) => {
-    const info = input?.columns.find((item) => item.name === option.value);
-    return info?.field
-      ? { ...option, icon: <ColumnTypeSymbol field={info.field} />, iconLabel: info.typeLabel }
-      : option;
-  });
+  ).map((option) =>
+    columnOption(
+      option.value,
+      input?.columns.find((item) => item.name === option.value)?.field,
+      option.label,
+    ),
+  );
   const noGroupColumn = input !== null && valueCounts.isSuccess && columnOptions.length === 0;
 
   const columnInfo = input?.columns.find((item) => item.name === column);

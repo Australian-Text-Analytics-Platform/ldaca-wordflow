@@ -14,6 +14,7 @@ import type { NodeAddRejection, ResolvedNodeInput } from '../nodeInputs/nodeInpu
 import { VIZ_PALETTE } from '../vizPalette';
 import { NodeColorPicker } from './NodeColorPicker';
 import { NodeColumnSelector } from './NodeColumnSelector';
+import { columnFieldsOf, type ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import {
   NodeSelectionList,
   type NodeSelectionItem,
@@ -27,6 +28,8 @@ const CLEAR_COLUMN_VALUE = '__ldaca__clear__';
 export interface NodeInputColumnAddonArgs extends NodeSelectionRenderArgs {
   column: string;
   columns: string[];
+  /** The columns' types, for pickers that show a type symbol before each name. */
+  columnFields: ColumnFields;
 }
 
 export interface NodeInputsPanelProps {
@@ -171,12 +174,14 @@ export function NodeInputsPanel({
     const { nodeId } = args;
     const resolved = columnByNode.get(nodeId);
     const columns = (resolved?.columnOptions ?? []).map((c) => c.name);
+    const columnFields = columnFieldsOf(resolved?.columnOptions ?? []);
     const value = resolved?.column.length ? resolved.column : CLEAR_COLUMN_VALUE;
     const label = typeof columnLabel === 'function' ? columnLabel(args) : columnLabel;
     const selector = (
       <NodeColumnSelector
         key="column"
         columns={columns}
+        columnFields={columnFields}
         value={value}
         preserveValue={resolved?.column}
         clearOptionValue={CLEAR_COLUMN_VALUE}
@@ -188,7 +193,12 @@ export function NodeInputsPanel({
         }}
       />
     );
-    const addon = renderColumnAddon?.({ ...args, column: resolved?.column ?? '', columns });
+    const addon = renderColumnAddon?.({
+      ...args,
+      column: resolved?.column ?? '',
+      columns,
+      columnFields,
+    });
     const colorControl = onNodeColorChange ? (
       <NodeColorPicker
         key="color"
@@ -245,6 +255,7 @@ export function NodeInputsPanel({
           ...args,
           column: resolved?.column ?? '',
           columns,
+          columnFields: columnFieldsOf(resolved?.columnOptions ?? []),
         });
       }
     : undefined;

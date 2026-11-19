@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
-import { arrowTypeDisplayName } from '@/lib/arrow/arrowTable';
+import { columnOption } from '@/features/workspace/common/columnTypeOptions';
 import { type ConditionColumnOption } from '../../types';
 
 export interface ConditionBuilderItem {
@@ -153,10 +153,9 @@ export function ConditionBuilder<Condition extends ConditionBuilderItem>(
                   <div className="flex flex-1 flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:gap-x-3 md:gap-y-2">
                     <SearchableSelect
                       value={condition.column}
-                      options={availableColumns.map((col) => ({
-                        value: col.name,
-                        label: `${col.label ?? col.name} (${arrowTypeDisplayName(col.field)})`,
-                      }))}
+                      options={availableColumns.map((col) =>
+                        columnOption(col.name, col.field, col.label),
+                      )}
                       onChange={(value) => {
                         onConditionChange(
                           condition.id,

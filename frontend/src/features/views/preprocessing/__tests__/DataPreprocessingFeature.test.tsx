@@ -282,17 +282,22 @@ describe('DataPreprocessingFeature replace tab', () => {
     ).toBe(false);
   });
 
-  it('shows friendly canonical Arrow types in the filter column selector', async () => {
+  it('shows each column type as a symbol named in plain words in the filter column selector', async () => {
     const user = userEvent.setup();
     renderPreprocessingFeature();
 
     const filterPanel = await waitForFilterSchema();
     await user.click(within(filterPanel).getByRole('combobox', { name: 'Filter column' }));
 
-    expect(screen.getByText('Body (text)')).toBeInTheDocument();
-    expect(screen.getByText('Count (whole number)')).toBeInTheDocument();
-    expect(screen.queryByText('Body (Utf8View)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Count (Int64)')).not.toBeInTheDocument();
+    // The Data Editor's type symbol stands before each name; its hover text
+    // and the option's description give the type in plain words.
+    const body = screen.getByRole('option', { name: 'Body' });
+    expect(within(body).getByTitle('text')).toHaveTextContent('Aa');
+    expect(body).toHaveAccessibleDescription('text');
+    const count = screen.getByRole('option', { name: 'Count' });
+    expect(within(count).getByTitle('whole number')).toHaveTextContent('123');
+    expect(screen.queryByTitle('Utf8View')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Int64')).not.toBeInTheDocument();
   });
 
   it('uses the exact two-node join and six-node stack input caps', async () => {

@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { DateDay, Field, Float64, Int64, Utf8 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeColumnSelector } from '../NodeColumnSelector';
@@ -20,6 +21,58 @@ describe('NodeColumnSelector', () => {
     expect(screen.getByText('Text column')).toBeInTheDocument();
     expect(screen.getByRole('combobox')).toBeDisabled();
     expect(screen.getByRole('combobox')).toHaveTextContent('No text columns available');
+  });
+
+  it('shows each column type as the Data Editor symbol, in the list and once chosen', async () => {
+    const user = userEvent.setup();
+    const fields = new Map([
+      ['text', new Field('text', new Utf8())],
+      ['year', new Field('year', new Int64())],
+      ['score', new Field('score', new Float64())],
+      ['day', new Field('day', new DateDay())],
+    ]);
+    const { rerender } = render(
+      <NodeColumnSelector
+        columns={['text', 'year', 'score', 'day', 'untyped']}
+        columnFields={fields}
+        label="Column"
+        onChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox'));
+
+    // The option keeps the column's name; the type is its symbol, hover text
+    // and description.
+    const year = screen.getByRole('option', { name: 'year' });
+    expect(within(year).getByTitle('whole number')).toHaveTextContent('123');
+    expect(year).toHaveAccessibleDescription('whole number');
+    expect(
+      within(screen.getByRole('option', { name: 'text' })).getByTitle('text'),
+    ).toHaveTextContent('Aa');
+    expect(
+      within(screen.getByRole('option', { name: 'score' })).getByTitle('decimal'),
+    ).toHaveTextContent('1.2');
+    expect(screen.getByRole('option', { name: 'day' })).toHaveAccessibleDescription('date');
+    // A column whose type is not known shows its name alone.
+    expect(screen.getByRole('option', { name: 'untyped' })).not.toHaveAccessibleDescription();
+
+    // Filtering still goes by the name, not by the symbol.
+    await user.type(screen.getByRole('searchbox'), '123');
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+    await user.keyboard('{Escape}');
+
+    rerender(
+      <NodeColumnSelector
+        columns={['text', 'year', 'score', 'day', 'untyped']}
+        columnFields={fields}
+        value="score"
+        label="Column"
+        onChange={vi.fn()}
+      />,
+    );
+    expect(within(screen.getByRole('combobox')).getByTitle('decimal')).toHaveTextContent('1.2');
+    expect(screen.getByRole('combobox')).toHaveTextContent('score');
   });
 
   it('filters the options by substring as the user types', async () => {

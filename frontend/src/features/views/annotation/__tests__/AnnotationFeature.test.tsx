@@ -191,6 +191,7 @@ vi.mock('@/features/views/common/components/NodeInputsPanel', () => ({
       color: string;
       column: string;
       columns: string[];
+      columnFields: ReadonlyMap<string, never>;
     }) => ReactNode;
     onColumnChange: (nodeId: string, column: string) => void;
     onNodeColorChange?: (nodeId: string, color: string) => void;
@@ -214,6 +215,8 @@ vi.mock('@/features/views/common/components/NodeInputsPanel', () => ({
             color: '#000000',
             column: resolved.column,
             columns: resolved.columnOptions.map((option) => option.name),
+            // No column types in these tests: the pickers show names alone.
+            columnFields: new Map(),
           })}
         </div>
       ))}
