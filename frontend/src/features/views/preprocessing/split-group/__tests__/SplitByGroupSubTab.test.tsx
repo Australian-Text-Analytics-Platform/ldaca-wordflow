@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +11,12 @@ import { groupColumnOptions, groupsByValues, MAX_GROUPS } from '../splitGroups';
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal()),
   getDistinctValueColumns: vi.fn(),
+}));
+// The help icon needs the app's TooltipProvider; its text is checked below.
+vi.mock('@/components/help/HelpIcon', () => ({
+  default: ({ label, tooltip }: { label?: string; tooltip?: string }) => (
+    <button type="button" aria-label={label} title={tooltip} />
+  ),
 }));
 vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({
   useWorkspaceActions: () => ({ createDerivedNode: vi.fn() }),
@@ -80,14 +86,20 @@ describe('Group: columns offered under Split by', () => {
     expect(groupColumnOptions(columns, { party: 4, sitting: 1, year: 30 })).toEqual([
       { value: 'party', label: 'party (4 values)' },
       { value: 'sitting', label: 'sitting (1 value)' },
-      // A number column is grouped into ranges, so it shows no number of values.
-      { value: 'year' },
-      { value: 'date' },
-      { value: 'start' },
+      // Grouped into ranges or periods, whatever the number of values.
+      { value: 'year', label: 'year (number)' },
+      { value: 'date', label: 'date (time)' },
+      { value: 'start', label: 'start (time)' },
+    ]);
+    // Counted, and nothing fits: only the range and period columns are left.
+    expect(groupColumnOptions(columns, {}).map((option) => option.value)).toEqual([
+      'year',
+      'date',
+      'start',
     ]);
   });
 
-  it('offers every supported column while the numbers of values are not known', () => {
+  it('offers every supported column if the numbers of values could not be read', () => {
     expect(groupColumnOptions(columns, undefined).map((option) => option.value)).toEqual([
       'text',
       'party',
@@ -116,10 +128,43 @@ describe('Group: columns offered under Split by', () => {
     await user.click(picker);
 
     expect(await screen.findByRole('option', { name: 'party (4 values)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'year' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'year (number)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'date (time)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'start (time)' })).toBeInTheDocument();
+    expect(screen.getAllByRole('option')).toHaveLength(4);
     expect(screen.queryByRole('option', { name: /^speaker/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /^text/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('note')).not.toBeInTheDocument();
+  });
+
+  it('holds text columns back until their values are counted', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getDistinctValueColumns).mockReturnValue(new Promise(() => undefined) as never);
+    renderTool(columns);
+
+    await user.click(screen.getByRole('combobox', { name: 'Split by column' }));
+
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      'year (number)',
+      'date (time)',
+      'start (time)',
+    ]);
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+  });
+
+  it('explains the limit beside Split by, on the same row as the picker', () => {
+    listed({ party: 4 });
+    renderTool(columns);
+
+    const row = within(screen.getByRole('group', { name: 'Split by' }));
+    expect(row.getByText('Split by')).toBeInTheDocument();
+    expect(
+      row.getByRole('button', { name: 'About the columns listed under Split by' }),
+    ).toHaveAttribute(
+      'title',
+      'Text and category columns are listed only when they have 50 or fewer different values, because each value becomes a Data Block. Number and time columns are always listed: they are grouped into ranges or periods.',
+    );
+    expect(row.getByRole('combobox', { name: 'Split by column' })).toBeInTheDocument();
   });
 
   it('says so when no column can be grouped', async () => {

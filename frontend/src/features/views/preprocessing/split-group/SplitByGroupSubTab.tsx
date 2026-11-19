@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Split } from 'lucide-react';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +16,7 @@ import {
   type Grouping,
   MAX_GROUPS,
   NO_GROUP_COLUMN_REASON,
+  SPLIT_BY_HELP,
   defaultGrouping,
   groupBlockName,
   groupColumnOptions,
@@ -62,7 +64,12 @@ export function SplitByGroupSubTab({
   const valueCounts = useQuery(
     distinctValueColumnsQuery(workspaceId ?? '', input?.id ?? '', MAX_GROUPS),
   );
-  const columnOptions = groupColumnOptions(input?.columns ?? [], valueCounts.data);
+  // While the values are being counted, text columns wait rather than show
+  // unchecked; if the count fails, every column is offered so the tool works.
+  const columnOptions = groupColumnOptions(
+    input?.columns ?? [],
+    valueCounts.data ?? (valueCounts.isError ? undefined : {}),
+  );
   const noGroupColumn = input !== null && valueCounts.isSuccess && columnOptions.length === 0;
 
   const columnInfo = input?.columns.find((item) => item.name === column);
@@ -158,19 +165,28 @@ export function SplitByGroupSubTab({
       onAlert={onAlert}
     >
       <div className="space-y-1">
-        <span className="text-body font-medium">Split by</span>
-        <SearchableSelect
-          options={columnOptions}
-          value={column}
-          onChange={(next) => {
-            setColumn(next);
-            resetTicks();
-          }}
-          placeholder="Choose a column"
-          ariaLabel="Split by column"
-          triggerClassName="w-64"
-          disabled={noGroupColumn}
-        />
+        <div role="group" aria-label="Split by" className="flex flex-wrap items-center gap-2">
+          <span className="text-body font-medium">Split by</span>
+          <HelpIcon
+            targetKey="preprocessing.split-group.tab"
+            label="About the columns listed under Split by"
+            tooltip={SPLIT_BY_HELP}
+            className="size-5 shrink-0 text-description"
+          />
+          <SearchableSelect
+            options={columnOptions}
+            value={column}
+            onChange={(next) => {
+              setColumn(next);
+              resetTicks();
+            }}
+            placeholder="Choose a column"
+            emptyMessage={valueCounts.isPending && input ? 'Counting values…' : undefined}
+            ariaLabel="Split by column"
+            triggerClassName="w-64"
+            disabled={noGroupColumn}
+          />
+        </div>
         {noGroupColumn ? (
           <p role="note" className="text-label-secondary text-description">
             {NO_GROUP_COLUMN_REASON}
