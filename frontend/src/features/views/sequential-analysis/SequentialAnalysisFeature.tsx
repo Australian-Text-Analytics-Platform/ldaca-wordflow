@@ -1,3 +1,4 @@
+import { columnFieldsOf } from '@/features/workspace/common/columnTypeOptions';
 import type { SequentialColumnType } from './hooks/sequentialChartModel';
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -757,6 +758,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
         {drawableResults?.source ? (
           <SequentialAddToWorkspaceDialog
             open={addToWorkspaceDialogOpen}
+            columnFields={columnFieldsOf(availableColumns)}
             onOpenChange={setAddToWorkspaceDialogOpen}
             source={drawableResults.source}
             axisColumn={summary.timeColumn}

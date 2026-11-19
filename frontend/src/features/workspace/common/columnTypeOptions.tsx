@@ -1,3 +1,8 @@
+import { Bool, type DataType, Field, Float64, Int64, Utf8 } from 'apache-arrow';
+import {
+  GENERATED_COLUMN_KINDS,
+  type GeneratedColumnKind,
+} from '@/features/views/common/generatedColumns';
 import { useQuery } from '@tanstack/react-query';
 import type { SearchableSelectOption } from '@/components/ui/searchable-select';
 import { ColumnTypeSymbol } from '@/features/workspace/data-view/components/ColumnTypeSymbol';
@@ -51,6 +56,28 @@ export function columnOptions(
   fields: ColumnFields | undefined,
 ): SearchableSelectOption[] {
   return names.map((name) => columnOption(name, fields?.get(name)));
+}
+
+const GENERATED_FIELD_TYPES = {
+  text: () => new Utf8(),
+  'whole number': () => new Int64(),
+  decimal: () => new Float64(),
+  'true/false': () => new Bool(),
+} satisfies Record<GeneratedColumnKind, () => DataType>;
+
+/**
+ * A column's field where a result lists its columns: the source Data Block's
+ * own, or, for a column the analysis adds (CONC_start_idx and the like), one
+ * of its known type. Undefined when neither is known.
+ */
+export function resultColumnField(
+  name: string,
+  fields: ColumnFields | undefined,
+): ArrowField | undefined {
+  const own = fields?.get(name);
+  if (own) return own;
+  const kind = GENERATED_COLUMN_KINDS[name];
+  return kind ? new Field(name, GENERATED_FIELD_TYPES[kind]()) : undefined;
 }
 
 /**

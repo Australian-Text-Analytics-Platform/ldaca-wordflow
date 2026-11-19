@@ -1111,6 +1111,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         {downloadDialogOpen ? (
           <ResultAddToWorkspaceDialog
             open
+            columnFields={metadataColumnFields}
             onOpenChange={(nextOpen) => {
               excelLimit.clear();
               setDownloadDialogOpen(nextOpen);
@@ -1133,6 +1134,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         {addToWorkspaceDialogOpen ? (
           <ResultAddToWorkspaceDialog
             open
+            columnFields={metadataColumnFields}
             onOpenChange={setAddToWorkspaceDialogOpen}
             title={`Add Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'} to Project`}
             nameSuffix={resultNameSuffix}

@@ -1,3 +1,4 @@
+import type { ColumnFields } from '@/features/workspace/common/columnTypeOptions';
 import type { SequentialSourceDescriptor } from '@/api';
 import {
   AddToWorkspaceDialog,
@@ -14,6 +15,8 @@ interface Props {
   filterSummary: string;
   isSubmitting: boolean;
   onSubmit: (selection: AddToWorkspaceSelection) => void;
+  /** The source Data Blocks' column types, for the type symbol before each column. */
+  columnFields?: ColumnFields;
 }
 
 const createDialogSource = (
@@ -49,11 +52,13 @@ export function SequentialAddToWorkspaceDialog({
   filterSummary,
   isSubmitting,
   onSubmit,
+  columnFields,
 }: Props) {
   const dialogSource = createDialogSource(source, axisColumn, groupByColumns);
   return (
     <AddToWorkspaceDialog
       key={`${source.node_id}:${axisColumn}:${groupByColumns.join('|')}`}
+      columnFields={columnFields}
       open={open}
       onOpenChange={onOpenChange}
       title="Add Trends selection to Project"

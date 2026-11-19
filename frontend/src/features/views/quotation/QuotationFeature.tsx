@@ -125,6 +125,11 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
   const nodeColumnSelections = nodeInputs.nodeColumnSelections;
   const setNodeColumnSelection = nodeInputs.setColumn;
   const displayedNodes = nodeInputs.selectedNodes.slice(0, 1);
+  // The shown Data Block's column types, for the type symbols in column lists.
+  const sourceColumnFields = columnFieldsOf(
+    nodeInputs.resolvedNodes.find((resolved) => resolved.id === displayedNodes[0]?.id)
+      ?.columnOptions ?? [],
+  );
   const quotationRunAll = latestRunAll?.request.kind === 'quotation_run_all' ? latestRunAll : null;
   const activeSelections = nodeColumnSelections;
   const persistDocumentColumn = usePersistNodeDocumentColumn({
@@ -801,10 +806,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
 
         {runAllSource || progressNode || showPreviewTable ? (
           <QuotationResultsPanel
-            metadataColumnFields={columnFieldsOf(
-              nodeInputs.resolvedNodes.find((resolved) => resolved.id === displayedNodes[0]?.id)
-                ?.columnOptions ?? [],
-            )}
+            metadataColumnFields={sourceColumnFields}
             title={!runAllSource && progressNode ? 'Quotation Results so far' : 'Quotation Results'}
             guidanceTarget={
               runAllSource || progressNode
@@ -923,6 +925,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       {downloadDialogOpen && runAllSource ? (
         <ResultAddToWorkspaceDialog
           open
+          columnFields={sourceColumnFields}
           onOpenChange={(nextOpen) => {
             excelLimit.clear();
             setDownloadDialogOpen(nextOpen);
@@ -942,6 +945,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       {addToWorkspaceDialogOpen && runAllSource ? (
         <ResultAddToWorkspaceDialog
           open
+          columnFields={sourceColumnFields}
           onOpenChange={setAddToWorkspaceDialogOpen}
           title="Add Quotation Results to Project"
           nameSuffix="quotation"

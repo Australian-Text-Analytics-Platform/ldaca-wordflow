@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { Field, Int64, Utf8 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vitest';
 import { ResultAddToWorkspaceDialog } from '../ResultAddToWorkspaceDialog';
 
@@ -557,5 +558,50 @@ describe('ResultAddToWorkspaceDialog', () => {
       expect(screen.getByText(expected, { exact: false })).toBeInTheDocument();
       expect(screen.queryByText(/immutable/i)).not.toBeInTheDocument();
     });
+  });
+
+  it('shows each column behind its type symbol: the source Data Block\u2019s, or the known type of a column the analysis adds', () => {
+    render(
+      <ResultAddToWorkspaceDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Add Results"
+        nameSuffix="concordance"
+        columnFields={
+          new Map([
+            ['text', new Field('text', new Utf8())],
+            ['year', new Field('year', new Int64())],
+          ])
+        }
+        sources={[
+          {
+            node_id: 'node-1',
+            node_name: 'First',
+            document_column: 'text',
+            metadata_columns: ['year', 'untyped'],
+            analysis_columns: ['CONC_matched_text', 'CONC_start_idx'],
+            internal_columns: [],
+            record_count: 3,
+            table: { table_id: 'node-1-result', rows_url: '/rows', schema_url: '/schema' },
+          },
+        ]}
+        isSubmitting={false}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    // Source columns take their type from the Data Block ("text", "year");
+    // columns the analysis adds are in no Data Block, so their types are
+    // known ones (CONC_matched_text is text, CONC_start_idx a whole number).
+    // A column's name is its own hover text, so "text" is found there too.
+    const symbols = (type: string, symbol: string) =>
+      screen.getAllByTitle(type).filter((element) => element.textContent === symbol);
+    expect(symbols('text', 'Aa')).toHaveLength(2);
+    expect(symbols('whole number', '123')).toHaveLength(2);
+    // The tick boxes keep their names, and a column of unknown type has no symbol.
+    expect(screen.getByRole('checkbox', { name: /^year/ })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /^CONC_start_idx/ })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /^untyped/ })).toBeInTheDocument();
+    expect(screen.queryByTitle('decimal')).not.toBeInTheDocument();
   });
 });
