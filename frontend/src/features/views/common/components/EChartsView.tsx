@@ -394,49 +394,55 @@ function EChartsInstance({
 
   return (
     <div className={className} data-testid={testId}>
-      <div
-        className="mb-2 flex flex-nowrap items-center justify-end gap-2 overflow-x-auto pb-1"
-        aria-label="Chart controls"
-      >
-        {toolbarStart}
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="size-control-sm"
-          aria-label="Zoom in"
-          onClick={() => {
-            setZoom(zoomAroundCenter(zoomRange, 0.75, maxSpan), 'Chart zoomed in');
-          }}
-        >
-          <ZoomIn className="h-4 w-4" aria-hidden="true" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="size-control-sm"
-          aria-label="Zoom out"
-          disabled={isWidestZoom}
-          onClick={() => {
-            setZoom(zoomAroundCenter(zoomRange, 4 / 3, maxSpan), 'Chart zoomed out');
-          }}
-        >
-          <ZoomOut className="h-4 w-4" aria-hidden="true" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="size-control-sm"
-          aria-label="Reset zoom"
-          disabled={isFullZoom}
-          onClick={() => {
-            setZoom({ start: 0, end: maxSpan }, 'Chart zoom reset');
-          }}
-        >
-          <RotateCcw className="h-4 w-4" aria-hidden="true" />
-        </Button>
+      {/* The controls sit at the right while they fit on one line. In a narrow
+          pane they wrap onto further lines from the left, so every control
+          stays in view. Right-aligning the row itself (justify-end) pushed
+          what did not fit off the left edge, where scrolling cannot reach.
+          The auto margin moves the group right only when there is room. */}
+      <div className="mb-2 flex overflow-x-auto pb-1" aria-label="Chart controls">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {toolbarStart}
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-control-sm"
+              aria-label="Zoom in"
+              onClick={() => {
+                setZoom(zoomAroundCenter(zoomRange, 0.75, maxSpan), 'Chart zoomed in');
+              }}
+            >
+              <ZoomIn className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-control-sm"
+              aria-label="Zoom out"
+              disabled={isWidestZoom}
+              onClick={() => {
+                setZoom(zoomAroundCenter(zoomRange, 4 / 3, maxSpan), 'Chart zoomed out');
+              }}
+            >
+              <ZoomOut className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-control-sm"
+              aria-label="Reset zoom"
+              disabled={isFullZoom}
+              onClick={() => {
+                setZoom({ start: 0, end: maxSpan }, 'Chart zoom reset');
+              }}
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
       </div>
       <div
         ref={plotRef}

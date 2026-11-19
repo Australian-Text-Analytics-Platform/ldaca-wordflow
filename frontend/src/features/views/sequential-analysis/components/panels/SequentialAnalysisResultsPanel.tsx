@@ -99,26 +99,30 @@ export function SequentialAnalysisResultsPanel({
           containerRef={containerRef}
           toolbarStart={
             <>
-              <span className="shrink-0 text-body text-description">Chart</span>
-              <Select
-                value={model.chartType}
-                onValueChange={(value) => {
-                  onChartTypeChange(value as ChartTypeOption);
-                }}
-              >
-                <SelectTrigger className="w-36 shrink-0 text-body" aria-label="Chart">
-                  <SelectValue placeholder="Select chart" />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* A category axis has no order in time, so only bars (issue 318). */}
-                  {isCategoryAxis ? null : <SelectItem value="line">Line</SelectItem>}
-                  <SelectItem value="bar">Bars</SelectItem>
-                  <SelectItem value="stacked-bar">Stacked bars</SelectItem>
-                  {isCategoryAxis ? null : <SelectItem value="area">Area</SelectItem>}
-                </SelectContent>
-              </Select>
+              {/* Each label and its menu are one group, so they stay together
+                  when the controls wrap in a narrow pane. */}
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="shrink-0 text-body text-description">Chart</span>
+                <Select
+                  value={model.chartType}
+                  onValueChange={(value) => {
+                    onChartTypeChange(value as ChartTypeOption);
+                  }}
+                >
+                  <SelectTrigger className="w-36 shrink-0 text-body" aria-label="Chart">
+                    <SelectValue placeholder="Select chart" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* A category axis has no order in time, so only bars (issue 318). */}
+                    {isCategoryAxis ? null : <SelectItem value="line">Line</SelectItem>}
+                    <SelectItem value="bar">Bars</SelectItem>
+                    <SelectItem value="stacked-bar">Stacked bars</SelectItem>
+                    {isCategoryAxis ? null : <SelectItem value="area">Area</SelectItem>}
+                  </SelectContent>
+                </Select>
+              </div>
               {isCategoryAxis ? null : (
-                <>
+                <div className="flex shrink-0 items-center gap-2">
                   <span className="flex shrink-0 items-center gap-1 text-body text-description">
                     Spacing
                     <HelpIcon
@@ -142,13 +146,13 @@ export function SequentialAnalysisResultsPanel({
                       <SelectItem value="number">To scale (show gaps)</SelectItem>
                     </SelectContent>
                   </Select>
-                </>
+                </div>
               )}
               {/* Show as: counts, composition (two or more groups that meet the
                   minimum group count, issue 219), or a rate against the
                   reference Data Block the result was run with. */}
               {model.availableScales.length > 1 ? (
-                <>
+                <div className="flex shrink-0 items-center gap-2">
                   <span className="flex shrink-0 items-center gap-1 text-body text-description">
                     Show as
                     <HelpIcon
@@ -175,7 +179,7 @@ export function SequentialAnalysisResultsPanel({
                       ))}
                     </SelectContent>
                   </Select>
-                </>
+                </div>
               ) : null}
               <Button
                 variant="outline"
