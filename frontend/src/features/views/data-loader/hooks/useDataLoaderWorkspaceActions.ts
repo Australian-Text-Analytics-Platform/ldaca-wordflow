@@ -312,12 +312,15 @@ export function useDataLoaderWorkspaceActions({
   const handleAddFilesToWorkspace = async (
     files: BatchTableFile[],
     zipPath?: string,
-    /** One place for every JSON file's rows, so a batch is read one way. */
-    recordPath?: string | null,
+    /**
+     * Where a JSON file's rows are, by file id. Each file becomes its own Data
+     * Block, so a file without a choice is read at its own default.
+     */
+    recordPaths: Record<string, string> = {},
   ) => {
     const failed: BatchAddReport['items'] = [];
     for (const file of files) {
-      const jsonRecordPath = isJsonPath(file.path) ? recordPath : undefined;
+      const jsonRecordPath = isJsonPath(file.path) ? (recordPaths[file.id] ?? null) : undefined;
       try {
         // With `zipPath`, each path is a table member inside that ZIP.
         if (zipPath) {

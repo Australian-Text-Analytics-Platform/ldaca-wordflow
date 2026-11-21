@@ -55,6 +55,11 @@ interface FilePreviewContentProps {
   previewHint?: string;
   /** A line under Rows from, such as that the choice applies to a whole batch. */
   recordPathNote?: string;
+  /**
+   * Shown in place of the preview when the file has no records at the place
+   * a batch is read at: a plain note, not an error to report.
+   */
+  missingRecordsNote?: string;
 }
 
 // Radix Select refuses "" as a value, and "" is the top level of a JSON file.
@@ -266,6 +271,7 @@ export function FilePreviewContent({
   previewLabel,
   previewHint,
   recordPathNote,
+  missingRecordsNote,
 }: FilePreviewContentProps) {
   const isOpen = open && Boolean(filename);
   const {
@@ -399,7 +405,11 @@ export function FilePreviewContent({
                 data-testid="file-preview-table-box"
                 className={`${maximised ? 'min-h-0 flex-1' : 'max-h-60'} w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-sm border border-surface-border`}
               >
-                {loading ? (
+                {missingRecordsNote ? (
+                  <p role="note" className="p-4 text-body text-description">
+                    {missingRecordsNote}
+                  </p>
+                ) : loading ? (
                   <div className="p-4 text-body text-description">Loading…</div>
                 ) : error ? (
                   <div className="p-4">

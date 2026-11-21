@@ -130,7 +130,7 @@ describe('useDataLoaderWorkspaceActions add file', () => {
     expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to Project.');
   });
 
-  it('reads only the JSON tables of a batch at the chosen place', async () => {
+  it('reads each JSON table at the place chosen for it, else at its own default', async () => {
     mocks.createNodeFromFile.mockReset();
     mocks.createNodeFromFile.mockResolvedValue({});
     const { result } = renderHook(
@@ -148,9 +148,10 @@ describe('useDataLoaderWorkspaceActions add file', () => {
         [
           { id: 'a.csv', label: 'a.csv', path: 'ocr/a.csv' },
           { id: 'p1.json', label: 'p1.json', path: 'ocr/p1.json' },
+          { id: 'notes.json', label: 'notes.json', path: 'ocr/notes.json' },
         ],
         undefined,
-        '/pages/parsing_res_list',
+        { 'p1.json': '/pages/parsing_res_list' },
       );
     });
 
@@ -165,6 +166,13 @@ describe('useDataLoaderWorkspaceActions add file', () => {
       undefined,
       undefined,
       '/pages/parsing_res_list',
+    );
+    // A file built differently is not read at another file's place.
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith(
+      'ocr/notes.json',
+      undefined,
+      undefined,
+      null,
     );
   });
 

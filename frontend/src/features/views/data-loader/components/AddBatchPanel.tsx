@@ -51,10 +51,14 @@ interface AddBatchPanelProps {
   /** Texts mode: all text files become one document Data Block. */
   onConfirmTexts: () => Promise<void> | void;
   /**
-   * Tables mode: each selected table becomes its own Data Block; every JSON
-   * file among them is read at `recordPath` (null: the first file's default).
+   * Tables mode: each selected table becomes its own Data Block, so each JSON
+   * file among them is read on its own: at the place chosen for it in
+   * `recordPaths` (keyed by file id), else at its own default.
    */
-  onConfirmTables: (files: BatchTableFile[], recordPath: string | null) => Promise<void> | void;
+  onConfirmTables: (
+    files: BatchTableFile[],
+    recordPaths: Record<string, string>,
+  ) => Promise<void> | void;
   /** JSON records mode: the ticked JSON files become one Data Block. */
   onConfirmJsonRecords?: (
     files: BatchTableFile[],
@@ -79,6 +83,12 @@ const RECORDS_DESCRIPTION =
 const PREVIEW_HINT = 'Click a table in the list to preview it.';
 const JSON_PREVIEW_HINT = 'Click a file in the list to preview it.';
 const RECORD_PATH_NOTE = 'Every JSON file in this window is read this way.';
+/** In JSON records mode, for a file without the place the batch is read at. */
+const MISSING_RECORDS_NOTE =
+  'This file would add no rows. Untick it to leave it out, or choose a place in Rows from that this file has; every ticked file is then read there.';
+/** Tables mode: each JSON file becomes its own Data Block, read on its own. */
+const tableRecordPathNote = (label: string) =>
+  `Each JSON file is read on its own; this choice is for ${label} only.`;
 
 /**
  * Add dialog for a folder or a ZIP archive, with two modes (issue 136): all
@@ -123,6 +133,8 @@ function AddBatchPanelBody({
   const [unticked, setUnticked] = useState<Set<string>>(() => new Set());
   const [chosenPreview, setChosenPreview] = useState<string | null>(null);
   const [chosenRecordPath, setChosenRecordPath] = useState<string | null>(null);
+  // Tables mode: a place chosen for one JSON file, by file id.
+  const [tableRecordPaths, setTableRecordPaths] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const isZip = source.kind === 'zip';
   const tablesMode = mode === 'tables';
@@ -148,16 +160,15 @@ function AddBatchPanelBody({
       ? source.path
       : (previewTable?.path ?? null);
   const previewMember = filesMode && isZip ? (previewTable?.path ?? null) : null;
-  // One place for every JSON file's rows: the user's choice, else the default
-  // of the first JSON file being added, so the whole batch is read one way.
-  // It follows the ticks: the first file listed may be unticked and built
-  // differently, and its place would give the files being added no rows.
-  const addedJson = recordsMode ? tickedJson : jsonFiles.filter((file) => selected.has(file.id));
-  const firstJson = addedJson[0] ?? jsonFiles[0] ?? null;
+  // JSON records mode: one place for every file's rows, the user's choice,
+  // else the default of the first ticked file, so the Data Block is read one
+  // way. It follows the ticks: the first file listed may be unticked and
+  // built differently, and its place would give the ticked files no rows.
+  const firstJson = recordsMode ? (tickedJson[0] ?? jsonFiles[0] ?? null) : null;
   const firstRecordPaths = useJsonRecordPaths(
     isZip ? source.path : (firstJson?.path ?? null),
     isZip ? (firstJson?.path ?? null) : null,
-    filesMode && Boolean(firstJson),
+    recordsMode && Boolean(firstJson),
   );
   const batchRecordPath = chosenRecordPath ?? firstRecordPaths.paths?.[0]?.path ?? null;
   const previewIsJson = filesMode && previewTable !== null && isJsonPath(previewTable.path);
@@ -166,12 +177,27 @@ function AddBatchPanelBody({
     isZip ? (previewTable?.path ?? null) : null,
     previewIsJson,
   );
+  // Tables mode makes a Data Block per file, so a JSON file is previewed at
+  // the place chosen for it, else at its own default (null).
+  const previewRecordPath = recordsMode
+    ? batchRecordPath
+    : previewTable
+      ? (tableRecordPaths[previewTable.id] ?? null)
+      : null;
+  // A file built differently from the one the batch is read by has no rows
+  // there: say so plainly instead of asking the server for an error.
+  const previewLacksRecords =
+    recordsMode &&
+    previewIsJson &&
+    batchRecordPath !== null &&
+    shownRecordPaths.paths !== null &&
+    !shownRecordPaths.paths.some((item) => item.path === batchRecordPath);
   const preview = useFilePreview(
     previewPath,
-    true,
+    !previewLacksRecords && !(recordsMode && previewIsJson && shownRecordPaths.loading),
     previewMember,
     filesMode ? (previewTable?.sheet ?? null) : undefined,
-    previewIsJson ? batchRecordPath : undefined,
+    previewIsJson ? previewRecordPath : undefined,
   );
   const toggle = (id: string, checked: boolean) => {
     setSelected((current) => {
@@ -192,7 +218,7 @@ function AddBatchPanelBody({
       } else {
         await onConfirmTables(
           tableFiles.filter((file) => selected.has(file.id)),
-          batchRecordPath,
+          tableRecordPaths,
         );
       }
       onClose();
@@ -440,14 +466,23 @@ function AddBatchPanelBody({
         sheetNames: preview.sheetNames,
         selectedSheet: preview.selectedSheet,
         setSelectedSheet: preview.setSelectedSheet,
-        // The place chosen here applies to every JSON file in the window.
+        // JSON records: the place chosen here applies to every file in the
+        // window. Tables: to the previewed file only.
         recordPaths: previewIsJson ? shownRecordPaths.paths : null,
-        recordPath: batchRecordPath,
+        recordPath: previewRecordPath,
         setRecordPath: (path: string) => {
-          setChosenRecordPath(path);
+          if (recordsMode) {
+            setChosenRecordPath(path);
+          } else if (previewTable) {
+            const id = previewTable.id;
+            setTableRecordPaths((current) => ({ ...current, [id]: path }));
+          }
         },
       }}
-      recordPathNote={RECORD_PATH_NOTE}
+      recordPathNote={
+        recordsMode ? RECORD_PATH_NOTE : tableRecordPathNote(previewTable?.label ?? 'this file')
+      }
+      missingRecordsNote={previewLacksRecords ? MISSING_RECORDS_NOTE : undefined}
       title={
         isZip
           ? `Add ZIP: ${source.path}`

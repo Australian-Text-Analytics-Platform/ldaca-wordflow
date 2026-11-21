@@ -410,12 +410,15 @@ function DataLoaderFeature() {
       notify('error', "Couldn't add to Project.", undefined, error);
     }
   };
-  const handleAddBatchTables = async (files: BatchTableFile[], recordPath: string | null) => {
+  const handleAddBatchTables = async (
+    files: BatchTableFile[],
+    recordPaths: Record<string, string>,
+  ) => {
     if (!addBatchSource) return;
     await handleAddFilesToWorkspace(
       files,
       addBatchSource.kind === 'zip' ? addBatchSource.path : undefined,
-      recordPath,
+      recordPaths,
     );
   };
   /** JSON files of a folder, selection or ZIP as one Data Block, read one way. */

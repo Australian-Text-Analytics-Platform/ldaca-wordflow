@@ -17,13 +17,14 @@ const previews = vi.hoisted(
       member: string | null;
       sheet?: string | null;
       recordPath?: string | null;
+      open?: false;
     }[],
 );
 
 vi.mock('../../hooks/useFilePreview', () => ({
   useFilePreview: (
     path: string | null,
-    _open: boolean,
+    open: boolean,
     member: string | null = null,
     sheet?: string | null,
     recordPath?: string | null,
@@ -33,6 +34,8 @@ vi.mock('../../hooks/useFilePreview', () => ({
       member,
       ...(sheet === undefined ? {} : { sheet }),
       ...(recordPath === undefined ? {} : { recordPath }),
+      // Recorded only when the preview is not asked for.
+      ...(open ? {} : { open: false as const }),
     });
     return {
       columns: [],
@@ -150,7 +153,7 @@ describe('AddBatchPanel', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add 1 Data Block' }));
     // No JSON file among them, so no place for rows.
-    expect(onConfirmTables).toHaveBeenCalledWith([folderTables[1]], null);
+    expect(onConfirmTables).toHaveBeenCalledWith([folderTables[1]], {});
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
@@ -178,7 +181,7 @@ describe('AddBatchPanel', () => {
 
     await user.click(screen.getByRole('button', { name: 'Select all' }));
     await user.click(screen.getByRole('button', { name: 'Add 2 Data Blocks' }));
-    expect(onConfirmTables).toHaveBeenCalledWith(zipTables, null);
+    expect(onConfirmTables).toHaveBeenCalledWith(zipTables, {});
   });
 
   it('lists a workbook sheet by sheet and previews the chosen sheet (issue 323)', async () => {
@@ -217,7 +220,7 @@ describe('AddBatchPanel', () => {
           sheet: 'Codes',
         },
       ],
-      null,
+      {},
     );
   });
 
@@ -378,10 +381,51 @@ describe('AddBatchPanel', () => {
     expect(screen.getByRole('tab', { name: 'JSON records as one Data Block (2)' })).toBeEnabled();
   });
 
-  it('reads every JSON table of a ZIP at one place in Tables mode', async () => {
+  it('says plainly that a JSON file built differently adds no rows (issue 518)', async () => {
+    const user = userEvent.setup();
+    const notes = { id: 'ocr/notes.json', label: 'notes.json', path: 'ocr/notes.json' };
+    render(
+      <AddBatchPanel
+        source={{ path: 'ocr', kind: 'folder' }}
+        tableFiles={[...ocrFiles, notes]}
+        textCount={0}
+        onClose={vi.fn()}
+        onConfirmTexts={vi.fn()}
+        onConfirmTables={vi.fn()}
+        onConfirmJsonRecords={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Preview notes.json' }));
+    // Not asked of the server, which would answer with an error to report.
+    expect(previews.at(-1)).toMatchObject({ path: 'ocr/notes.json', open: false });
+    expect(
+      screen.getByText(/This file has no records at pages › parsing_res_list\./),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(
+      'This file would add no rows. Untick it to leave it out, or choose a place in Rows from that this file has; every ticked file is then read there.',
+    );
+
+    // Its own place, chosen in Rows from, is then read for every file.
+    await user.click(screen.getByRole('combobox', { name: 'Rows from' }));
+    await user.click(screen.getByRole('option', { name: 'entries · 12 rows' }));
+    expect(previews.at(-1)).toEqual({
+      path: 'ocr/notes.json',
+      member: null,
+      sheet: null,
+      recordPath: '/entries',
+    });
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+  });
+
+  it('reads each JSON table on its own in Tables mode', async () => {
     const user = userEvent.setup();
     const onConfirmTables = vi.fn();
-    const tables = [...zipTables, { id: 'ocr/p1.json', label: 'ocr/p1.json', path: 'ocr/p1.json' }];
+    const tables = [
+      ...zipTables,
+      { id: 'ocr/p1.json', label: 'ocr/p1.json', path: 'ocr/p1.json' },
+      { id: 'ocr/notes.json', label: 'ocr/notes.json', path: 'ocr/notes.json' },
+    ];
     render(
       <AddBatchPanel
         source={{ path: 'bundle.zip', kind: 'zip' }}
@@ -394,16 +438,43 @@ describe('AddBatchPanel', () => {
 
     // Without a JSON records handler, only the two original modes show.
     expect(screen.queryByRole('tab', { name: /JSON records/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: 'Tables as separate Data Blocks (3)' }));
+    await user.click(screen.getByRole('tab', { name: 'Tables as separate Data Blocks (4)' }));
     await user.click(screen.getByRole('button', { name: 'Preview ocr/p1.json' }));
+    // Each file is its own Data Block, so it opens at its own default.
     expect(previews.at(-1)).toEqual({
       path: 'bundle.zip',
       member: 'ocr/p1.json',
       sheet: null,
-      recordPath: '/pages/parsing_res_list',
+      recordPath: null,
     });
+    expect(
+      screen.getByText(
+        /Each JSON file is read on its own; this choice is for ocr\/p1\.json only\./,
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: 'Rows from' }));
+    await user.click(
+      screen.getByRole('option', { name: 'pages › layout_det_res › boxes · 170 rows' }),
+    );
+    expect(previews.at(-1)?.recordPath).toBe('/pages/layout_det_res/boxes');
+
+    // A file built differently keeps its own place, with no note.
+    await user.click(screen.getByRole('button', { name: 'Preview ocr/notes.json' }));
+    expect(previews.at(-1)).toEqual({
+      path: 'bundle.zip',
+      member: 'ocr/notes.json',
+      sheet: null,
+      recordPath: null,
+    });
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Each record becomes a row, with its fields as columns: text\./),
+    ).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: 'Select all' }));
-    await user.click(screen.getByRole('button', { name: 'Add 3 Data Blocks' }));
-    expect(onConfirmTables).toHaveBeenCalledWith(tables, '/pages/parsing_res_list');
+    await user.click(screen.getByRole('button', { name: 'Add 4 Data Blocks' }));
+    expect(onConfirmTables).toHaveBeenCalledWith(tables, {
+      'ocr/p1.json': '/pages/layout_det_res/boxes',
+    });
   });
 });

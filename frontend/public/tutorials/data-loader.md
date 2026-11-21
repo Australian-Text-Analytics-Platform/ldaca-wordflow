@@ -194,9 +194,13 @@ how to load it:
   no text files
   opens in this mode. A file that isn't valid JSON, isn't saved as UTF-8, or
   has no records at the chosen place is left out, and the others are added.
-  A window then lists each file left out and why, such as _p2.json — Not
-  valid JSON (line 3)_; click **OK** to close it. In Tables mode, too, every
-  JSON file is read from the place chosen under **Rows from**.
+  Clicking such a file shows, instead of its preview, that it would add no
+  rows: untick it, or choose a place under **Rows from** that it has, and
+  every ticked file is read there. A window then lists each file left out
+  and why, such as _p2.json — Not valid JSON (line 3)_; click **OK** to
+  close it. In Tables mode each JSON file becomes its own Data Block, so each
+  is read on its own: from the place that suits it, or the one you choose
+  under **Rows from** while previewing that file.
 
 A Parquet file can mark a category column as ordered, for example one saved by pandas. Wordflow can't read that order, so the column's values are listed A to Z and a message names the column. Click the column's type in the Data Editor and choose **Category** to set the order.
 
