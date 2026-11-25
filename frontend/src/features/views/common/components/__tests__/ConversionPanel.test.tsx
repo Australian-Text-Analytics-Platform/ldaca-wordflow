@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import {
@@ -8,6 +8,7 @@ import {
   type ConversionCheckResource,
   type DatetimeFormatCandidate,
 } from '@/api';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { ConversionPanel, type ConversionMode } from '../ConversionPanel';
 
 vi.mock('@/api', async (importOriginal) => ({
@@ -44,24 +45,39 @@ const showPanel = (
 ) => {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ConversionPanel
-        open
-        workspaceId="w"
-        nodeId="n"
-        columnName="published"
-        mode={mode}
-        target={target}
-        targetLabel={target}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />
+      <TooltipProvider>
+        <ConversionPanel
+          open
+          workspaceId="w"
+          nodeId="n"
+          columnName="published"
+          mode={mode}
+          target={target}
+          targetLabel={target}
+          onClose={vi.fn()}
+          onConfirm={onConfirm}
+        />
+      </TooltipProvider>
     </QueryClientProvider>,
   );
   return onConfirm;
 };
 
+const turnOnAdvanced = async () => {
+  await userEvent.click(await screen.findByRole('switch', { name: 'Advanced settings' }));
+};
+
+const namePart = async (part: string, role: string) => {
+  await userEvent.selectOptions(
+    await screen.findByRole('combobox', { name: `What "${part}" is` }),
+    role,
+  );
+};
+
 describe('ConversionPanel (issue 322)', () => {
   beforeEach(() => {
+    // The Advanced choice is kept on the device.
+    window.localStorage.clear();
     vi.mocked(getDatetimeFormats).mockReset();
     vi.mocked(checkConversion).mockReset();
     vi.mocked(checkConversion).mockResolvedValue({ data: checked } as never);
@@ -152,12 +168,8 @@ describe('ConversionPanel (issue 322)', () => {
     } as never);
     const onConfirm = showPanel('date');
 
-    const name = async (part: string, role: string) => {
-      await userEvent.selectOptions(
-        await screen.findByRole('combobox', { name: `What "${part}" is` }),
-        role,
-      );
-    };
+    // No format fits, so the parts show without Advanced.
+    const name = namePart;
     await name('2021', 'Year');
     // A choice stays while other parts are still unnamed.
     expect(screen.getByRole('combobox', { name: 'What "2021" is' })).toHaveDisplayValue('Year');
@@ -166,14 +178,166 @@ describe('ConversionPanel (issue 322)', () => {
     expect(screen.getByRole('button', { name: 'Convert' })).toBeDisabled();
     await name('LaurenLancaster', 'Ignore (not part of the date)');
 
+    expect(screen.queryByRole('textbox', { name: /Format code/ })).not.toBeInTheDocument();
+    await turnOnAdvanced();
     expect(screen.getByRole('textbox', { name: /Format code/ })).toHaveValue('%Y_%m_%d');
-    expect(screen.getByRole('checkbox', { name: /inside longer text/ })).toBeChecked();
+    // An ignored part means searching, so the tick is on and can't be taken off.
+    const search = screen.getByRole('checkbox', { name: /inside longer text/ });
+    expect(search).toBeChecked();
+    expect(search).toBeDisabled();
     await vi.waitFor(() => {
       expect(screen.getByRole('button', { name: 'Convert' })).toBeEnabled();
     });
     expect(vi.mocked(checkConversion).mock.lastCall?.[0].body).toMatchObject({
       datetime_format: '%Y_%m_%d',
       date_in_text: true,
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    expect(onConfirm).toHaveBeenCalledWith({ datetime_format: '%Y_%m_%d', date_in_text: true });
+  });
+
+  const zonedTimes = () => {
+    vi.mocked(getDatetimeFormats).mockResolvedValue({
+      data: {
+        column: 'created_at',
+        sample_size: 3,
+        sample_value: '2020-10-16 15:20:22.000 +0000',
+        sample_parts: [
+          ...['2020', '-', '10', '-', '16', ' ', '15', ':', '20', ':', '22', '.', '000'],
+          ...[' ', '+0000'],
+        ],
+        candidates: [
+          candidate({
+            // The parser reads the space before the zone without one in the format.
+            format: '%Y-%m-%d %H:%M:%S%.f%z',
+            examples: [{ value: '2020-10-16 15:20:22.000 +0000', result: '2020-10-16 15:20:22' }],
+          }),
+        ],
+      },
+    } as never);
+  };
+
+  it('shows the fitting formats and the check until Advanced is turned on', async () => {
+    zonedTimes();
+    showPanel('date');
+
+    expect(await screen.findByRole('radio', { name: /Year-Month-Day Hour/ })).toBeChecked();
+    // Converting to a date keeps the date, so the example has no time.
+    expect(screen.getByText(/→ 16 Oct 2020$/)).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /Format code/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+
+    await turnOnAdvanced();
+    const advancedSettings = screen.getByRole('group', { name: 'Advanced settings' });
+    expect(advancedSettings).toBeInTheDocument();
+    // Every part of the fitting format is named, the zone after its space too.
+    expect(screen.getByRole('combobox', { name: 'What "2020" is' })).toHaveDisplayValue('Year');
+    expect(screen.getByRole('combobox', { name: 'What "+0000" is' })).toHaveDisplayValue(
+      'Time zone',
+    );
+    expect(screen.getByRole('button', { name: 'Ignore the rest' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: /inside longer text/ })).not.toBeChecked();
+  });
+
+  it('remembers Advanced on this device', async () => {
+    zonedTimes();
+    showPanel('date');
+    await turnOnAdvanced();
+    expect(window.localStorage.getItem('ldaca.toolMode.conversion-date')).toBe('advanced');
+  });
+
+  it('searches inside each value for a typed code that reads only the date', async () => {
+    zonedTimes();
+    const onConfirm = showPanel('date');
+    await turnOnAdvanced();
+
+    fireEvent.change(screen.getByRole('textbox', { name: /Format code/ }), {
+      target: { value: '%Y-%m-%d' },
+    });
+    // The parts follow the code: the time and zone are ignored.
+    expect(screen.getByRole('combobox', { name: 'What "16" is' })).toHaveDisplayValue('Day');
+    expect(screen.getByRole('combobox', { name: 'What "+0000" is' })).toHaveDisplayValue(
+      'Ignore (not part of the date)',
+    );
+    expect(screen.getByRole('checkbox', { name: /inside longer text/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Your own format: Year-Month-Day/ })).toBeChecked();
+
+    // The format in use stays in view when Advanced is turned off again.
+    await turnOnAdvanced();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Your own format: Year-Month-Day/ })).toBeChecked();
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Convert' })).toBeEnabled();
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    expect(onConfirm).toHaveBeenCalledWith({ datetime_format: '%Y-%m-%d', date_in_text: true });
+  });
+
+  const unreadFileNames = () => {
+    vi.mocked(getDatetimeFormats).mockResolvedValue({
+      data: {
+        column: 'base_name',
+        sample_size: 3,
+        sample_value: '2021_01_17_Lauren_v2',
+        sample_parts: ['2021', '_', '01', '_', '17', '_', 'Lauren', '_', 'v', '2'],
+        candidates: [],
+      },
+    } as never);
+  };
+
+  it('ignores every part that has no name in one click', async () => {
+    unreadFileNames();
+    const onConfirm = showPanel('date');
+
+    const ignoreRest = await screen.findByRole('button', { name: 'Ignore the rest' });
+    // Nothing to ignore the rest of until a part of the date is named.
+    expect(ignoreRest).toBeDisabled();
+    await namePart('2021', 'Year');
+    await namePart('01', 'Month');
+    await namePart('17', 'Day');
+    await userEvent.click(ignoreRest);
+
+    for (const part of ['Lauren', 'v', '2']) {
+      expect(screen.getByRole('combobox', { name: `What "${part}" is` })).toHaveDisplayValue(
+        'Ignore (not part of the date)',
+      );
+    }
+    expect(ignoreRest).toBeDisabled();
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Convert' })).toBeEnabled();
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    expect(onConfirm).toHaveBeenCalledWith({ datetime_format: '%Y_%m_%d', date_in_text: true });
+  });
+
+  it('keeps the named parts when the search inside longer text is ticked', async () => {
+    vi.mocked(getDatetimeFormats).mockResolvedValue({
+      data: {
+        column: 'base_name',
+        sample_size: 3,
+        sample_value: '2021_01_17',
+        sample_parts: ['2021', '_', '01', '_', '17'],
+        candidates: [],
+      },
+    } as never);
+    const onConfirm = showPanel('date');
+    await turnOnAdvanced();
+
+    await namePart('2021', 'Year');
+    await namePart('01', 'Month');
+    const search = screen.getByRole('checkbox', { name: /inside longer text/ });
+    await userEvent.click(search);
+    expect(search).toBeChecked();
+    expect(screen.getByRole('combobox', { name: 'What "2021" is' })).toHaveDisplayValue('Year');
+    expect(screen.getByRole('combobox', { name: 'What "01" is' })).toHaveDisplayValue('Month');
+
+    // Naming the last part keeps the tick: no part is ignored, so it was made by hand.
+    await namePart('17', 'Day');
+    expect(search).toBeChecked();
+    expect(search).toBeEnabled();
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Convert' })).toBeEnabled();
     });
     await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
     expect(onConfirm).toHaveBeenCalledWith({ datetime_format: '%Y_%m_%d', date_in_text: true });

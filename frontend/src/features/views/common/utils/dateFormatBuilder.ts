@@ -150,6 +150,30 @@ export function segmentsFromFormat(
   return null;
 }
 
+/**
+ * How much of a value a typed format reads: all of it, a date inside longer
+ * text, or nothing. A format that reads only a date inside the value has to
+ * be searched for in each value.
+ */
+export function formatReach(format: string, value: string): 'whole' | 'inside' | null {
+  if (!formatTokens(format).some((token) => token.spec)) return null;
+  if (segmentsFromFormat(format, value)) return 'whole';
+  return segmentsFromFormat(format, value, true) ? 'inside' : null;
+}
+
+/** Spaces before a time zone read the same with or without them in the format. */
+export function sameFormat(first: string, second: string): boolean {
+  const plain = (format: string) => format.replace(/\s+(?=%:?z)/g, '');
+  return plain(first) === plain(second);
+}
+
+/** Marks every part that has no name yet as Ignore. */
+export function ignoreUnnamed(segments: FormatSegment[]): FormatSegment[] {
+  return segments.map((segment) =>
+    segment.kind === 'field' && !segment.spec ? { ...segment, spec: IGNORE_PART } : segment,
+  );
+}
+
 /** The bare parts of a value: digit and letter runs become fields to name. */
 export function segmentsFromValue(parts: string[]): FormatSegment[] {
   return parts.map((text) =>
@@ -201,13 +225,22 @@ const SHORT_NAMES: Record<string, string> = {
   '%b': 'Month name',
   '%A': 'Weekday',
   '%a': 'Weekday',
-  '%.f': 'Fraction',
+  // Written with its point, so "Second.Fraction" and not "SecondFraction".
+  '%.f': '.Fraction',
 };
 
 /** A readable description of a format, such as "Day/Month/Year Hour:Minute". */
 export function describeFormat(format: string): string {
-  return formatTokens(format)
-    .map((token) => (token.spec ? (SHORT_NAMES[token.text] ?? roleLabel(token.text)) : token.text))
+  const tokens = formatTokens(format);
+  return tokens
+    .map((token, index) => {
+      if (!token.spec) return token.text;
+      const name = SHORT_NAMES[token.text] ?? roleLabel(token.text);
+      // A zone straight after another part is a word of its own:
+      // "Second Time zone", not "SecondTime zone".
+      const zone = token.text === '%z' || token.text === '%:z';
+      return zone && tokens[index - 1]?.spec ? ` ${name}` : name;
+    })
     .join('');
 }
 

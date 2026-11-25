@@ -25,13 +25,20 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
+import { AdvancedSection } from '../toolMode/AdvancedSection';
+import { AdvancedSwitch } from '../toolMode/AdvancedSwitch';
+import { ToolModeContext, useToolModeContext, type ToolMode } from '../toolMode/ToolModeContext';
+import { readToolModeDeviceDefault, writeToolModeDeviceDefault } from '../toolMode/toolMode';
 import {
   DATE_TEXT_PARTS,
   DATE_TEXT_PRESETS,
   buildFormat,
   describeFormat,
+  formatReach,
   IGNORE_PART,
+  ignoreUnnamed,
   rolesFor,
+  sameFormat,
   segmentsFromFormat,
   segmentsFromValue,
   type FormatSegment,
@@ -91,6 +98,11 @@ interface ConversionPanelProps {
  * shows what they become, and checks the whole column before converting.
  * Opened from a column's type menu for: text, category or numbers to a date or
  * date and time; text or category to a number; a date to text.
+ *
+ * Reading text as a date has an Advanced switch (Chao, 25 Nov 2026): off, the
+ * window lists the formats that fit and the check; on, it adds the menus that
+ * name each part of a value, the format code and the search inside longer
+ * text. The choice is kept on this device, as for the analysis tools.
  */
 export function ConversionPanel({ open, onClose, ...props }: ConversionPanelProps) {
   return (
@@ -117,6 +129,17 @@ function ConversionPanelContent({
   onConfirm,
 }: Omit<ConversionPanelProps, 'open'>) {
   const [extras, setExtras] = useState<CastExtras>(() => initialExtras(mode, sourceHasTime));
+  const [advanced, setAdvanced] = useState(() => readToolModeDeviceDefault(DATE_CONVERSION_MODE));
+  // No `viewId`: the window is too narrow for the Advanced hint beside the switch.
+  const toolMode: ToolMode = {
+    advanced,
+    setAdvanced: (next) => {
+      setAdvanced(next);
+      writeToolModeDeviceDefault(DATE_CONVERSION_MODE, next);
+    },
+  };
+  // Unix times and Excel day numbers have no parts to name and no format code.
+  const hasAdvanced = mode === 'date' && !extras.epoch_unit && !extras.excel_serial;
   const detection = useQuery({
     queryKey: [
       'workspaces',
@@ -199,10 +222,20 @@ function ConversionPanelContent({
       </DialogHeader>
       <Card>
         <CardHeader>
-          <CardTitle>
-            Convert <span className="text-description">&ldquo;{columnName}&rdquo;</span> to{' '}
-            {targetLabel}
-          </CardTitle>
+          {/* The right padding keeps the switch clear of the window's close button. */}
+          <div className="flex items-start gap-3 pr-7">
+            <CardTitle className="min-w-0 flex-1 leading-snug">
+              Convert <span className="text-description">&ldquo;{columnName}&rdquo;</span> to{' '}
+              {targetLabel}
+            </CardTitle>
+            {hasAdvanced ? (
+              <div className="shrink-0">
+                <ToolModeContext value={toolMode}>
+                  <AdvancedSwitch />
+                </ToolModeContext>
+              </div>
+            ) : null}
+          </div>
           <CardDescription>{MODE_DESCRIPTIONS[mode]}</CardDescription>
         </CardHeader>
         <CardContent className="max-h-[65vh] space-y-4 overflow-y-auto">
@@ -210,7 +243,14 @@ function ConversionPanelContent({
             detection.isError ? (
               <ErrorNotice error={detection.error} fallback="Couldn't read the column's values." />
             ) : detected ? (
-              <DateSection detected={detected} extras={extras} onChange={setExtras} />
+              <ToolModeContext value={toolMode}>
+                <DateSection
+                  detected={detected}
+                  extras={extras}
+                  target={target}
+                  onChange={setExtras}
+                />
+              </ToolModeContext>
             ) : (
               <p className="text-body text-description">Reading the values…</p>
             )
@@ -249,6 +289,9 @@ function ConversionPanelContent({
     </DialogContent>
   );
 }
+
+/** Names the date conversion window where the Advanced choice is kept on this device. */
+const DATE_CONVERSION_MODE = 'conversion-date';
 
 function extrasFor(candidate: DatetimeFormatCandidate): CastExtras {
   if (candidate.kind === 'excel') return { excel_serial: true };
@@ -314,21 +357,28 @@ const UNITS = [
   { value: 'ns', label: 'nanoseconds' },
 ] as const;
 
+/** The draft's key: the parts start again when the format comes from elsewhere. */
+const partsKey = (extras: CastExtras) =>
+  `${extras.datetime_format ?? ''}|${String(Boolean(extras.date_in_text))}`;
+
 function DateSection({
   detected,
   extras,
+  target,
   onChange,
 }: {
   detected: DatetimeFormatsResource;
   extras: CastExtras;
+  target: string;
   onChange: (extras: CastExtras) => void;
 }) {
+  const advanced = useToolModeContext()?.advanced ?? false;
   const { candidates } = detected;
   const format = extras.datetime_format ?? '';
   const selected = candidates.find(
     (candidate) =>
       (candidate.kind === 'format' &&
-        candidate.format === format &&
+        sameFormat(candidate.format ?? '', format) &&
         Boolean(candidate.in_text) === Boolean(extras.date_in_text) &&
         !extras.epoch_unit) ||
       (candidate.kind === 'unix' && extras.epoch_unit != null) ||
@@ -340,7 +390,7 @@ function DateSection({
   // The parts as named so far. Choices are kept here until every part is
   // named, then become the format; a new format from elsewhere (a candidate,
   // the swap, the code field) starts the parts again.
-  const formatKey = `${format}|${String(inText)}`;
+  const formatKey = partsKey(extras);
   const seedParts = () =>
     (format ? segmentsFromFormat(format, sample, inText) : null) ??
     segmentsFromValue(detected.sample_parts);
@@ -351,29 +401,115 @@ function DateSection({
     setDraft({ key: formatKey, segments });
   }
   const built = buildFormat(segments);
+  // An ignored part means the date is searched for inside each value. With
+  // no part ignored, the search is on only when ticked by hand.
+  const tickedByHand = inText && !built.inText;
   const nameParts = (next: FormatSegment[]) => {
     const result = buildFormat(next);
     const { date_in_text: _inText, ...rest } = extras;
-    const nextExtras: CastExtras = result.format
-      ? {
-          ...rest,
-          datetime_format: result.format,
-          ...(result.inText ? { date_in_text: true } : {}),
-        }
-      : { ...rest, datetime_format: undefined };
-    setDraft({
-      key: `${nextExtras.datetime_format ?? ''}|${String(Boolean(nextExtras.date_in_text))}`,
-      segments: next,
-    });
+    const nextExtras: CastExtras = {
+      ...rest,
+      datetime_format: result.format ?? undefined,
+      ...(result.inText || tickedByHand ? { date_in_text: true } : {}),
+    };
+    setDraft({ key: partsKey(nextExtras), segments: next });
     onChange(nextExtras);
   };
   const twoDigits = !usesNumbers && format.includes('%y');
+  const unnamedParts = segments.some((segment) => segment.kind === 'field' && !segment.spec);
+  const namedParts = segments.some(
+    (segment) => segment.kind === 'field' && segment.spec !== '' && segment.spec !== IGNORE_PART,
+  );
+  // A format made by hand is in use, so the list has no fitting format to tick.
+  const ownFormat = candidates.length > 0 && !selected && !usesNumbers && format !== '';
+  // With no format that fits, naming the parts is the way to read the dates,
+  // so the menus show without Advanced.
+  const partsAreTheWay = candidates.length === 0;
+
+  const partsBuilder =
+    !usesNumbers && sample ? (
+      <div>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <p className="text-body font-medium text-foreground">
+            What each part of &ldquo;{sample}&rdquo; is
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!unnamedParts || !namedParts}
+            title={
+              !unnamedParts
+                ? 'Every part already has a name'
+                : !namedParts
+                  ? 'Name the parts of the date first'
+                  : 'Mark every part without a name as not part of the date'
+            }
+            onClick={() => {
+              nameParts(ignoreUnnamed(segments));
+            }}
+          >
+            Ignore the rest
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-end gap-1">
+          {segments.map((segment, index) =>
+            segment.kind === 'literal' ? (
+              <span key={index} className="pb-1 font-mono text-description">
+                {segment.text === ' ' ? '␣' : segment.text}
+              </span>
+            ) : (
+              <label key={index} className="flex flex-col items-center gap-0.5">
+                <span
+                  className={`font-mono text-body ${segment.spec === IGNORE_PART ? 'text-description line-through' : ''}`}
+                >
+                  {segment.text}
+                </span>
+                <select
+                  aria-label={`What "${segment.text}" is`}
+                  className="rounded-sm border border-input-border bg-editor px-1 py-0.5 text-label-secondary"
+                  value={segment.spec}
+                  onChange={(event) => {
+                    nameParts(
+                      segments.map((item, at) =>
+                        at === index ? { ...item, spec: event.target.value } : item,
+                      ),
+                    );
+                  }}
+                >
+                  <option value="" disabled>
+                    Choose…
+                  </option>
+                  {rolesFor(segment.text).map((role) => (
+                    <option key={role.spec} value={role.spec}>
+                      {role.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ),
+          )}
+        </div>
+        {built.ignoredInside ? (
+          <p role="alert" className="mt-1 text-label-secondary text-error">
+            Only text before or after the date can be ignored, not a part in the middle of it.
+          </p>
+        ) : built.inText && built.format ? (
+          <p className="mt-1 text-label-secondary text-description">
+            Wordflow finds the date inside each value and ignores the text around it.
+          </p>
+        ) : null}
+      </div>
+    ) : null;
 
   return (
     <div className="space-y-4">
       {candidates.length === 0 ? (
         <p className="text-body text-description">
-          No common date format reads these values. Name the parts below, or type the format.
+          No common date format reads these values. Name the parts below
+          {advanced
+            ? ', or type the format code.'
+            : ', or turn on Advanced to type the format code.'}
         </p>
       ) : (
         <fieldset className="space-y-1.5">
@@ -407,13 +543,24 @@ function DateSection({
                       {/* A two-digit year has no century until one is chosen (issue 322). */}
                       {candidate.two_digit_year
                         ? 'choose the century below'
-                        : readable(candidate.examples[0].result, 'datetime')}
+                        : readable(candidate.examples[0].result, target)}
                     </span>
                   ) : null}
                 </span>
               </label>
             );
           })}
+          {ownFormat ? (
+            <label className="flex items-start gap-2 rounded-md border border-focus bg-panel px-2.5 py-1.5 text-body">
+              <input type="radio" name="conversion-format" className="mt-1" checked readOnly />
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">Your own format: {describeFormat(format)}</span>
+                {inText ? (
+                  <span className="text-description"> · found inside longer text</span>
+                ) : null}
+              </span>
+            </label>
+          ) : null}
         </fieldset>
       )}
 
@@ -457,59 +604,62 @@ function DateSection({
         </label>
       ) : null}
 
-      {!usesNumbers && sample ? (
-        <div>
-          <p className="mb-1 text-body font-medium text-foreground">
-            What each part of &ldquo;{sample}&rdquo; is
-          </p>
-          <div className="flex flex-wrap items-end gap-1">
-            {segments.map((segment, index) =>
-              segment.kind === 'literal' ? (
-                <span key={index} className="pb-1 font-mono text-description">
-                  {segment.text === ' ' ? '␣' : segment.text}
+      {partsAreTheWay ? partsBuilder : null}
+
+      {!usesNumbers ? (
+        <AdvancedSection>
+          {partsAreTheWay ? null : partsBuilder}
+          <div>
+            <label className="block text-label-secondary text-description">
+              Format code
+              <input
+                type="text"
+                value={format}
+                onChange={(event) => {
+                  const typed = event.target.value;
+                  // A code that reads only a date inside the sample value is
+                  // searched for inside each value; one that reads all of it
+                  // keeps a tick made by hand.
+                  const reach = formatReach(typed, sample);
+                  const searches =
+                    reach === 'inside' || (reach === 'whole' ? tickedByHand : inText);
+                  onChange({
+                    datetime_format: typed,
+                    ...(searches ? { date_in_text: true } : {}),
+                  });
+                }}
+                className="mt-0.5 w-full rounded-sm border border-input-border bg-editor px-2 py-1 font-mono text-body text-foreground"
+              />
+            </label>
+            <label className="mt-1.5 flex items-start gap-2 text-label-secondary text-foreground">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={inText || built.inText}
+                // Ignoring a part already means searching, so there is nothing to untick.
+                disabled={built.inText}
+                onChange={(event) => {
+                  const { date_in_text: _inText, ...rest } = extras;
+                  const nextExtras: CastExtras = event.target.checked
+                    ? { ...rest, date_in_text: true }
+                    : rest;
+                  // The parts stay as named: the tick changes how each value
+                  // is searched, not what its parts are.
+                  setDraft({ key: partsKey(nextExtras), segments });
+                  onChange(nextExtras);
+                }}
+              />
+              <span>
+                Find the date inside longer text (ignore the rest)
+                <span className="block text-description">
+                  {built.inText
+                    ? 'On because a part above is ignored.'
+                    : 'For values with other words around the date, such as “about 2020-10-17”. When off, a value must be the date and nothing else.'}
                 </span>
-              ) : (
-                <label key={index} className="flex flex-col items-center gap-0.5">
-                  <span
-                    className={`font-mono text-body ${segment.spec === IGNORE_PART ? 'text-description line-through' : ''}`}
-                  >
-                    {segment.text}
-                  </span>
-                  <select
-                    aria-label={`What "${segment.text}" is`}
-                    className="rounded-sm border border-input-border bg-editor px-1 py-0.5 text-label-secondary"
-                    value={segment.spec}
-                    onChange={(event) => {
-                      nameParts(
-                        segments.map((item, at) =>
-                          at === index ? { ...item, spec: event.target.value } : item,
-                        ),
-                      );
-                    }}
-                  >
-                    <option value="" disabled>
-                      Choose…
-                    </option>
-                    {rolesFor(segment.text).map((role) => (
-                      <option key={role.spec} value={role.spec}>
-                        {role.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ),
-            )}
+              </span>
+            </label>
           </div>
-          {built.ignoredInside ? (
-            <p role="alert" className="mt-1 text-label-secondary text-error">
-              Only text before or after the date can be ignored, not a part in the middle of it.
-            </p>
-          ) : built.inText && built.format ? (
-            <p className="mt-1 text-label-secondary text-description">
-              Wordflow finds the date inside each value and ignores the text around it.
-            </p>
-          ) : null}
-        </div>
+        </AdvancedSection>
       ) : null}
 
       {twoDigits ? (
@@ -519,36 +669,6 @@ function DateSection({
             onChange({ ...extras, two_digit_year_start: start });
           }}
         />
-      ) : null}
-
-      {!usesNumbers ? (
-        <div>
-          <label className="block text-label-secondary text-description">
-            Format code (for advanced use)
-            <input
-              type="text"
-              value={format}
-              onChange={(event) => {
-                onChange({
-                  datetime_format: event.target.value,
-                  ...(inText ? { date_in_text: true } : {}),
-                });
-              }}
-              className="mt-0.5 w-full rounded-sm border border-input-border bg-editor px-2 py-1 font-mono text-body text-foreground"
-            />
-          </label>
-          <label className="mt-1 flex items-center gap-2 text-label-secondary text-foreground">
-            <input
-              type="checkbox"
-              checked={inText}
-              onChange={(event) => {
-                const { date_in_text: _inText, ...rest } = extras;
-                onChange(event.target.checked ? { ...rest, date_in_text: true } : rest);
-              }}
-            />
-            Find the date inside longer text (ignore the rest)
-          </label>
-        </div>
       ) : null}
     </div>
   );
@@ -882,6 +1002,8 @@ function readable(result: string | null | undefined, target: string): string {
   if (!match) return result;
   const [, year = '', month = '', day = '', hour, minute = '00', second = '00'] = match;
   const date = `${String(Number(day))} ${MONTHS[Number(month) - 1] ?? month} ${year}`;
+  // A date has no time of day, so a fitting format's example shows what is kept.
+  if (target === 'date') return date;
   if (!hour || (hour === '00' && minute === '00' && second === '00')) return date;
   return `${date} ${hour}:${minute}${second !== '00' ? `:${second}` : ''}`;
 }

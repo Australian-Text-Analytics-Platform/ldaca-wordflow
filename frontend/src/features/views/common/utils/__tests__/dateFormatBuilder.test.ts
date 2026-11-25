@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   describeFormat,
   buildFormat,
+  formatReach,
   IGNORE_PART,
+  ignoreUnnamed,
   rolesFor,
+  sameFormat,
   segmentsFromFormat,
   segmentsFromValue,
 } from '../dateFormatBuilder';
@@ -51,7 +54,32 @@ describe('date format builder (issue 322)', () => {
       'field:+0000:%z',
     ]);
     // The parts then build the format with the space, which reads the same.
-    expect(buildFormat(segments ?? []).format).toBe('%Y-%m-%d %H:%M:%S%.f %z');
+    const built = buildFormat(segments ?? []).format ?? '';
+    expect(built).toBe('%Y-%m-%d %H:%M:%S%.f %z');
+    expect(sameFormat(built, '%Y-%m-%d %H:%M:%S%.f%z')).toBe(true);
+    expect(sameFormat('%d/%m/%Y', '%m/%d/%Y')).toBe(false);
+  });
+
+  it('says whether a typed format reads the whole value, a date inside it, or nothing', () => {
+    const value = '2020-10-16 15:20:22.000 +0000';
+    expect(formatReach('%Y-%m-%d %H:%M:%S%.f %z', value)).toBe('whole');
+    expect(formatReach('%Y-%m-%d', value)).toBe('inside');
+    expect(formatReach('%d/%m/%Y', value)).toBeNull();
+    // Text without a code is not a date format, wherever it is found.
+    expect(formatReach('', value)).toBeNull();
+    expect(formatReach('-', value)).toBeNull();
+  });
+
+  it('marks the parts without a name as ignored and leaves the others', () => {
+    const named = segmentsFromValue(['2021', '_', '01', '_', 'Lauren']);
+    named[0] = { kind: 'field', text: '2021', spec: '%Y' };
+    expect(ignoreUnnamed(named).map((s) => s.spec)).toEqual([
+      '%Y',
+      '',
+      IGNORE_PART,
+      '',
+      IGNORE_PART,
+    ]);
   });
 
   it('gives up when the format does not read the value', () => {
@@ -77,6 +105,10 @@ describe('date format builder (issue 322)', () => {
       'Ignore (not part of the date)',
     ]);
     expect(describeFormat('%d/%m/%Y %H:%M')).toBe('Day/Month/Year Hour:Minute');
+    expect(describeFormat('%Y-%m-%d %H:%M:%S%.f%z')).toBe(
+      'Year-Month-Day Hour:Minute:Second.Fraction Time zone',
+    );
+    expect(describeFormat('%H:%M %z')).toBe('Hour:Minute Time zone');
   });
 
   it('finds a date inside longer text and ignores the rest', () => {
