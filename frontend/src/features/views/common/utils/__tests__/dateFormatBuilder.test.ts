@@ -43,6 +43,17 @@ describe('date format builder (issue 322)', () => {
     ]);
   });
 
+  it('reads a time zone after a space the format does not have, as the parser does (issue 526)', () => {
+    const segments = segmentsFromFormat('%Y-%m-%d %H:%M:%S%.f%z', '2020-10-16 15:20:22.000 +0000');
+    expect(segments?.slice(-3).map((s) => `${s.kind}:${s.text}:${s.spec}`)).toEqual([
+      'field:.000:%.f',
+      'literal: :',
+      'field:+0000:%z',
+    ]);
+    // The parts then build the format with the space, which reads the same.
+    expect(buildFormat(segments ?? []).format).toBe('%Y-%m-%d %H:%M:%S%.f %z');
+  });
+
   it('gives up when the format does not read the value', () => {
     expect(segmentsFromFormat('%Y-%m-%d', '30/01/2020')).toBeNull();
   });

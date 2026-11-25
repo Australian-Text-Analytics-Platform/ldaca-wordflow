@@ -98,6 +98,13 @@ function align(format: string, value: string): { segments: FormatSegment[]; rest
       rest = rest.slice(token.text.length);
       continue;
     }
+    // The date parser skips spaces before a time zone, so `%S%z` reads
+    // "22 +0000". Show them as text between the parts, as they are written.
+    const gap = token.text === '%z' || token.text === '%:z' ? /^\s+/.exec(rest) : null;
+    if (gap) {
+      segments.push({ kind: 'literal', text: gap[0], spec: '' });
+      rest = rest.slice(gap[0].length);
+    }
     const match = specPattern(token.text).exec(rest);
     if (!match) return null;
     segments.push({ kind: 'field', text: match[0], spec: token.text });
