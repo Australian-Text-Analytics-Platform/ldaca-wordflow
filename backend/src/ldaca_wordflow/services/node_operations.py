@@ -264,7 +264,16 @@ def build_edited_lazyframe(
         if source_type is None:
             raise InvalidInputError("Cast column is not present on the Data Block")
         require_supported_columns(schema, [request.column], use="with a type change")
-        if _cast_is_no_op(
+        # The converted values go into a new column right of the source,
+        # which stays as it is (Chao, 25 Nov 2026).
+        output = (request.output_column or "").strip() or None
+        if request.output_column is not None and output is None:
+            raise InvalidInputError("New column name cannot be blank")
+        if output is not None and output in schema:
+            raise InvalidInputError(
+                f'A column named "{output}" already exists. Choose another name.'
+            )
+        if output is None and _cast_is_no_op(
             source_type,
             request.target_type,
             datetime_format=request.datetime_format,
@@ -279,7 +288,10 @@ def build_edited_lazyframe(
             categories=request.categories,
             options=conversion_options(request),
             strict=request.strict,
+            output_column=output,
         )
+        if output is not None:
+            return _place_right_of(result.lazyframe, request.column, [output]), None
         return result.lazyframe, None
 
     if isinstance(request, RenameColumnNodeEditRequest):

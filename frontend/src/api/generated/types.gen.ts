@@ -1337,6 +1337,11 @@ export type CastExpressionOutput = {
  * CastNodeEditRequest
  *
  * Cast one column on the target Data Block.
+ *
+ * With ``output_column`` the converted values go into a new column right of
+ * the source, which stays as it is, so values that do not convert can still
+ * be read and fixed (Chao, 25 Nov 2026). Like every Data Block Edit it adds
+ * a column and never changes rows (ADR 0031).
  */
 export type CastNodeEditRequest = {
     /**
@@ -1383,6 +1388,10 @@ export type CastNodeEditRequest = {
      * Kind
      */
     kind?: 'cast';
+    /**
+     * Output Column
+     */
+    output_column?: string | null;
     /**
      * Strict
      */
@@ -2418,9 +2427,13 @@ export type ConversionCheckResource = {
      */
     failed: number;
     /**
-     * Failures
+     * Failed Distinct
      */
-    failures: Array<ConversionFailure>;
+    failed_distinct: number;
+    /**
+     * Failed Values
+     */
+    failed_values: Array<ConversionFailedValue>;
     /**
      * Non Empty
      */
@@ -2436,17 +2449,27 @@ export type ConversionCheckResource = {
 };
 
 /**
- * ConversionFailure
+ * ConversionFailedValue
+ *
+ * One distinct value that does not convert, and how many rows hold it.
  */
-export type ConversionFailure = {
+export type ConversionFailedValue = {
     /**
-     * Row
+     * Count
      */
-    row: number;
+    count: number;
+    /**
+     * First Row
+     */
+    first_row: number;
+    /**
+     * Shortened
+     */
+    shortened?: boolean;
     /**
      * Value
      */
-    value: string | null;
+    value: string;
 };
 
 /**

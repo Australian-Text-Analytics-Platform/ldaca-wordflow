@@ -87,6 +87,12 @@ export interface WorkspaceTableProps {
     targetType: ColumnCastType,
     extras?: CastRequestExtras,
   ) => Promise<void>;
+  /**
+   * Puts the rows whose `column` holds one of `values` in a new Data Block
+   * and resolves with its name; the conversion window uses it for the rows
+   * that don't convert.
+   */
+  onAddRowsWithValues?: (column: string, values: string[]) => Promise<string>;
   onRenameColumn?: (column: string, nextName: string) => Promise<void>;
   onDeleteColumn?: (column: string) => Promise<void>;
   onRefreshSchema?: () => Promise<unknown>;
@@ -133,6 +139,7 @@ export function WorkspaceTable({
   nodeId,
   documentColumn,
   onCast,
+  onAddRowsWithValues,
   onRenameColumn,
   onDeleteColumn,
   onRefreshSchema,
@@ -749,6 +756,12 @@ export function WorkspaceTable({
           const field = mutationColumnFields[datetimeModal.column];
           return field !== undefined && isArrowTimestampField(field);
         })()}
+        existingColumns={responseColumns}
+        onAddRowsAsDataBlock={
+          onAddRowsWithValues
+            ? (values) => onAddRowsWithValues(datetimeModal.column, values)
+            : undefined
+        }
         onClose={closeDatetimeModal}
         onConfirm={handleDatetimeFormatConfirm}
       />

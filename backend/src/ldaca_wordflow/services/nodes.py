@@ -629,7 +629,11 @@ class NodeService:
                 await self._run_io(_validate_edit_schema, lazyframe)
                 if isinstance(request, CastNodeEditRequest):
                     report = await self._run_io(
-                        _emptied_values_report, node.data, lazyframe, request.column
+                        _emptied_values_report,
+                        node.data,
+                        lazyframe,
+                        request.column,
+                        (request.output_column or "").strip() or request.column,
                     )
                 node.data = lazyframe
                 if renamed_column is not None:
@@ -1159,11 +1163,19 @@ class EmptiedValuesReport:
 
 
 def _emptied_values_report(
-    before: pl.LazyFrame, after: pl.LazyFrame, column: str
+    before: pl.LazyFrame, after: pl.LazyFrame, column: str, result_column: str
 ) -> EmptiedValuesReport:
+    """Values of ``column`` that are empty in the converted ``result_column``.
+
+    ``result_column`` is ``column`` itself, or the new column a type change
+    wrote into while keeping the source.
+    """
+
     before_dtype = before.collect_schema()[column]
     lost = ~empty_value_expression(pl.col("__before"), before_dtype) & (
-        empty_value_expression(pl.col("__after"), after.collect_schema()[column])
+        empty_value_expression(
+            pl.col("__after"), after.collect_schema()[result_column]
+        )
     )
     # Elapsed time has no plain cast to text (issue 324).
     before_text = (
@@ -1175,7 +1187,7 @@ def _emptied_values_report(
         pl.concat(
             [
                 before.select(pl.col(column).alias("__before")),
-                after.select(pl.col(column).alias("__after")),
+                after.select(pl.col(result_column).alias("__after")),
             ],
             how="horizontal",
         )

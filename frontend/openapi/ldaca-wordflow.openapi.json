@@ -2848,7 +2848,7 @@
       },
       "CastNodeEditRequest": {
         "additionalProperties": false,
-        "description": "Cast one column on the target Data Block.",
+        "description": "Cast one column on the target Data Block.\n\nWith ``output_column`` the converted values go into a new column right of\nthe source, which stays as it is, so values that do not convert can still\nbe read and fixed (Chao, 25 Nov 2026). Like every Data Block Edit it adds\na column and never changes rows (ADR 0031).",
         "properties": {
           "categories": {
             "anyOf": [
@@ -2963,6 +2963,19 @@
             "default": "cast",
             "title": "Kind",
             "type": "string"
+          },
+          "output_column": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Column"
           },
           "strict": {
             "default": false,
@@ -4757,11 +4770,15 @@
             "title": "Failed",
             "type": "integer"
           },
-          "failures": {
+          "failed_distinct": {
+            "title": "Failed Distinct",
+            "type": "integer"
+          },
+          "failed_values": {
             "items": {
-              "$ref": "#/components/schemas/ConversionFailure"
+              "$ref": "#/components/schemas/ConversionFailedValue"
             },
-            "title": "Failures",
+            "title": "Failed Values",
             "type": "array"
           },
           "non_empty": {
@@ -4786,35 +4803,40 @@
           "converted",
           "failed",
           "samples",
-          "failures"
+          "failed_values",
+          "failed_distinct"
         ],
         "title": "ConversionCheckResource",
         "type": "object"
       },
-      "ConversionFailure": {
+      "ConversionFailedValue": {
         "additionalProperties": false,
+        "description": "One distinct value that does not convert, and how many rows hold it.",
         "properties": {
-          "row": {
-            "title": "Row",
+          "count": {
+            "title": "Count",
             "type": "integer"
           },
+          "first_row": {
+            "title": "First Row",
+            "type": "integer"
+          },
+          "shortened": {
+            "default": false,
+            "title": "Shortened",
+            "type": "boolean"
+          },
           "value": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Value"
+            "title": "Value",
+            "type": "string"
           }
         },
         "required": [
-          "row",
-          "value"
+          "value",
+          "count",
+          "first_row"
         ],
-        "title": "ConversionFailure",
+        "title": "ConversionFailedValue",
         "type": "object"
       },
       "ConversionSample": {
@@ -14717,7 +14739,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "Wordflow API",
-    "version": "0.7.22-pre"
+    "version": "0.7.22"
   },
   "openapi": "3.1.0",
   "paths": {

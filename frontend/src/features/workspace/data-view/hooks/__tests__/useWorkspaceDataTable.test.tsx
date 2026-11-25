@@ -291,6 +291,53 @@ describe('useWorkspaceDataTable', () => {
     expect(toastWarningMock).toHaveBeenCalledTimes(1);
   });
 
+  it('says where the values are empty when a type change wrote a new column', async () => {
+    const castColumn = vi.fn().mockResolvedValue({
+      node: {},
+      emptied: 1,
+      rows: 40,
+      firstRow: 3,
+      firstValue: 'soon',
+    });
+    useWorkspaceActionsMock.mockReturnValue({ ...useWorkspaceActionsMock(), castColumn });
+    toastWarningMock.mockReset();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useWorkspaceDataTable(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.table.onCast?.('when', 'date', { output_column: 'when_date' });
+    });
+    const [message, options] = toastWarningMock.mock.calls[0]!;
+    expect(message).toBe(
+      '1 value in "when" could not be converted to date and is empty in "when_date".',
+    );
+    expect(options.description).toMatch(
+      /^The first is row 3 \(page \d+\): "soon"\. "when" is unchanged\. Undo removes the new column\.$/,
+    );
+  });
+
+  it('puts rows holding given values in a Data Block named after the block and column', async () => {
+    const filterNode = vi.fn().mockResolvedValue({ id: 'new', name: 'made by the server' });
+    useWorkspaceActionsMock.mockReturnValue({ ...useWorkspaceActionsMock(), filterNode });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useWorkspaceDataTable(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    let name: string | undefined;
+    await act(async () => {
+      name = await result.current.table.onAddRowsWithValues?.('a/b', ['n/a', 'soon']);
+    });
+    expect(name).toBe('made by the server');
+    const [nodeId, request] = filterNode.mock.calls[0]!;
+    expect(nodeId).toBe('node-b');
+    expect(request.conditions).toEqual([{ column: 'a/b', operator: 'in', value: ['n/a', 'soon'] }]);
+    // A Data Block's name can't hold a path separator.
+    expect(request.name).toMatch(/_a_b_not_converted$/);
+  });
+
   it('uses the selected Data Block shape as the exact Data View row count', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },

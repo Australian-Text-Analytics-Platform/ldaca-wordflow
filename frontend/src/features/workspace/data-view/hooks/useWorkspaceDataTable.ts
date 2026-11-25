@@ -189,6 +189,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
   const { activeNodeId, selectedNode, selectedNodes, selectedNodeIds } = useWorkspaceSelection();
   const {
     castColumn,
+    filterNode,
     renameColumn,
     deleteColumn,
     deleteColumns,
@@ -579,10 +580,17 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
       if (emptied && rows) {
         const label = castTypeLabel(targetType);
         const share = Math.max(1, Math.round((emptied / rows) * 100));
+        // Converted into a new column, the values are empty there and the
+        // column itself keeps them.
+        const newColumn = extras?.output_column ?? null;
+        const now =
+          newColumn === null
+            ? `${emptied === 1 ? 'is' : 'are'} now empty`
+            : `${emptied === 1 ? 'is' : 'are'} empty in "${newColumn}"`;
         const title =
           emptied === 1
-            ? `1 value in "${column}" could not be converted to ${label} and is now empty.`
-            : `${emptied.toLocaleString()} of ${rows.toLocaleString()} values in "${column}" (${String(share)}%) could not be converted to ${label} and are now empty.`;
+            ? `1 value in "${column}" could not be converted to ${label} and ${now}.`
+            : `${emptied.toLocaleString()} of ${rows.toLocaleString()} values in "${column}" (${String(share)}%) could not be converted to ${label} and ${now}.`;
         // The page only matches the row while the table is not sorted.
         const page = nodeTableRequest.sort_by
           ? ''
@@ -591,8 +599,12 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
           firstRow !== null
             ? `The first is row ${firstRow.toLocaleString()}${page}${firstValue !== null ? `: "${firstValue}"` : ''}. `
             : '';
+        const undoes =
+          newColumn === null
+            ? `Undo restores ${emptied === 1 ? 'it' : 'them'}.`
+            : `"${column}" is unchanged. Undo removes the new column.`;
         toast.warning(title, {
-          description: `${where}Undo restores ${emptied === 1 ? 'it' : 'them'}.`,
+          description: `${where}${undoes}`,
           duration: 15_000,
           action: {
             label: 'Undo',
@@ -610,6 +622,28 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
       nodeTableRequest.page_size,
       nodeTableRequest.sort_by,
     ],
+  );
+
+  /**
+   * Puts the rows whose column holds one of the values in a Derived Data
+   * Block, as every row filter does, named after the block and the column.
+   */
+  const selectedNodeLabel = resolveNodeDisplayLabel(selectedNode);
+  const handleAddRowsWithValues = useCallback(
+    async (column: string, values: string[]) => {
+      if (!selectedNodeIdForCallbacks) throw new Error('No Data Block selected');
+      // A Data Block's name can't hold path separators or "..".
+      const name = `${selectedNodeLabel ?? 'Data Block'}_${column}_not_converted`
+        .replace(/[\\/]/g, '_')
+        .replace(/\.{2,}/g, '.');
+      const created = await filterNode(selectedNodeIdForCallbacks, {
+        conditions: [{ column, operator: 'in', value: values }],
+        logic: 'and',
+        name,
+      });
+      return created.name;
+    },
+    [selectedNodeIdForCallbacks, selectedNodeLabel, filterNode],
   );
 
   /** Renames a column on the active Data Block. */
@@ -659,6 +693,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     nodeId: selectedNode?.id,
     documentColumn: selectedNode?.document ?? undefined,
     onCast: selectedNodeIdForCallbacks ? handleCast : undefined,
+    onAddRowsWithValues: selectedNodeIdForCallbacks ? handleAddRowsWithValues : undefined,
     onRenameColumn: selectedNodeIdForCallbacks ? handleRenameColumn : undefined,
     onDeleteColumn: selectedNodeIdForCallbacks ? handleDeleteColumn : undefined,
     onRefreshSchema: selectedNodeIdForCallbacks ? handleRefreshSchema : undefined,

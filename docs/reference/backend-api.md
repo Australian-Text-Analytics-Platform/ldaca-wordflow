@@ -289,6 +289,9 @@ storage admission.
 change the number or order of rows, so there is no `filter` edit and an
 `expression` edit accepts only the `with_columns` context. `set_cell`
 accepts an existing string column, absolute row index, and string or null value.
+`cast` accepts an optional `output_column`: the converted values then go into
+that new column right of the source, which is left as it is; a name already on
+the Data Block is rejected.
 `annotation_classes` accepts class and description columns plus at most 200
 validated rows; it preserves other columns positionally, truncating or
 null-padding them to the new row count; it is the only edit allowed to change

@@ -280,6 +280,39 @@ def test_type_change_plan_can_be_read_back(
         assert reopened[column][0] == dt.date(2020, 1, 31)
 
 
+def test_type_change_into_a_new_column_plan_can_be_read_back(tmp_path: Path) -> None:
+    """Converting into a new column (Chao, 25 Nov 2026) reopens from a saved plan."""
+
+    import datetime as dt
+
+    source = tmp_path / "source.parquet"
+    pl.DataFrame({"dmy": ["31/01/2020", "bad"], "who": ["a", "b"]}).write_parquet(source)
+    node = SimpleNamespace(data=pl.scan_parquet(source))
+
+    edited, _ = build_edited_lazyframe(
+        cast(Any, node),
+        EDIT_ADAPTER.validate_python(
+            {
+                "kind": "cast",
+                "column": "dmy",
+                "target_type": "date",
+                "datetime_format": "%d/%m/%Y",
+                "output_column": "dmy_date",
+            }
+        ),
+    )
+    plan = tmp_path / "plan.plbin"
+    plan.write_bytes(edited.serialize(format="binary"))
+
+    assert [Path(path).name for path in list_source_paths(str(plan))] == [
+        "source.parquet"
+    ]
+    reopened = pl.LazyFrame.deserialize(plan, format="binary").collect()
+    assert reopened.columns == ["dmy", "dmy_date", "who"]
+    assert reopened["dmy"].to_list() == ["31/01/2020", "bad"]
+    assert reopened["dmy_date"].to_list() == [dt.date(2020, 1, 31), None]
+
+
 ELAPSED_EDITS: list[dict[str, Any]] = [
     {"kind": "cast", "column": "said", "target_type": "duration"},
     {

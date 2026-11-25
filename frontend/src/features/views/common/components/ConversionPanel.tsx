@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
+import { toastError } from '@/lib/toastError';
 import { AdvancedSection } from '../toolMode/AdvancedSection';
 import { AdvancedSwitch } from '../toolMode/AdvancedSwitch';
 import { ToolModeContext, useToolModeContext, type ToolMode } from '../toolMode/ToolModeContext';
@@ -59,6 +60,7 @@ export type CastExtras = Partial<
     | 'elapsed_unit'
     | 'two_part_times'
     | 'elapsed_text'
+    | 'output_column'
   >
 >;
 
@@ -89,6 +91,13 @@ interface ConversionPanelProps {
   targetLabel: string;
   /** The source holds a date and time, so time presets apply (date to text). */
   sourceHasTime?: boolean;
+  /** The Data Block's columns, so a new column gets a name that is free. */
+  existingColumns?: string[];
+  /**
+   * Puts the rows that hold these values of the column in a new Data Block,
+   * and resolves with its name. Without it the window offers no such button.
+   */
+  onAddRowsAsDataBlock?: (values: string[]) => Promise<string>;
   onClose: () => void;
   onConfirm: (extras: CastExtras) => void;
 }
@@ -103,6 +112,10 @@ interface ConversionPanelProps {
  * window lists the formats that fit and the check; on, it adds the menus that
  * name each part of a value, the format code and the search inside longer
  * text. The choice is kept on this device, as for the analysis tools.
+ *
+ * When values don't convert (Chao, 25 Nov 2026), the check lists every such
+ * value once with its rows, can put those rows in a Data Block to look at,
+ * and offers to keep the column as it is and convert into a new column.
  */
 export function ConversionPanel({ open, onClose, ...props }: ConversionPanelProps) {
   return (
@@ -125,10 +138,18 @@ function ConversionPanelContent({
   target,
   targetLabel,
   sourceHasTime = false,
+  existingColumns = [],
+  onAddRowsAsDataBlock,
   onClose,
   onConfirm,
 }: Omit<ConversionPanelProps, 'open'>) {
   const [extras, setExtras] = useState<CastExtras>(() => initialExtras(mode, sourceHasTime));
+  // Converting into a new column is offered only while values don't convert,
+  // and is not part of what the check tries.
+  const [keepOriginal, setKeepOriginal] = useState(false);
+  const [newColumn, setNewColumn] = useState(() =>
+    freeColumnName(`${columnName}_${NEW_COLUMN_SUFFIX[target]}`, existingColumns),
+  );
   const [advanced, setAdvanced] = useState(() => readToolModeDeviceDefault(DATE_CONVERSION_MODE));
   // No `viewId`: the window is too narrow for the Advanced hint beside the switch.
   const toolMode: ToolMode = {
@@ -211,6 +232,14 @@ function ConversionPanelContent({
     },
   });
   const checkIsCurrent = checked !== null && JSON.stringify(checked) === JSON.stringify(extras);
+  const intoNewColumn = keepOriginal && (check.data?.failed ?? 0) > 0;
+  const newColumnProblem = !intoNewColumn
+    ? null
+    : !newColumn.trim()
+      ? 'Give the new column a name.'
+      : existingColumns.includes(newColumn.trim())
+        ? `A column named "${newColumn.trim()}" already exists.`
+        : null;
 
   return (
     <DialogContent className="w-full max-w-xl border-none bg-transparent p-0 shadow-none">
@@ -265,8 +294,16 @@ function ConversionPanelContent({
             ready={ready}
             pending={!checkIsCurrent || check.isFetching}
             result={check.data}
+            checkedAt={check.dataUpdatedAt}
             error={check.isError ? check.error : null}
             target={target}
+            columnName={columnName}
+            keepOriginal={keepOriginal}
+            onKeepOriginalChange={setKeepOriginal}
+            newColumn={newColumn}
+            onNewColumnChange={setNewColumn}
+            newColumnProblem={newColumnProblem}
+            onAddRowsAsDataBlock={onAddRowsAsDataBlock}
           />
         </CardContent>
         <CardFooter className="border-t border-surface-border/70 pt-4">
@@ -276,9 +313,9 @@ function ConversionPanelContent({
             </Button>
             <Button
               type="button"
-              disabled={!ready || !checkIsCurrent || !check.data}
+              disabled={!ready || !checkIsCurrent || !check.data || newColumnProblem !== null}
               onClick={() => {
-                onConfirm(extras);
+                onConfirm(intoNewColumn ? { ...extras, output_column: newColumn.trim() } : extras);
               }}
             >
               Convert
@@ -288,6 +325,24 @@ function ConversionPanelContent({
       </Card>
     </DialogContent>
   );
+}
+
+/** What a new column of converted values is called after its source: `created_at_date`. */
+const NEW_COLUMN_SUFFIX: Record<ConversionPanelProps['target'], string> = {
+  date: 'date',
+  datetime: 'datetime',
+  integer: 'number',
+  float: 'number',
+  string: 'text',
+  duration: 'elapsed',
+};
+
+/** The name, or the name with the first number that makes it free: `x_date_2`. */
+function freeColumnName(name: string, taken: string[]): string {
+  if (!taken.includes(name)) return name;
+  let number = 2;
+  while (taken.includes(`${name}_${String(number)}`)) number += 1;
+  return `${name}_${String(number)}`;
 }
 
 /** Names the date conversion window where the Advanced choice is kept on this device. */
@@ -1012,14 +1067,31 @@ function CheckSection({
   ready,
   pending,
   result,
+  checkedAt,
   error,
   target,
+  columnName,
+  keepOriginal,
+  onKeepOriginalChange,
+  newColumn,
+  onNewColumnChange,
+  newColumnProblem,
+  onAddRowsAsDataBlock,
 }: {
   ready: boolean;
   pending: boolean;
   result: ConversionCheckResource | undefined;
+  /** When `result` arrived; a later check is a new result. */
+  checkedAt: number;
   error: unknown;
   target: string;
+  columnName: string;
+  keepOriginal: boolean;
+  onKeepOriginalChange: (keep: boolean) => void;
+  newColumn: string;
+  onNewColumnChange: (name: string) => void;
+  newColumnProblem: string | null;
+  onAddRowsAsDataBlock?: (values: string[]) => Promise<string>;
 }) {
   if (!ready) {
     return (
@@ -1061,15 +1133,164 @@ function CheckSection({
           ))}
         </tbody>
       </table>
-      {result.failures.length > 0 ? (
-        <p className="text-label-secondary text-description">
-          First values that don&apos;t convert:{' '}
-          {result.failures
-            .map((failure) => `row ${String(failure.row)}: "${failure.value ?? ''}"`)
-            .join(', ')}
-          . Convert anyway, or fix them first (they would become empty; Undo restores them).
-        </p>
+      {result.failed > 0 ? (
+        <FailedValues
+          // A new check starts the list, and its button, again.
+          key={checkedAt}
+          result={result}
+          columnName={columnName}
+          keepOriginal={keepOriginal}
+          onKeepOriginalChange={onKeepOriginalChange}
+          newColumn={newColumn}
+          onNewColumnChange={onNewColumnChange}
+          newColumnProblem={newColumnProblem}
+          onAddRowsAsDataBlock={onAddRowsAsDataBlock}
+        />
       ) : null}
     </section>
+  );
+}
+
+/**
+ * The values that don't convert (Chao, 25 Nov 2026): each one once, with the
+ * rows that hold it, most frequent first, so a repeated "n/a" reads as one
+ * thing to fix. Below it, the two ways on: look at those rows in a Data Block,
+ * or keep the column and convert into a new one.
+ */
+function FailedValues({
+  result,
+  columnName,
+  keepOriginal,
+  onKeepOriginalChange,
+  newColumn,
+  onNewColumnChange,
+  newColumnProblem,
+  onAddRowsAsDataBlock,
+}: {
+  result: ConversionCheckResource;
+  columnName: string;
+  keepOriginal: boolean;
+  onKeepOriginalChange: (keep: boolean) => void;
+  newColumn: string;
+  onNewColumnChange: (name: string) => void;
+  newColumnProblem: string | null;
+  onAddRowsAsDataBlock?: (values: string[]) => Promise<string>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [addedName, setAddedName] = useState<string | null>(null);
+  const listed = result.failed_values;
+  const allListed = listed.length === result.failed_distinct;
+  // The rows are found by their exact values, so every value must be listed whole.
+  const rowsCanBeAdded = allListed && !listed.some((item) => item.shortened);
+  return (
+    <div className="space-y-2 border-t border-surface-border pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p className="text-body font-medium text-foreground">
+          {result.failed_distinct === 1
+            ? "1 value doesn't convert"
+            : `${result.failed_distinct.toLocaleString()} different values don't convert`}
+        </p>
+        {addedName !== null ? (
+          <p role="status" className="text-label-secondary text-description">
+            Added as &ldquo;{addedName}&rdquo;
+          </p>
+        ) : onAddRowsAsDataBlock && rowsCanBeAdded ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={adding}
+            title="Add a Data Block with only the rows that don't convert, to look at them. This column is not changed."
+            onClick={() => {
+              setAdding(true);
+              onAddRowsAsDataBlock(listed.map((item) => item.value))
+                .then(setAddedName)
+                .catch((addError: unknown) => {
+                  toastError(addError, 'Try again.', {
+                    title: "Couldn't add the rows as a Data Block.",
+                  });
+                })
+                .finally(() => {
+                  setAdding(false);
+                });
+            }}
+          >
+            {adding ? 'Adding…' : 'Add these rows as a Data Block'}
+          </Button>
+        ) : null}
+      </div>
+      <div className="max-h-40 overflow-y-auto rounded-sm border border-surface-border">
+        <table className="w-full text-body">
+          <thead>
+            <tr className="text-left text-label-secondary text-description">
+              <th className="px-2 py-0.5 font-normal">Value</th>
+              <th className="px-2 py-0.5 text-right font-normal">Rows</th>
+              <th className="whitespace-nowrap px-2 py-0.5 text-right font-normal">First row</th>
+            </tr>
+          </thead>
+          <tbody>
+            {listed.map((item) => (
+              <tr key={`${String(item.first_row)}-${item.value}`}>
+                <td className="px-2 [overflow-wrap:anywhere]">
+                  {item.value}
+                  {item.shortened ? '…' : ''}
+                </td>
+                <td className="px-2 text-right tabular-nums">{item.count.toLocaleString()}</td>
+                <td className="px-2 text-right tabular-nums text-description">
+                  {item.first_row.toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {allListed ? null : (
+        <p className="text-label-secondary text-description">
+          These are the {listed.length.toLocaleString()} most frequent of{' '}
+          {result.failed_distinct.toLocaleString()} different values.
+        </p>
+      )}
+      <p className="text-label-secondary text-description">
+        To fix them, close this window and use Find &amp; replace or Map values on this column, then
+        convert again. Or convert as it is:{' '}
+        {keepOriginal
+          ? 'they are empty in the new column, and this column keeps them.'
+          : 'they become empty, and Undo restores them.'}
+      </p>
+      <label className="flex items-start gap-2 text-body">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={keepOriginal}
+          onChange={(event) => {
+            onKeepOriginalChange(event.target.checked);
+          }}
+        />
+        <span>
+          Keep &ldquo;{columnName}&rdquo; as it is and put the converted values in a new column
+        </span>
+      </label>
+      {keepOriginal ? (
+        <div className="pl-6">
+          <label className="flex flex-wrap items-center gap-2 text-body">
+            New column
+            <input
+              type="text"
+              value={newColumn}
+              aria-invalid={newColumnProblem !== null}
+              onChange={(event) => {
+                onNewColumnChange(event.target.value);
+              }}
+              className="min-w-0 flex-1 rounded-sm border border-input-border bg-editor px-2 py-0.5 text-foreground"
+            />
+          </label>
+          {newColumnProblem ? (
+            <p role="alert" className="mt-0.5 text-label-secondary text-error">
+              {newColumnProblem}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }

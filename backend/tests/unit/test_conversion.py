@@ -148,7 +148,10 @@ def test_the_check_counts_and_lists_values_that_would_not_convert() -> None:
         checked["converted"],
         checked["failed"],
     ) == (4, 3, 2, 1)
-    assert checked["failures"] == [{"row": 2, "value": "bad"}]
+    assert checked["failed_distinct"] == 1
+    assert checked["failed_values"] == [
+        {"value": "bad", "count": 1, "first_row": 2, "shortened": False}
+    ]
     samples = checked["samples"]
     assert isinstance(samples, list)
     assert samples[0] == {"row": 1, "value": "30/01/2020", "result": "2020-01-30"}
@@ -318,3 +321,56 @@ def test_the_check_previews_whole_numbers_as_they_will_convert() -> None:
         {"row": 2, "value": "9007199254740993", "result": "9007199254740993"},
         {"row": 3, "value": "x", "result": None},
     ]
+
+
+def test_the_check_groups_values_that_would_not_convert_most_frequent_first() -> None:
+    """Chao, 25 Nov 2026: every value to fix is listed once, with its rows."""
+
+    frame = pl.LazyFrame(
+        {"x": ["soon", "30/01/2020", "n/a", "n/a", "x" * 300, "n/a", None, "soon"]}
+    )
+
+    checked = check_cast(
+        frame,
+        column_name="x",
+        target_type="date",
+        options=ConversionOptions(datetime_format="%d/%m/%Y"),
+    )
+
+    assert (checked["failed"], checked["failed_distinct"]) == (6, 3)
+    assert checked["failed_values"] == [
+        {"value": "n/a", "count": 3, "first_row": 3, "shortened": False},
+        {"value": "soon", "count": 2, "first_row": 1, "shortened": False},
+        # A long text is cut, and marked so it is not matched as if whole.
+        {"value": "x" * 200, "count": 1, "first_row": 5, "shortened": True},
+    ]
+
+    limited = check_cast(
+        frame,
+        column_name="x",
+        target_type="date",
+        options=ConversionOptions(datetime_format="%d/%m/%Y"),
+        failed_values=1,
+    )
+    listed = limited["failed_values"]
+    assert isinstance(listed, list)
+    assert [item["value"] for item in listed] == ["n/a"]
+    assert limited["failed_distinct"] == 3
+
+
+def test_a_conversion_into_a_new_column_keeps_the_source_column() -> None:
+    frame = pl.LazyFrame({"when": ["30/01/2020", "soon"], "who": ["a", "b"]})
+
+    result = cast_lazyframe_column(
+        frame,
+        column_name="when",
+        target_type="date",
+        datetime_format="%d/%m/%Y",
+        options=ConversionOptions(datetime_format="%d/%m/%Y"),
+        output_column="when_date",
+    )
+
+    table = result.lazyframe.collect()
+    assert table["when"].to_list() == ["30/01/2020", "soon"]
+    assert table["when_date"].to_list() == [dt.date(2020, 1, 30), None]
+    assert result.new_type == "Date"

@@ -35,13 +35,15 @@ const checked: ConversionCheckResource = {
   converted: 2,
   failed: 1,
   samples: [{ row: 1, value: '03/01/2020', result: '2020-01-03' }],
-  failures: [{ row: 3, value: 'soon' }],
+  failed_values: [{ value: 'soon', count: 1, first_row: 3, shortened: false }],
+  failed_distinct: 1,
 };
 
 const showPanel = (
   mode: ConversionMode,
   target: 'date' | 'integer' | 'duration' | 'string' | 'float' = 'date',
   onConfirm: Mock = vi.fn(),
+  onAddRowsAsDataBlock?: (values: string[]) => Promise<string>,
 ) => {
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -54,6 +56,8 @@ const showPanel = (
           mode={mode}
           target={target}
           targetLabel={target}
+          existingColumns={['published', 'title', 'published_date']}
+          onAddRowsAsDataBlock={onAddRowsAsDataBlock}
           onClose={vi.fn()}
           onConfirm={onConfirm}
         />
@@ -105,7 +109,9 @@ describe('ConversionPanel (issue 322)', () => {
       '2 of 3 values convert; 1 would become empty. 1 empty values stay empty.',
     );
     expect(screen.getByText('3 Jan 2020')).toBeInTheDocument();
-    expect(screen.getByText(/row 3: "soon"/)).toBeInTheDocument();
+    // The value that doesn't convert is listed with its rows and first row.
+    expect(screen.getByText("1 value doesn't convert")).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: 'soon 1 3' })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Read month first' }));
     expect(screen.getByRole('radio', { name: /Month\/Day\/Year/ })).toBeChecked();
@@ -370,6 +376,111 @@ describe('ConversionPanel (issue 322)', () => {
       'Only text before or after the date can be ignored',
     );
     expect(screen.getByRole('button', { name: 'Convert' })).toBeDisabled();
+  });
+
+  const slashDates = () => {
+    vi.mocked(getDatetimeFormats).mockResolvedValue({
+      data: {
+        column: 'published',
+        sample_size: 3,
+        sample_value: '03/01/2020',
+        sample_parts: ['03', '/', '01', '/', '2020'],
+        candidates: [candidate({ format: '%d/%m/%Y' })],
+      },
+    } as never);
+  };
+
+  it('keeps the column and converts into a new column when asked', async () => {
+    slashDates();
+    const onConfirm = showPanel('date');
+
+    const keep = await screen.findByRole('checkbox', {
+      name: /Keep “published” as it is and put the converted values in a new column/,
+    });
+    expect(screen.queryByRole('textbox', { name: 'New column' })).not.toBeInTheDocument();
+    await userEvent.click(keep);
+    // The suggested name is free: "published_date" is taken.
+    const name = screen.getByRole('textbox', { name: 'New column' });
+    expect(name).toHaveValue('published_date_2');
+
+    await userEvent.clear(name);
+    expect(screen.getByRole('alert')).toHaveTextContent('Give the new column a name.');
+    expect(screen.getByRole('button', { name: 'Convert' })).toBeDisabled();
+    await userEvent.type(name, 'title');
+    expect(screen.getByRole('alert')).toHaveTextContent('A column named "title" already exists.');
+    expect(screen.getByRole('button', { name: 'Convert' })).toBeDisabled();
+    await userEvent.clear(name);
+    await userEvent.type(name, 'published on');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    expect(onConfirm).toHaveBeenCalledWith({
+      datetime_format: '%d/%m/%Y',
+      output_column: 'published on',
+    });
+    // The check tries the conversion only; where the result goes is not part of it.
+    expect(vi.mocked(checkConversion).mock.lastCall?.[0].body).not.toHaveProperty('output_column');
+  });
+
+  it('offers no new column when every value converts', async () => {
+    slashDates();
+    vi.mocked(checkConversion).mockResolvedValue({
+      data: { ...checked, converted: 3, failed: 0, failed_values: [], failed_distinct: 0 },
+    } as never);
+    const onConfirm = showPanel('date');
+
+    expect(await screen.findByRole('status')).toHaveTextContent('3 of 3 values convert.');
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    expect(onConfirm).toHaveBeenCalledWith({ datetime_format: '%d/%m/%Y' });
+  });
+
+  it("adds the rows that don't convert as a Data Block, once", async () => {
+    slashDates();
+    vi.mocked(checkConversion).mockResolvedValue({
+      data: {
+        ...checked,
+        non_empty: 6,
+        failed: 4,
+        failed_values: [
+          { value: 'n/a', count: 3, first_row: 2, shortened: false },
+          { value: 'soon', count: 1, first_row: 3, shortened: false },
+        ],
+        failed_distinct: 2,
+      },
+    } as never);
+    const addRows = vi.fn().mockResolvedValue('News_published_not_converted');
+    showPanel('date', 'date', vi.fn(), addRows);
+
+    expect(await screen.findByText("2 different values don't convert")).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: 'n/a 3 2' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Add these rows as a Data Block' }));
+    expect(addRows).toHaveBeenCalledWith(['n/a', 'soon']);
+    expect(await screen.findByText('Added as “News_published_not_converted”')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Add these rows as a Data Block' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers no Data Block of rows when the values are not all listed whole', async () => {
+    slashDates();
+    vi.mocked(checkConversion).mockResolvedValue({
+      data: {
+        ...checked,
+        non_empty: 500,
+        converted: 200,
+        failed: 300,
+        failed_values: [{ value: 'n/a', count: 5, first_row: 2, shortened: false }],
+        failed_distinct: 250,
+      },
+    } as never);
+    showPanel('date', 'date', vi.fn(), vi.fn());
+
+    expect(
+      await screen.findByText('These are the 1 most frequent of 250 different values.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Add these rows as a Data Block' }),
+    ).not.toBeInTheDocument();
   });
 
   it('starts numbers with a decimal point, comma thousands and symbols ignored', async () => {

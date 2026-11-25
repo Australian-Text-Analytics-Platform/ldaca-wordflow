@@ -242,7 +242,15 @@ NodeDerivationRequest = Annotated[
 
 
 class CastNodeEditRequest(CastDerivation):
-    """Cast one column on the target Data Block."""
+    """Cast one column on the target Data Block.
+
+    With ``output_column`` the converted values go into a new column right of
+    the source, which stays as it is, so values that do not convert can still
+    be read and fixed (Chao, 25 Nov 2026). Like every Data Block Edit it adds
+    a column and never changes rows (ADR 0031).
+    """
+
+    output_column: str | None = Field(default=None, min_length=1, max_length=200)
 
 
 class RenameColumnNodeEditRequest(_StrictRequest):
@@ -741,11 +749,17 @@ class ConversionSample(BaseModel):
     result: str | None
 
 
-class ConversionFailure(BaseModel):
+class ConversionFailedValue(BaseModel):
+    """One distinct value that does not convert, and how many rows hold it."""
+
     model_config = ConfigDict(extra="forbid")
 
-    row: int
-    value: str | None
+    value: str
+    count: int
+    # The 1-based row of its first occurrence.
+    first_row: int
+    # The value is longer than shown, so it cannot be matched exactly.
+    shortened: bool = False
 
 
 class ConversionCheckResource(BaseModel):
@@ -758,4 +772,7 @@ class ConversionCheckResource(BaseModel):
     converted: int
     failed: int
     samples: list[ConversionSample]
-    failures: list[ConversionFailure]
+    # The distinct values that do not convert, most frequent first, up to a
+    # limit; ``failed_distinct`` counts all of them.
+    failed_values: list[ConversionFailedValue]
+    failed_distinct: int

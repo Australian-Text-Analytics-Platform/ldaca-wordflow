@@ -320,8 +320,12 @@ def cast_lazyframe_column(
     strict: bool | None = None,
     categories: list[str] | None = None,
     options: ConversionOptions | None = None,
+    output_column: str | None = None,
 ) -> CastLazyFrameColumnResult:
     """Return a new LazyFrame with one column cast to the requested dtype.
+
+    With ``output_column`` the converted values become that new column and the
+    source column is left as it is; the caller places the new column.
 
     Used by ``node_operations`` as the single operation that validates and
     builds a casted lazy plan before the selected Data Block is updated.
@@ -377,8 +381,9 @@ def cast_lazyframe_column(
                 )
             raise _cast_failure(reason, sample_err) from sample_err
 
-        casted_lazyframe = lazyframe.with_columns(cast_expr)
-        new_type = str(casted_lazyframe.collect_schema()[column_name])
+        result_column = output_column or column_name
+        casted_lazyframe = lazyframe.with_columns(cast_expr.alias(result_column))
+        new_type = str(casted_lazyframe.collect_schema()[result_column])
         return CastLazyFrameColumnResult(
             lazyframe=casted_lazyframe,
             original_type=original_type,
@@ -399,6 +404,11 @@ def cast_lazyframe_column(
 
 
 _RESULT_LABEL_FORMATS = {"datetime": "%Y-%m-%d %H:%M:%S", "date": "%Y-%m-%d"}
+# The check lists this many distinct values that do not convert, each up to
+# this many characters: enough to read and fix them without sending a column
+# of long texts back when the wrong column was chosen.
+FAILED_VALUES_LIMIT = 200
+FAILED_VALUE_CHARACTERS = 200
 
 
 def check_cast(
@@ -408,13 +418,14 @@ def check_cast(
     target_type: str,
     options: ConversionOptions,
     sample_rows: int = 8,
-    failure_rows: int = 5,
+    failed_values: int = FAILED_VALUES_LIMIT,
 ) -> dict[str, object]:
     """Try a conversion on the whole column without changing it (issue 322).
 
     The original and converted values come from one pass over the plan, so
     their rows always line up (issue 319). Returns counts, a preview of the
-    first values, and the first values that would not convert.
+    first values, and the distinct values that would not convert with the
+    number of rows that hold each, most frequent first.
     """
 
     result = cast_lazyframe_column(
@@ -455,6 +466,11 @@ def check_cast(
     )
     filled = frame.filter(~pl.col("__empty__"))
     failed = filled.filter(pl.col("__after__").is_null())
+    distinct = (
+        failed.group_by("__before__")
+        .agg(pl.len().alias("__count__"), pl.col("__row__").min().alias("__first__"))
+        .sort(["__count__", "__first__"], descending=[True, False])
+    )
     return {
         "total_rows": frame.height,
         "non_empty": filled.height,
@@ -466,10 +482,16 @@ def check_cast(
             .select("__row__", "__before__", "__after_text__")
             .iter_rows()
         ],
-        "failures": [
-            {"row": int(row) + 1, "value": value}
-            for row, value in failed.head(failure_rows)
-            .select("__row__", "__before__")
+        "failed_distinct": distinct.height,
+        "failed_values": [
+            {
+                "value": (value or "")[:FAILED_VALUE_CHARACTERS],
+                "count": int(count),
+                "first_row": int(first) + 1,
+                "shortened": len(value or "") > FAILED_VALUE_CHARACTERS,
+            }
+            for value, count, first in distinct.head(failed_values)
+            .select("__before__", "__count__", "__first__")
             .iter_rows()
         ],
     }

@@ -118,3 +118,78 @@ def test_text_identifiers_stay_distinct_as_whole_numbers(
     table = pl.read_ipc_stream(io.BytesIO(rows.content))
     assert table.schema["id"] == pl.Int64
     assert table["id"].to_list() == [9007199254740992, 9007199254740993]
+
+
+def test_cast_into_a_new_column_keeps_the_original(files_test_client: TestClient) -> None:
+    """Chao, 25 Nov 2026: convert as it is and keep the text to fix later."""
+
+    import io
+
+    import polars as pl
+
+    client = files_test_client
+    workspace_id = client.post("/api/workspaces", json={"name": "Kept"}).json()["id"]
+    assert client.put(f"/api/workspaces/{workspace_id}/open").status_code == 200
+    uploaded = client.post(
+        "/api/user-files/uploads",
+        params={"path": "dates.csv"},
+        content=b"when,label\n30/01/2020,a\nsoon,b\n,c\n31/12/2021,d\n",
+        headers={"Content-Type": "application/octet-stream"},
+    )
+    assert uploaded.status_code == 201
+    nodes = f"/api/workspaces/{workspace_id}/nodes"
+    node = client.post(
+        nodes, json={"kind": "file", "file_path": "dates.csv", "name": "Dates"}
+    ).json()
+    edits_url = f"{nodes}/{node['id']}/edits"
+    cast = {
+        "kind": "cast",
+        "column": "when",
+        "target_type": "date",
+        "datetime_format": "%d/%m/%Y",
+    }
+
+    checked = client.post(f"{nodes}/{node['id']}/conversion-check", json=cast)
+    assert checked.status_code == 200, checked.text
+    assert checked.json()["failed_values"] == [
+        {"value": "soon", "count": 1, "first_row": 2, "shortened": False}
+    ]
+
+    taken = client.post(edits_url, json={**cast, "output_column": "label"})
+    assert taken.status_code == 400, taken.text
+    assert "already exists" in taken.text
+
+    converted = client.post(edits_url, json={**cast, "output_column": "when_date"})
+    assert converted.status_code == 200, converted.text
+    # "soon" is empty in the new column; the blank cell was empty already.
+    assert converted.headers["X-Wordflow-Emptied-Values"] == "1"
+    assert converted.headers["X-Wordflow-First-Emptied-Row"] == "2"
+    assert converted.headers["X-Wordflow-First-Emptied-Value"] == "soon"
+
+    rows = client.post(
+        f"{nodes}/previews", json={"kind": "clone", "source_node_id": node["id"]}
+    )
+    assert rows.status_code == 200, rows.text
+    table = pl.read_ipc_stream(io.BytesIO(rows.content))
+    # The new column sits right of its source, which is untouched.
+    assert table.columns == ["when", "when_date", "label"]
+    assert table["when"].to_list() == ["30/01/2020", "soon", None, "31/12/2021"]
+    assert table.schema["when_date"] == pl.Date
+    assert table["when_date"].null_count() == 2
+
+    # Rows that do not convert can be put in a Data Block with the Filter's "in".
+    failing = client.post(
+        nodes,
+        json={
+            "kind": "filter",
+            "source_node_id": node["id"],
+            "conditions": [{"column": "when", "operator": "in", "value": ["soon"]}],
+            "name": "Dates_when_not_converted",
+        },
+    )
+    assert failing.status_code in (200, 201), failing.text
+    listed = client.post(
+        f"{nodes}/previews",
+        json={"kind": "clone", "source_node_id": failing.json()["id"]},
+    )
+    assert pl.read_ipc_stream(io.BytesIO(listed.content))["label"].to_list() == ["b"]
