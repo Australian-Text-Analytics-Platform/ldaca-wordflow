@@ -14,6 +14,13 @@ export const DOC_ZOOM_MIN = 0.5;
 export const DOC_ZOOM_MAX = 2;
 export const DOC_ZOOM_STEP = 0.1;
 
+/**
+ * Enlarged Help image: 1 fits the image to the viewer, and it can grow to
+ * four times that. There is nothing below 1; the fitted image is the whole image.
+ */
+export const DOC_IMAGE_ZOOM_MAX = 4;
+export const DOC_IMAGE_ZOOM_STEP = 0.25;
+
 /** Anchor highlight duration in ms (tutorial anchor scroll highlight). */
 export const ANCHOR_HIGHLIGHT_DURATION_MS = 3500;
 

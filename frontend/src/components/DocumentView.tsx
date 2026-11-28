@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -15,6 +15,7 @@ import {
   getDocsBaseUrl,
 } from '@/config/env';
 import { useZoom } from '@/hooks/useZoom';
+import { DocImageViewer, type DocImage } from '@/components/DocImageViewer';
 import { useDocumentAnchor } from '@/hooks/useDocumentAnchor';
 
 type DocumentType = 'tutorial' | 'information' | 'reference';
@@ -148,7 +149,15 @@ function DocumentView({
     navigationState.propTarget !== target ? target : navigationState.currentTarget;
   const activeAnchor = currentTarget.anchor;
 
-  const { zoom, zoomIn, zoomOut, zoomReset } = useZoom({ keyboardShortcuts: true });
+  // The picture being shown larger, and the button that opened it, where focus returns.
+  const [enlargedImage, setEnlargedImage] = useState<{
+    image: DocImage;
+    opener: HTMLButtonElement;
+  } | null>(null);
+  // While an image is enlarged the zoom keys belong to its viewer, not the text behind it.
+  const { zoom, zoomIn, zoomOut, zoomReset } = useZoom({
+    keyboardShortcuts: enlargedImage === null,
+  });
   const headerRef = useRef<HTMLElement | null>(null);
   const headerHeight = useElementHeight(headerRef);
 
@@ -232,84 +241,123 @@ function DocumentView({
    * Markdown render overrides used by `ReactMarkdown` for safe image sizing and in-modal doc links.
    * Why: bundled docs should keep internal links inside the viewer while external links retain normal browser behavior.
    * Flow: constrain image sizing and alt text, rewrite internal markdown anchors to viewer state, then leave external links opening safely.
+   *
+   * useMemo is needed here, not an optimisation: ReactMarkdown uses these
+   * functions as element types, so new functions on a render make React throw
+   * away and rebuild every image and link in the document. That happened on
+   * each zoom step, and it would lose the picture that opened the image
+   * viewer, which takes the focus back when the viewer closes. (React Compiler
+   * skips this component: the loader above uses try/finally.)
    */
-  const markdownComponents: Components = {
-    /** Called by: ReactMarkdown when rendering markdown image nodes inside DocumentView. */
-    img: ({ node: _node, className, alt, src, ...props }) => {
-      const mergedClassName = ['max-w-full h-auto', className].filter(Boolean).join(' ');
-      const resolvedAlt = typeof alt === 'string' ? alt : '';
-      return (
-        <img
-          {...props}
-          src={resolveAssetUrl(src, documentSourceRoot)}
-          className={mergedClassName.trim()}
-          alt={resolvedAlt}
-        />
-      );
-    },
-    /**
-     * Rewrites markdown anchors so document consumers stay inside the modal navigation flow.
-     * Flow: resolve relative markdown hrefs against the current file, route internal `.md` links through navigation state, and pass external links through.
-     */
-    a: ({ node: _node, children, href, target: linkTarget, rel, ...props }) => {
-      const baseFile = currentTarget.file;
+  const markdownComponents = useMemo<Components>(
+    () => ({
       /**
-       * Called by: the markdown anchor onClick prop to route internal links through DocumentView state.
-       * Flow: parse the clicked href path/hash, resolve the next markdown file, prevent default navigation, then store the next file/anchor target.
+       * Called by: ReactMarkdown when rendering markdown image nodes inside DocumentView.
+       * A picture is a button that opens it in `DocImageViewer`, where it is not
+       * held to the width of the text. An image with its own inline style is an
+       * icon set in a line of text (the cite mark in the Data Loader guide) and
+       * stays a plain image.
        */
-      const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-        if (!href || isExternalLink(href)) return;
-        const [rawPath, rawHash] = href.split('#');
-        const nextAnchor = rawHash ? rawHash.trim() : '';
-        let nextFile = baseFile;
-        if (rawPath?.trim()) {
-          const trimmed = rawPath.trim();
-          if (trimmed.startsWith('/')) {
-            nextFile = normalizePath(trimmed.replace(/^\/+/, ''));
-          } else {
-            const baseDir = baseFile.includes('/')
-              ? baseFile.slice(0, baseFile.lastIndexOf('/') + 1)
-              : '';
-            nextFile = normalizePath(`${baseDir}${trimmed}`);
-          }
-        }
-        if (!nextFile.endsWith('.md')) return;
-        event.preventDefault();
-        setNavigationState({
-          propTarget: target,
-          currentTarget: {
-            kind: currentTarget.kind,
-            key: `link:${nextFile}#${nextAnchor}`,
-            file: nextFile,
-            anchor: nextAnchor,
-          },
-        });
-      };
-
-      if (isExternalLink(href)) {
-        return (
-          <a
+      img: ({ node: _node, className, alt, src, style, ...props }) => {
+        const resolvedAlt = typeof alt === 'string' ? alt : '';
+        const resolvedSrc = resolveAssetUrl(src, documentSourceRoot);
+        // The button below carries an enlargeable picture's margins instead.
+        const enlargeable = !style && resolvedSrc !== undefined && resolvedSrc !== '';
+        const image = (
+          <img
             {...props}
-            href={href}
-            target={linkTarget ?? '_blank'}
-            rel={rel ?? 'noopener noreferrer'}
+            style={style}
+            src={resolvedSrc}
+            className={['max-w-full h-auto', enlargeable ? 'my-0' : '', className]
+              .filter(Boolean)
+              .join(' ')}
+            alt={resolvedAlt}
+          />
+        );
+        if (!enlargeable) return image;
+        return (
+          // my-[2em] is the prose default for a picture; on the button, the focus ring hugs the picture.
+          <button
+            type="button"
+            className="mx-auto my-[2em] block w-fit max-w-full cursor-zoom-in rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            aria-label={resolvedAlt ? `Enlarge image: ${resolvedAlt}` : 'Enlarge image'}
+            title="Enlarge image"
+            onClick={(event) => {
+              setEnlargedImage({
+                image: { src: resolvedSrc, alt: resolvedAlt },
+                opener: event.currentTarget,
+              });
+            }}
           >
+            {image}
+          </button>
+        );
+      },
+      /**
+       * Rewrites markdown anchors so document consumers stay inside the modal navigation flow.
+       * Flow: resolve relative markdown hrefs against the current file, route internal `.md` links through navigation state, and pass external links through.
+       */
+      a: ({ node: _node, children, href, target: linkTarget, rel, ...props }) => {
+        const baseFile = currentTarget.file;
+        /**
+         * Called by: the markdown anchor onClick prop to route internal links through DocumentView state.
+         * Flow: parse the clicked href path/hash, resolve the next markdown file, prevent default navigation, then store the next file/anchor target.
+         */
+        const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+          if (!href || isExternalLink(href)) return;
+          const [rawPath, rawHash] = href.split('#');
+          const nextAnchor = rawHash ? rawHash.trim() : '';
+          let nextFile = baseFile;
+          if (rawPath?.trim()) {
+            const trimmed = rawPath.trim();
+            if (trimmed.startsWith('/')) {
+              nextFile = normalizePath(trimmed.replace(/^\/+/, ''));
+            } else {
+              const baseDir = baseFile.includes('/')
+                ? baseFile.slice(0, baseFile.lastIndexOf('/') + 1)
+                : '';
+              nextFile = normalizePath(`${baseDir}${trimmed}`);
+            }
+          }
+          if (!nextFile.endsWith('.md')) return;
+          event.preventDefault();
+          setNavigationState({
+            propTarget: target,
+            currentTarget: {
+              kind: currentTarget.kind,
+              key: `link:${nextFile}#${nextAnchor}`,
+              file: nextFile,
+              anchor: nextAnchor,
+            },
+          });
+        };
+
+        if (isExternalLink(href)) {
+          return (
+            <a
+              {...props}
+              href={href}
+              target={linkTarget ?? '_blank'}
+              rel={rel ?? 'noopener noreferrer'}
+            >
+              {children}
+            </a>
+          );
+        }
+
+        const renderedHref =
+          href?.endsWith('.md') || href?.includes('.md#')
+            ? href
+            : resolveAssetUrl(href, documentSourceRoot);
+        return (
+          <a {...props} href={renderedHref} onClick={handleClick}>
             {children}
           </a>
         );
-      }
-
-      const renderedHref =
-        href?.endsWith('.md') || href?.includes('.md#')
-          ? href
-          : resolveAssetUrl(href, documentSourceRoot);
-      return (
-        <a {...props} href={renderedHref} onClick={handleClick}>
-          {children}
-        </a>
-      );
-    },
-  };
+      },
+    }),
+    [currentTarget, documentSourceRoot, target],
+  );
 
   return (
     <div
@@ -387,10 +435,11 @@ function DocumentView({
       <main className="max-w-4xl mx-auto bg-surface rounded-lg border border-surface-border mt-6 mb-10 p-6">
         <div
           className="prose doc-prose prose-img:mx-auto mx-auto"
-          style={{
-            transform: `scale(${String(zoom)})`,
-            transformOrigin: 'top center',
-          }}
+          // CSS zoom lays the text out again at the new size, so it stays
+          // sharp and wraps inside the card. transform: scale() enlarged a
+          // finished picture: blurry in the desktop app, and cut off at the
+          // left. --doc-zoom lets index.css keep anchor offsets in screen px.
+          style={{ zoom, '--doc-zoom': zoom } as React.CSSProperties}
         >
           {loading && <div className="text-center text-description">Loading…</div>}
           {error && <div className="text-error">{error}</div>}
@@ -405,6 +454,16 @@ function DocumentView({
           )}
         </div>
       </main>
+      {enlargedImage && (
+        <DocImageViewer
+          key={enlargedImage.image.src}
+          image={enlargedImage.image}
+          returnFocusTo={enlargedImage.opener}
+          onClose={() => {
+            setEnlargedImage(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -246,24 +246,30 @@
   --tw-prose-td-borders: var(--vscode-surface-border);
 }
 
+/* The Help zoom (DocumentView's --doc-zoom) multiplies every length inside
+   the text, this margin included; dividing keeps it at the header's height. */
 .doc-prose [id] {
-  scroll-margin-top: var(--doc-header-offset, 96px);
+  scroll-margin-top: calc(var(--doc-header-offset, 96px) / var(--doc-zoom, 1));
 }
 
 /* Screenshots: a gamma curve (DocumentView's #doc-image-gamma) darkens faint
    light greys, such as 1px graph edges, while white stays white; contrast()
    would push them to white instead. Both themes also dim the image (0.9 light,
-   0.8 dark): faint lines only separate from white once white is softened. */
+   0.8 dark): faint lines only separate from white once white is softened.
+   The enlarged image (DocImageViewer) gets the same treatment, so a picture
+   does not change when it is opened. */
+.doc-image-viewer img,
 .doc-prose img {
   filter: url(#doc-image-gamma) brightness(0.9);
 }
 
+[data-theme="dark-2026"] .doc-image-viewer img,
 [data-theme="dark-2026"] .doc-prose img {
   filter: url(#doc-image-gamma) brightness(0.8);
 }
 
 .tutorial-highlight {
-  scroll-margin-top: var(--doc-header-offset, 96px);
+  scroll-margin-top: calc(var(--doc-header-offset, 96px) / var(--doc-zoom, 1));
   border-radius: var(--vscode-cornerRadius-large);
   background-color: color-mix(in srgb, var(--vscode-focusBorder) 12%, transparent);
   outline: 2px solid color-mix(in srgb, var(--vscode-focusBorder) 32%, transparent);

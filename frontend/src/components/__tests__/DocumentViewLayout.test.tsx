@@ -1,6 +1,6 @@
 /* eslint-disable testing-library/no-container, testing-library/no-node-access -- the guarded nodes (an SVG filter, CSS classes, a custom property) have no accessible role. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import DocumentView from '@/components/DocumentView';
 
 /**
@@ -62,5 +62,26 @@ describe('DocumentView layout (issue 262)', () => {
     expect(
       (container.firstElementChild as HTMLElement).style.getPropertyValue('--doc-header-offset'),
     ).toMatch(/px$/);
+  });
+
+  it('zooms the text by laying it out again, not by scaling a picture of it', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('# Doc'),
+    }) as unknown as typeof fetch;
+
+    const { container } = render(<DocumentView docType="tutorial" target={target} />);
+    await screen.findByRole('heading', { name: 'Doc' });
+    const prose = container.querySelector<HTMLElement>('.doc-prose');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+
+    expect(screen.getByRole('button', { name: 'Reset zoom' }).textContent).toBe('120%');
+    // transform: scale() blurred the text in the desktop app and cut off its
+    // left edge; index.css divides the anchor offset by --doc-zoom.
+    expect(prose?.style.transform).toBe('');
+    expect(prose?.style.getPropertyValue('--doc-zoom')).toBe('1.2');
+    expect(prose?.getAttribute('style')).toMatch(/(^|[;\s])zoom:\s*1\.2/);
   });
 });

@@ -40,10 +40,11 @@ describe('Help window styles (issue 262)', () => {
     expect(css).not.toMatch(/\.doc-prose img:hover/);
   });
 
-  it('stops anchors below the pinned header', () => {
-    expect(rule('.doc-prose [id]')).toContain('scroll-margin-top: var(--doc-header-offset, 96px);');
-    expect(rule('.tutorial-highlight')).toContain(
-      'scroll-margin-top: var(--doc-header-offset, 96px);',
-    );
+  it('stops anchors below the pinned header, at any Help zoom', () => {
+    // Lengths inside the zoomed text are multiplied by the zoom, so the
+    // offset is divided by it: at 200% an undivided margin stops twice as low.
+    const offset = 'scroll-margin-top: calc(var(--doc-header-offset, 96px) / var(--doc-zoom, 1));';
+    expect(rule('.doc-prose [id]')).toContain(offset);
+    expect(rule('.tutorial-highlight')).toContain(offset);
   });
 });
